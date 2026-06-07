@@ -1,19 +1,20 @@
+import Image from "next/image";
+
 export default function About() {
   return (
     <section id="about" className="section-padding bg-secondary">
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left - Image placeholder */}
+          {/* Left - Profile Photo */}
           <div className="relative">
-            <div className="aspect-[4/5] bg-gradient-to-br from-accent/20 to-gold/20 rounded-2xl border border-white/10 flex items-center justify-center">
-              <div className="text-center p-8">
-                <div className="w-32 h-32 mx-auto rounded-full bg-accent/30 border-2 border-accent flex items-center justify-center mb-4">
-                  <svg className="w-16 h-16 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <p className="text-gray-400 text-sm">Photo coming soon</p>
-              </div>
+            <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-white/10">
+              <Image
+                src="/IMG_4347.jpeg"
+                alt="Crystal - Pistol Performance Coaching"
+                fill
+                className="object-cover"
+                quality={85}
+              />
             </div>
           </div>
 
