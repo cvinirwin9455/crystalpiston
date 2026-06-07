@@ -18,18 +18,6 @@ export default function Hero() {
       <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-primary/80" />
 
       <div className="relative z-10 text-center px-6 pt-20 max-w-4xl mx-auto">
-        {/* Logo */}
-        <div className="mb-8">
-          <Image
-            src="/IMG_5861.PNG"
-            alt="Pistol Performance Coaching Logo"
-            width={200}
-            height={200}
-            className="mx-auto"
-            priority
-          />
-        </div>
-
         <p className="text-gold font-heading uppercase tracking-[0.3em] text-sm md:text-base mb-4">
           Southwest Missouri
         </p>
