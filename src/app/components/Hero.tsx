@@ -1,21 +1,14 @@
-import Image from "next/image";
-
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background image */}
-      <Image
-        src="/IMG_5859.jpeg"
-        alt="Running background"
-        fill
-        className="object-cover"
-        priority
-        quality={85}
-      />
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary via-secondary to-primary" />
 
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-black/60" />
-      <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-primary/80" />
+      {/* Decorative elements */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-gold rounded-full blur-3xl" />
+      </div>
 
       <div className="relative z-10 text-center px-6 pt-20 max-w-4xl mx-auto">
         <p className="text-gold font-heading uppercase tracking-[0.3em] text-sm md:text-base mb-4">
