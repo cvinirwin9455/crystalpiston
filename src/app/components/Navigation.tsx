@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,18 +8,9 @@ export default function Navigation() {
   return (
     <nav className="fixed top-0 w-full bg-primary/95 backdrop-blur-sm z-50 border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-3">
-          <Image
-            src="/IMG_5861.PNG"
-            alt="Pistol Performance Coaching"
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
-          <span className="font-heading text-xl md:text-2xl uppercase tracking-wider">
-            <span className="text-white">Pistol</span>{" "}
-            <span className="text-accent">Performance</span>
-          </span>
+        <a href="#" className="font-heading text-xl md:text-2xl uppercase tracking-wider">
+          <span className="text-white">Pistol</span>{" "}
+          <span className="text-accent">Performance</span>
         </a>
 
         {/* Desktop Nav */}
