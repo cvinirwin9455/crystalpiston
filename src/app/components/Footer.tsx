@@ -1,10 +1,21 @@
+import Image from "next/image";
+
 export default function Footer() {
   return (
     <footer className="bg-primary border-t border-white/5 px-6 py-8">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="font-heading text-xl uppercase tracking-wider">
-          <span className="text-white">Pistol</span>{" "}
-          <span className="text-accent">Performance</span>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/logo.png"
+            alt="Pistol Performance Coaching"
+            width={32}
+            height={32}
+            className="rounded-full"
+          />
+          <span className="font-heading text-lg uppercase tracking-wider">
+            <span className="text-white">Pistol</span>{" "}
+            <span className="text-accent">Performance</span>
+          </span>
         </div>
         <p className="text-gray-500 text-sm">
           &copy; {new Date().getFullYear()} Pistol Performance Coaching. Southwest Missouri.

@@ -1,16 +1,35 @@
+import Image from "next/image";
+
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-secondary to-primary" />
+      {/* Background image */}
+      <Image
+        src="/hero-bg.jpeg"
+        alt="Running background"
+        fill
+        className="object-cover"
+        priority
+        quality={85}
+      />
 
-      {/* Decorative elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-gold rounded-full blur-3xl" />
-      </div>
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-primary/80" />
 
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+        {/* Logo */}
+        <div className="mb-8">
+          <Image
+            src="/logo.png"
+            alt="Pistol Performance Coaching Logo"
+            width={200}
+            height={200}
+            className="mx-auto"
+            priority
+          />
+        </div>
+
         <p className="text-gold font-heading uppercase tracking-[0.3em] text-sm md:text-base mb-4">
           Southwest Missouri
         </p>
