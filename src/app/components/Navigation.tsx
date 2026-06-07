@@ -11,7 +11,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <a href="#" className="flex items-center gap-3">
           <Image
-            src="/logo.png"
+            src="/IMG_5861.PNG"
             alt="Pistol Performance Coaching"
             width={40}
             height={40}

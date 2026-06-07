@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Image
-            src="/logo.png"
+            src="/IMG_5861.PNG"
             alt="Pistol Performance Coaching"
             width={32}
             height={32}

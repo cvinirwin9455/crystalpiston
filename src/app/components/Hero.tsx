@@ -5,7 +5,7 @@ export default function Hero() {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background image */}
       <Image
-        src="/hero-bg.jpeg"
+        src="/IMG_5859.jpeg"
         alt="Running background"
         fill
         className="object-cover"
@@ -21,7 +21,7 @@ export default function Hero() {
         {/* Logo */}
         <div className="mb-8">
           <Image
-            src="/logo.png"
+            src="/IMG_5861.PNG"
             alt="Pistol Performance Coaching Logo"
             width={200}
             height={200}
