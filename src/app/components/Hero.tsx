@@ -17,7 +17,7 @@ export default function Hero() {
       <div className="absolute inset-0 bg-black/60" />
       <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-primary/80" />
 
-      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+      <div className="relative z-10 text-center px-6 pt-20 max-w-4xl mx-auto">
         {/* Logo */}
         <div className="mb-8">
           <Image
