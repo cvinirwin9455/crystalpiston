@@ -9,7 +9,7 @@ export default function About() {
           <div className="relative">
             <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-white/10">
               <Image
-                src="/IMG_4347.jpeg"
+                src="/IMG_8982.jpeg"
                 alt="Crystal - Pistol Performance Coaching"
                 fill
                 className="object-cover"
