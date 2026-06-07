@@ -21,12 +21,7 @@ export default function Hero() {
         <p className="text-gold font-heading uppercase tracking-[0.3em] text-sm md:text-base mb-4">
           Southwest Missouri
         </p>
-        <h1 className="font-heading text-5xl md:text-7xl lg:text-8xl uppercase leading-tight mb-6">
-          Pistol<br />
-          <span className="text-accent">Performance</span><br />
-          Coaching
-        </h1>
-        <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-4">
+        <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-4 mt-6">
           From 5K to 100 miles. From the couch to the finish line.
         </p>
         <p className="text-base md:text-lg text-gray-400 max-w-xl mx-auto mb-10">
