@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-primary text-white;
+  }
+}
+
+@layer components {
+  .section-padding {
+    @apply px-6 py-20 md:px-12 lg:px-24;
+  }
+  .btn-primary {
+    @apply inline-block bg-accent hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105;
+  }
+  .btn-secondary {
+    @apply inline-block border-2 border-gold text-gold hover:bg-gold hover:text-primary font-bold py-3 px-8 rounded-full transition-all duration-300;
+  }
+}
