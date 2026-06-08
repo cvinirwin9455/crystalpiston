@@ -111,9 +111,9 @@ export default function AdminPage() {
   const getTrainingTypeBadge = (tt: string) => { switch (tt) { case "SpeedRoad": case "SpeedTrack": return "bg-red-500/20 text-red-400 border-red-500/30"; case "Tempo": case "Threshold": return "bg-orange-500/20 text-orange-400 border-orange-500/30"; case "LongRun": case "Easy": case "Recovery": return "bg-blue-500/20 text-blue-400 border-blue-500/30"; case "Hills": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"; case "RacePace": case "ClosePace": return "bg-green-500/20 text-green-300 border-green-500/30"; case "Intervals": return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"; case "TimeTrial": return "bg-red-500/20 text-red-300 border-red-500/30"; case "CrossTraining": return "bg-purple-500/20 text-purple-400 border-purple-500/30"; default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"; } };
 
   return (
-    <div className="min-h-screen bg-primary flex">
-      {/* LEFT SIDEBAR - Client List */}
-      <aside className="w-72 bg-secondary/50 border-r border-white/10 flex flex-col h-screen sticky top-0">
+    <div className="min-h-screen bg-primary md:flex">
+      {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
+      <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-4">
             <Image src="/IMG_5861.PNG" alt="Logo" width={36} height={36} />
@@ -149,8 +149,15 @@ export default function AdminPage() {
         <div className="p-3 border-t border-white/10"><a href="/" className="flex items-center gap-2 text-gray-400 hover:text-accent text-xs"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a></div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      {/* MAIN CONTENT (full screen on mobile when client selected) */}
+      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto`}>
+        {/* Mobile Back Button */}
+        {selectedClient && (
+          <button onClick={() => setSelectedClient(null)} className="md:hidden flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <span className="text-sm">All Clients</span>
+          </button>
+        )}
         {/* Create Client Modal */}
         {showCreateClient && (
           <div className="p-6 bg-secondary/30 border-b border-white/10">
@@ -434,7 +441,7 @@ export default function AdminPage() {
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full"><p className="text-gray-500">Select a client from the sidebar</p></div>
+          <div className="hidden md:flex items-center justify-center h-full"><p className="text-gray-500">Select a client from the sidebar</p></div>
         )}
       </main>
     </div>
