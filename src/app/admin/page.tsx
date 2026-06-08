@@ -10,7 +10,7 @@ type CoachMessage = { id: string; date: string; message: string; };
 type Client = { id: string; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; weeks: WeekData[]; messages: CoachMessage[]; };
 
 export default function AdminPage() {
-  const [selectedClient, setSelectedClient] = useState<string | null>("c1");
+  const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account">("plan");
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
   const [editingWeek, setEditingWeek] = useState(false);
@@ -441,7 +441,109 @@ export default function AdminPage() {
             )}
           </div>
         ) : (
-          <div className="hidden md:flex items-center justify-center h-full"><p className="text-gray-500">Select a client from the sidebar</p></div>
+          /* COACH DASHBOARD - default view when no client selected */
+          <div className="p-6 space-y-6">
+            <h2 className="font-heading text-2xl uppercase text-white">Dashboard</h2>
+
+            {/* Overview Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{clients.filter(c => c.status === "active").length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{clients.reduce((s, c) => s + c.weeks.filter(w => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${clients.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${clients.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
+            </div>
+
+            {/* Action Items */}
+            {(() => {
+              const allDrafts = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "draft").map(w => ({ client: c, week: w })));
+              const unpaidClients = clients.filter(c => c.status === "active" && c.owed - c.paid > 0);
+              const recentLogs = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "published").flatMap(w => w.workouts.filter(wo => wo.log).map(wo => ({ client: c, workout: wo }))));
+              return (
+                <>
+                  {/* Drafts Ready to Publish */}
+                  {allDrafts.length > 0 && (
+                    <div className="bg-secondary/50 border border-yellow-500/20 rounded-xl p-5">
+                      <h3 className="font-heading text-sm uppercase text-yellow-400 mb-3">Drafts Ready to Publish</h3>
+                      <div className="space-y-2">
+                        {allDrafts.map((item, i) => (
+                          <div key={i} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-500 text-xs">{item.week.dateRange} &mdash; {item.week.focus}</p></div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
+                              <button onClick={() => { const updated = clients.map(c => { if (c.id === item.client.id) { return { ...c, weeks: c.weeks.map(w => w.weekId === item.week.weekId ? { ...w, status: "published" as const } : w) }; } return c; }); setClients(updated); }} className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded font-bold">Publish</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recent Client Activity */}
+                  {recentLogs.length > 0 && (
+                    <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
+                      <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">Recent Client Logs</h3>
+                      <div className="space-y-2">
+                        {recentLogs.slice(0, 5).map((item, i) => (
+                          <button key={i} onClick={() => { setSelectedClient(item.client.id); setClientTab("plan"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
+                              <div><p className="text-white text-sm">{item.client.name} <span className="text-gray-500">logged</span> {item.workout.title}</p><p className="text-gray-500 text-xs">Effort: {item.workout.log?.rpe}/10 {item.workout.log?.actualMiles && `• ${item.workout.log.actualMiles} mi`} {item.workout.log?.onPeriod === "yes" && "• On Period"}</p></div>
+                            </div>
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Overview */}
+                  {unpaidClients.length > 0 && (
+                    <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
+                      <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">Outstanding Payments</h3>
+                      <div className="space-y-2">
+                        {unpaidClients.map((c) => (
+                          <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("account"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{c.name.charAt(0)}</div>
+                              <p className="text-white text-sm">{c.name}</p>
+                            </div>
+                            <div className="text-right"><p className="text-white text-sm font-medium">${(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-500 text-xs">${c.paid}/${c.owed} paid</p></div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* All Clients Quick View */}
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
+                    <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">All Active Clients</h3>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {clients.filter(c => c.status === "active").map((c) => {
+                        const allWk = c.weeks.filter(w => w.status === "published").flatMap(w => w.workouts);
+                        const doneWk = allWk.filter(w => w.completed);
+                        const drafts = c.weeks.filter(w => w.status === "draft").length;
+                        return (
+                          <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("plan"); }} className="bg-primary/30 border border-white/5 rounded-lg p-4 hover:border-accent/30 transition-all text-left">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{c.name.charAt(0)}</div>
+                              <div><p className="text-white text-sm font-medium">{c.name}</p><p className="text-gray-500 text-xs">{c.goal}</p></div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-400">{doneWk.length}/{allWk.length} workouts</span>
+                              {drafts > 0 && <span className="text-yellow-400">{drafts} draft{drafts > 1 ? "s" : ""}</span>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         )}
       </main>
     </div>
