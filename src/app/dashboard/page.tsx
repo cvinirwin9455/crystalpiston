@@ -372,12 +372,24 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-4">Payment</h2>
+              <h2 className="font-heading text-xl uppercase text-accent mb-4">Payment Status</h2>
+              {clientInfo.balance > 0 ? (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-1"><svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><p className="text-red-400 text-sm font-medium">Balance Due</p></div>
+                  <p className="text-gray-400 text-xs">You have an outstanding balance. Contact Crystal to arrange payment.</p>
+                </div>
+              ) : (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2"><svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><p className="text-green-400 text-sm font-medium">All Paid Up!</p></div>
+                </div>
+              )}
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-gray-400">Owed:</span><span className="text-white">${clientInfo.owed.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Paid:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
-                <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Balance:</span><span className="text-white font-bold">${clientInfo.balance.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">${clientInfo.owed.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
+                {clientInfo.balance > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">${clientInfo.balance.toFixed(2)}</span></div>}
               </div>
+              <div className="w-full bg-primary/50 rounded-full h-2 mt-4"><div className={`h-2 rounded-full ${clientInfo.balance > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${Math.min(100, (clientInfo.paid / clientInfo.owed) * 100)}%` }} /></div>
+              <p className="text-gray-600 text-xs mt-1 text-right">{Math.round((clientInfo.paid / clientInfo.owed) * 100)}% paid</p>
             </div>
             </div>
           </div>

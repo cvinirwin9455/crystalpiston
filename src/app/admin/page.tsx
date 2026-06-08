@@ -456,15 +456,31 @@ export default function AdminPage() {
                 </div>
 
                 {/* Payment Management */}
-                <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
-                  <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Payment</h4>
-                  <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div><label className="text-gray-500 text-xs block mb-1">Total Owed ($)</label><input type="number" defaultValue={selectedClientData.owed} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Total Paid ($)</label><input type="number" defaultValue={selectedClientData.paid} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Balance</label><p className="text-white text-sm font-bold mt-2">${(selectedClientData.owed - selectedClientData.paid).toFixed(2)}</p></div>
+                <div className={`bg-primary/30 border rounded-xl p-5 ${(selectedClientData.owed - selectedClientData.paid) > 0 ? "border-red-500/20" : "border-green-500/20"}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-gray-400 text-xs font-heading uppercase">Payment</h4>
+                    {(selectedClientData.owed - selectedClientData.paid) > 0 ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold">Balance Due</span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">Paid in Full</span>
+                    )}
                   </div>
-                  <div className="w-full bg-primary/50 rounded-full h-2 mb-3"><div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (selectedClientData.paid / selectedClientData.owed) * 100)}%` }} /></div>
-                  <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Update Payment</button>
+                  <div className="grid md:grid-cols-3 gap-4 mb-4">
+                    <div><label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label><input type="number" defaultValue={selectedClientData.owed} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                    <div><label className="text-gray-500 text-xs block mb-1">Total Paid ($)</label><input type="number" defaultValue={selectedClientData.paid} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                    <div><label className="text-gray-500 text-xs block mb-1">Outstanding</label><p className={`text-lg font-bold mt-1 ${(selectedClientData.owed - selectedClientData.paid) > 0 ? "text-red-400" : "text-green-400"}`}>{(selectedClientData.owed - selectedClientData.paid) > 0 ? `$${(selectedClientData.owed - selectedClientData.paid).toFixed(2)}` : "Paid"}</p></div>
+                  </div>
+                  <div className="w-full bg-primary/50 rounded-full h-2 mb-4"><div className={`h-2 rounded-full ${(selectedClientData.owed - selectedClientData.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${Math.min(100, (selectedClientData.paid / selectedClientData.owed) * 100)}%` }} /></div>
+                  <div className="flex gap-3">
+                    <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Update Payment</button>
+                    {(selectedClientData.owed - selectedClientData.paid) > 0 && (
+                      <button className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        Send Payment Reminder
+                      </button>
+                    )}
+                  </div>
+                  {(selectedClientData.owed - selectedClientData.paid) > 0 && <p className="text-gray-600 text-xs mt-2">Sends an email to {selectedClientData.name.split(" ")[0]} reminding them of their outstanding balance.</p>}
                 </div>
 
                 {/* Danger Zone */}
