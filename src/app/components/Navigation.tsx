@@ -29,6 +29,9 @@ export default function Navigation() {
           <a href="#distances" className="hover:text-accent transition-colors">
             Distances
           </a>
+          <a href="/login" className="hover:text-accent transition-colors">
+            Client Login
+          </a>
           <a href="#contact" className="btn-primary text-sm">
             Let&apos;s Run
           </a>
@@ -61,6 +64,9 @@ export default function Navigation() {
           </a>
           <a href="#distances" className="block hover:text-accent transition-colors" onClick={() => setIsOpen(false)}>
             Distances
+          </a>
+          <a href="/login" className="block hover:text-accent transition-colors" onClick={() => setIsOpen(false)}>
+            Client Login
           </a>
           <a href="#contact" className="block btn-primary text-sm text-center" onClick={() => setIsOpen(false)}>
             Let&apos;s Run
