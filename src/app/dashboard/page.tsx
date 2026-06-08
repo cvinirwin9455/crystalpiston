@@ -175,9 +175,10 @@ export default function DashboardPage() {
                       {workout.type === "run" && (
                         <>
                           <div className="bg-primary/50 border border-white/5 rounded-lg p-3 mb-4">
-                            <div className="flex items-center gap-2 mb-1"><span className="text-sm">💪</span><label className="text-gray-300 text-xs">Effort Level</label></div>
+                            <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">How hard did this workout feel?</label></div>
+                            <p className="text-gray-600 text-xs mb-2">1 = barely broke a sweat, 10 = gave everything I had</p>
                             <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || "5"} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
-                            <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Easy</span><span className="text-gray-600 text-xs">Max Effort</span></div>
+                            <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out effort</span></div>
                           </div>
                           <div className="grid md:grid-cols-3 gap-4 mb-4">
                             <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.2" /></div>
@@ -191,9 +192,10 @@ export default function DashboardPage() {
                       {workout.type === "cross" && (
                         <>
                           <div className="bg-primary/50 border border-white/5 rounded-lg p-3 mb-4">
-                            <div className="flex items-center gap-2 mb-1"><span className="text-sm">💪</span><label className="text-gray-300 text-xs">Effort Level</label></div>
+                            <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">How hard did this workout feel?</label></div>
+                            <p className="text-gray-600 text-xs mb-2">1 = barely broke a sweat, 10 = gave everything I had</p>
                             <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || "5"} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
-                            <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Easy</span><span className="text-gray-600 text-xs">Max Effort</span></div>
+                            <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out effort</span></div>
                           </div>
                           <div className="grid md:grid-cols-2 gap-4 mb-4">
                             <div><label className="text-gray-400 text-xs block mb-1">Duration</label><input type="text" value={workout.log?.duration || ""} onChange={(e) => updateWorkoutLog(workout.id, "duration", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 45 min" /></div>
