@@ -464,17 +464,17 @@ export default function AdminPage() {
                   {/* Mon-Sun rows */}
                   <div className="space-y-3">
                     {weekPlan.days.map((day, i) => (
-                      <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.type === "rest" ? "opacity-70" : ""}`}>
+                      <div key={`${day.day}-${i}`} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.type === "rest" ? "opacity-70" : ""}`}>
                         <div className="flex items-center gap-3">
                           <span className="text-white font-heading text-sm uppercase w-24">{day.day}</span>
-                          <select value={day.type} onChange={(e) => { updateDayPlan(i, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, "trainingType", "Rest"); updateDayPlan(i, "title", "Complete Rest"); updateDayPlan(i, "miles", ""); updateDayPlan(i, "description", ""); updateDayPlan(i, "paceTarget", ""); updateDayPlan(i, "location", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                            <option value="run">Run</option><option value="cross">Cross</option><option value="strength">Strength</option><option value="rest">Rest</option>
+                          <select value={day.type} onChange={(e) => { updateDayPlan(i, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, "trainingType", "Rest"); updateDayPlan(i, "miles", ""); updateDayPlan(i, "description", ""); updateDayPlan(i, "paceTarget", ""); updateDayPlan(i, "location", ""); updateDayPlan(i, "title", ""); } else { if (day.title === "Complete Rest") updateDayPlan(i, "title", ""); updateDayPlan(i, "trainingType", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                            <option value="" disabled>Workout Type</option><option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
                           </select>
                           {day.type === "rest" && <span className="text-green-400 text-xs font-medium">Rest Day</span>}
                           {day.type === "run" && (
                             <>
                               <select value={day.trainingType} onChange={(e) => updateDayPlan(i, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                                <option value="Speed">Speed</option><option value="HR">HR</option><option value="LR">LR</option><option value="Tempo">Tempo</option><option value="CT">CT</option><option value="OT">OT</option>
+                                <option value="" disabled>Run Type</option><option value="Speed">Speed</option><option value="HR">Heart Rate</option><option value="LR">Long Run</option><option value="Tempo">Tempo</option><option value="CT">Cross Training</option><option value="OT">Orange Theory</option>
                               </select>
                               <div className="flex items-center gap-1">
                                 <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" />
@@ -487,7 +487,8 @@ export default function AdminPage() {
                             </>
                           )}
                         </div>
-                        {day.type !== "rest" && (
+                        {/* Run fields */}
+                        {day.type === "run" && (
                           <>
                             <div className="grid md:grid-cols-3 gap-2 mt-3">
                               <input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Tempo Run)" />
@@ -499,13 +500,51 @@ export default function AdminPage() {
                               <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
                             </div>
                             <div className="mt-2">
-                              <button className="text-accent text-xs hover:underline">+ Add another workout to {day.day}</button>
+                              <button type="button" className="text-accent text-xs hover:underline">+ Add another workout to {day.day}</button>
                             </div>
                           </>
                         )}
+                        {/* Cross Training - freeform text */}
+                        {day.type === "cross" && (
+                          <>
+                            <div className="grid md:grid-cols-2 gap-2 mt-3">
+                              <input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Orange Theory, Bike/Strength)" />
+                              <input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location (optional)" />
+                            </div>
+                            <div className="mt-2">
+                              <textarea value={day.description} onChange={(e) => updateDayPlan(i, "description", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Full workout details (e.g. 30 min bike, upper body strength circuit, OT class, kickboxing...)" />
+                            </div>
+                            <div className="mt-2">
+                              <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                            </div>
+                            <div className="mt-2">
+                              <button type="button" className="text-accent text-xs hover:underline">+ Add another workout to {day.day}</button>
+                            </div>
+                          </>
+                        )}
+                        {/* Rest - only coach notes */}
                         {day.type === "rest" && (
                           <div className="mt-2">
                             <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes (optional, e.g. 'Full rest, no activity')" />
+                          </div>
+                        )}
+                        {/* Demo: additional workout added to Monday */}
+                        {day.day === "Monday" && day.type === "run" && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-gray-500 text-xs font-heading uppercase">Workout 2</span>
+                              <button type="button" className="text-red-400 text-xs hover:underline">Remove</button>
+                            </div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <select defaultValue="cross" className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                <option value="" disabled>Workout Type</option><option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
+                              </select>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-2">
+                              <input type="text" className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" defaultValue="Strength Circuit" />
+                              <input type="text" className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
+                            </div>
+                            <textarea className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." defaultValue="Upper body: 3x12 pushups, 3x10 rows, 3x15 shoulder press. Core: 3x30s plank, 3x20 russian twists" />
                           </div>
                         )}
                       </div>
