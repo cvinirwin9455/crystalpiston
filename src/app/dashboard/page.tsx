@@ -170,11 +170,18 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     {/* Log toggle */}
-                    {!workout.completed && (
-                      <div className="mt-3 ml-9 flex items-center gap-3">
-                        <button onClick={() => setExpandedWorkout(expandedWorkout === workout.id ? null : workout.id)} className="text-xs text-accent hover:underline transition-colors">{expandedWorkout === workout.id ? "Close" : "Log & Complete Workout"}</button>
-                        <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Didn&apos;t complete?</button>
+                    {!workout.completed && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
+                      <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
+                        <button onClick={() => setExpandedWorkout(workout.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          I Did This
+                        </button>
+                        <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("partial"); }} className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">Partially Done</button>
+                        <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">I Skipped This</button>
                       </div>
+                    )}
+                    {expandedWorkout === workout.id && !workout.completed && (
+                      <div className="mt-2 ml-9"><button onClick={() => setExpandedWorkout(null)} className="text-gray-400 hover:text-white text-xs">Cancel</button></div>
                     )}
                     {workout.status === "skipped" && workout.skipReason && (
                       <div className="mt-2 ml-9 bg-red-500/10 border border-red-500/20 rounded-lg p-2"><p className="text-red-400 text-xs"><span className="font-medium">Skipped:</span> {workout.skipReason}</p></div>
