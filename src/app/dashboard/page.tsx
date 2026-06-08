@@ -8,6 +8,7 @@ type WorkoutDay = {
   day: string;
   date: string;
   type: "run" | "cross" | "strength" | "rest";
+  trainingType: string;
   title: string;
   miles: number | null;
   description: string;
@@ -19,7 +20,6 @@ type WorkoutDay = {
 };
 
 type WorkoutLog = {
-  training: string;
   rpe: string;
   stress: string;
   notes: string;
@@ -53,11 +53,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "stats" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
-  const [filters, setFilters] = useState<FilterOptions>({
-    type: "all",
-    completed: "all",
-    timeRange: "all",
-  });
+  const [filters, setFilters] = useState<FilterOptions>({ type: "all", completed: "all", timeRange: "all" });
 
   const [clientInfo] = useState({
     name: "Client Name",
@@ -69,93 +65,21 @@ export default function DashboardPage() {
     balance: 0.0,
   });
 
-  // Multiple weeks of data
   const [weeks, setWeeks] = useState<WeekData[]>([
     {
       weekId: "week-current",
       label: "This Week",
       dateRange: "Jun 9 - Jun 15",
       focus: "Descending 1200s & Race Pace",
-      coachMessage:
-        "Training is loaded. The two workouts are Tuesday and Thursday. The important piece of the Descending 1200s workout is to not start out too fast — the point is to get 10 seconds faster at each 400, with the next rep starting 10 seconds faster than the last. Recovery can be as slow as you need to jog, but try to not walk unless it's for a couple of breaths.",
+      coachMessage: "Training is loaded. The two workouts are Tuesday and Thursday. The Descending 1200s workout will get sent to your watch. The important piece is to not start out too fast — the point is to get 10 seconds faster at each 400. Recovery can be as slow as you need to jog, but try to not walk unless it's for a couple of breaths, then get the lactic acid moving again.",
       workouts: [
-        {
-          id: "w1-mon",
-          day: "Monday",
-          date: "Jun 9",
-          type: "cross",
-          title: "Orange Theory",
-          miles: null,
-          description: "OT class",
-          completed: false,
-        },
-        {
-          id: "w1-tue",
-          day: "Tuesday",
-          date: "Jun 10",
-          type: "run",
-          title: "Descending 1200s",
-          miles: 8,
-          description: "Kickapoo Track - 1 mi WU | 8x800/400 rest | 1 mi CD",
-          paceTarget: "Pace targets 7:30s",
-          location: "Kickapoo Track",
-          coachNotes:
-            "After a 3mi warm up: Rep 1: 400 @8:30, 400 @8:20, 400 @8:10, 400 RECOVERY JOG. Rep 2: 400 @8:20, 400 @8:10, 400 @8:00, 400 RECOVERY. Rep 3: 400 @8:10, 400 @8:00, 400 @7:50, 400 RECOVERY. Rep 4: 400 @8:00, 400 @7:50, 400 @7:40 or faster, 400 RECOVERY. 1mi cool down. I hope you enjoy this workout — it was one of my favorite ones. Do it on a track if possible.",
-          completed: false,
-        },
-        {
-          id: "w1-wed",
-          day: "Wednesday",
-          date: "Jun 11",
-          type: "run",
-          title: "Easy Run",
-          miles: 5,
-          description: "5 mi easy",
-          location: "Table Rock Coffee Roasters",
-          completed: false,
-        },
-        {
-          id: "w1-thu",
-          day: "Thursday",
-          date: "Jun 12",
-          type: "run",
-          title: "Race Pace",
-          miles: 10,
-          description: "2 mi WU | 2 @ 8:40 | 2 @ 8:20 | 2 @ 8:40 | 1 CD = 9 mi",
-          paceTarget: "8:20-8:40/mi",
-          coachNotes: "Pretty cut and dry — 2mi warm up, 7mi at close to race pace at 8:50, 1mi cool down.",
-          completed: false,
-        },
-        {
-          id: "w1-fri",
-          day: "Friday",
-          date: "Jun 13",
-          type: "cross",
-          title: "Orange Theory",
-          miles: null,
-          description: "OT class",
-          completed: false,
-        },
-        {
-          id: "w1-sat",
-          day: "Saturday",
-          date: "Jun 14",
-          type: "run",
-          title: "Long Run",
-          miles: 17,
-          description: "17 mi default pace",
-          completed: false,
-        },
-        {
-          id: "w1-sun",
-          day: "Sunday",
-          date: "Jun 15",
-          type: "run",
-          title: "Easy Recovery",
-          miles: 7,
-          description: "7 easy recovery",
-          completed: false,
-        },
+        { id: "w1-mon", day: "Monday", date: "Jun 9", type: "cross", trainingType: "OT", title: "Orange Theory", miles: null, description: "OT class", completed: false },
+        { id: "w1-tue", day: "Tuesday", date: "Jun 10", type: "run", trainingType: "Speed", title: "Descending 1200s", miles: 8, description: "Kickapoo Track - 3 mi WU | Descending 1200s | 1 mi CD", paceTarget: "Reps from 8:30 down to 7:40", location: "Kickapoo Track", coachNotes: "Rep 1: 400@8:30, 400@8:20, 400@8:10, Recovery. Rep 2: 400@8:20, 400@8:10, 400@8:00, Recovery. Rep 3: 400@8:10, 400@8:00, 400@7:50, Recovery. Rep 4: 400@8:00, 400@7:50, 400@7:40 or faster, Recovery. I hope you enjoy this workout — it was one of my favorite ones. Do it on a track if possible.", completed: false },
+        { id: "w1-wed", day: "Wednesday", date: "Jun 11", type: "run", trainingType: "LR", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: false },
+        { id: "w1-thu", day: "Thursday", date: "Jun 12", type: "run", trainingType: "Tempo", title: "Race Pace", miles: 10, description: "2 mi WU | 2@8:40 | 2@8:20 | 2@8:40 | 1 CD", paceTarget: "8:20-8:40/mi", coachNotes: "Pretty cut and dry — 2mi warm up, 7mi at close to race pace at 8:50, 1mi cool down.", completed: false },
+        { id: "w1-fri", day: "Friday", date: "Jun 13", type: "cross", trainingType: "OT", title: "Orange Theory", miles: null, description: "OT class", completed: false },
+        { id: "w1-sat", day: "Saturday", date: "Jun 14", type: "run", trainingType: "LR", title: "Long Run", miles: 17, description: "17 mi default pace", completed: false },
+        { id: "w1-sun", day: "Sunday", date: "Jun 15", type: "run", trainingType: "LR", title: "Easy Recovery", miles: 7, description: "7 easy recovery", completed: false },
       ],
     },
     {
@@ -163,92 +87,15 @@ export default function DashboardPage() {
       label: "Last Week",
       dateRange: "Jun 2 - Jun 8",
       focus: "Hills & Specificity",
-      coachMessage:
-        "I'm giving you this week of training a week ahead, because I will be gone. But Jeff will be here to guide you through it. This week will be more specificity training on hills — Tuesday will be location specific. The day after Memorial Day, hopefully you will be ready to get after it.",
+      coachMessage: "This week will be more specificity training on hills — Tuesday will be location specific. Jeff will be here to guide you through it.",
       workouts: [
-        {
-          id: "w2-mon",
-          day: "Monday",
-          date: "Jun 2",
-          type: "strength",
-          title: "Bike / Strength",
-          miles: null,
-          description: "Cross training day. Bike and strength work.",
-          completed: true,
-          log: { training: "CT", rpe: "6", stress: "", notes: "Felt good", energy: "7", motivation: "8", sleep: "7", strength: "7", recovery: "6", mood: "8", hunger: "7" },
-        },
-        {
-          id: "w2-tue",
-          day: "Tuesday",
-          date: "Jun 3",
-          type: "run",
-          title: "HILLS - Technique Day",
-          miles: 7,
-          description: "2 WU | 1 down | 1 up | 1 down | 1 up | 1 CD",
-          paceTarget: "Downhill close to race pace",
-          location: "Location specific hills",
-          coachNotes: "This first training day is for technique. Jeff will run the downs with you to help coach you on keeping head up, not leaning too far forward, but yet allowing gravity to help you down, without falling.",
-          completed: true,
-          log: { training: "Speed", rpe: "8", stress: "", notes: "Jeff was great help", energy: "8", motivation: "9", sleep: "7", strength: "7", recovery: "7", mood: "9", hunger: "6", actualMiles: "7.2", actualPace: "8:45" },
-        },
-        {
-          id: "w2-wed",
-          day: "Wednesday",
-          date: "Jun 4",
-          type: "run",
-          title: "Easy Run",
-          miles: 5,
-          description: "5 mi easy",
-          location: "Table Rock Coffee Roasters",
-          completed: true,
-          log: { training: "LR", rpe: "4", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "6", recovery: "7", mood: "7", hunger: "8" },
-        },
-        {
-          id: "w2-thu",
-          day: "Thursday",
-          date: "Jun 5",
-          type: "run",
-          title: "Strides",
-          miles: 7,
-          description: "7 mi w/strides",
-          completed: true,
-          log: { training: "Speed", rpe: "7", stress: "", notes: "Legs felt heavy from hills", energy: "6", motivation: "7", sleep: "6", strength: "6", recovery: "5", mood: "7", hunger: "7" },
-        },
-        {
-          id: "w2-fri",
-          day: "Friday",
-          date: "Jun 6",
-          type: "strength",
-          title: "Bike / Strength",
-          miles: null,
-          description: "Cross training day. Bike and strength work.",
-          completed: true,
-          log: { training: "CT", rpe: "5", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "7", recovery: "7", mood: "8", hunger: "7" },
-        },
-        {
-          id: "w2-sat",
-          day: "Saturday",
-          date: "Jun 7",
-          type: "run",
-          title: "Race Pace Workout",
-          miles: 12,
-          description: "5 WU | 5 mi @ 9:15 (2 min rest between miles) | 2 CD",
-          paceTarget: "9:15/mi race pace",
-          coachNotes: "12 mi total workout at race pace.",
-          completed: true,
-          log: { training: "Tempo", rpe: "9", stress: "Travel Day", notes: "War Eagle! Fun easy run.", energy: "8", motivation: "9", sleep: "7", strength: "8", recovery: "6", mood: "9", hunger: "8", actualMiles: "12.1", actualPace: "9:12" },
-        },
-        {
-          id: "w2-sun",
-          day: "Sunday",
-          date: "Jun 8",
-          type: "rest",
-          title: "Complete Rest",
-          miles: null,
-          description: "Complete rest day. Recover and recharge.",
-          completed: true,
-          log: { training: "", rpe: "", stress: "", notes: "Great week overall", energy: "8", motivation: "8", sleep: "9", strength: "7", recovery: "8", mood: "9", hunger: "7" },
-        },
+        { id: "w2-mon", day: "Monday", date: "Jun 2", type: "strength", trainingType: "CT", title: "Bike / Strength", miles: null, description: "Cross training day. Bike and strength work.", completed: true, log: { rpe: "6", stress: "", notes: "Felt good", energy: "7", motivation: "8", sleep: "7", strength: "7", recovery: "6", mood: "8", hunger: "7" } },
+        { id: "w2-tue", day: "Tuesday", date: "Jun 3", type: "run", trainingType: "Speed", title: "HILLS - Technique Day", miles: 7, description: "2 WU | 1 down | 1 up | 1 down | 1 up | 1 CD", paceTarget: "Downhill close to race pace", location: "Location specific hills", coachNotes: "This first training day is for technique. Jeff will run the downs with you to help coach you on keeping head up, not leaning too far forward, but yet allowing gravity to help you down, without falling.", completed: true, log: { rpe: "8", stress: "", notes: "Jeff was great help", energy: "8", motivation: "9", sleep: "7", strength: "7", recovery: "7", mood: "9", hunger: "6", actualMiles: "7.2", actualPace: "8:45" } },
+        { id: "w2-wed", day: "Wednesday", date: "Jun 4", type: "run", trainingType: "LR", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: true, log: { rpe: "4", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "6", recovery: "7", mood: "7", hunger: "8" } },
+        { id: "w2-thu", day: "Thursday", date: "Jun 5", type: "run", trainingType: "Speed", title: "Strides", miles: 7, description: "7 mi w/strides", completed: true, log: { rpe: "7", stress: "", notes: "Legs felt heavy from hills", energy: "6", motivation: "7", sleep: "6", strength: "6", recovery: "5", mood: "7", hunger: "7" } },
+        { id: "w2-fri", day: "Friday", date: "Jun 6", type: "strength", trainingType: "CT", title: "Bike / Strength", miles: null, description: "Cross training day. Bike and strength work.", completed: true, log: { rpe: "5", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "7", recovery: "7", mood: "8", hunger: "7" } },
+        { id: "w2-sat", day: "Saturday", date: "Jun 7", type: "run", trainingType: "Tempo", title: "Race Pace Workout", miles: 12, description: "5 WU | 5 mi @ 9:15 (2 min rest between miles) | 2 CD", paceTarget: "9:15/mi race pace", coachNotes: "12 mi total workout at race pace.", completed: true, log: { rpe: "9", stress: "Travel Day", notes: "War Eagle! Fun easy run.", energy: "8", motivation: "9", sleep: "7", strength: "8", recovery: "6", mood: "9", hunger: "8", actualMiles: "12.1", actualPace: "9:12" } },
+        { id: "w2-sun", day: "Sunday", date: "Jun 8", type: "rest", trainingType: "Rest", title: "Complete Rest", miles: null, description: "Complete rest day.", completed: true, log: { rpe: "", stress: "", notes: "Great week overall", energy: "8", motivation: "8", sleep: "9", strength: "7", recovery: "8", mood: "9", hunger: "7" } },
       ],
     },
   ]);
@@ -260,25 +107,19 @@ export default function DashboardPage() {
   const toggleCompleted = (workoutId: string) => {
     const updatedWeeks = [...weeks];
     const workout = updatedWeeks[currentWeekIndex].workouts.find((w) => w.id === workoutId);
-    if (workout) {
-      workout.completed = !workout.completed;
-      setWeeks(updatedWeeks);
-    }
+    if (workout) { workout.completed = !workout.completed; setWeeks(updatedWeeks); }
   };
 
   const updateWorkoutLog = (workoutId: string, field: string, value: string) => {
     const updatedWeeks = [...weeks];
     const workout = updatedWeeks[currentWeekIndex].workouts.find((w) => w.id === workoutId);
     if (workout) {
-      if (!workout.log) {
-        workout.log = { training: "", rpe: "", stress: "", notes: "", energy: "", motivation: "", sleep: "", strength: "", recovery: "", mood: "", hunger: "" };
-      }
+      if (!workout.log) { workout.log = { rpe: "", stress: "", notes: "", energy: "", motivation: "", sleep: "", strength: "", recovery: "", mood: "", hunger: "" }; }
       (workout.log as Record<string, string>)[field] = value;
       setWeeks(updatedWeeks);
     }
   };
 
-  // Stats calculations
   const allWorkouts = weeks.flatMap((w) => w.workouts);
   const completedWorkouts = allWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = completedWorkouts.reduce((sum, w) => sum + (w.miles || 0), 0);
@@ -287,62 +128,32 @@ export default function DashboardPage() {
 
   const getFilteredWorkouts = () => {
     let filtered = allWorkouts;
-    if (filters.type !== "all") {
-      filtered = filtered.filter((w) => w.type === filters.type);
-    }
-    if (filters.completed === "yes") {
-      filtered = filtered.filter((w) => w.completed);
-    } else if (filters.completed === "no") {
-      filtered = filtered.filter((w) => !w.completed);
-    }
-    if (filters.timeRange === "thisWeek") {
-      filtered = weeks[0].workouts.filter((w) => {
-        if (filters.type !== "all" && w.type !== filters.type) return false;
-        if (filters.completed === "yes" && !w.completed) return false;
-        if (filters.completed === "no" && w.completed) return false;
-        return true;
-      });
-    } else if (filters.timeRange === "lastWeek") {
-      filtered = (weeks[1]?.workouts || []).filter((w) => {
-        if (filters.type !== "all" && w.type !== filters.type) return false;
-        if (filters.completed === "yes" && !w.completed) return false;
-        if (filters.completed === "no" && w.completed) return false;
-        return true;
-      });
-    }
+    if (filters.type !== "all") filtered = filtered.filter((w) => w.type === filters.type);
+    if (filters.completed === "yes") filtered = filtered.filter((w) => w.completed);
+    else if (filters.completed === "no") filtered = filtered.filter((w) => !w.completed);
+    if (filters.timeRange === "thisWeek") filtered = filtered.filter((w) => weeks[0].workouts.includes(w));
+    else if (filters.timeRange === "lastWeek") filtered = filtered.filter((w) => weeks[1]?.workouts.includes(w));
     return filtered;
   };
 
   const avgRpe = () => {
     const withRpe = completedWorkouts.filter((w) => w.log?.rpe);
     if (withRpe.length === 0) return "—";
-    const sum = withRpe.reduce((acc, w) => acc + Number(w.log!.rpe), 0);
-    return (sum / withRpe.length).toFixed(1);
+    return (withRpe.reduce((acc, w) => acc + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1);
   };
 
   const getTypeColor = (type: string) => {
-    switch (type) {
-      case "run": return "border-accent/50 bg-accent/5";
-      case "cross": return "border-gold/50 bg-gold/5";
-      case "strength": return "border-purple-500/50 bg-purple-500/5";
-      case "rest": return "border-green-500/50 bg-green-500/5";
-      default: return "border-white/10";
-    }
+    switch (type) { case "run": return "border-accent/50 bg-accent/5"; case "cross": return "border-gold/50 bg-gold/5"; case "strength": return "border-purple-500/50 bg-purple-500/5"; case "rest": return "border-green-500/50 bg-green-500/5"; default: return "border-white/10"; }
   };
-
   const getTypeBadge = (type: string) => {
-    switch (type) {
-      case "run": return "bg-accent/20 text-accent";
-      case "cross": return "bg-gold/20 text-gold";
-      case "strength": return "bg-purple-500/20 text-purple-400";
-      case "rest": return "bg-green-500/20 text-green-400";
-      default: return "bg-gray-500/20 text-gray-400";
-    }
+    switch (type) { case "run": return "bg-accent/20 text-accent"; case "cross": return "bg-gold/20 text-gold"; case "strength": return "bg-purple-500/20 text-purple-400"; case "rest": return "bg-green-500/20 text-green-400"; default: return "bg-gray-500/20 text-gray-400"; }
+  };
+  const getTrainingTypeBadge = (tt: string) => {
+    switch (tt) { case "Speed": return "bg-red-500/20 text-red-400 border-red-500/30"; case "Tempo": return "bg-orange-500/20 text-orange-400 border-orange-500/30"; case "LR": return "bg-blue-500/20 text-blue-400 border-blue-500/30"; case "HR": return "bg-pink-500/20 text-pink-400 border-pink-500/30"; case "CT": return "bg-purple-500/20 text-purple-400 border-purple-500/30"; case "OT": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"; default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"; }
   };
 
   return (
     <div className="min-h-screen bg-primary">
-      {/* Top Bar */}
       <header className="bg-secondary/50 border-b border-white/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -356,59 +167,32 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Tabs */}
       <div className="border-b border-white/10 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-6 flex gap-1">
-          {[
-            { key: "training", label: "Training" },
-            { key: "stats", label: "Dashboard" },
-            { key: "account", label: "Account" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as "training" | "stats" | "account")}
-              className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors ${
-                activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              {tab.label}
-            </button>
+          {[{ key: "training", label: "Training" }, { key: "stats", label: "Dashboard" }, { key: "account", label: "Account" }].map((tab) => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key as "training" | "stats" | "account")} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>{tab.label}</button>
           ))}
         </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-
-        {/* TRAINING TAB */}
         {activeTab === "training" && (
           <>
             {/* Week Navigation */}
             <div className="flex items-center justify-between">
-              <button
-                onClick={() => setCurrentWeekIndex(Math.min(currentWeekIndex + 1, weeks.length - 1))}
-                disabled={currentWeekIndex >= weeks.length - 1}
-                className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+              <button onClick={() => setCurrentWeekIndex(Math.min(currentWeekIndex + 1, weeks.length - 1))} disabled={currentWeekIndex >= weeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
               </button>
               <div className="text-center">
                 <h2 className="font-heading text-2xl uppercase text-white">{currentWeek.label}</h2>
                 <p className="text-gray-400 text-sm">{currentWeek.dateRange} &mdash; {currentWeek.focus}</p>
               </div>
-              <button
-                onClick={() => setCurrentWeekIndex(Math.max(currentWeekIndex - 1, 0))}
-                disabled={currentWeekIndex <= 0}
-                className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+              <button onClick={() => setCurrentWeekIndex(Math.max(currentWeekIndex - 1, 0))} disabled={currentWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               </button>
             </div>
 
-            {/* Weekly Stats Bar */}
+            {/* Weekly Stats */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center">
                 <p className="font-heading text-2xl text-accent">{weeklyTotal}</p>
@@ -429,9 +213,7 @@ export default function DashboardPage() {
               <div className="bg-secondary/50 border border-gold/30 rounded-2xl p-6">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
+                    <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                   </div>
                   <div>
                     <p className="text-gold font-heading uppercase text-sm mb-1">Message from Crystal</p>
@@ -445,61 +227,34 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {currentWeek.workouts.map((workout) => (
                 <div key={workout.id} className={`border rounded-2xl overflow-hidden transition-all duration-300 ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
-                  {/* Workout Header */}
                   <div className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
-                        {/* Completion Checkbox */}
-                        <button
-                          onClick={() => toggleCompleted(workout.id)}
-                          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
-                            workout.completed
-                              ? "bg-green-500 border-green-500"
-                              : "border-gray-500 hover:border-green-500"
-                          }`}
-                        >
-                          {workout.completed && (
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
+                        <button onClick={() => toggleCompleted(workout.id)} className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${workout.completed ? "bg-green-500 border-green-500" : "border-gray-500 hover:border-green-500"}`}>
+                          {workout.completed && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                         </button>
-
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
                             <span className="text-white font-heading text-lg uppercase">{workout.day}</span>
                             <span className="text-gray-500 text-sm">{workout.date}</span>
-                            <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>
-                              {workout.type}
-                            </span>
-                            {workout.completed && (
-                              <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Done</span>
-                            )}
+                            <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{workout.type}</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{workout.trainingType}</span>
+                            {workout.completed && <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Done</span>}
                           </div>
-                          <h3 className={`font-bold text-lg mb-1 ${workout.completed ? "text-gray-300 line-through" : "text-white"}`}>
-                            {workout.title}
-                          </h3>
+                          <h3 className={`font-bold text-lg mb-1 ${workout.completed ? "text-gray-300 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-300 text-sm">{workout.description}</p>
-
                           {workout.paceTarget && (
                             <div className="mt-2 flex items-center gap-2">
-                              <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                              </svg>
+                              <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                               <span className="text-accent text-sm font-medium">{workout.paceTarget}</span>
                             </div>
                           )}
-
                           {workout.location && (
                             <div className="mt-1 flex items-center gap-2">
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                               <span className="text-gray-400 text-sm">{workout.location}</span>
                             </div>
                           )}
-
                           {workout.coachNotes && (
                             <div className="mt-3 bg-primary/50 border border-white/5 rounded-xl p-3">
                               <p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p>
@@ -508,129 +263,51 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
-
                       <div className="text-right ml-4 flex-shrink-0 flex flex-col items-end gap-2">
-                        {workout.miles ? (
-                          <div>
-                            <p className="font-heading text-2xl text-white">{workout.miles}</p>
-                            <p className="text-gray-500 text-xs">miles</p>
-                          </div>
-                        ) : (
+                        {workout.miles ? (<div><p className="font-heading text-2xl text-white">{workout.miles}</p><p className="text-gray-500 text-xs">miles</p></div>) : (
                           <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                            {workout.type === "rest" ? (
-                              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                              </svg>
-                            ) : (
-                              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                            )}
+                            {workout.type === "rest" ? <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                            : <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
                           </div>
                         )}
-                        <button
-                          onClick={() => setExpandedWorkout(expandedWorkout === workout.id ? null : workout.id)}
-                          className="text-xs text-gray-400 hover:text-accent transition-colors"
-                        >
+                        <button onClick={() => setExpandedWorkout(expandedWorkout === workout.id ? null : workout.id)} className="text-xs text-gray-400 hover:text-accent transition-colors">
                           {expandedWorkout === workout.id ? "Close Log" : "Log Workout"}
                         </button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Expandable Log Section */}
                   {expandedWorkout === workout.id && (
                     <div className="border-t border-white/10 bg-primary/30 p-6">
-                      <h4 className="font-heading text-sm uppercase text-accent mb-4">Workout Log</h4>
+                      <h4 className="font-heading text-sm uppercase text-accent mb-4">Your Log</h4>
                       <div className="grid md:grid-cols-4 gap-4 mb-4">
                         <div>
-                          <label className="text-gray-400 text-xs block mb-1">Training Type</label>
-                          <input
-                            type="text"
-                            value={workout.log?.training || ""}
-                            onChange={(e) => updateWorkoutLog(workout.id, "training", e.target.value)}
-                            className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                            placeholder="Speed, HR, LR, Tempo, CT"
-                          />
-                        </div>
-                        <div>
                           <label className="text-gray-400 text-xs block mb-1">RPE (1-10)</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            value={workout.log?.rpe || ""}
-                            onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)}
-                            className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                            placeholder="1-10"
-                          />
+                          <input type="number" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="1-10" />
                         </div>
                         <div>
                           <label className="text-gray-400 text-xs block mb-1">Actual Miles</label>
-                          <input
-                            type="text"
-                            value={workout.log?.actualMiles || ""}
-                            onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)}
-                            className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                            placeholder="e.g. 7.2"
-                          />
+                          <input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.2" />
                         </div>
                         <div>
                           <label className="text-gray-400 text-xs block mb-1">Actual Pace</label>
-                          <input
-                            type="text"
-                            value={workout.log?.actualPace || ""}
-                            onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)}
-                            className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                            placeholder="e.g. 8:45"
-                          />
+                          <input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 8:45" />
                         </div>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <label className="text-gray-400 text-xs block mb-1">Stress</label>
-                          <input
-                            type="text"
-                            value={workout.log?.stress || ""}
-                            onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)}
-                            className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                            placeholder="e.g. Travel Day, Work..."
-                          />
+                          <input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, Work..." />
                         </div>
-                        <div>
-                          <label className="text-gray-400 text-xs block mb-1">Notes</label>
-                          <input
-                            type="text"
-                            value={workout.log?.notes || ""}
-                            onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)}
-                            className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                            placeholder="How did it feel?"
-                          />
-                        </div>
+                      </div>
+                      <div className="mb-4">
+                        <label className="text-gray-400 text-xs block mb-1">Notes</label>
+                        <input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="How did it feel?" />
                       </div>
                       <div className="border-t border-white/5 pt-4">
                         <p className="text-gold text-xs font-heading uppercase mb-3">Body Check (1-10)</p>
                         <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
-                          {[
-                            { key: "energy", label: "Energy" },
-                            { key: "motivation", label: "Motivation" },
-                            { key: "sleep", label: "Sleep" },
-                            { key: "strength", label: "Strength" },
-                            { key: "recovery", label: "Recovery" },
-                            { key: "mood", label: "Mood" },
-                            { key: "hunger", label: "Hunger" },
-                          ].map((field) => (
+                          {[{ key: "energy", label: "Energy" }, { key: "motivation", label: "Motivation" }, { key: "sleep", label: "Sleep" }, { key: "strength", label: "Strength" }, { key: "recovery", label: "Recovery" }, { key: "mood", label: "Mood" }, { key: "hunger", label: "Hunger" }].map((field) => (
                             <div key={field.key}>
                               <label className="text-gray-500 text-xs block mb-1 text-center">{field.label}</label>
-                              <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                value={(workout.log as Record<string, string> | undefined)?.[field.key] || ""}
-                                onChange={(e) => updateWorkoutLog(workout.id, field.key, e.target.value)}
-                                className="w-full bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-accent"
-                                placeholder="—"
-                              />
+                              <input type="number" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.[field.key] || ""} onChange={(e) => updateWorkoutLog(workout.id, field.key, e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-accent" placeholder="—" />
                             </div>
                           ))}
                         </div>
@@ -643,157 +320,66 @@ export default function DashboardPage() {
           </>
         )}
 
-        {/* STATS/DASHBOARD TAB */}
         {activeTab === "stats" && (
           <>
-            {/* Overview Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center">
-                <p className="font-heading text-3xl text-accent">{totalMilesCompleted}</p>
-                <p className="text-gray-400 text-xs mt-1">Total Miles</p>
-              </div>
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center">
-                <p className="font-heading text-3xl text-white">{completedWorkouts.length}</p>
-                <p className="text-gray-400 text-xs mt-1">Workouts Done</p>
-              </div>
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center">
-                <p className="font-heading text-3xl text-gold">{avgRpe()}</p>
-                <p className="text-gray-400 text-xs mt-1">Avg RPE</p>
-              </div>
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center">
-                <p className="font-heading text-3xl text-green-400">
-                  {allWorkouts.length > 0 ? Math.round((completedWorkouts.length / allWorkouts.length) * 100) : 0}%
-                </p>
-                <p className="text-gray-400 text-xs mt-1">Completion Rate</p>
-              </div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center"><p className="font-heading text-3xl text-accent">{totalMilesCompleted}</p><p className="text-gray-400 text-xs mt-1">Total Miles</p></div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center"><p className="font-heading text-3xl text-white">{completedWorkouts.length}</p><p className="text-gray-400 text-xs mt-1">Workouts Done</p></div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center"><p className="font-heading text-3xl text-gold">{avgRpe()}</p><p className="text-gray-400 text-xs mt-1">Avg RPE</p></div>
+              <div className="bg-secondary/50 border border-white/10 rounded-xl p-5 text-center"><p className="font-heading text-3xl text-green-400">{allWorkouts.length > 0 ? Math.round((completedWorkouts.length / allWorkouts.length) * 100) : 0}%</p><p className="text-gray-400 text-xs mt-1">Completion Rate</p></div>
             </div>
-
-            {/* Breakdown */}
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-secondary/50 border border-accent/20 rounded-xl p-5">
-                <p className="text-accent font-heading uppercase text-sm mb-2">Running</p>
-                <p className="text-white text-2xl font-heading">{runWorkouts.length} runs</p>
-                <p className="text-gray-400 text-sm">{runWorkouts.reduce((s, w) => s + (w.miles || 0), 0)} miles total</p>
-              </div>
-              <div className="bg-secondary/50 border border-gold/20 rounded-xl p-5">
-                <p className="text-gold font-heading uppercase text-sm mb-2">Cross / Strength</p>
-                <p className="text-white text-2xl font-heading">{crossWorkouts.length} sessions</p>
-                <p className="text-gray-400 text-sm">OT, Bike, Strength</p>
-              </div>
-              <div className="bg-secondary/50 border border-green-500/20 rounded-xl p-5">
-                <p className="text-green-400 font-heading uppercase text-sm mb-2">Rest Days</p>
-                <p className="text-white text-2xl font-heading">{completedWorkouts.filter(w => w.type === "rest").length} days</p>
-                <p className="text-gray-400 text-sm">Recovery matters</p>
-              </div>
+              <div className="bg-secondary/50 border border-accent/20 rounded-xl p-5"><p className="text-accent font-heading uppercase text-sm mb-2">Running</p><p className="text-white text-2xl font-heading">{runWorkouts.length} runs</p><p className="text-gray-400 text-sm">{runWorkouts.reduce((s, w) => s + (w.miles || 0), 0)} miles total</p></div>
+              <div className="bg-secondary/50 border border-gold/20 rounded-xl p-5"><p className="text-gold font-heading uppercase text-sm mb-2">Cross / Strength</p><p className="text-white text-2xl font-heading">{crossWorkouts.length} sessions</p><p className="text-gray-400 text-sm">OT, Bike, Strength</p></div>
+              <div className="bg-secondary/50 border border-green-500/20 rounded-xl p-5"><p className="text-green-400 font-heading uppercase text-sm mb-2">Rest Days</p><p className="text-white text-2xl font-heading">{completedWorkouts.filter(w => w.type === "rest").length} days</p><p className="text-gray-400 text-sm">Recovery matters</p></div>
             </div>
-
-            {/* Filters */}
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
               <h3 className="font-heading text-lg uppercase text-white mb-4">Workout History</h3>
               <div className="flex flex-wrap gap-3 mb-6">
-                <select
-                  value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value as FilterOptions["type"] })}
-                  className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                >
-                  <option value="all">All Types</option>
-                  <option value="run">Running</option>
-                  <option value="cross">Cross Training</option>
-                  <option value="strength">Strength</option>
-                  <option value="rest">Rest</option>
-                </select>
-                <select
-                  value={filters.completed}
-                  onChange={(e) => setFilters({ ...filters, completed: e.target.value as FilterOptions["completed"] })}
-                  className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                >
-                  <option value="all">All Status</option>
-                  <option value="yes">Completed</option>
-                  <option value="no">Not Completed</option>
-                </select>
-                <select
-                  value={filters.timeRange}
-                  onChange={(e) => setFilters({ ...filters, timeRange: e.target.value as FilterOptions["timeRange"] })}
-                  className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                >
-                  <option value="all">All Time</option>
-                  <option value="thisWeek">This Week</option>
-                  <option value="lastWeek">Last Week</option>
-                </select>
+                <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value as FilterOptions["type"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Types</option><option value="run">Running</option><option value="cross">Cross Training</option><option value="strength">Strength</option><option value="rest">Rest</option></select>
+                <select value={filters.completed} onChange={(e) => setFilters({ ...filters, completed: e.target.value as FilterOptions["completed"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Status</option><option value="yes">Completed</option><option value="no">Not Completed</option></select>
+                <select value={filters.timeRange} onChange={(e) => setFilters({ ...filters, timeRange: e.target.value as FilterOptions["timeRange"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Time</option><option value="thisWeek">This Week</option><option value="lastWeek">Last Week</option></select>
               </div>
-
-              {/* Filtered Results */}
               <div className="space-y-3">
                 {getFilteredWorkouts().map((workout) => (
                   <div key={workout.id} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-xl p-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-3 h-3 rounded-full ${workout.completed ? "bg-green-500" : "bg-gray-500"}`} />
-                      <div>
-                        <p className="text-white text-sm font-medium">{workout.title}</p>
-                        <p className="text-gray-400 text-xs">{workout.day}, {workout.date}</p>
-                      </div>
+                      <div><p className="text-white text-sm font-medium">{workout.title}</p><p className="text-gray-400 text-xs">{workout.day}, {workout.date}</p></div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>
-                        {workout.type}
-                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{workout.trainingType}</span>
                       {workout.miles && <span className="text-white text-sm font-heading">{workout.miles} mi</span>}
                       {workout.log?.rpe && <span className="text-gray-400 text-xs">RPE: {workout.log.rpe}</span>}
                     </div>
                   </div>
                 ))}
-                {getFilteredWorkouts().length === 0 && (
-                  <p className="text-gray-500 text-sm text-center py-8">No workouts match your filters.</p>
-                )}
+                {getFilteredWorkouts().length === 0 && <p className="text-gray-500 text-sm text-center py-8">No workouts match your filters.</p>}
               </div>
             </div>
           </>
         )}
 
-        {/* ACCOUNT TAB */}
         {activeTab === "account" && (
-          <>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-                <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Name:</span>
-                    <span className="text-white font-medium">{clientInfo.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Goal:</span>
-                    <span className="text-white font-medium">{clientInfo.goal}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Plan Duration:</span>
-                    <span className="text-white">{clientInfo.planDuration}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Start Date:</span>
-                    <span className="text-white">{clientInfo.startDate}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-                <h2 className="font-heading text-xl uppercase text-accent mb-4">Payment</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Owed:</span>
-                    <span className="text-white font-medium">${clientInfo.owed.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Paid:</span>
-                    <span className="text-green-400 font-medium">${clientInfo.paid.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-white/10 pt-3">
-                    <span className="text-gray-400">Balance:</span>
-                    <span className="text-white font-bold">${clientInfo.balance.toFixed(2)}</span>
-                  </div>
-                </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between"><span className="text-gray-400">Name:</span><span className="text-white font-medium">{clientInfo.name}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Goal:</span><span className="text-white font-medium">{clientInfo.goal}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Plan Duration:</span><span className="text-white">{clientInfo.planDuration}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Start Date:</span><span className="text-white">{clientInfo.startDate}</span></div>
               </div>
             </div>
-          </>
+            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <h2 className="font-heading text-xl uppercase text-accent mb-4">Payment</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between"><span className="text-gray-400">Owed:</span><span className="text-white font-medium">${clientInfo.owed.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Paid:</span><span className="text-green-400 font-medium">${clientInfo.paid.toFixed(2)}</span></div>
+                <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Balance:</span><span className="text-white font-bold">${clientInfo.balance.toFixed(2)}</span></div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
