@@ -6,7 +6,7 @@ import Image from "next/image";
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; };
-type CoachMessage = { id: string; date: string; message: string; };
+type CoachMessage = { id: string; date: string; from: string; message: string; };
 type Client = { id: string; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; weeks: WeekData[]; messages: CoachMessage[]; };
 
 export default function AdminPage() {
@@ -226,7 +226,8 @@ export default function AdminPage() {
                     <p className="text-gray-400 text-xs">{selectedWeek?.dateRange} &mdash; {selectedWeek?.focus}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>
+                    {selectedWeekIndex === 0 && <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
+                    {selectedWeekIndex > 0 && <span className="text-gray-600 text-xs italic">Past weeks are locked</span>}
                     <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
@@ -407,19 +408,42 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* MESSAGES */}
+            {/* MESSAGES - full chat thread like client sees */}
             {clientTab === "messages" && (
               <div className="space-y-4">
                 <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
-                  {!showMessageForm ? <div className="flex items-center justify-between"><p className="text-gold text-xs font-heading uppercase">Message {selectedClientData.name.split(" ")[0]}</p><button onClick={() => setShowMessageForm(true)} className="text-accent text-xs hover:underline">+ New Message</button></div> : <div className="space-y-3"><textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Write message..." /><div className="flex gap-3"><button className="bg-accent text-white font-bold py-2 px-4 rounded-lg text-sm">Send</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div></div>}
+                  {!showMessageForm ? <div className="flex items-center justify-between"><p className="text-gold text-xs font-heading uppercase">Message {selectedClientData.name.split(" ")[0]}</p><button onClick={() => setShowMessageForm(true)} className="text-accent text-xs hover:underline">+ New Message</button></div> : <div className="space-y-3"><textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Write message..." /><div className="flex gap-3"><button className="bg-accent text-white font-bold py-2 px-4 rounded-lg text-sm">Send</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div><p className="text-gray-600 text-xs">Client will receive an email notification</p></div>}
                 </div>
-                {clientMessages.length > 0 && <div className="space-y-3"><div className="flex items-center justify-between"><p className="text-gray-400 text-xs font-heading uppercase">History</p><div className="flex gap-2"><button onClick={() => setMessageIndex(Math.max(0, messageIndex - 1))} disabled={messageIndex <= 0} className="text-gray-400 disabled:opacity-30"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button><span className="text-gray-500 text-xs">{messageIndex + 1}/{clientMessages.length}</span><button onClick={() => setMessageIndex(Math.min(clientMessages.length - 1, messageIndex + 1))} disabled={messageIndex >= clientMessages.length - 1} className="text-gray-400 disabled:opacity-30"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button></div></div><div className="bg-primary/30 border border-white/5 rounded-xl p-4"><p className="text-gray-500 text-xs mb-1">{clientMessages[messageIndex]?.date}</p><p className="text-gray-300 text-sm">{clientMessages[messageIndex]?.message}</p></div></div>}
+                {/* Chat thread - same view as client sees */}
+                <div className="space-y-3">
+                  {clientMessages.map((msg) => (
+                    <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-start" : "justify-end"}`}>
+                      <div className={`max-w-[80%] rounded-2xl p-4 ${msg.from === "client" ? "bg-secondary/50 border border-white/10" : "bg-accent/10 border border-accent/30"}`}>
+                        <div className="flex items-center gap-2 mb-1"><span className={`text-xs font-heading uppercase ${msg.from === "client" ? "text-white" : "text-accent"}`}>{msg.from === "client" ? selectedClientData.name.split(" ")[0] : "You"}</span><span className="text-gray-500 text-xs">{msg.date}</span></div>
+                        <p className="text-gray-300 text-sm">{msg.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {clientMessages.length === 0 && <p className="text-gray-500 text-center py-8 text-sm">No messages yet. Start the conversation!</p>}
+                </div>
               </div>
             )}
 
             {/* ACCOUNT */}
             {clientTab === "account" && (
               <div className="space-y-6">
+                {/* Profile Picture */}
+                <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
+                  <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Profile Picture</h4>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold text-gray-400">{selectedClientData.name.charAt(0)}</div>
+                    <div>
+                      <button className="bg-primary/50 border border-white/10 hover:border-accent text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors">Upload Photo</button>
+                      <p className="text-gray-600 text-xs mt-1">JPG or PNG, max 2MB. Optional.</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
                   <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Client Details</h4>
                   <div className="grid md:grid-cols-4 gap-4 mb-4">

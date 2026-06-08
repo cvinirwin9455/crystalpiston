@@ -337,9 +337,33 @@ export default function DashboardPage() {
 
         {/* ACCOUNT TAB */}
         {activeTab === "account" && (
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Profile Picture */}
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
+              <h2 className="font-heading text-xl uppercase text-accent mb-4">Profile Picture</h2>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold text-gray-400">{clientInfo.name.charAt(0)}</div>
+                <div>
+                  <button className="bg-primary/50 border border-white/10 hover:border-accent text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors">Upload Photo</button>
+                  <p className="text-gray-600 text-xs mt-1">JPG or PNG, max 2MB. Optional.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Notifications for Client */}
+            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <h2 className="font-heading text-xl uppercase text-accent mb-4">Email Notifications</h2>
+              <p className="text-gray-500 text-xs mb-4">You&apos;ll receive emails when:</p>
+              <div className="space-y-3 text-sm text-gray-300">
+                <div className="flex items-center gap-2"><span className="text-green-400">&#10003;</span>Crystal publishes a new training week</div>
+                <div className="flex items-center gap-2"><span className="text-green-400">&#10003;</span>Crystal sends you a message</div>
+                <div className="flex items-center gap-2"><span className="text-green-400">&#10003;</span>Payment reminders</div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+                <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between"><span className="text-gray-400">Name:</span><span className="text-white">{clientInfo.name}</span></div>
                 <div className="flex justify-between"><span className="text-gray-400">Goal:</span><span className="text-white">{clientInfo.goal}</span></div>
@@ -354,6 +378,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between"><span className="text-gray-400">Paid:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
                 <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Balance:</span><span className="text-white font-bold">${clientInfo.balance.toFixed(2)}</span></div>
               </div>
+            </div>
             </div>
           </div>
         )}
