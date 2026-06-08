@@ -149,7 +149,7 @@ export default function DashboardPage() {
                             <span className="text-white font-heading uppercase text-sm">{workout.day}</span>
                             <span className="text-gray-500 text-xs">{workout.date}</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
-                            {workout.trainingType && workout.trainingType !== "Rest" && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
+                            {workout.type === "run" && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
