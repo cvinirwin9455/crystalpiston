@@ -18,6 +18,14 @@ export default function AdminPage() {
   const [newMessage, setNewMessage] = useState("");
   const [messageIndex, setMessageIndex] = useState(0);
   const [showCreateClient, setShowCreateClient] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [notifications, setNotifications] = useState({
+    workoutCompleted: true,
+    workoutSkipped: true,
+    workoutPartial: true,
+    clientMessage: true,
+    dailySummary: false,
+  });
   const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -147,7 +155,13 @@ export default function AdminPage() {
             );
           })}
         </div>
-        <div className="p-3 border-t border-white/10"><a href="/" className="flex items-center gap-2 text-gray-400 hover:text-accent text-xs"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a></div>
+        <div className="p-3 border-t border-white/10 space-y-2">
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+            Notification Settings
+          </button>
+          <a href="/" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
+        </div>
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
@@ -442,9 +456,64 @@ export default function AdminPage() {
             )}
           </div>
         ) : (
-          /* COACH DASHBOARD - default view when no client selected */
+          /* COACH DASHBOARD or SETTINGS */
           <div className="p-6 space-y-6">
-            <h2 className="font-heading text-2xl uppercase text-white">Dashboard</h2>
+            {showNotificationSettings ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-2xl uppercase text-white">Notification Settings</h2>
+                  <button onClick={() => setShowNotificationSettings(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
+                </div>
+
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Email Notifications</h3>
+                  <p className="text-gray-500 text-xs mb-6">Choose what triggers an email to you. Emails are sent to your account email.</p>
+
+                  <div className="space-y-4">
+                    {[
+                      { key: "workoutCompleted", label: "Client completes a workout", desc: "Get notified when a client logs and marks a workout as complete" },
+                      { key: "workoutSkipped", label: "Client skips a workout", desc: "Get notified when a client marks a workout as skipped with their reason" },
+                      { key: "workoutPartial", label: "Client partially completes a workout", desc: "Get notified when a client only partially finishes a workout" },
+                      { key: "clientMessage", label: "Client sends a message", desc: "Get notified immediately when a client sends you a message" },
+                      { key: "dailySummary", label: "Daily summary email", desc: "Receive one email at end of day summarizing all client activity" },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg p-4">
+                        <div>
+                          <p className="text-white text-sm font-medium">{item.label}</p>
+                          <p className="text-gray-500 text-xs mt-0.5">{item.desc}</p>
+                        </div>
+                        <button
+                          onClick={() => setNotifications({ ...notifications, [item.key]: !(notifications as Record<string, boolean>)[item.key] })}
+                          className={`w-11 h-6 rounded-full relative transition-colors ${(notifications as Record<string, boolean>)[item.key] ? "bg-green-500" : "bg-gray-600"}`}
+                        >
+                          <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${(notifications as Record<string, boolean>)[item.key] ? "translate-x-5.5 left-[1px]" : "left-0.5"}`} style={{ transform: (notifications as Record<string, boolean>)[item.key] ? "translateX(22px)" : "translateX(0)" }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-white/5">
+                    <p className="text-gray-400 text-xs mb-3">Notification email address:</p>
+                    <div className="flex gap-3">
+                      <input type="email" defaultValue="crystal@pistolperformance.com" className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                      <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Save</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">How It Works</h3>
+                  <div className="space-y-3 text-sm text-gray-400">
+                    <div className="flex items-start gap-3"><span className="text-green-400 mt-0.5">&#10003;</span><p>When a client marks a workout <strong className="text-white">complete</strong>, you get an email with their log details (effort, miles, pace, notes)</p></div>
+                    <div className="flex items-start gap-3"><span className="text-red-400 mt-0.5">&#10007;</span><p>When a client <strong className="text-white">skips</strong> a workout, you get their reason immediately so you can follow up</p></div>
+                    <div className="flex items-start gap-3"><span className="text-yellow-400 mt-0.5">&#189;</span><p>When a client <strong className="text-white">partially completes</strong>, you see what they did and why they stopped</p></div>
+                    <div className="flex items-start gap-3"><span className="text-accent mt-0.5">&#9993;</span><p>When a client <strong className="text-white">sends a message</strong>, you get it right away so nothing is missed</p></div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="font-heading text-2xl uppercase text-white">Dashboard</h2>
 
             {/* Overview Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -544,6 +613,8 @@ export default function AdminPage() {
                 </>
               );
             })()}
+              </>
+            )}
           </div>
         )}
       </main>
