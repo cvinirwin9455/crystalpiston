@@ -461,26 +461,38 @@ export default function AdminPage() {
                   {/* Mon-Sun rows */}
                   <div className="space-y-3">
                     {weekPlan.days.map((day, i) => (
-                      <div key={day.day} className="bg-primary/30 border border-white/5 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
+                      <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.type === "rest" ? "opacity-70" : ""}`}>
+                        <div className="flex items-center gap-3">
                           <span className="text-white font-heading text-sm uppercase w-24">{day.day}</span>
-                          <select value={day.type} onChange={(e) => updateDayPlan(i, "type", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                          <select value={day.type} onChange={(e) => { updateDayPlan(i, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, "trainingType", "Rest"); updateDayPlan(i, "title", "Complete Rest"); updateDayPlan(i, "miles", ""); updateDayPlan(i, "description", ""); updateDayPlan(i, "paceTarget", ""); updateDayPlan(i, "location", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
                             <option value="run">Run</option><option value="cross">Cross</option><option value="strength">Strength</option><option value="rest">Rest</option>
                           </select>
-                          <select value={day.trainingType} onChange={(e) => updateDayPlan(i, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                            <option value="Speed">Speed</option><option value="HR">HR</option><option value="LR">LR</option><option value="Tempo">Tempo</option><option value="CT">CT</option><option value="OT">OT</option><option value="Rest">Rest</option>
-                          </select>
-                          <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
+                          {day.type === "rest" && <span className="text-green-400 text-xs font-medium">Rest Day</span>}
+                          {day.type !== "rest" && (
+                            <>
+                              <select value={day.trainingType} onChange={(e) => updateDayPlan(i, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                <option value="Speed">Speed</option><option value="HR">HR</option><option value="LR">LR</option><option value="Tempo">Tempo</option><option value="CT">CT</option><option value="OT">OT</option><option value="Rest">Rest</option>
+                              </select>
+                              <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
+                            </>
+                          )}
                         </div>
-                        <div className="grid md:grid-cols-3 gap-2">
-                          <input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Tempo Run)" />
-                          <input type="text" value={day.description} onChange={(e) => updateDayPlan(i, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description (e.g. 2 WU | 6@7:15 | 2 CD)" />
-                          <input type="text" value={day.paceTarget} onChange={(e) => updateDayPlan(i, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
-                        </div>
-                        {(day.type === "run" || day.type === "cross") && (
-                          <div className="grid md:grid-cols-2 gap-2 mt-2">
-                            <input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
-                            <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                        {day.type !== "rest" && (
+                          <>
+                            <div className="grid md:grid-cols-3 gap-2 mt-3">
+                              <input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Tempo Run)" />
+                              <input type="text" value={day.description} onChange={(e) => updateDayPlan(i, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description (e.g. 2 WU | 6@7:15 | 2 CD)" />
+                              <input type="text" value={day.paceTarget} onChange={(e) => updateDayPlan(i, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-2 mt-2">
+                              <input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
+                              <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                            </div>
+                          </>
+                        )}
+                        {day.type === "rest" && (
+                          <div className="mt-2">
+                            <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes (optional, e.g. 'Full rest, no activity')" />
                           </div>
                         )}
                       </div>
