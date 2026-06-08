@@ -301,6 +301,19 @@ export default function AdminPage() {
                     <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
 
+                  {/* Weekly Coach Message (what client sees at top) */}
+                  <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-gold text-xs font-heading uppercase">Weekly Message (shown to client at top of their plan)</p>
+                      <button className="text-gray-400 hover:text-gold text-xs">Edit</button>
+                    </div>
+                    {selectedWeek?.coachMessage ? (
+                      <p className="text-gray-300 text-sm leading-relaxed">{selectedWeek.coachMessage}</p>
+                    ) : (
+                      <p className="text-gray-600 text-sm italic">No weekly message set. Add one in Create Week.</p>
+                    )}
+                  </div>
+
                   {/* Workouts with inline logs */}
                   <div className="space-y-3">
                     {selectedWeek?.workouts.map((w) => (
@@ -356,9 +369,14 @@ export default function AdminPage() {
               {clientTab === "create" && (
                 <>
                   <h3 className="font-heading text-lg uppercase text-white">Create Week Plan</h3>
-                  <div className="grid md:grid-cols-2 gap-4 mb-6">
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div><label className="text-gray-400 text-xs block mb-1">Week Date Range</label><input type="text" value={weekPlan.dateRange} onChange={(e) => setWeekPlan({ ...weekPlan, dateRange: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Jun 16 - Jun 22" /></div>
                     <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={weekPlan.focus} onChange={(e) => setWeekPlan({ ...weekPlan, focus: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
+                  </div>
+                  <div className="mb-6">
+                    <label className="text-gold text-xs font-heading uppercase block mb-1">Weekly Message to Client</label>
+                    <textarea value={weekPlan.coachMessage} onChange={(e) => setWeekPlan({ ...weekPlan, coachMessage: e.target.value })} className="w-full bg-primary/50 border border-gold/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold resize-none" rows={3} placeholder="This message appears at the top of the client's training plan for the week. Use it to explain the week's focus, give motivation, or any important notes..." />
+                    <p className="text-gray-600 text-xs mt-1">This shows at the top of the client&apos;s training view for this week</p>
                   </div>
 
                   {/* Mon-Sun rows */}
