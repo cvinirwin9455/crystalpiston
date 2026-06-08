@@ -259,7 +259,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Client Selector */}
+        {/* Client Selector - scalable for 50-100+ clients */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
@@ -269,6 +269,7 @@ export default function AdminPage() {
                   <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-3 py-1 rounded-full text-xs transition-colors ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
                 ))}
               </div>
+              <input type="text" placeholder="Search clients..." className="bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-accent w-48" />
             </div>
             <button onClick={() => setShowCreateClient(!showCreateClient)} className="bg-accent hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors">+ New Client</button>
           </div>
@@ -297,18 +298,27 @@ export default function AdminPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-3">
-            {clients.filter((c) => clientFilter === "all" || c.status === clientFilter).map((client) => {
-              const allWk = client.weeks.flatMap(w => w.workouts);
-              const doneWk = allWk.filter(w => w.completed);
-              const isSelected = selectedClient === client.id;
-              return (
-                <button key={client.id} onClick={() => { setSelectedClient(isSelected ? null : client.id); setSelectedWeekIndex(0); setClientTab("plan"); setMessageIndex(0); setShowDeleteConfirm(false); }} className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${isSelected ? "bg-accent/10 border-accent text-white" : client.status === "archived" ? "bg-secondary/30 border-white/5 text-gray-500" : "bg-secondary/50 border-white/10 text-gray-300 hover:border-white/30"}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? "bg-accent text-white" : client.status === "archived" ? "bg-gray-700 text-gray-500" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
-                  <div className="text-left"><p className="font-medium text-sm">{client.name} {client.status === "archived" && <span className="text-gray-600 text-xs">(archived)</span>}</p><p className="text-xs text-gray-500">{doneWk.length}/{allWk.length} done &bull; {client.goal}</p></div>
-                </button>
-              );
-            })}
+          <div className="max-h-48 overflow-y-auto border border-white/5 rounded-xl">
+            <div className="divide-y divide-white/5">
+              {clients.filter((c) => clientFilter === "all" || c.status === clientFilter).map((client) => {
+                const allWk = client.weeks.flatMap(w => w.workouts);
+                const doneWk = allWk.filter(w => w.completed);
+                const isSelected = selectedClient === client.id;
+                return (
+                  <button key={client.id} onClick={() => { setSelectedClient(isSelected ? null : client.id); setSelectedWeekIndex(0); setClientTab("plan"); setMessageIndex(0); setShowDeleteConfirm(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${isSelected ? "bg-accent/10" : "hover:bg-white/5"} ${client.status === "archived" ? "opacity-50" : ""}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{client.name} {client.status === "archived" && <span className="text-gray-600">(archived)</span>}</p>
+                      <p className="text-gray-500 text-xs truncate">{client.goal}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-white text-xs">{doneWk.length}/{allWk.length}</p>
+                      <p className="text-gray-500 text-xs">${client.paid}/${client.owed}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -474,7 +484,7 @@ export default function AdminPage() {
                           {day.type === "run" && (
                             <>
                               <select value={day.trainingType} onChange={(e) => updateDayPlan(i, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                                <option value="" disabled>Run Type</option><option value="Speed">Speed</option><option value="HR">Heart Rate</option><option value="LR">Long Run</option><option value="Tempo">Tempo</option><option value="CT">Cross Training</option><option value="OT">Orange Theory</option>
+                                <option value="" disabled>Select Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option>
                               </select>
                               <div className="flex items-center gap-1">
                                 <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" />
@@ -531,13 +541,16 @@ export default function AdminPage() {
                         {/* Demo: additional workout added to Monday */}
                         {day.day === "Monday" && day.type === "run" && (
                           <div className="mt-3 pt-3 border-t border-white/10">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-gray-500 text-xs font-heading uppercase">Workout 2</span>
-                              <button type="button" className="text-red-400 text-xs hover:underline">Remove</button>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-accent text-xs font-heading uppercase">Additional Workout</span>
+                              <button type="button" className="text-red-400 text-xs hover:underline flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Delete this workout
+                              </button>
                             </div>
                             <div className="flex items-center gap-3 mb-2">
                               <select defaultValue="cross" className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                                <option value="" disabled>Workout Type</option><option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
+                                <option value="" disabled>Select Workout Type</option><option value="run">Run</option><option value="cross">Cross Training</option>
                               </select>
                             </div>
                             <div className="grid md:grid-cols-2 gap-2">
@@ -545,6 +558,7 @@ export default function AdminPage() {
                               <input type="text" className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
                             </div>
                             <textarea className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." defaultValue="Upper body: 3x12 pushups, 3x10 rows, 3x15 shoulder press. Core: 3x30s plank, 3x20 russian twists" />
+                            <input type="text" className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" defaultValue="Do this after your run, take 10 min rest between" />
                           </div>
                         )}
                       </div>
