@@ -190,20 +190,17 @@ export default function DashboardPage() {
                       <div className="mt-2 ml-9 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2"><p className="text-yellow-400 text-xs"><span className="font-medium">Partially completed:</span> {workout.skipReason}</p></div>
                     )}
 
-                    {/* Skip/Incomplete Dialog */}
+                    {/* Skip/Partial Dialog - direct, no toggle needed */}
                     {showSkipDialog === workout.id && (
                       <div className="mt-3 ml-9 bg-secondary/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-white text-sm font-medium mb-3">What happened?</p>
-                        <div className="flex gap-2 mb-3">
-                          <button onClick={() => setSkipType("skipped")} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${skipType === "skipped" ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-primary/50 text-gray-400 border border-white/10"}`}>Skipped Entirely</button>
-                          <button onClick={() => setSkipType("partial")} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${skipType === "partial" ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-primary/50 text-gray-400 border border-white/10"}`}>Partially Completed</button>
-                        </div>
+                        <p className={`text-sm font-medium mb-3 ${skipType === "skipped" ? "text-red-400" : "text-yellow-400"}`}>
+                          {skipType === "skipped" ? "Why did you skip this workout?" : "What part did you complete?"}
+                        </p>
                         <div className="mb-3">
-                          <label className="text-gray-400 text-xs block mb-1">{skipType === "skipped" ? "Why didn't you complete this workout?" : "What did you complete and why did you stop?"}</label>
-                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder={skipType === "skipped" ? "e.g. Sick, injury, schedule conflict, too tired..." : "e.g. Did 4 miles instead of 7 - knee was bothering me"} />
+                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder={skipType === "skipped" ? "e.g. Sick, injury, schedule conflict, too tired..." : "e.g. Did 4 miles instead of 7 — knee started hurting at mile 4"} />
                         </div>
                         <div className="flex gap-3">
-                          <button onClick={() => markSkipped(workout.id)} disabled={!skipReason} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason ? "bg-gray-600 cursor-not-allowed" : skipType === "skipped" ? "bg-red-600 hover:bg-red-700" : "bg-yellow-600 hover:bg-yellow-700"}`}>Submit</button>
+                          <button onClick={() => markSkipped(workout.id)} disabled={!skipReason} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason ? "bg-gray-600 cursor-not-allowed" : skipType === "skipped" ? "bg-red-600 hover:bg-red-700" : "bg-yellow-600 hover:bg-yellow-700"}`}>{skipType === "skipped" ? "Mark as Skipped" : "Mark as Partial"}</button>
                           <button onClick={() => { setShowSkipDialog(null); setSkipReason(""); }} className="text-gray-400 text-xs">Cancel</button>
                         </div>
                       </div>
@@ -299,10 +296,7 @@ export default function DashboardPage() {
                       {/* Save & Close */}
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
                         <button onClick={() => setExpandedWorkout(null)} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
-                        <div className="flex gap-3">
-                          <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("partial"); setExpandedWorkout(null); }} className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2.5 px-5 rounded-lg text-xs transition-colors">Mark Partial</button>
-                          <button onClick={() => { toggleCompleted(workout.id); setExpandedWorkout(null); }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors">Complete & Save</button>
-                        </div>
+                        <button onClick={() => { toggleCompleted(workout.id); setExpandedWorkout(null); }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors">Complete & Save</button>
                       </div>
                     </div>
                   )}
