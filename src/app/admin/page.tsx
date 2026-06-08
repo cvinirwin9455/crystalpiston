@@ -137,13 +137,13 @@ export default function AdminPage() {
     focus: "",
     coachMessage: "",
     days: [
-      { day: "Monday", type: "run" as string, trainingType: "LR", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
-      { day: "Tuesday", type: "run" as string, trainingType: "Speed", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
-      { day: "Wednesday", type: "run" as string, trainingType: "LR", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
-      { day: "Thursday", type: "run" as string, trainingType: "Tempo", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
-      { day: "Friday", type: "cross" as string, trainingType: "CT", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
-      { day: "Saturday", type: "run" as string, trainingType: "LR", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
-      { day: "Sunday", type: "rest" as string, trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+      { day: "Monday", type: "run" as string, trainingType: "LR", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Tuesday", type: "run" as string, trainingType: "Speed", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Wednesday", type: "run" as string, trainingType: "LR", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Thursday", type: "run" as string, trainingType: "Tempo", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Friday", type: "cross" as string, trainingType: "CT", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Saturday", type: "run" as string, trainingType: "LR", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Sunday", type: "rest" as string, trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
     ],
   });
 
@@ -471,12 +471,19 @@ export default function AdminPage() {
                             <option value="run">Run</option><option value="cross">Cross</option><option value="strength">Strength</option><option value="rest">Rest</option>
                           </select>
                           {day.type === "rest" && <span className="text-green-400 text-xs font-medium">Rest Day</span>}
-                          {day.type !== "rest" && (
+                          {day.type === "run" && (
                             <>
                               <select value={day.trainingType} onChange={(e) => updateDayPlan(i, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                                <option value="Speed">Speed</option><option value="HR">HR</option><option value="LR">LR</option><option value="Tempo">Tempo</option><option value="CT">CT</option><option value="OT">OT</option><option value="Rest">Rest</option>
+                                <option value="Speed">Speed</option><option value="HR">HR</option><option value="LR">LR</option><option value="Tempo">Tempo</option><option value="CT">CT</option><option value="OT">OT</option>
                               </select>
-                              <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
+                              <div className="flex items-center gap-1">
+                                <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" />
+                                <button type="button" onClick={() => updateDayPlan(i, "distanceUnit", (day as Record<string, string>).distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold transition-colors hover:border-accent">
+                                  <span className={(day as Record<string, string>).distanceUnit === "km" ? "text-accent" : "text-white"}>
+                                    {(day as Record<string, string>).distanceUnit === "km" ? "KM" : "MI"}
+                                  </span>
+                                </button>
+                              </div>
                             </>
                           )}
                         </div>
