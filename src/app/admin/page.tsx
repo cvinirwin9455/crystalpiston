@@ -98,7 +98,8 @@ export default function AdminPage() {
   const selectedWeek = publishedWeeks[selectedWeekIndex];
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
-  const totalMiles = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
   const clientMessages = selectedClientData?.messages || [];
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
@@ -188,7 +189,7 @@ export default function AdminPage() {
               </div>
               <div className="flex items-center gap-6 text-sm">
                 <div className="text-center"><p className="text-accent font-heading text-xl">{completedWorkouts.length}/{allClientWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
-                <div className="text-center"><p className="text-white font-heading text-xl">{totalMiles.toFixed(0)}</p><p className="text-gray-500 text-xs">Miles</p></div>
+                <div className="text-center"><p className="text-white font-heading text-xl">{totalMilesCompleted.toFixed(0)}<span className="text-gray-500 text-sm">/{totalMilesProgrammed}</span></p><p className="text-gray-500 text-xs">Miles</p></div>
                 <div className="text-center"><p className="text-green-400 font-heading text-xl">${selectedClientData.paid}</p><p className="text-gray-500 text-xs">/${selectedClientData.owed}</p></div>
                 {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
               </div>
