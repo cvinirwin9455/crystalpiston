@@ -146,7 +146,7 @@ export default function AdminPage() {
             );
           })}
         </div>
-        <div className="p-3 border-t border-white/10"><a href="/" className="text-gray-400 hover:text-accent text-xs">Logout</a></div>
+        <div className="p-3 border-t border-white/10"><a href="/" className="flex items-center gap-2 text-gray-400 hover:text-accent text-xs"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a></div>
       </aside>
 
       {/* MAIN CONTENT */}
@@ -217,32 +217,68 @@ export default function AdminPage() {
 
                 {/* Workouts */}
                 <div className="space-y-3">
-                  {selectedWeek?.workouts.map((w) => (
+                  {selectedWeek?.workouts.map((w, wi) => (
                     <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${w.completed ? "bg-green-500" : "bg-gray-600"}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-white font-medium text-sm">{w.day}</span>
-                            <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
-                            {w.trainingType && w.trainingType !== "Rest" && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
-                            {w.completed && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Done</span>}
+                      {!editingWeek ? (
+                        <>
+                          <div className="flex items-center gap-4">
+                            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${w.completed ? "bg-green-500" : "bg-gray-600"}`} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-medium text-sm">{w.day}</span>
+                                <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
+                                {w.trainingType && w.trainingType !== "Rest" && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
+                                {w.completed && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Done</span>}
+                              </div>
+                              <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
+                              {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
+                            </div>
+                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{w.miles}<span className="text-gray-500 text-xs ml-0.5">mi</span></span>}
                           </div>
-                          <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
-                          {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
-                        </div>
-                        {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{w.miles}<span className="text-gray-500 text-xs ml-0.5">mi</span></span>}
-                      </div>
-                      {w.log && (
-                        <div className="mt-3 ml-7 pl-4 border-l-2 border-accent/30">
-                          <div className="flex flex-wrap gap-3 text-xs">
-                            {w.log.rpe && <span><span className="text-gray-500">RPE:</span> <span className="text-white">{w.log.rpe}/10</span></span>}
-                            {w.log.actualMiles && <span><span className="text-gray-500">Miles:</span> <span className="text-white">{w.log.actualMiles}</span></span>}
-                            {w.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
-                            {w.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
-                            {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
+                          {w.log && (
+                            <div className="mt-3 ml-7 pl-4 border-l-2 border-accent/30">
+                              <div className="flex flex-wrap gap-3 text-xs">
+                                {w.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{w.log.rpe}/10</span></span>}
+                                {w.log.actualMiles && <span><span className="text-gray-500">Miles:</span> <span className="text-white">{w.log.actualMiles}</span></span>}
+                                {w.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
+                                {w.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
+                                {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
+                              </div>
+                              {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        /* EDIT MODE - full workout editing */
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <span className="text-white font-heading text-sm uppercase w-24">{w.day}</span>
+                            <select defaultValue={w.type} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                              <option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
+                            </select>
+                            {w.type === "run" && (
+                              <>
+                                <select defaultValue={w.trainingType} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                  <option value="" disabled>Select Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option>
+                                </select>
+                                <input type="text" defaultValue={w.miles?.toString() || ""} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
+                              </>
+                            )}
                           </div>
-                          {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
+                          {w.type !== "rest" && (
+                            <div className="grid md:grid-cols-3 gap-2">
+                              <input type="text" defaultValue={w.title} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" />
+                              <input type="text" defaultValue={w.description} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" />
+                              <input type="text" defaultValue={w.paceTarget || ""} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
+                            </div>
+                          )}
+                          {w.type === "run" && (
+                            <div className="grid md:grid-cols-2 gap-2">
+                              <input type="text" defaultValue={w.location || ""} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
+                              <input type="text" defaultValue={w.coachNotes || ""} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                            </div>
+                          )}
+                          {w.type === "cross" && <textarea defaultValue={w.description} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
                         </div>
                       )}
                     </div>
@@ -332,7 +368,7 @@ export default function AdminPage() {
                             </select>
                             <div className="flex items-center gap-1">
                               <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" />
-                              <button type="button" onClick={() => updateDayPlan(i, "distanceUnit", day.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={day.distanceUnit === "km" ? "text-accent" : "text-white"}>{day.distanceUnit === "km" ? "KM" : "MI"}</span></button>
+                              <button type="button" onClick={() => updateDayPlan(i, "distanceUnit", day.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={day.distanceUnit === "km" ? "text-accent" : "text-white"}>{day.distanceUnit === "km" ? "Kilometre" : "Mile"}</span></button>
                             </div>
                           </>
                         )}
@@ -370,13 +406,28 @@ export default function AdminPage() {
                     <div><label className="text-gray-500 text-xs block mb-1">Start Date</label><input type="date" defaultValue={selectedClientData.startDate} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
                     <div><label className="text-gray-500 text-xs block mb-1">Plan End</label><input type="date" defaultValue={selectedClientData.planDuration} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
                   </div>
-                  <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save</button>
+                  <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save Details</button>
                 </div>
+
+                {/* Payment Management */}
+                <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
+                  <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Payment</h4>
+                  <div className="grid md:grid-cols-3 gap-4 mb-4">
+                    <div><label className="text-gray-500 text-xs block mb-1">Total Owed ($)</label><input type="number" defaultValue={selectedClientData.owed} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                    <div><label className="text-gray-500 text-xs block mb-1">Total Paid ($)</label><input type="number" defaultValue={selectedClientData.paid} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                    <div><label className="text-gray-500 text-xs block mb-1">Balance</label><p className="text-white text-sm font-bold mt-2">${(selectedClientData.owed - selectedClientData.paid).toFixed(2)}</p></div>
+                  </div>
+                  <div className="w-full bg-primary/50 rounded-full h-2 mb-3"><div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, (selectedClientData.paid / selectedClientData.owed) * 100)}%` }} /></div>
+                  <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Update Payment</button>
+                </div>
+
+                {/* Danger Zone */}
                 <div className="bg-primary/30 border border-red-500/20 rounded-xl p-5">
-                  <h4 className="text-red-400 text-xs font-heading uppercase mb-4">Actions</h4>
+                  <h4 className="text-red-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
+                  <p className="text-gray-500 text-xs mb-3">Archiving hides the client but keeps their data. Deleting is permanent.</p>
                   <div className="flex flex-wrap gap-3">
-                    {selectedClientData.status === "active" ? <button onClick={() => { setClients(clients.map(c => c.id === selectedClient ? { ...c, status: "archived" as const } : c)); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive</button> : <button onClick={() => { setClients(clients.map(c => c.id === selectedClient ? { ...c, status: "active" as const } : c)); }} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate</button>}
-                    {!showDeleteConfirm ? <button onClick={() => setShowDeleteConfirm(true)} className="border border-red-500/30 text-red-400 py-2 px-4 rounded-lg text-sm">Delete</button> : <div className="flex items-center gap-2"><span className="text-red-400 text-xs">Sure?</span><button onClick={() => { setClients(clients.filter(c => c.id !== selectedClient)); setSelectedClient(null); setShowDeleteConfirm(false); }} className="bg-red-600 text-white py-1 px-3 rounded text-xs">Yes</button><button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 text-xs">No</button></div>}
+                    {selectedClientData.status === "active" ? <button onClick={() => { setClients(clients.map(c => c.id === selectedClient ? { ...c, status: "archived" as const } : c)); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive Client</button> : <button onClick={() => { setClients(clients.map(c => c.id === selectedClient ? { ...c, status: "active" as const } : c)); }} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate Client</button>}
+                    {!showDeleteConfirm ? <button onClick={() => setShowDeleteConfirm(true)} className="border border-red-500/30 text-red-400 py-2 px-4 rounded-lg text-sm">Delete Client</button> : <div className="flex items-center gap-2"><span className="text-red-400 text-xs">Are you sure? This cannot be undone.</span><button onClick={() => { setClients(clients.filter(c => c.id !== selectedClient)); setSelectedClient(null); setShowDeleteConfirm(false); }} className="bg-red-600 text-white py-1 px-3 rounded text-xs">Yes, Delete</button><button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 text-xs">Cancel</button></div>}
                   </div>
                 </div>
               </div>
