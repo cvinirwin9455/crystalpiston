@@ -50,9 +50,20 @@ type FilterOptions = {
 };
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<"training" | "stats" | "account">("training");
+  const [activeTab, setActiveTab] = useState<"training" | "stats" | "messages" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const [newMessage, setNewMessage] = useState("");
+  const [showMessageForm, setShowMessageForm] = useState(false);
+  const [messageViewIndex, setMessageViewIndex] = useState(0);
+
+  const [clientMessages] = useState([
+    { id: "m1", date: "Jun 9, 2026", from: "crystal", message: "Training is loaded. The two workouts are Tuesday and Thursday. The Descending 1200s workout will get sent to your watch. The important piece is to not start out too fast — the point is to get 10 seconds faster at each 400." },
+    { id: "m2", date: "Jun 8, 2026", from: "client", message: "War Eagle was great! Felt strong the whole time. Ready for a big week!" },
+    { id: "m3", date: "Jun 2, 2026", from: "crystal", message: "I'm giving you this week of training a week ahead, because I will be gone. But Jeff will be here to guide you through it. This week will be more specificity training on hills. Hope you have a great week in Colorado!" },
+    { id: "m4", date: "Jun 1, 2026", from: "client", message: "Feeling good heading into War Eagle. Should I do anything different the day before?" },
+    { id: "m5", date: "May 26, 2026", from: "crystal", message: "Easy taper week. Trust the training. You're ready for War Eagle. Keep the legs fresh and the mind calm." },
+  ]);
   const [filters, setFilters] = useState<FilterOptions>({ type: "all", completed: "all", timeRange: "all" });
 
   const [clientInfo] = useState({
@@ -169,8 +180,8 @@ export default function DashboardPage() {
 
       <div className="border-b border-white/10 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-6 flex gap-1">
-          {[{ key: "training", label: "Training" }, { key: "stats", label: "Dashboard" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key as "training" | "stats" | "account")} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>{tab.label}</button>
+          {[{ key: "training", label: "Training" }, { key: "stats", label: "Dashboard" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key as "training" | "stats" | "messages" | "account")} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>{tab.label}</button>
           ))}
         </div>
       </div>
@@ -356,6 +367,55 @@ export default function DashboardPage() {
                 ))}
                 {getFilteredWorkouts().length === 0 && <p className="text-gray-500 text-sm text-center py-8">No workouts match your filters.</p>}
               </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === "messages" && (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="font-heading text-2xl uppercase text-white">Messages</h2>
+                <p className="text-gray-400 text-sm">Chat with Crystal</p>
+              </div>
+              {!showMessageForm && (
+                <button onClick={() => setShowMessageForm(true)} className="bg-accent hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors">+ New Message</button>
+              )}
+            </div>
+
+            {/* Send Message */}
+            {showMessageForm && (
+              <div className="bg-secondary/50 border border-accent/30 rounded-2xl p-6 mb-6">
+                <p className="text-accent text-xs font-heading uppercase mb-3">Send Message to Crystal</p>
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-accent resize-none"
+                  rows={4}
+                  placeholder="Ask a question, share an update, let Crystal know how you're feeling..."
+                />
+                <div className="flex gap-3 mt-3">
+                  <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors">Send</button>
+                  <button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 hover:text-white text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Message Thread */}
+            <div className="space-y-4">
+              {clientMessages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-2xl p-4 ${msg.from === "client" ? "bg-accent/10 border border-accent/30" : "bg-secondary/50 border border-gold/20"}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs font-heading uppercase ${msg.from === "client" ? "text-accent" : "text-gold"}`}>
+                        {msg.from === "client" ? "You" : "Crystal"}
+                      </span>
+                      <span className="text-gray-500 text-xs">{msg.date}</span>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed">{msg.message}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
