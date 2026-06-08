@@ -52,22 +52,40 @@ type CoachMessage = {
 type Client = {
   id: string;
   name: string;
+  email: string;
   goal: string;
   startDate: string;
   planDuration: string;
   owed: number;
   paid: number;
+  status: "active" | "archived";
   weeks: WeekData[];
   messages: CoachMessage[];
 };
 
+type NewClientForm = {
+  name: string;
+  email: string;
+  password: string;
+  goal: string;
+  startDate: string;
+  planDuration: string;
+  owed: string;
+};
+
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages">("plan");
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "account">("plan");
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [messageIndex, setMessageIndex] = useState(0);
+  const [showCreateClient, setShowCreateClient] = useState(false);
+  const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [newClientForm, setNewClientForm] = useState<NewClientForm>({
+    name: "", email: "", password: "", goal: "", startDate: "", planDuration: "", owed: "",
+  });
 
   // Week planner state (Mon-Sun quick create)
   const [weekPlan, setWeekPlan] = useState({
@@ -91,9 +109,9 @@ export default function AdminPage() {
     setWeekPlan({ ...weekPlan, days: updated });
   };
 
-  const [clients] = useState<Client[]>([
+  const [clients, setClients] = useState<Client[]>([
     {
-      id: "c1", name: "Sarah M.", goal: "War Eagle 50K", startDate: "May 5, 2026", planDuration: "July 26", owed: 525, paid: 175,
+      id: "c1", name: "Sarah M.", email: "sarah@email.com", goal: "War Eagle 50K", startDate: "May 5, 2026", planDuration: "July 26", owed: 525, paid: 175, status: "active",
       messages: [
         { id: "m1", date: "Jun 9, 2026", message: "Training is loaded. The two workouts are Tuesday and Thursday. The Descending 1200s workout will get sent to your watch. The important piece is to not start out too fast — the point is to get 10 seconds faster at each 400. Recovery can be as slow as you need to jog, but try not to walk unless it's for a couple of breaths." },
         { id: "m2", date: "Jun 2, 2026", message: "I'm giving you this week of training a week ahead, because I will be gone. But Jeff will be here to guide you through it. This week will be more specificity training on hills. Hope you have a great week in Colorado! Great job at War Eagle!" },
@@ -129,7 +147,7 @@ export default function AdminPage() {
       ],
     },
     {
-      id: "c2", name: "Mike T.", goal: "Sub-4 Marathon", startDate: "Apr 1, 2026", planDuration: "Oct 12", owed: 400, paid: 400,
+      id: "c2", name: "Mike T.", email: "mike@email.com", goal: "Sub-4 Marathon", startDate: "Apr 1, 2026", planDuration: "Oct 12", owed: 400, paid: 400, status: "active",
       messages: [
         { id: "m1", date: "Jun 9, 2026", message: "Big week ahead. Tuesday tempo is key — stay disciplined on pace. You're looking strong." },
       ],
@@ -147,7 +165,7 @@ export default function AdminPage() {
       ],
     },
     {
-      id: "c3", name: "Jessica R.", goal: "First 5K", startDate: "Jun 1, 2026", planDuration: "Aug 15", owed: 200, paid: 100,
+      id: "c3", name: "Jessica R.", email: "jessica@email.com", goal: "First 5K", startDate: "Jun 1, 2026", planDuration: "Aug 15", owed: 200, paid: 100, status: "active",
       messages: [
         { id: "m1", date: "Jun 9, 2026", message: "Great progress! Keep the run/walk intervals consistent. No pressure on pace — just get the time on your feet." },
       ],
@@ -199,16 +217,50 @@ export default function AdminPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Client Selector */}
         <div className="mb-8">
-          <h2 className="font-heading text-lg uppercase text-gray-400 mb-4">Clients</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <h2 className="font-heading text-lg uppercase text-gray-400">Clients</h2>
+              <div className="flex gap-1">
+                {[{ key: "active", label: "Active" }, { key: "archived", label: "Archived" }, { key: "all", label: "All" }].map((f) => (
+                  <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-3 py-1 rounded-full text-xs transition-colors ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => setShowCreateClient(!showCreateClient)} className="bg-accent hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors">+ New Client</button>
+          </div>
+
+          {/* Create Client Form */}
+          {showCreateClient && (
+            <div className="bg-secondary/50 border border-accent/30 rounded-2xl p-6 mb-6">
+              <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div><label className="text-gray-400 text-xs block mb-1">Full Name</label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Sarah Miller" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Email (login)</label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="client@email.com" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Temporary Password</label><input type="text" value={newClientForm.password} onChange={(e) => setNewClientForm({ ...newClientForm, password: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="They can change later" /></div>
+              </div>
+              <div className="grid md:grid-cols-4 gap-4 mb-4">
+                <div><label className="text-gray-400 text-xs block mb-1">Goal</label><input type="text" value={newClientForm.goal} onChange={(e) => setNewClientForm({ ...newClientForm, goal: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. First 5K" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Start Date</label><input type="text" value={newClientForm.startDate} onChange={(e) => setNewClientForm({ ...newClientForm, startDate: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Jun 15, 2026" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Plan End Date</label><input type="text" value={newClientForm.planDuration} onChange={(e) => setNewClientForm({ ...newClientForm, planDuration: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Aug 30" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Amount Owed ($)</label><input type="text" value={newClientForm.owed} onChange={(e) => setNewClientForm({ ...newClientForm, owed: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="300" /></div>
+              </div>
+              <div className="flex gap-3">
+                <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Create Account</button>
+                <button onClick={() => setShowCreateClient(false)} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg transition-colors">Cancel</button>
+              </div>
+              <p className="text-gray-500 text-xs mt-3">Client will be able to login with their email and password at /login</p>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3">
-            {clients.map((client) => {
+            {clients.filter((c) => clientFilter === "all" || c.status === clientFilter).map((client) => {
               const allWk = client.weeks.flatMap(w => w.workouts);
               const doneWk = allWk.filter(w => w.completed);
               const isSelected = selectedClient === client.id;
               return (
-                <button key={client.id} onClick={() => { setSelectedClient(isSelected ? null : client.id); setSelectedWeekIndex(0); setClientTab("plan"); setMessageIndex(0); }} className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${isSelected ? "bg-accent/10 border-accent text-white" : "bg-secondary/50 border-white/10 text-gray-300 hover:border-white/30"}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
-                  <div className="text-left"><p className="font-medium text-sm">{client.name}</p><p className="text-xs text-gray-500">{doneWk.length}/{allWk.length} done &bull; {client.goal}</p></div>
+                <button key={client.id} onClick={() => { setSelectedClient(isSelected ? null : client.id); setSelectedWeekIndex(0); setClientTab("plan"); setMessageIndex(0); setShowDeleteConfirm(false); }} className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${isSelected ? "bg-accent/10 border-accent text-white" : client.status === "archived" ? "bg-secondary/30 border-white/5 text-gray-500" : "bg-secondary/50 border-white/10 text-gray-300 hover:border-white/30"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? "bg-accent text-white" : client.status === "archived" ? "bg-gray-700 text-gray-500" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
+                  <div className="text-left"><p className="font-medium text-sm">{client.name} {client.status === "archived" && <span className="text-gray-600 text-xs">(archived)</span>}</p><p className="text-xs text-gray-500">{doneWk.length}/{allWk.length} done &bull; {client.goal}</p></div>
                 </button>
               );
             })}
@@ -232,8 +284,8 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex gap-1 mt-4">
-                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "messages", label: "Messages" }].map((tab) => (
-                  <button key={tab.key} onClick={() => setClientTab(tab.key as "plan" | "create" | "messages")} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>{tab.label}</button>
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "messages", label: "Messages" }, { key: "account", label: "Manage Account" }].map((tab) => (
+                  <button key={tab.key} onClick={() => setClientTab(tab.key as "plan" | "create" | "messages" | "account")} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>{tab.label}</button>
                 ))}
               </div>
             </div>
@@ -384,6 +436,63 @@ export default function AdminPage() {
                       </div>
                     </div>
                   )}
+                </>
+              )}
+
+              {/* MANAGE ACCOUNT */}
+              {clientTab === "account" && (
+                <>
+                  <h3 className="font-heading text-lg uppercase text-white mb-4">Manage Account</h3>
+
+                  {/* Edit Client Info */}
+                  <div className="bg-primary/30 border border-white/5 rounded-xl p-5 mb-6">
+                    <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Client Details</h4>
+                    <div className="grid md:grid-cols-3 gap-4 mb-4">
+                      <div><label className="text-gray-500 text-xs block mb-1">Name</label><input type="text" defaultValue={selectedClientData.name} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Email</label><input type="email" defaultValue={selectedClientData.email} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Reset Password</label><input type="text" className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="New password" /></div>
+                    </div>
+                    <div className="grid md:grid-cols-4 gap-4 mb-4">
+                      <div><label className="text-gray-500 text-xs block mb-1">Goal</label><input type="text" defaultValue={selectedClientData.goal} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Start Date</label><input type="text" defaultValue={selectedClientData.startDate} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Plan End</label><input type="text" defaultValue={selectedClientData.planDuration} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Status</label><p className={`text-sm font-medium mt-1 ${selectedClientData.status === "active" ? "text-green-400" : "text-gray-500"}`}>{selectedClientData.status === "active" ? "Active" : "Archived"}</p></div>
+                    </div>
+                    <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors">Save Changes</button>
+                  </div>
+
+                  {/* Payment Management */}
+                  <div className="bg-primary/30 border border-white/5 rounded-xl p-5 mb-6">
+                    <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Payment</h4>
+                    <div className="grid md:grid-cols-3 gap-4 mb-4">
+                      <div><label className="text-gray-500 text-xs block mb-1">Total Owed</label><input type="number" defaultValue={selectedClientData.owed} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Total Paid</label><input type="number" defaultValue={selectedClientData.paid} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
+                      <div><label className="text-gray-500 text-xs block mb-1">Balance</label><p className="text-white text-sm font-medium mt-1">${(selectedClientData.owed - selectedClientData.paid).toFixed(2)}</p></div>
+                    </div>
+                    <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors">Update Payment</button>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="bg-primary/30 border border-red-500/20 rounded-xl p-5">
+                    <h4 className="text-red-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {selectedClientData.status === "active" ? (
+                        <button onClick={() => { const updated = clients.map(c => c.id === selectedClient ? { ...c, status: "archived" as const } : c); setClients(updated); }} className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-6 rounded-lg text-sm transition-colors">Archive Account</button>
+                      ) : (
+                        <button onClick={() => { const updated = clients.map(c => c.id === selectedClient ? { ...c, status: "active" as const } : c); setClients(updated); }} className="border border-green-500/30 text-green-400 hover:bg-green-500/10 font-bold py-2 px-6 rounded-lg text-sm transition-colors">Reactivate Account</button>
+                      )}
+                      {!showDeleteConfirm ? (
+                        <button onClick={() => setShowDeleteConfirm(true)} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-6 rounded-lg text-sm transition-colors">Delete Account</button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="text-red-400 text-sm">Are you sure? This cannot be undone.</span>
+                          <button onClick={() => { setClients(clients.filter(c => c.id !== selectedClient)); setSelectedClient(null); setShowDeleteConfirm(false); }} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">Yes, Delete</button>
+                          <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-xs mt-3">Archiving hides the client from your active list but keeps their data. Deleting permanently removes everything.</p>
+                  </div>
                 </>
               )}
             </div>
