@@ -125,7 +125,12 @@ export default function AdminPage() {
       <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-4">
-            <Image src="/IMG_5861.PNG" alt="Logo" width={36} height={36} />
+            <div className="relative group">
+              <Image src="/IMG_5861.PNG" alt="Logo" width={36} height={36} className="rounded-full" />
+              <button className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </button>
+            </div>
             <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">Crystal</p></div>
           </div>
           <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-accent mb-2" />
@@ -432,18 +437,6 @@ export default function AdminPage() {
             {/* ACCOUNT */}
             {clientTab === "account" && (
               <div className="space-y-6">
-                {/* Profile Picture */}
-                <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
-                  <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Profile Picture</h4>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold text-gray-400">{selectedClientData.name.charAt(0)}</div>
-                    <div>
-                      <button className="bg-primary/50 border border-white/10 hover:border-accent text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors">Upload Photo</button>
-                      <p className="text-gray-600 text-xs mt-1">JPG or PNG, max 2MB. Optional.</p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
                   <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Client Details</h4>
                   <div className="grid md:grid-cols-4 gap-4 mb-4">
