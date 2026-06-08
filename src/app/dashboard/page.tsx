@@ -237,6 +237,12 @@ export default function DashboardPage() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Save & Close */}
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+                        <button onClick={() => setExpandedWorkout(null)} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
+                        <button onClick={() => { toggleCompleted(workout.id); setExpandedWorkout(null); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors">Save Log</button>
+                      </div>
                     </div>
                   )}
                 </div>
