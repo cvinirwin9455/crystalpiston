@@ -53,6 +53,7 @@ type Client = {
   id: string;
   name: string;
   email: string;
+  gender: "female" | "male";
   goal: string;
   startDate: string;
   planDuration: string;
@@ -67,6 +68,7 @@ type NewClientForm = {
   name: string;
   email: string;
   password: string;
+  gender: "female" | "male";
   goal: string;
   startDate: string;
   planDuration: string;
@@ -84,7 +86,7 @@ export default function AdminPage() {
   const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [newClientForm, setNewClientForm] = useState<NewClientForm>({
-    name: "", email: "", password: "", goal: "", startDate: "", planDuration: "", owed: "",
+    name: "", email: "", password: "", gender: "female", goal: "", startDate: "", planDuration: "", owed: "",
   });
 
   // Week picker state
@@ -153,7 +155,7 @@ export default function AdminPage() {
 
   const [clients, setClients] = useState<Client[]>([
     {
-      id: "c1", name: "Sarah M.", email: "sarah@email.com", goal: "War Eagle 50K", startDate: "May 5, 2026", planDuration: "July 26", owed: 525, paid: 175, status: "active",
+      id: "c1", name: "Sarah M.", email: "sarah@email.com", gender: "female", goal: "War Eagle 50K", startDate: "May 5, 2026", planDuration: "July 26", owed: 525, paid: 175, status: "active",
       messages: [
         { id: "m1", date: "Jun 9, 2026", message: "Training is loaded. The two workouts are Tuesday and Thursday. The Descending 1200s workout will get sent to your watch. The important piece is to not start out too fast — the point is to get 10 seconds faster at each 400. Recovery can be as slow as you need to jog, but try not to walk unless it's for a couple of breaths." },
         { id: "m2", date: "Jun 2, 2026", message: "I'm giving you this week of training a week ahead, because I will be gone. But Jeff will be here to guide you through it. This week will be more specificity training on hills. Hope you have a great week in Colorado! Great job at War Eagle!" },
@@ -189,7 +191,7 @@ export default function AdminPage() {
       ],
     },
     {
-      id: "c2", name: "Mike T.", email: "mike@email.com", goal: "Sub-4 Marathon", startDate: "Apr 1, 2026", planDuration: "Oct 12", owed: 400, paid: 400, status: "active",
+      id: "c2", name: "Mike T.", email: "mike@email.com", gender: "male", goal: "Sub-4 Marathon", startDate: "Apr 1, 2026", planDuration: "Oct 12", owed: 400, paid: 400, status: "active",
       messages: [
         { id: "m1", date: "Jun 9, 2026", message: "Big week ahead. Tuesday tempo is key — stay disciplined on pace. You're looking strong." },
       ],
@@ -207,7 +209,7 @@ export default function AdminPage() {
       ],
     },
     {
-      id: "c3", name: "Jessica R.", email: "jessica@email.com", goal: "First 5K", startDate: "Jun 1, 2026", planDuration: "Aug 15", owed: 200, paid: 100, status: "active",
+      id: "c3", name: "Jessica R.", email: "jessica@email.com", gender: "female", goal: "First 5K", startDate: "Jun 1, 2026", planDuration: "Aug 15", owed: 200, paid: 100, status: "active",
       messages: [
         { id: "m1", date: "Jun 9, 2026", message: "Great progress! Keep the run/walk intervals consistent. No pressure on pace — just get the time on your feet." },
       ],
@@ -275,10 +277,11 @@ export default function AdminPage() {
           {showCreateClient && (
             <div className="bg-secondary/50 border border-accent/30 rounded-2xl p-6 mb-6">
               <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
-              <div className="grid md:grid-cols-3 gap-4 mb-4">
+              <div className="grid md:grid-cols-4 gap-4 mb-4">
                 <div><label className="text-gray-400 text-xs block mb-1">Full Name</label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Sarah Miller" /></div>
                 <div><label className="text-gray-400 text-xs block mb-1">Email (login)</label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="client@email.com" /></div>
                 <div><label className="text-gray-400 text-xs block mb-1">Temporary Password</label><input type="text" value={newClientForm.password} onChange={(e) => setNewClientForm({ ...newClientForm, password: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="They can change later" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Gender</label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
               </div>
               <div className="grid md:grid-cols-4 gap-4 mb-4">
                 <div><label className="text-gray-400 text-xs block mb-1">Goal</label><input type="text" value={newClientForm.goal} onChange={(e) => setNewClientForm({ ...newClientForm, goal: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. First 5K" /></div>
@@ -487,6 +490,9 @@ export default function AdminPage() {
                             <div className="grid md:grid-cols-2 gap-2 mt-2">
                               <input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
                               <input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                            </div>
+                            <div className="mt-2">
+                              <button className="text-accent text-xs hover:underline">+ Add another workout to {day.day}</button>
                             </div>
                           </>
                         )}
