@@ -87,6 +87,48 @@ export default function AdminPage() {
     name: "", email: "", password: "", goal: "", startDate: "", planDuration: "", owed: "",
   });
 
+  // Week picker state
+  const [showWeekPicker, setShowWeekPicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(new Date(2026, 5)); // June 2026
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
+
+  const getMonday = (d: Date) => {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    date.setDate(date.getDate() + diff);
+    return date;
+  };
+
+  const formatDate = (d: Date) => {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const getWeeksInMonth = (month: Date) => {
+    const weeks: Date[][] = [];
+    const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+    const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    let current = getMonday(firstDay);
+    while (current <= lastDay || weeks.length < 5) {
+      const week: Date[] = [];
+      for (let i = 0; i < 7; i++) {
+        week.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+      weeks.push(week);
+      if (current > lastDay && weeks.length >= 4) break;
+    }
+    return weeks;
+  };
+
+  const selectWeek = (monday: Date) => {
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    setSelectedWeekStart(monday);
+    setWeekPlan({ ...weekPlan, dateRange: `${formatDate(monday)} - ${formatDate(sunday)}` });
+    setShowWeekPicker(false);
+  };
+
   // Week planner state (Mon-Sun quick create)
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "",
@@ -370,7 +412,44 @@ export default function AdminPage() {
                 <>
                   <h3 className="font-heading text-lg uppercase text-white">Create Week Plan</h3>
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
-                    <div><label className="text-gray-400 text-xs block mb-1">Week Date Range</label><input type="text" value={weekPlan.dateRange} onChange={(e) => setWeekPlan({ ...weekPlan, dateRange: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Jun 16 - Jun 22" /></div>
+                    <div className="relative">
+                      <label className="text-gray-400 text-xs block mb-1">Week Date Range</label>
+                      <button onClick={() => setShowWeekPicker(!showWeekPicker)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-left text-sm focus:outline-none focus:border-accent hover:border-white/30 transition-colors flex items-center justify-between">
+                        <span className={weekPlan.dateRange ? "text-white" : "text-gray-500"}>{weekPlan.dateRange || "Select a week..."}</span>
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      </button>
+                      {showWeekPicker && (
+                        <div className="absolute top-full left-0 mt-2 z-50 bg-secondary border border-white/10 rounded-xl p-4 shadow-2xl w-80">
+                          {/* Month nav */}
+                          <div className="flex items-center justify-between mb-3">
+                            <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() - 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                            <span className="text-white text-sm font-medium">{pickerMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
+                            <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+                          </div>
+                          {/* Day headers */}
+                          <div className="grid grid-cols-7 gap-1 mb-1">
+                            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
+                              <div key={d} className="text-center text-gray-500 text-xs py-1">{d}</div>
+                            ))}
+                          </div>
+                          {/* Weeks */}
+                          {getWeeksInMonth(pickerMonth).map((week, wi) => {
+                            const monday = week[0];
+                            const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime();
+                            return (
+                              <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors ${isSelected ? "bg-accent/20" : "hover:bg-white/5"}`}>
+                                {week.map((day, di) => (
+                                  <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : "text-white") : "text-gray-600"}`}>
+                                    {day.getDate()}
+                                  </div>
+                                ))}
+                              </button>
+                            );
+                          })}
+                          <p className="text-gray-500 text-xs mt-2 text-center">Click a row to select that Monday–Sunday</p>
+                        </div>
+                      )}
+                    </div>
                     <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={weekPlan.focus} onChange={(e) => setWeekPlan({ ...weekPlan, focus: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
                   </div>
                   <div className="mb-6">
