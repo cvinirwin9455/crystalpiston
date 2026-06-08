@@ -13,8 +13,8 @@ export default function Navigation() {
           <Image
             src="/IMG_5861.PNG"
             alt="Pistol Performance Coaching"
-            width={70}
-            height={70}
+            width={120}
+            height={120}
           />
         </a>
 
