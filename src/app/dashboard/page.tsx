@@ -7,7 +7,7 @@ type WorkoutDay = {
   id: string;
   day: string;
   date: string;
-  type: "run" | "cross" | "strength" | "rest";
+  type: "run" | "cross" | "rest";
   trainingType: string;
   title: string;
   miles: number | null;
@@ -44,7 +44,7 @@ type WeekData = {
 };
 
 type FilterOptions = {
-  type: "all" | "run" | "cross" | "strength" | "rest";
+  type: "all" | "run" | "cross" | "rest";
   completed: "all" | "yes" | "no";
   timeRange: "all" | "thisWeek" | "lastWeek" | "lastMonth";
 };
@@ -100,11 +100,11 @@ export default function DashboardPage() {
       focus: "Hills & Specificity",
       coachMessage: "This week will be more specificity training on hills — Tuesday will be location specific. Jeff will be here to guide you through it.",
       workouts: [
-        { id: "w2-mon", day: "Monday", date: "Jun 2", type: "strength", trainingType: "CT", title: "Bike / Strength", miles: null, description: "Cross training day. Bike and strength work.", completed: true, log: { rpe: "6", stress: "", notes: "Felt good", energy: "7", motivation: "8", sleep: "7", strength: "7", recovery: "6", mood: "8", hunger: "7" } },
+        { id: "w2-mon", day: "Monday", date: "Jun 2", type: "cross", trainingType: "CT", title: "Bike / Strength", miles: null, description: "Cross training day. Bike and strength work.", completed: true, log: { rpe: "6", stress: "", notes: "Felt good", energy: "7", motivation: "8", sleep: "7", strength: "7", recovery: "6", mood: "8", hunger: "7" } },
         { id: "w2-tue", day: "Tuesday", date: "Jun 3", type: "run", trainingType: "Speed", title: "HILLS - Technique Day", miles: 7, description: "2 WU | 1 down | 1 up | 1 down | 1 up | 1 CD", paceTarget: "Downhill close to race pace", location: "Location specific hills", coachNotes: "This first training day is for technique. Jeff will run the downs with you to help coach you on keeping head up, not leaning too far forward, but yet allowing gravity to help you down, without falling.", completed: true, log: { rpe: "8", stress: "", notes: "Jeff was great help", energy: "8", motivation: "9", sleep: "7", strength: "7", recovery: "7", mood: "9", hunger: "6", actualMiles: "7.2", actualPace: "8:45" } },
         { id: "w2-wed", day: "Wednesday", date: "Jun 4", type: "run", trainingType: "LR", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: true, log: { rpe: "4", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "6", recovery: "7", mood: "7", hunger: "8" } },
         { id: "w2-thu", day: "Thursday", date: "Jun 5", type: "run", trainingType: "Speed", title: "Strides", miles: 7, description: "7 mi w/strides", completed: true, log: { rpe: "7", stress: "", notes: "Legs felt heavy from hills", energy: "6", motivation: "7", sleep: "6", strength: "6", recovery: "5", mood: "7", hunger: "7" } },
-        { id: "w2-fri", day: "Friday", date: "Jun 6", type: "strength", trainingType: "CT", title: "Bike / Strength", miles: null, description: "Cross training day. Bike and strength work.", completed: true, log: { rpe: "5", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "7", recovery: "7", mood: "8", hunger: "7" } },
+        { id: "w2-fri", day: "Friday", date: "Jun 6", type: "cross", trainingType: "CT", title: "Bike / Strength", miles: null, description: "Cross training day. Bike and strength work.", completed: true, log: { rpe: "5", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "7", recovery: "7", mood: "8", hunger: "7" } },
         { id: "w2-sat", day: "Saturday", date: "Jun 7", type: "run", trainingType: "Tempo", title: "Race Pace Workout", miles: 12, description: "5 WU | 5 mi @ 9:15 (2 min rest between miles) | 2 CD", paceTarget: "9:15/mi race pace", coachNotes: "12 mi total workout at race pace.", completed: true, log: { rpe: "9", stress: "Travel Day", notes: "War Eagle! Fun easy run.", energy: "8", motivation: "9", sleep: "7", strength: "8", recovery: "6", mood: "9", hunger: "8", actualMiles: "12.1", actualPace: "9:12" } },
         { id: "w2-sun", day: "Sunday", date: "Jun 8", type: "rest", trainingType: "Rest", title: "Complete Rest", miles: null, description: "Complete rest day.", completed: true, log: { rpe: "", stress: "", notes: "Great week overall", energy: "8", motivation: "8", sleep: "9", strength: "7", recovery: "8", mood: "9", hunger: "7" } },
       ],
@@ -135,7 +135,7 @@ export default function DashboardPage() {
   const completedWorkouts = allWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = completedWorkouts.reduce((sum, w) => sum + (w.miles || 0), 0);
   const runWorkouts = completedWorkouts.filter((w) => w.type === "run");
-  const crossWorkouts = completedWorkouts.filter((w) => w.type === "cross" || w.type === "strength");
+  const crossWorkouts = completedWorkouts.filter((w) => w.type === "cross");
 
   const getFilteredWorkouts = () => {
     let filtered = allWorkouts;
@@ -154,13 +154,19 @@ export default function DashboardPage() {
   };
 
   const getTypeColor = (type: string) => {
-    switch (type) { case "run": return "border-accent/50 bg-accent/5"; case "cross": return "border-gold/50 bg-gold/5"; case "strength": return "border-purple-500/50 bg-purple-500/5"; case "rest": return "border-green-500/50 bg-green-500/5"; default: return "border-white/10"; }
+    switch (type) { case "run": return "border-accent/50 bg-accent/5"; case "cross": return "border-gold/50 bg-gold/5"; case "rest": return "border-green-500/50 bg-green-500/5"; default: return "border-white/10"; }
   };
   const getTypeBadge = (type: string) => {
-    switch (type) { case "run": return "bg-accent/20 text-accent"; case "cross": return "bg-gold/20 text-gold"; case "strength": return "bg-purple-500/20 text-purple-400"; case "rest": return "bg-green-500/20 text-green-400"; default: return "bg-gray-500/20 text-gray-400"; }
+    switch (type) { case "run": return "bg-accent/20 text-accent"; case "cross": return "bg-gold/20 text-gold"; case "rest": return "bg-green-500/20 text-green-400"; default: return "bg-gray-500/20 text-gray-400"; }
+  };
+  const getTypeLabel = (type: string) => {
+    switch (type) { case "run": return "Run"; case "cross": return "Cross Training"; case "rest": return "Rest"; default: return type; }
+  };
+  const getTrainingTypeLabel = (tt: string) => {
+    switch (tt) { case "Speed": return "Speed Workout"; case "SpeedRoad": return "Speed - Road"; case "SpeedTrack": return "Speed - Track"; case "Tempo": return "Tempo"; case "LR": return "Long Run"; case "LongRun": return "Long Run"; case "Easy": return "Easy Run"; case "Recovery": return "Recovery Run"; case "HR": return "Heart Rate"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals"; case "RacePace": return "Race Pace"; case "ClosePace": return "Close to Race Pace"; case "Threshold": return "Threshold"; case "TimeTrial": return "Time Trial"; case "CT": return "Cross Training"; case "OT": return "Orange Theory"; default: return tt; }
   };
   const getTrainingTypeBadge = (tt: string) => {
-    switch (tt) { case "Speed": return "bg-red-500/20 text-red-400 border-red-500/30"; case "Tempo": return "bg-orange-500/20 text-orange-400 border-orange-500/30"; case "LR": return "bg-blue-500/20 text-blue-400 border-blue-500/30"; case "HR": return "bg-pink-500/20 text-pink-400 border-pink-500/30"; case "CT": return "bg-purple-500/20 text-purple-400 border-purple-500/30"; case "OT": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"; default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"; }
+    switch (tt) { case "Speed": case "SpeedRoad": case "SpeedTrack": return "bg-red-500/20 text-red-400 border-red-500/30"; case "Tempo": case "Threshold": return "bg-orange-500/20 text-orange-400 border-orange-500/30"; case "LR": case "LongRun": case "Easy": case "Recovery": return "bg-blue-500/20 text-blue-400 border-blue-500/30"; case "HR": return "bg-pink-500/20 text-pink-400 border-pink-500/30"; case "CT": case "OT": return "bg-purple-500/20 text-purple-400 border-purple-500/30"; case "Hills": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"; case "RacePace": case "ClosePace": return "bg-green-500/20 text-green-300 border-green-500/30"; case "Intervals": return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"; case "TimeTrial": return "bg-red-500/20 text-red-300 border-red-500/30"; default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"; }
   };
 
   return (
@@ -248,8 +254,8 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2 flex-wrap mb-2">
                             <span className="text-white font-heading text-lg uppercase">{workout.day}</span>
                             <span className="text-gray-500 text-sm">{workout.date}</span>
-                            <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{workout.type}</span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{workout.trainingType}</span>
+                            <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>
                             {workout.completed && <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Done</span>}
                           </div>
                           <h3 className={`font-bold text-lg mb-1 ${workout.completed ? "text-gray-300 line-through" : "text-white"}`}>{workout.title}</h3>
@@ -353,13 +359,13 @@ export default function DashboardPage() {
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-secondary/50 border border-accent/20 rounded-xl p-5"><p className="text-accent font-heading uppercase text-sm mb-2">Running</p><p className="text-white text-2xl font-heading">{runWorkouts.length} runs</p><p className="text-gray-400 text-sm">{runWorkouts.reduce((s, w) => s + (w.miles || 0), 0)} miles total</p></div>
-              <div className="bg-secondary/50 border border-gold/20 rounded-xl p-5"><p className="text-gold font-heading uppercase text-sm mb-2">Cross / Strength</p><p className="text-white text-2xl font-heading">{crossWorkouts.length} sessions</p><p className="text-gray-400 text-sm">OT, Bike, Strength</p></div>
+              <div className="bg-secondary/50 border border-gold/20 rounded-xl p-5"><p className="text-gold font-heading uppercase text-sm mb-2">Cross Training</p><p className="text-white text-2xl font-heading">{crossWorkouts.length} sessions</p><p className="text-gray-400 text-sm">OT, Bike, etc.</p></div>
               <div className="bg-secondary/50 border border-green-500/20 rounded-xl p-5"><p className="text-green-400 font-heading uppercase text-sm mb-2">Rest Days</p><p className="text-white text-2xl font-heading">{completedWorkouts.filter(w => w.type === "rest").length} days</p><p className="text-gray-400 text-sm">Recovery matters</p></div>
             </div>
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
               <h3 className="font-heading text-lg uppercase text-white mb-4">Workout History</h3>
               <div className="flex flex-wrap gap-3 mb-6">
-                <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value as FilterOptions["type"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Types</option><option value="run">Running</option><option value="cross">Cross Training</option><option value="strength">Strength</option><option value="rest">Rest</option></select>
+                <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value as FilterOptions["type"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Types</option><option value="run">Running</option><option value="cross">Cross Training</option><option value="rest">Rest</option></select>trength">Strength</option><option value="rest">Rest</option></select>
                 <select value={filters.completed} onChange={(e) => setFilters({ ...filters, completed: e.target.value as FilterOptions["completed"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Status</option><option value="yes">Completed</option><option value="no">Not Completed</option></select>
                 <select value={filters.timeRange} onChange={(e) => setFilters({ ...filters, timeRange: e.target.value as FilterOptions["timeRange"] })} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="all">All Time</option><option value="thisWeek">This Week</option><option value="lastWeek">Last Week</option></select>
               </div>
@@ -371,7 +377,7 @@ export default function DashboardPage() {
                       <div><p className="text-white text-sm font-medium">{workout.title}</p><p className="text-gray-400 text-xs">{workout.day}, {workout.date}</p></div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{workout.trainingType}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>
                       {workout.miles && <span className="text-white text-sm font-heading">{workout.miles} mi</span>}
                       {workout.log?.rpe && <span className="text-gray-400 text-xs">RPE: {workout.log.rpe}</span>}
                     </div>

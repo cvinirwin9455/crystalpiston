@@ -399,6 +399,7 @@ export default function AdminPage() {
                               {w.log.actualMiles && <span><span className="text-gray-500">Miles:</span> <span className="text-white">{w.log.actualMiles}</span></span>}
                               {w.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
                               {w.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
+                              {(w.log as Record<string, string>).onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                             </div>
                             {w.log.notes && <p className="text-gray-400 text-xs mt-1"><span className="text-gray-500">Notes:</span> {w.log.notes}</p>}
                             <div className="flex gap-3 mt-2 text-xs text-gray-500">
