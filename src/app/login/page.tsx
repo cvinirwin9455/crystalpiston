@@ -9,8 +9,12 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Prototype - just redirect to dashboard
-    window.location.href = "/dashboard";
+    // Prototype routing: "crystal" in username goes to admin, anyone else goes to dashboard
+    if (email.toLowerCase().includes("crystal")) {
+      window.location.href = "/admin";
+    } else {
+      window.location.href = "/dashboard";
+    }
   };
 
   return (
@@ -37,15 +41,15 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="bg-secondary/50 border border-white/10 rounded-2xl p-8 space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-              Email
+              Username
             </label>
             <input
-              type="email"
+              type="text"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-accent transition-colors"
-              placeholder="you@example.com"
+              placeholder="Username or email"
             />
           </div>
 
