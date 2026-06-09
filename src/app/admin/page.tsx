@@ -197,8 +197,6 @@ export default function AdminPage() {
       const client = clients.find(c => c.id === selectedClient);
       if (client && client.clientId) {
         fetchWeeks(client.clientId);
-      } else if (client) {
-        alert(`Debug: clientId is ${client.clientId}. Try refreshing the page.`);
       }
     }
   }, [selectedClient, clients]);

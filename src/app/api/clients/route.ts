@@ -49,19 +49,29 @@ export async function GET() {
   }
 
   // Flatten the response for easier frontend use
-  // Auto-create clients records for any users missing one
+  // Auto-create clients records for any users missing one (using service role to bypass RLS)
   const formatted = []
   for (const c of clients || []) {
     let clientId = c.clients?.[0]?.id || null
 
-    // If no clients record exists, create one
+    // If no clients record exists, create one using service role
     if (!clientId) {
-      const { data: newClient } = await supabase
+      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+      const adminClient = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      )
+      const { data: newClient, error: insertError } = await adminClient
         .from('clients')
         .insert({ user_id: c.id })
         .select('id')
         .single()
-      if (newClient) clientId = newClient.id
+      if (newClient) {
+        clientId = newClient.id
+      } else {
+        console.error('Failed to auto-create client record:', insertError?.message)
+      }
     }
 
     formatted.push({
