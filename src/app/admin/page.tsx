@@ -170,11 +170,11 @@ export default function AdminPage() {
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
       <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto`}>
-        {/* Mobile Back Button */}
+        {/* Back to Dashboard Button */}
         {selectedClient && (
-          <button onClick={() => setSelectedClient(null)} className="md:hidden flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30">
+          <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            <span className="text-sm">All Clients</span>
+            <span className="text-sm">Back to Dashboard</span>
           </button>
         )}
         {/* Create Client Modal */}
