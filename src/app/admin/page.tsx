@@ -203,17 +203,16 @@ export default function AdminPage() {
     }
   }, [selectedClient]);
 
-  // Load weeks when a client is selected
+  // Load weeks once when a client is first selected
   const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
   useEffect(() => {
-    if (selectedClient && selectedClient !== weeksLoadedFor) {
-      const client = clients.find(c => c.id === selectedClient);
-      if (client && client.clientId) {
-        setWeeksLoadedFor(selectedClient);
-        fetchWeeks(client.clientId, true); // true = reset index to current week
-      }
+    if (!selectedClient || weeksLoadedFor === selectedClient) return;
+    const client = clients.find(c => c.id === selectedClient);
+    if (client && client.clientId) {
+      setWeeksLoadedFor(selectedClient);
+      fetchWeeks(client.clientId, true);
     }
-  }, [selectedClient, clients]);
+  }, [selectedClient, clients.length]);
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {

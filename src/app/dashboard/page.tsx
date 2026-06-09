@@ -177,8 +177,11 @@ export default function DashboardPage() {
                   <p className="text-gray-500 text-sm mt-1">Check back soon or message Crystal.</p>
                 </div>
                 {weeks.length > 0 && (
-                  <div className="text-center">
-                    <button onClick={() => setCurrentWeekIndex(0)} className="text-accent text-sm hover:underline">View published plans →</button>
+                  <div className="flex items-center justify-center gap-4 mt-4">
+                    <button onClick={() => setCurrentWeekIndex(weeks.length - 1)} className="text-gray-400 hover:text-white flex items-center gap-1 text-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      View past weeks
+                    </button>
                   </div>
                 )}
               </div>
@@ -203,11 +206,11 @@ export default function DashboardPage() {
 
             {/* Current week indicator */}
             {isViewingCurrentWeek() && (
-              <div className="text-center bg-accent/10 border border-accent/30 rounded-lg py-2 px-4 inline-block mx-auto">
-                <p className="text-accent font-heading text-xs uppercase">Current Week</p>
+              <div className="text-center">
+                <span className="inline-block bg-accent/10 border border-accent/30 rounded-lg py-1.5 px-4 text-accent font-heading text-xs uppercase">Current Week</span>
               </div>
             )}
-            {!isViewingCurrentWeek() && currentWeekIndex !== -1 && (
+            {!isViewingCurrentWeek() && (
               <div className="text-center">
                 <button onClick={() => {
                   const today = new Date();
@@ -223,9 +226,9 @@ export default function DashboardPage() {
 
             {/* Week Navigation */}
             <div className="flex items-center justify-between">
-              <button onClick={() => setCurrentWeekIndex(Math.max(currentWeekIndex - 1, 0))} disabled={currentWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
-              <div className="text-center"><h2 className="font-heading text-2xl uppercase text-white">{currentWeek.label}</h2><p className="text-gray-400 text-sm">{currentWeek.dateRange} &mdash; {currentWeek.focus} &mdash; <span className="text-white font-medium">{weeklyTotal} miles</span></p></div>
-              <button onClick={() => setCurrentWeekIndex(Math.min(currentWeekIndex + 1, weeks.length - 1))} disabled={currentWeekIndex >= weeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+              <button onClick={() => setCurrentWeekIndex(currentWeekIndex - 1)} disabled={currentWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+              <div className="text-center"><h2 className="font-heading text-2xl uppercase text-white">{currentWeek.dateRange}</h2><p className="text-gray-400 text-sm">{currentWeek.focus} &mdash; <span className="text-white font-medium">{weeklyTotal} miles</span></p></div>
+              <button onClick={() => setCurrentWeekIndex(currentWeekIndex + 1)} disabled={currentWeekIndex >= weeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             {/* Coach Message */}
