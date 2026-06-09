@@ -38,8 +38,7 @@ export default function LoginPage() {
         .eq("id", user.id)
         .single();
 
-      // Temporary debug - remove after testing
-      alert(`Debug info:\nUser ID: ${user.id}\nRole: ${profile?.role || 'NULL'}\nError: ${profileError?.message || 'none'}`);
+
 
       if (profile?.role === "admin") {
         window.location.href = "/admin";
