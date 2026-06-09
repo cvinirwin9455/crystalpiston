@@ -1,39 +1,30 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 // This page handles hash fragment redirects from Supabase email links
 // Supabase sends tokens as hash fragments (#access_token=...) which don't reach the server
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
-    const handleHashCallback = async () => {
+    const handleCallback = async () => {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+
       // Check if there's a hash fragment with tokens
       const hash = window.location.hash;
-      
-      if (hash && hash.includes("access_token")) {
-        // Supabase client library will automatically pick up the hash tokens
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (session && !error) {
-          // Check if this is a new user who needs to set password
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: profile } = await supabase
-              .from("users")
-              .select("role")
-              .eq("id", user.id)
-              .single();
 
-            // New invited users go to set-password
-            // Check if user was just invited (no password set yet)
-            router.push("/set-password");
-            return;
-          }
+      if (hash && hash.includes("access_token")) {
+        // Give Supabase a moment to process the token
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          router.push("/set-password");
+          return;
         }
       }
 
@@ -77,8 +68,8 @@ export default function AuthCallbackPage() {
       router.push("/login");
     };
 
-    handleHashCallback();
-  }, [supabase, router]);
+    handleCallback();
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center">
