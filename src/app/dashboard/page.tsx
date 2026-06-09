@@ -136,8 +136,79 @@ export default function DashboardPage() {
   const [skipReason, setSkipReason] = useState("");
   const [skipType, setSkipType] = useState<"skipped" | "partial">("skipped");
 
-  const toggleCompleted = (workoutId: string) => { if (!currentWeek) return; const updated = [...weeks]; const week = updated.find(w => w.weekId === currentWeek.weekId); const workout = week?.workouts.find((w) => w.id === workoutId); if (workout) { workout.completed = true; workout.status = "complete"; setWeeks(updated); } };
-  const markSkipped = (workoutId: string) => { if (!currentWeek) return; const updated = [...weeks]; const week = updated.find(w => w.weekId === currentWeek.weekId); const workout = week?.workouts.find((w) => w.id === workoutId); if (workout) { workout.completed = true; workout.status = skipType; workout.skipReason = skipReason; setWeeks(updated); } setShowSkipDialog(null); setSkipReason(""); };
+  const [savingLog, setSavingLog] = useState(false);
+
+  const toggleCompleted = async (workoutId: string) => {
+    if (!currentWeek) return;
+    const workout = currentWeek.workouts.find(w => w.id === workoutId);
+    if (!workout) return;
+
+    setSavingLog(true);
+    try {
+      const res = await fetch('/api/workout-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workoutId,
+          status: 'complete',
+          rpe: workout.log?.rpe || null,
+          actualMiles: workout.log?.actualMiles || null,
+          actualPace: workout.log?.actualPace || null,
+          stress: workout.log?.stress || null,
+          notes: workout.log?.notes || null,
+          onPeriod: workout.log?.onPeriod || null,
+          duration: workout.log?.duration || null,
+          energy: workout.log?.energy || null,
+          motivation: workout.log?.motivation || null,
+          sleep: workout.log?.sleep || null,
+          strength: workout.log?.strength || null,
+          recovery: workout.log?.recovery || null,
+          mood: workout.log?.mood || null,
+          hunger: workout.log?.hunger || null,
+        }),
+      });
+      if (res.ok) {
+        const updated = [...weeks];
+        const week = updated.find(w => w.weekId === currentWeek.weekId);
+        const wo = week?.workouts.find(w => w.id === workoutId);
+        if (wo) { wo.completed = true; wo.status = "complete"; }
+        setWeeks(updated);
+      }
+    } catch (err) {
+      console.error('Failed to save workout log:', err);
+    } finally {
+      setSavingLog(false);
+    }
+  };
+
+  const markSkipped = async (workoutId: string) => {
+    if (!currentWeek) return;
+    setSavingLog(true);
+    try {
+      const res = await fetch('/api/workout-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workoutId,
+          status: skipType,
+          skipReason: skipReason || null,
+        }),
+      });
+      if (res.ok) {
+        const updated = [...weeks];
+        const week = updated.find(w => w.weekId === currentWeek.weekId);
+        const wo = week?.workouts.find(w => w.id === workoutId);
+        if (wo) { wo.completed = true; wo.status = skipType; wo.skipReason = skipReason; }
+        setWeeks(updated);
+      }
+    } catch (err) {
+      console.error('Failed to save skip log:', err);
+    } finally {
+      setSavingLog(false);
+      setShowSkipDialog(null);
+      setSkipReason("");
+    }
+  };
   const updateWorkoutLog = (workoutId: string, field: string, value: string) => { if (!currentWeek) return; const updated = [...weeks]; const week = updated.find(w => w.weekId === currentWeek.weekId); const workout = week?.workouts.find((w) => w.id === workoutId); if (workout) { if (!workout.log) { workout.log = { rpe: "", stress: "", notes: "", energy: "", motivation: "", sleep: "", strength: "", recovery: "", mood: "", hunger: "" }; } (workout.log as Record<string, string>)[field] = value; setWeeks(updated); } };
 
   const getTypeLabel = (type: string) => { switch (type) { case "run": return "Run"; case "cross": return "Cross Training"; case "rest": return "Rest"; default: return type; } };
@@ -299,7 +370,7 @@ export default function DashboardPage() {
                           <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder={skipType === "skipped" ? "e.g. Sick, injury, schedule conflict, too tired..." : "e.g. Did 4 miles instead of 7 — knee started hurting at mile 4"} />
                         </div>
                         <div className="flex gap-3">
-                          <button onClick={() => markSkipped(workout.id)} disabled={!skipReason} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason ? "bg-gray-600 cursor-not-allowed" : skipType === "skipped" ? "bg-red-600 hover:bg-red-700" : "bg-yellow-600 hover:bg-yellow-700"}`}>{skipType === "skipped" ? "Mark as Skipped" : "Mark as Partial"}</button>
+                          <button onClick={() => markSkipped(workout.id)} disabled={!skipReason || savingLog} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason || savingLog ? "bg-gray-600 cursor-not-allowed" : skipType === "skipped" ? "bg-red-600 hover:bg-red-700" : "bg-yellow-600 hover:bg-yellow-700"}`}>{savingLog ? "Saving..." : skipType === "skipped" ? "Mark as Skipped" : "Mark as Partial"}</button>
                           <button onClick={() => { setShowSkipDialog(null); setSkipReason(""); }} className="text-gray-400 text-xs">Cancel</button>
                         </div>
                       </div>
@@ -395,7 +466,7 @@ export default function DashboardPage() {
                       {/* Save & Close */}
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
                         <button onClick={() => setExpandedWorkout(null)} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
-                        <button onClick={() => { toggleCompleted(workout.id); setExpandedWorkout(null); }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors">Complete & Save</button>
+                        <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete & Save"}</button>
                       </div>
                     </div>
                   )}
