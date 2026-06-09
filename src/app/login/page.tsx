@@ -32,16 +32,20 @@ export default function LoginPage() {
     // Get user role to redirect appropriately
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("role")
         .eq("id", user.id)
         .single();
 
+      console.log("Profile data:", profile, "Error:", profileError);
+
       if (profile?.role === "admin") {
-        router.push("/admin");
+        window.location.href = "/admin";
+        return;
       } else {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
+        return;
       }
     }
 
