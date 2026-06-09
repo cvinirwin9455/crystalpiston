@@ -13,7 +13,7 @@ export default function DashboardPage() {
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [newMessage, setNewMessage] = useState("");
   const [showMessageForm, setShowMessageForm] = useState(false);
-  const [messageViewIndex, setMessageViewIndex] = useState(0);
+
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
   const [clientMessages] = useState([
@@ -58,7 +58,7 @@ export default function DashboardPage() {
   const weeklyTotal = currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0);
   const completedCount = currentWeek.workouts.filter((w) => w.completed).length;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
-  const allCompleted = allWorkouts.filter((w) => w.completed);
+
   const statsWorkouts = statsFilter === "thisWeek" ? currentWeek.workouts : allWorkouts;
   const statsCompleted = statsWorkouts.filter(w => w.completed);
   const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
@@ -170,7 +170,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     {/* Log toggle */}
-                    {!workout.completed && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
+                    {!workout.completed && currentWeekIndex === 0 && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
                       <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
                         <button onClick={() => setExpandedWorkout(workout.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
