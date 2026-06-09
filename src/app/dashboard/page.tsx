@@ -60,6 +60,8 @@ export default function DashboardPage() {
             })),
           }));
           setWeeks(mapped);
+          // Default to first week (earliest chronologically)
+          // User navigates right for later weeks
           setCurrentWeekIndex(0);
         }
       } catch (err) {
@@ -147,9 +149,9 @@ export default function DashboardPage() {
 
             {/* Week Navigation */}
             <div className="flex items-center justify-between">
-              <button onClick={() => setCurrentWeekIndex(Math.min(currentWeekIndex + 1, weeks.length - 1))} disabled={currentWeekIndex >= weeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+              <button onClick={() => setCurrentWeekIndex(Math.max(currentWeekIndex - 1, 0))} disabled={currentWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
               <div className="text-center"><h2 className="font-heading text-2xl uppercase text-white">{currentWeek.label}</h2><p className="text-gray-400 text-sm">{currentWeek.dateRange} &mdash; {currentWeek.focus} &mdash; <span className="text-white font-medium">{weeklyTotal} miles</span></p></div>
-              <button onClick={() => setCurrentWeekIndex(Math.max(currentWeekIndex - 1, 0))} disabled={currentWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+              <button onClick={() => setCurrentWeekIndex(Math.min(currentWeekIndex + 1, weeks.length - 1))} disabled={currentWeekIndex >= weeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             {/* Coach Message */}

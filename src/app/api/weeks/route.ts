@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       )
     `)
     .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
+    .order('date_range', { ascending: true })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -184,20 +184,19 @@ export default function AdminPage() {
         }));
         // Update the client's weeks in state
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: mapped } : c));
-        
-        // Default to first (most recent) published week
-        setSelectedWeekIndex(0);
       }
     } catch (err) {
       console.error('Failed to fetch weeks:', err);
     }
   }, [selectedClient]);
 
-  // Load weeks when a client is selected (also re-runs when clients list loads)
+  // Load weeks when a client is selected
+  const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
   useEffect(() => {
-    if (selectedClient) {
+    if (selectedClient && selectedClient !== weeksLoadedFor) {
       const client = clients.find(c => c.id === selectedClient);
       if (client && client.clientId) {
+        setWeeksLoadedFor(selectedClient);
         fetchWeeks(client.clientId);
       }
     }
@@ -404,14 +403,14 @@ export default function AdminPage() {
             {clientTab === "plan" && publishedWeeks.length > 0 && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setSelectedWeekIndex(Math.min(selectedWeekIndex + 1, publishedWeeks.length - 1))} disabled={selectedWeekIndex >= publishedWeeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                  <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
                     <p className="font-heading text-lg uppercase text-white">{selectedWeek?.label}</p>
                     <p className="text-gray-400 text-xs">{selectedWeek?.dateRange} &mdash; {selectedWeek?.focus}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>
-                    <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+                    <button onClick={() => setSelectedWeekIndex(Math.min(selectedWeekIndex + 1, publishedWeeks.length - 1))} disabled={selectedWeekIndex >= publishedWeeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
 
