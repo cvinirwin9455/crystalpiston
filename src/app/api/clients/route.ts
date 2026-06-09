@@ -22,7 +22,15 @@ export async function GET() {
   }
 
   // Fetch all users with role 'client' joined with their client record
-  const { data: clients, error } = await supabase
+  // Use service role to bypass RLS for admin operations
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data: clients, error } = await adminClient
     .from('users')
     .select(`
       id,

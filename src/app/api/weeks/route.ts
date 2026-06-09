@@ -15,7 +15,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
   }
 
-  const { data: weeks, error } = await supabase
+  // Use service role to bypass RLS for admin reads
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data: weeks, error } = await adminClient
     .from('weeks')
     .select(`
       id,
@@ -130,6 +138,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Use service role for DB writes to bypass RLS
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
   const body = await request.json()
   const { clientId, dateRange, focus, coachMessage, status, workouts } = body
 
@@ -138,7 +154,7 @@ export async function POST(request: Request) {
   }
 
   // Create the week
-  const { data: week, error: weekError } = await supabase
+  const { data: week, error: weekError } = await adminClient
     .from('weeks')
     .insert({
       client_id: clientId,
@@ -170,7 +186,7 @@ export async function POST(request: Request) {
       sort_order: index,
     }))
 
-    const { error: workoutsError } = await supabase
+    const { error: workoutsError } = await adminClient
       .from('workouts')
       .insert(workoutRows)
 
