@@ -218,7 +218,7 @@ export default function DashboardPage() {
                           <div className="bg-primary/50 border border-white/5 rounded-lg p-3 mb-4">
                             <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">How hard did this workout feel?</label></div>
                             <p className="text-gray-600 text-xs mb-2">1 = barely broke a sweat, 10 = gave everything I had</p>
-                            <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || "5"} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
+                            <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
                             <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out effort</span></div>
                           </div>
                           <div className="grid md:grid-cols-3 gap-4 mb-4">
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                           <div className="bg-primary/50 border border-white/5 rounded-lg p-3 mb-4">
                             <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">How hard did this workout feel?</label></div>
                             <p className="text-gray-600 text-xs mb-2">1 = barely broke a sweat, 10 = gave everything I had</p>
-                            <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || "5"} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
+                            <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
                             <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out effort</span></div>
                           </div>
                           <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -284,7 +284,7 @@ export default function DashboardPage() {
                                 <label className="text-gray-300 text-xs">{field.label}</label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.[field.key] || "5"} onChange={(e) => updateWorkoutLog(workout.id, field.key, e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                <input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.[field.key] || ""} onChange={(e) => updateWorkoutLog(workout.id, field.key, e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
                                 <span className="text-white text-sm font-bold w-5 text-center">{(workout.log as Record<string, string> | undefined)?.[field.key] || "—"}</span>
                               </div>
                               <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Poor</span><span className="text-gray-600 text-xs">Great</span></div>
