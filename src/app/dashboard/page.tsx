@@ -120,6 +120,13 @@ export default function DashboardPage() {
         {/* TRAINING TAB (merged with dashboard stats) */}
         {activeTab === "training" && (
           <>
+            {/* Loading or empty state */}
+            {weeks.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-400">{loadingWeeks ? "Loading your training..." : "No training plans published yet. Check back soon!"}</p>
+              </div>
+            )}
+            {weeks.length > 0 && currentWeek && (<>
             {/* Stats Summary (collapsible, filter toggles) */}
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
@@ -320,7 +327,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
-
+          </>)}
           </>
         )}
 
