@@ -1,48 +1,59 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-// This component detects Supabase auth hash fragments on any page
-// and redirects users to the appropriate destination
+// This component detects Supabase auth events (like invite link clicks)
+// and redirects invited users to the set-password page
 export default function AuthRedirect() {
+  const handled = useRef(false);
+
   useEffect(() => {
-    const handleHash = async () => {
-      const hash = window.location.hash;
+    // Check for hash fragment immediately (before Supabase processes it)
+    const hash = window.location.hash;
+    const hasAuthHash = hash && (hash.includes("access_token") || hash.includes("error"));
 
-      // Only act if there's an auth-related hash fragment
-      if (!hash || (!hash.includes("access_token") && !hash.includes("error=access_denied"))) {
-        return;
+    if (!hasAuthHash) return;
+    if (handled.current) return;
+    handled.current = true;
+
+    // If there's an error (expired token, etc.)
+    if (hash.includes("error")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const errorDesc = params.get("error_description") || "";
+      if (errorDesc.includes("expired")) {
+        window.location.href = "/login?error=link_expired";
       }
+      return;
+    }
 
-      // If there's an error (expired token, etc.)
-      if (hash.includes("error")) {
-        const params = new URLSearchParams(hash.substring(1));
-        const errorDesc = params.get("error_description") || "";
-        if (errorDesc.includes("expired")) {
-          window.location.href = "/login?error=link_expired";
-        }
-        return;
-      }
-
-      // If there's an access token, Supabase will pick it up automatically
-      if (hash.includes("access_token")) {
-        // Dynamically import to avoid issues during prerender
+    // If there's an access token (invite link)
+    if (hash.includes("access_token")) {
+      const handleInvite = async () => {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
 
-        // Give Supabase a moment to process the token
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Listen for the session to be established
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+            subscription.unsubscribe();
+            // Small delay to ensure session is fully set
+            setTimeout(() => {
+              window.location.href = "/set-password";
+            }, 200);
+          }
+        });
 
+        // Also try immediately in case session is already available
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          // Redirect to set-password for invited users
+          subscription.unsubscribe();
           window.location.href = "/set-password";
         }
-      }
-    };
+      };
 
-    handleHash();
+      handleInvite();
+    }
   }, []);
 
-  return null; // This component renders nothing
+  return null;
 }
