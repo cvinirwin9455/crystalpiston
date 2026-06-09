@@ -144,21 +144,6 @@ export default function AdminPage() {
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
   const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft");
   const selectedWeek = publishedWeeks[selectedWeekIndex];
-
-  // Determine if a week is in the past (before current week)
-  const isWeekPast = (weekIndex: number) => {
-    // Parse the start date from the date range (e.g. "Jun 15 - Jun 21")
-    const week = publishedWeeks[weekIndex];
-    if (!week) return false;
-    const startStr = week.dateRange.split(' - ')[0];
-    const weekStart = new Date(startStr + ', 2026');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    // A week is past if its start + 6 days is before today
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    return weekEnd < today;
-  };
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
@@ -200,27 +185,8 @@ export default function AdminPage() {
         // Update the client's weeks in state
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: mapped } : c));
         
-        // Set initial week index to current/latest week
-        const publishedMapped = mapped.filter(w => w.status === "published");
-        if (publishedMapped.length > 0) {
-          // Find the week closest to today (default to last/latest)
-          const today = new Date();
-          let bestIndex = publishedMapped.length - 1;
-          for (let i = 0; i < publishedMapped.length; i++) {
-            const startStr = publishedMapped[i].dateRange.split(' - ')[0];
-            const weekStart = new Date(startStr + ', 2026');
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            if (today >= weekStart && today <= weekEnd) {
-              bestIndex = i;
-              break;
-            } else if (weekStart > today) {
-              bestIndex = Math.max(0, i - 1);
-              break;
-            }
-          }
-          setSelectedWeekIndex(bestIndex);
-        }
+        // Default to first (most recent) published week
+        setSelectedWeekIndex(0);
       }
     } catch (err) {
       console.error('Failed to fetch weeks:', err);
@@ -444,8 +410,7 @@ export default function AdminPage() {
                     <p className="text-gray-400 text-xs">{selectedWeek?.dateRange} &mdash; {selectedWeek?.focus}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {!isWeekPast(selectedWeekIndex) && <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
-                    {isWeekPast(selectedWeekIndex) && <span className="text-gray-600 text-xs italic">Past weeks are locked</span>}
+                    <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>
                     <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
