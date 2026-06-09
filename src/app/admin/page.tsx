@@ -184,6 +184,16 @@ export default function AdminPage() {
         }));
         // Update the client's weeks in state
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: mapped } : c));
+        
+        // Find current real week and default to it
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const publishedMapped = mapped.filter((w: any) => w.status === 'published');
+        const currentIdx = publishedMapped.findIndex((w: any) => w.dateRange.startsWith(mondayStr));
+        setSelectedWeekIndex(currentIdx >= 0 ? currentIdx : 0);
       }
     } catch (err) {
       console.error('Failed to fetch weeks:', err);
@@ -290,6 +300,29 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Failed to unpublish week:', err);
     }
+  };
+
+  // Get current real week label
+  const getCurrentWeekLabel = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${fmt(monday)} - ${fmt(sunday)}`;
+  };
+
+  // Check if the currently viewed week IS the real current week
+  const isViewingCurrentWeek = () => {
+    if (!selectedWeek) return false;
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return selectedWeek.dateRange.startsWith(mondayStr);
   };
 
   const getTrainingTypeLabel = (tt: string) => { switch (tt) { case "SpeedRoad": return "Speed Workout - Road"; case "SpeedTrack": return "Speed Workout - Track"; case "Tempo": return "Tempo Runs"; case "Threshold": return "Threshold Runs"; case "LongRun": return "Long Run"; case "Easy": return "Easy Run"; case "Recovery": return "Recovery Run"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals (Run/Walk)"; case "RacePace": return "Race Pace"; case "ClosePace": return "Close to Race Pace"; case "TimeTrial": return "Time Trial"; case "CrossTraining": return "Cross Training"; case "OrangeTheory": return "Cross Training"; case "Rest": return "Rest"; default: return tt; } };
@@ -405,8 +438,9 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
-                    <p className="font-heading text-lg uppercase text-white">{selectedWeek?.label}</p>
-                    <p className="text-gray-400 text-xs">{selectedWeek?.dateRange} &mdash; {selectedWeek?.focus}</p>
+                    {isViewingCurrentWeek() && <p className="text-accent font-heading text-xs uppercase mb-1">Current Week</p>}
+                    <p className="font-heading text-lg uppercase text-white">{selectedWeek?.dateRange}</p>
+                    <p className="text-gray-400 text-xs">{selectedWeek?.focus}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>
@@ -492,7 +526,14 @@ export default function AdminPage() {
                 {editingWeek && <div className="flex gap-3"><button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save Changes</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
               </div>
             )}
-            {clientTab === "plan" && publishedWeeks.length === 0 && <p className="text-gray-500 text-center py-12">No published weeks yet. Create a week plan and publish it.</p>}
+            {clientTab === "plan" && publishedWeeks.length === 0 && (
+              <div className="text-center py-12 space-y-3">
+                <div className="bg-accent/10 border border-accent/30 rounded-xl py-3 px-4 inline-block">
+                  <p className="text-accent font-heading text-sm uppercase">Current Week: {getCurrentWeekLabel()}</p>
+                </div>
+                <p className="text-gray-500">No published plans for this client yet. Create a week plan and publish it.</p>
+              </div>
+            )}
 
             {/* DRAFTS */}
             {clientTab === "drafts" && (
