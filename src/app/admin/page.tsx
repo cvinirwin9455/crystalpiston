@@ -7,7 +7,7 @@ type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; 
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; weeks: WeekData[]; messages: CoachMessage[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; weeks: WeekData[]; messages: CoachMessage[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -67,6 +67,7 @@ export default function AdminPage() {
         // Map API response to Client type
         const mapped: Client[] = data.map((c: any) => ({
           id: c.userId,
+          clientId: c.clientId || null,
           name: c.name || '',
           email: c.email || '',
           gender: c.gender || 'female',
@@ -151,8 +152,141 @@ export default function AdminPage() {
   const clientMessages = selectedClientData?.messages || [];
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
-  const publishWeek = (weekId: string) => { const updated = clients.map(c => { if (c.id === selectedClient) { return { ...c, weeks: c.weeks.map(w => w.weekId === weekId ? { ...w, status: "published" as const } : w) }; } return c; }); setClients(updated); };
-  const unpublishWeek = (weekId: string) => { const updated = clients.map(c => { if (c.id === selectedClient) { return { ...c, weeks: c.weeks.map(w => w.weekId === weekId ? { ...w, status: "draft" as const } : w) }; } return c; }); setClients(updated); };
+  // Fetch weeks for a client from the API
+  const fetchWeeks = useCallback(async (clientId: string) => {
+    try {
+      const res = await fetch(`/api/weeks?client_id=${clientId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const mapped: WeekData[] = data.map((w: any) => ({
+          weekId: w.weekId,
+          label: w.dateRange,
+          dateRange: w.dateRange,
+          focus: w.focus || '',
+          coachMessage: w.coachMessage || '',
+          status: w.status as "published" | "draft",
+          workouts: (w.workouts || []).map((wo: any) => ({
+            id: wo.id,
+            day: wo.day || '',
+            date: '',
+            type: wo.type || 'run',
+            trainingType: wo.trainingType || '',
+            title: wo.title || '',
+            miles: wo.miles,
+            description: wo.description || '',
+            paceTarget: wo.paceTarget || '',
+            location: wo.location || '',
+            coachNotes: wo.coachNotes || '',
+            completed: wo.completed || false,
+            status: wo.status || undefined,
+            skipReason: wo.skipReason || undefined,
+            log: wo.log || undefined,
+          })),
+        }));
+        // Update the client's weeks in state
+        setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: mapped } : c));
+      }
+    } catch (err) {
+      console.error('Failed to fetch weeks:', err);
+    }
+  }, [selectedClient]);
+
+  // Load weeks when a client is selected
+  useEffect(() => {
+    if (selectedClient) {
+      const client = clients.find(c => c.id === selectedClient);
+      if (client && client.clientId) {
+        fetchWeeks(client.clientId);
+      }
+    }
+  }, [selectedClient]);
+
+  // Save a new week plan (draft or published)
+  const handleSaveWeek = async (publishStatus: "draft" | "published") => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client || !client.clientId) return;
+
+    const workouts = weekPlan.days.map((day) => ({
+      day: day.day,
+      type: day.type,
+      trainingType: day.trainingType || null,
+      title: day.title || null,
+      miles: day.miles || null,
+      description: day.description || null,
+      paceTarget: day.paceTarget || null,
+      location: day.location || null,
+      coachNotes: day.coachNotes || null,
+    }));
+
+    try {
+      const res = await fetch('/api/weeks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: client.clientId,
+          dateRange: weekPlan.dateRange,
+          focus: weekPlan.focus,
+          coachMessage: weekPlan.coachMessage,
+          status: publishStatus,
+          workouts,
+        }),
+      });
+      if (res.ok) {
+        // Reset form
+        setWeekPlan({
+          dateRange: "", focus: "", coachMessage: "",
+          days: [
+            { day: "Monday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Tuesday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Wednesday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Thursday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Friday", type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Saturday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Sunday", type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+          ],
+        });
+        setSelectedWeekStart(null);
+        // Refresh weeks
+        fetchWeeks(client.clientId);
+        setClientTab(publishStatus === "draft" ? "drafts" : "plan");
+      }
+    } catch (err) {
+      console.error('Failed to save week:', err);
+    }
+  };
+
+  // Publish/unpublish a week via API
+  const publishWeek = async (weekId: string) => {
+    try {
+      const res = await fetch(`/api/weeks/${weekId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'published' }),
+      });
+      if (res.ok) {
+        const client = clients.find(c => c.id === selectedClient);
+        if (client && client.clientId) fetchWeeks(client.clientId);
+      }
+    } catch (err) {
+      console.error('Failed to publish week:', err);
+    }
+  };
+
+  const unpublishWeek = async (weekId: string) => {
+    try {
+      const res = await fetch(`/api/weeks/${weekId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'draft' }),
+      });
+      if (res.ok) {
+        const client = clients.find(c => c.id === selectedClient);
+        if (client && client.clientId) fetchWeeks(client.clientId);
+      }
+    } catch (err) {
+      console.error('Failed to unpublish week:', err);
+    }
+  };
 
   const getTrainingTypeLabel = (tt: string) => { switch (tt) { case "SpeedRoad": return "Speed Workout - Road"; case "SpeedTrack": return "Speed Workout - Track"; case "Tempo": return "Tempo Runs"; case "Threshold": return "Threshold Runs"; case "LongRun": return "Long Run"; case "Easy": return "Easy Run"; case "Recovery": return "Recovery Run"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals (Run/Walk)"; case "RacePace": return "Race Pace"; case "ClosePace": return "Close to Race Pace"; case "TimeTrial": return "Time Trial"; case "CrossTraining": return "Cross Training"; case "OrangeTheory": return "Cross Training"; case "Rest": return "Rest"; default: return tt; } };
   const getTypeBadge = (type: string) => { switch (type) { case "run": return "bg-accent/20 text-accent"; case "cross": return "bg-gold/20 text-gold"; case "rest": return "bg-green-500/20 text-green-400"; default: return "bg-gray-500/20 text-gray-400"; } };
@@ -449,7 +583,7 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3"><button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save as Draft</button><button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save & Publish</button></div>
+                <div className="flex gap-3"><button onClick={() => handleSaveWeek("draft")} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save as Draft</button><button onClick={() => handleSaveWeek("published")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save & Publish</button></div>
               </div>
             )}
 

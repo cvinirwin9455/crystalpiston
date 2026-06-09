@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
@@ -25,41 +25,57 @@ export default function DashboardPage() {
 
   const [clientInfo] = useState({ name: "Sarah M.", goal: "War Eagle 50K", planDuration: "July 26, 2026", startDate: "May 5, 2026", owed: 525.0, paid: 175.0, balance: 350.0 });
 
-  const [weeks, setWeeks] = useState<WeekData[]>([
-    {
-      weekId: "week-current", label: "This Week", dateRange: "Jun 9 - Jun 15", focus: "Descending 1200s & Race Pace",
-      coachMessage: "Training is loaded. Tuesday and Thursday are the key workouts. Don't start too fast on the 1200s — the point is to get 10 seconds faster each rep.",
-      workouts: [
-        { id: "w1-mon", day: "Monday", date: "Jun 9", type: "cross", trainingType: "CrossTraining", title: "Gym Session", miles: null, description: "Cross training class", completed: false },
-        { id: "w1-tue", day: "Tuesday", date: "Jun 10", type: "run", trainingType: "SpeedTrack", title: "Descending 1200s", miles: 8, description: "3 mi WU | Descending 1200s | 1 mi CD", paceTarget: "Reps from 8:30 down to 7:40", location: "Kickapoo Track", coachNotes: "Rep 1: 400@8:30, 400@8:20, 400@8:10, Recovery Jog. Each rep starts 10s faster.", completed: false },
-        { id: "w1-wed", day: "Wednesday", date: "Jun 11", type: "run", trainingType: "Easy", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: false },
-        { id: "w1-thu", day: "Thursday", date: "Jun 12", type: "run", trainingType: "ClosePace", title: "Close to Race Pace", miles: 10, description: "2 mi WU | 7mi @ 8:50 | 1 CD", paceTarget: "8:50/mi", completed: false },
-        { id: "w1-fri", day: "Friday", date: "Jun 13", type: "cross", trainingType: "CrossTraining", title: "Gym Session", miles: null, description: "Cross training class", completed: false },
-        { id: "w1-sat", day: "Saturday", date: "Jun 14", type: "run", trainingType: "LongRun", title: "Long Run", miles: 17, description: "17 mi default pace", completed: false },
-        { id: "w1-sun", day: "Sunday", date: "Jun 15", type: "run", trainingType: "Recovery", title: "Recovery Run", miles: 7, description: "7 easy recovery", completed: false },
-      ],
-    },
-    {
-      weekId: "week-prev", label: "Last Week", dateRange: "Jun 2 - Jun 8", focus: "Hills & Specificity",
-      coachMessage: "Specificity training on hills. Jeff will guide you on technique.",
-      workouts: [
-        { id: "w2-mon", day: "Monday", date: "Jun 2", type: "cross", trainingType: "CrossTraining", title: "Bike / Strength", miles: null, description: "30 min bike, upper body strength circuit", completed: true, log: { rpe: "6", stress: "", notes: "Felt good", energy: "7", motivation: "8", sleep: "7", strength: "7", recovery: "6", mood: "8", hunger: "7", duration: "45 min" } },
-        { id: "w2-tue", day: "Tuesday", date: "Jun 3", type: "run", trainingType: "Hills", title: "HILLS - Technique Day", miles: 7, description: "2 WU | 1 down | 1 up | 1 down | 1 up | 1 CD", paceTarget: "Downhill close to race pace", location: "Hills", completed: true, log: { rpe: "8", stress: "", notes: "Jeff was great help", energy: "8", motivation: "9", sleep: "7", strength: "7", recovery: "7", mood: "9", hunger: "6", actualMiles: "7.2", actualPace: "8:45", onPeriod: "yes" } },
-        { id: "w2-wed", day: "Wednesday", date: "Jun 4", type: "run", trainingType: "Easy", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: true, log: { rpe: "4", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "6", recovery: "7", mood: "7", hunger: "8", onPeriod: "yes" } },
-        { id: "w2-thu", day: "Thursday", date: "Jun 5", type: "run", trainingType: "SpeedRoad", title: "Strides", miles: 7, description: "7 mi w/strides", completed: true, log: { rpe: "7", stress: "", notes: "Legs heavy from hills", energy: "6", motivation: "7", sleep: "6", strength: "6", recovery: "5", mood: "7", hunger: "7" } },
-        { id: "w2-fri", day: "Friday", date: "Jun 6", type: "cross", trainingType: "CrossTraining", title: "Bike / Strength", miles: null, description: "Bike and upper body.", completed: true, log: { rpe: "5", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "7", recovery: "7", mood: "8", hunger: "7", duration: "40 min" } },
-        { id: "w2-sat", day: "Saturday", date: "Jun 7", type: "run", trainingType: "RacePace", title: "Race Pace Workout", miles: 12, description: "5 WU | 5@9:15 (2 min rest) | 2 CD", paceTarget: "9:15/mi", completed: true, log: { rpe: "9", stress: "Travel Day", notes: "War Eagle!", energy: "8", motivation: "9", sleep: "7", strength: "8", recovery: "6", mood: "9", hunger: "8", actualMiles: "12.1", actualPace: "9:12" } },
-        { id: "w2-sun", day: "Sunday", date: "Jun 8", type: "rest", trainingType: "Rest", title: "Complete Rest", miles: null, description: "Rest day.", completed: true, log: { rpe: "", stress: "", notes: "Great week", energy: "8", motivation: "8", sleep: "9", strength: "7", recovery: "8", mood: "9", hunger: "7" } },
-      ],
-    },
-  ]);
+  const [weeks, setWeeks] = useState<WeekData[]>([]);
+  const [loadingWeeks, setLoadingWeeks] = useState(true);
+
+  // Fetch published weeks from API
+  useEffect(() => {
+    const fetchWeeks = async () => {
+      try {
+        const res = await fetch('/api/my-weeks');
+        if (res.ok) {
+          const data = await res.json();
+          const mapped: WeekData[] = data.map((w: any, index: number) => ({
+            weekId: w.weekId,
+            label: index === 0 ? "This Week" : index === 1 ? "Last Week" : w.dateRange,
+            dateRange: w.dateRange,
+            focus: w.focus || '',
+            coachMessage: w.coachMessage || '',
+            workouts: (w.workouts || []).map((wo: any) => ({
+              id: wo.id,
+              day: wo.day || '',
+              date: '',
+              type: wo.type || 'run',
+              trainingType: wo.trainingType || '',
+              title: wo.title || '',
+              miles: wo.miles,
+              description: wo.description || '',
+              paceTarget: wo.paceTarget || '',
+              location: wo.location || '',
+              coachNotes: wo.coachNotes || '',
+              completed: wo.completed || false,
+              status: wo.status || undefined,
+              skipReason: wo.skipReason || undefined,
+              log: wo.log || undefined,
+            })),
+          }));
+          setWeeks(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to fetch weeks:', err);
+      } finally {
+        setLoadingWeeks(false);
+      }
+    };
+    fetchWeeks();
+  }, []);
 
   const currentWeek = weeks[currentWeekIndex];
-  const weeklyTotal = currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0);
-  const completedCount = currentWeek.workouts.filter((w) => w.completed).length;
+  const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) : 0;
+  const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed).length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
 
-  const statsWorkouts = statsFilter === "thisWeek" ? currentWeek.workouts : allWorkouts;
+  const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []) : allWorkouts;
   const statsCompleted = statsWorkouts.filter(w => w.completed);
   const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
   const statsAvgRpe = () => { const withRpe = statsCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
@@ -87,7 +103,7 @@ export default function DashboardPage() {
             <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
             <div><h1 className="font-heading text-xl uppercase text-white">My Training</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
           </div>
-          <a href="/" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
+          <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
         </div>
       </header>
 
