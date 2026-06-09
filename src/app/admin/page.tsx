@@ -281,8 +281,19 @@ export default function AdminPage() {
         body: JSON.stringify({ status: 'published' }),
       });
       if (res.ok) {
+        // Remember what week we're currently viewing
+        const currentDateRange = selectedWeek?.dateRange;
         const client = clients.find(c => c.id === selectedClient);
-        if (client && client.clientId) fetchWeeks(client.clientId);
+        if (client && client.clientId) {
+          await fetchWeeks(client.clientId);
+          // After refresh, find our week again in the new publishedWeeks
+          if (currentDateRange) {
+            const updatedClient = clients.find(c => c.id === selectedClient);
+            const updatedPublished = (updatedClient?.weeks || []).filter(w => w.status === 'published');
+            const idx = updatedPublished.findIndex(w => w.dateRange === currentDateRange);
+            if (idx >= 0) setSelectedWeekIndex(idx);
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to publish week:', err);
@@ -326,6 +337,23 @@ export default function AdminPage() {
     monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
     const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return selectedWeek.dateRange.startsWith(mondayStr);
+  };
+
+  // Check if viewed week is in the past (ended before this week started)
+  const isViewingPastWeek = () => {
+    if (!selectedWeek) return false;
+    // Get this Monday
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    thisMonday.setHours(0, 0, 0, 0);
+    
+    // Parse the week's start date (e.g. "Jun 9" from "Jun 9 - Jun 15")
+    const weekStartStr = selectedWeek.dateRange.split(' - ')[0];
+    const weekStart = new Date(weekStartStr + ', 2026');
+    
+    return weekStart < thisMonday;
   };
 
   const getTrainingTypeLabel = (tt: string) => { switch (tt) { case "SpeedRoad": return "Speed Workout - Road"; case "SpeedTrack": return "Speed Workout - Track"; case "Tempo": return "Tempo Runs"; case "Threshold": return "Threshold Runs"; case "LongRun": return "Long Run"; case "Easy": return "Easy Run"; case "Recovery": return "Recovery Run"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals (Run/Walk)"; case "RacePace": return "Race Pace"; case "ClosePace": return "Close to Race Pace"; case "TimeTrial": return "Time Trial"; case "CrossTraining": return "Cross Training"; case "OrangeTheory": return "Cross Training"; case "Rest": return "Rest"; default: return tt; } };
@@ -446,7 +474,8 @@ export default function AdminPage() {
                     <p className="text-gray-400 text-xs">{selectedWeek?.focus}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>
+                    {!isViewingPastWeek() && <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
+                    {isViewingPastWeek() && <span className="text-gray-600 text-xs italic">Past week (locked)</span>}
                     <button onClick={() => setSelectedWeekIndex(Math.min(selectedWeekIndex + 1, publishedWeeks.length - 1))} disabled={selectedWeekIndex >= publishedWeeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
