@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
+import AuthRedirect from "./components/AuthRedirect";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,7 +34,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
-      <body className="font-body">{children}</body>
+      <body className="font-body">
+        <AuthRedirect />
+        {children}
+      </body>
     </html>
   );
 }
