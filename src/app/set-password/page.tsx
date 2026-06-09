@@ -16,15 +16,31 @@ export default function SetPasswordPage() {
 
   useEffect(() => {
     const checkSession = async () => {
+      // First check if there's already a session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
+      if (session) {
+        setChecking(false);
         return;
       }
-      setChecking(false);
+
+      // Wait for auth state change (hash token being processed)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session) {
+          setChecking(false);
+          subscription.unsubscribe();
+        }
+      });
+
+      // Timeout: if no session after 5 seconds, redirect to login
+      setTimeout(() => {
+        subscription.unsubscribe();
+        if (checking) {
+          router.push("/login");
+        }
+      }, 5000);
     };
     checkSession();
-  }, [supabase, router]);
+  }, []);
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
