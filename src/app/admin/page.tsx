@@ -64,13 +64,6 @@ export default function AdminPage() {
       const res = await fetch('/api/clients');
       const data = await res.json();
       if (res.ok) {
-        // Debug: show first client data
-        if (data.length > 0) {
-          alert(`API response - name: ${data[0].name}, clientId: ${data[0].clientId}`);
-        } else {
-          alert('API returned empty array');
-        }
-        // Map API response to Client type
         const mapped: Client[] = data.map((c: any) => ({
           id: c.userId,
           clientId: c.clientId || null,
@@ -87,11 +80,9 @@ export default function AdminPage() {
           messages: [],
         }));
         setClients(mapped);
-      } else {
-        alert(`API error: ${JSON.stringify(data)}`);
       }
     } catch (err) {
-      alert(`Fetch error: ${err}`);
+      console.error('Failed to fetch clients:', err);
     } finally {
       setLoadingClients(false);
     }
