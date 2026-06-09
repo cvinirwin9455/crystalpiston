@@ -10,7 +10,6 @@ type WeekData = { weekId: string; label: string; dateRange: string; focus: strin
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [newMessage, setNewMessage] = useState("");
   const [showMessageForm, setShowMessageForm] = useState(false);
 
@@ -25,8 +24,38 @@ export default function DashboardPage() {
 
   const [clientInfo] = useState({ name: "Sarah M.", goal: "War Eagle 50K", planDuration: "July 26, 2026", startDate: "May 5, 2026", owed: 525.0, paid: 175.0, balance: 350.0 });
 
-  const [weeks, setWeeks] = useState<WeekData[]>([]);
+  const [weeks, setWeeks] = useState<WeekData[]>([]); // All published weeks from API
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, +1 = next week
   const [loadingWeeks, setLoadingWeeks] = useState(true);
+  const [minOffset, setMinOffset] = useState(0); // furthest back we can go
+  const [maxOffset, setMaxOffset] = useState(0); // furthest forward we can go
+
+  // Helper: get the Monday of a week offset from current week
+  const getMondayForOffset = (offset: number) => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const targetMonday = new Date(thisMonday);
+    targetMonday.setDate(thisMonday.getDate() + (offset * 7));
+    return targetMonday;
+  };
+
+  // Helper: format a date range for a given offset
+  const getWeekLabel = (offset: number) => {
+    const monday = getMondayForOffset(offset);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${fmt(monday)} - ${fmt(sunday)}`;
+  };
+
+  // Helper: find the published plan for a given week offset (or null)
+  const getWeekPlan = (offset: number): WeekData | null => {
+    const monday = getMondayForOffset(offset);
+    const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return weeks.find(w => w.dateRange.startsWith(mondayStr)) || null;
+  };
 
   // Fetch published weeks from API
   useEffect(() => {
@@ -35,7 +64,7 @@ export default function DashboardPage() {
         const res = await fetch('/api/my-weeks');
         if (res.ok) {
           const data = await res.json();
-          const mapped: WeekData[] = data.map((w: any, index: number) => ({
+          const mapped: WeekData[] = data.map((w: any) => ({
             weekId: w.weekId,
             label: w.dateRange,
             dateRange: w.dateRange,
@@ -61,21 +90,28 @@ export default function DashboardPage() {
           }));
           setWeeks(mapped);
           
-          // Find the current real week (week containing today)
+          // Calculate navigation bounds based on published plans
           const today = new Date();
-          const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ...
-          const monday = new Date(today);
-          monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-          const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const dayOfWeek = today.getDay();
+          const thisMonday = new Date(today);
+          thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          thisMonday.setHours(0, 0, 0, 0);
+
+          let earliest = 0;
+          let latest = 0;
           
-          // Find index of the week that starts with this Monday
-          const currentIdx = mapped.findIndex(w => w.dateRange.startsWith(mondayStr));
-          if (currentIdx >= 0) {
-            setCurrentWeekIndex(currentIdx);
-          } else {
-            // No plan for current week — set to -1 to show "no plan" message
-            setCurrentWeekIndex(-1);
+          for (const w of mapped) {
+            const startStr = w.dateRange.split(' - ')[0];
+            const weekMonday = new Date(startStr + ', 2026');
+            weekMonday.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((weekMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
+            const offset = Math.round(diffDays / 7);
+            if (offset < earliest) earliest = offset;
+            if (offset > latest) latest = offset;
           }
+          
+          setMinOffset(earliest);
+          setMaxOffset(latest);
         }
       } catch (err) {
         console.error('Failed to fetch weeks:', err);
@@ -86,7 +122,7 @@ export default function DashboardPage() {
     fetchWeeks();
   }, []);
 
-  const currentWeek = weeks[currentWeekIndex];
+  const currentWeek = getWeekPlan(weekOffset);
   const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) : 0;
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed).length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
@@ -100,32 +136,9 @@ export default function DashboardPage() {
   const [skipReason, setSkipReason] = useState("");
   const [skipType, setSkipType] = useState<"skipped" | "partial">("skipped");
 
-  const toggleCompleted = (workoutId: string) => { const updated = [...weeks]; const workout = updated[currentWeekIndex].workouts.find((w) => w.id === workoutId); if (workout) { workout.completed = true; workout.status = "complete"; setWeeks(updated); } };
-  const markSkipped = (workoutId: string) => { const updated = [...weeks]; const workout = updated[currentWeekIndex].workouts.find((w) => w.id === workoutId); if (workout) { workout.completed = true; workout.status = skipType; workout.skipReason = skipReason; setWeeks(updated); } setShowSkipDialog(null); setSkipReason(""); };
-  const updateWorkoutLog = (workoutId: string, field: string, value: string) => { const updated = [...weeks]; const workout = updated[currentWeekIndex].workouts.find((w) => w.id === workoutId); if (workout) { if (!workout.log) { workout.log = { rpe: "", stress: "", notes: "", energy: "", motivation: "", sleep: "", strength: "", recovery: "", mood: "", hunger: "" }; } (workout.log as Record<string, string>)[field] = value; setWeeks(updated); } };
-
-  // Get current week date range label
-  const getCurrentWeekLabel = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${fmt(monday)} - ${fmt(sunday)}`;
-  };
-
-  // Check if the currently viewed week IS the real current week
-  const isViewingCurrentWeek = () => {
-    if (!currentWeek) return false;
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return currentWeek.dateRange.startsWith(mondayStr);
-  };
+  const toggleCompleted = (workoutId: string) => { if (!currentWeek) return; const updated = [...weeks]; const week = updated.find(w => w.weekId === currentWeek.weekId); const workout = week?.workouts.find((w) => w.id === workoutId); if (workout) { workout.completed = true; workout.status = "complete"; setWeeks(updated); } };
+  const markSkipped = (workoutId: string) => { if (!currentWeek) return; const updated = [...weeks]; const week = updated.find(w => w.weekId === currentWeek.weekId); const workout = week?.workouts.find((w) => w.id === workoutId); if (workout) { workout.completed = true; workout.status = skipType; workout.skipReason = skipReason; setWeeks(updated); } setShowSkipDialog(null); setSkipReason(""); };
+  const updateWorkoutLog = (workoutId: string, field: string, value: string) => { if (!currentWeek) return; const updated = [...weeks]; const week = updated.find(w => w.weekId === currentWeek.weekId); const workout = week?.workouts.find((w) => w.id === workoutId); if (workout) { if (!workout.log) { workout.log = { rpe: "", stress: "", notes: "", energy: "", motivation: "", sleep: "", strength: "", recovery: "", mood: "", hunger: "" }; } (workout.log as Record<string, string>)[field] = value; setWeeks(updated); } };
 
   const getTypeLabel = (type: string) => { switch (type) { case "run": return "Run"; case "cross": return "Cross Training"; case "rest": return "Rest"; default: return type; } };
   const getTrainingTypeLabel = (tt: string) => { switch (tt) { case "SpeedRoad": return "Speed Workout - Road"; case "SpeedTrack": return "Speed Workout - Track"; case "Tempo": return "Tempo Runs"; case "Threshold": return "Threshold Runs"; case "LongRun": return "Long Run"; case "Easy": return "Easy Run"; case "Recovery": return "Recovery Run"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals (Run/Walk)"; case "RacePace": return "Race Pace"; case "ClosePace": return "Close to Race Pace"; case "TimeTrial": return "Time Trial"; case "CrossTraining": return "Cross Training"; case "OrangeTheory": return "Cross Training"; case "Rest": return "Rest"; default: return tt; } };
@@ -159,35 +172,45 @@ export default function DashboardPage() {
         {/* TRAINING TAB (merged with dashboard stats) */}
         {activeTab === "training" && (
           <>
-            {/* Loading or empty state */}
+            {/* Loading state */}
             {loadingWeeks && (
               <div className="text-center py-12">
                 <p className="text-gray-400">Loading your training...</p>
               </div>
             )}
-            {!loadingWeeks && currentWeekIndex === -1 && (
-              <div className="space-y-4">
-                {/* Current week indicator */}
-                <div className="text-center bg-accent/10 border border-accent/30 rounded-xl py-3 px-4">
-                  <p className="text-accent font-heading text-sm uppercase">This Week</p>
-                  <p className="text-white text-sm">{getCurrentWeekLabel()}</p>
-                </div>
-                <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
-                  <p className="text-gray-400">No training plan published for this week.</p>
-                  <p className="text-gray-500 text-sm mt-1">Check back soon or message Crystal.</p>
-                </div>
-                {weeks.length > 0 && (
-                  <div className="flex items-center justify-center gap-4 mt-4">
-                    <button onClick={() => setCurrentWeekIndex(weeks.length - 1)} className="text-gray-400 hover:text-white flex items-center gap-1 text-sm">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                      View past weeks
-                    </button>
-                  </div>
-                )}
+            {!loadingWeeks && (<>
+            {/* Current week badge */}
+            {weekOffset === 0 && (
+              <div className="text-center">
+                <span className="inline-block bg-accent/10 border border-accent/30 rounded-lg py-1.5 px-4 text-accent font-heading text-xs uppercase">Current Week</span>
               </div>
             )}
-            {!loadingWeeks && currentWeekIndex >= 0 && currentWeek && (<>
-            {/* Stats Summary (collapsible, filter toggles) */}
+            {weekOffset !== 0 && (
+              <div className="text-center">
+                <button onClick={() => setWeekOffset(0)} className="text-accent text-xs hover:underline">← Go to current week</button>
+              </div>
+            )}
+
+            {/* Week Navigation */}
+            <div className="flex items-center justify-between">
+              <button onClick={() => setWeekOffset(weekOffset - 1)} disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+              <div className="text-center">
+                <h2 className="font-heading text-2xl uppercase text-white">{getWeekLabel(weekOffset)}</h2>
+                {currentWeek && <p className="text-gray-400 text-sm">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotal} miles</span></p>}
+              </div>
+              <button onClick={() => setWeekOffset(weekOffset + 1)} disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+            </div>
+
+            {/* No plan for this week */}
+            {!currentWeek && (
+              <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
+                <p className="text-gray-400">No training plan published for this week.</p>
+                {weekOffset === 0 && <p className="text-gray-500 text-sm mt-1">Check back soon or message Crystal.</p>}
+              </div>
+            )}
+
+            {/* Has a plan — show stats + workouts */}
+            {currentWeek && (<>
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
@@ -202,33 +225,6 @@ export default function DashboardPage() {
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>
               </div>
-            </div>
-
-            {/* Current week indicator */}
-            {isViewingCurrentWeek() && (
-              <div className="text-center">
-                <span className="inline-block bg-accent/10 border border-accent/30 rounded-lg py-1.5 px-4 text-accent font-heading text-xs uppercase">Current Week</span>
-              </div>
-            )}
-            {!isViewingCurrentWeek() && (
-              <div className="text-center">
-                <button onClick={() => {
-                  const today = new Date();
-                  const dayOfWeek = today.getDay();
-                  const monday = new Date(today);
-                  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-                  const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  const idx = weeks.findIndex(w => w.dateRange.startsWith(mondayStr));
-                  setCurrentWeekIndex(idx >= 0 ? idx : -1);
-                }} className="text-accent text-xs hover:underline">← Go to current week</button>
-              </div>
-            )}
-
-            {/* Week Navigation */}
-            <div className="flex items-center justify-between">
-              <button onClick={() => setCurrentWeekIndex(currentWeekIndex - 1)} disabled={currentWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
-              <div className="text-center"><h2 className="font-heading text-2xl uppercase text-white">{currentWeek.dateRange}</h2><p className="text-gray-400 text-sm">{currentWeek.focus} &mdash; <span className="text-white font-medium">{weeklyTotal} miles</span></p></div>
-              <button onClick={() => setCurrentWeekIndex(currentWeekIndex + 1)} disabled={currentWeekIndex >= weeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             {/* Coach Message */}
@@ -273,7 +269,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     {/* Log toggle */}
-                    {!workout.completed && currentWeekIndex === 0 && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
+                    {!workout.completed && weekOffset === 0 && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
                       <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
                         <button onClick={() => setExpandedWorkout(workout.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -407,6 +403,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
+          </>)}
           </>)}
           </>
         )}

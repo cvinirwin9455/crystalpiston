@@ -12,7 +12,6 @@ type Client = { id: string; clientId: string | null; name: string; email: string
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account">("plan");
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
   const [editingWeek, setEditingWeek] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -143,13 +142,43 @@ export default function AdminPage() {
   const selectedClientWeeks = selectedClientData?.weeks || [];
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
   const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft");
-  const selectedWeek = publishedWeeks[selectedWeekIndex];
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
   const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
   const clientMessages = selectedClientData?.messages || [];
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
+
+  // Calendar-based week navigation for admin (same as client)
+  const [adminWeekOffset, setAdminWeekOffset] = useState(0);
+  const [adminMinOffset, setAdminMinOffset] = useState(0);
+  const [adminMaxOffset, setAdminMaxOffset] = useState(0);
+
+  const getAdminMondayForOffset = (offset: number) => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const targetMonday = new Date(thisMonday);
+    targetMonday.setDate(thisMonday.getDate() + (offset * 7));
+    return targetMonday;
+  };
+
+  const getAdminWeekLabel = (offset: number) => {
+    const monday = getAdminMondayForOffset(offset);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${fmt(monday)} - ${fmt(sunday)}`;
+  };
+
+  const getAdminWeekPlan = (offset: number): WeekData | null => {
+    const monday = getAdminMondayForOffset(offset);
+    const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return publishedWeeks.find(w => w.dateRange.startsWith(mondayStr)) || null;
+  };
+
+  const selectedWeek = getAdminWeekPlan(adminWeekOffset);
 
   // Fetch weeks for a client from the API
   // resetIndex: if true, jump to current week. If false, keep current position.
@@ -186,16 +215,31 @@ export default function AdminPage() {
         // Update the client's weeks in state
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: mapped } : c));
         
-        // Only reset index on initial load, not on refresh
+        // Calculate navigation bounds based on published plans
         if (resetIndex) {
           const today = new Date();
           const dayOfWeek = today.getDay();
-          const monday = new Date(today);
-          monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-          const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const thisMonday = new Date(today);
+          thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          thisMonday.setHours(0, 0, 0, 0);
+
           const publishedMapped = mapped.filter(w => w.status === 'published');
-          const currentIdx = publishedMapped.findIndex(w => w.dateRange.startsWith(mondayStr));
-          setSelectedWeekIndex(currentIdx >= 0 ? currentIdx : 0);
+          let earliest = 0;
+          let latest = 0;
+          
+          for (const w of publishedMapped) {
+            const startStr = w.dateRange.split(' - ')[0];
+            const weekMonday = new Date(startStr + ', 2026');
+            weekMonday.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((weekMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
+            const offset = Math.round(diffDays / 7);
+            if (offset < earliest) earliest = offset;
+            if (offset > latest) latest = offset;
+          }
+          
+          setAdminMinOffset(earliest);
+          setAdminMaxOffset(latest);
+          setAdminWeekOffset(0); // Always start on current week
         }
       }
     } catch (err) {
@@ -280,18 +324,9 @@ export default function AdminPage() {
         body: JSON.stringify({ status: 'published' }),
       });
       if (res.ok) {
-        // Remember what week we're currently viewing
-        const currentDateRange = selectedWeek?.dateRange;
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) {
           await fetchWeeks(client.clientId);
-          // After refresh, find our week again in the new publishedWeeks
-          if (currentDateRange) {
-            const updatedClient = clients.find(c => c.id === selectedClient);
-            const updatedPublished = (updatedClient?.weeks || []).filter(w => w.status === 'published');
-            const idx = updatedPublished.findIndex(w => w.dateRange === currentDateRange);
-            if (idx >= 0) setSelectedWeekIndex(idx);
-          }
         }
       }
     } catch (err) {
@@ -313,46 +348,6 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Failed to unpublish week:', err);
     }
-  };
-
-  // Get current real week label
-  const getCurrentWeekLabel = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${fmt(monday)} - ${fmt(sunday)}`;
-  };
-
-  // Check if the currently viewed week IS the real current week
-  const isViewingCurrentWeek = () => {
-    if (!selectedWeek) return false;
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return selectedWeek.dateRange.startsWith(mondayStr);
-  };
-
-  // Check if viewed week is in the past (ended before this week started)
-  const isViewingPastWeek = () => {
-    if (!selectedWeek) return false;
-    // Get this Monday
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const thisMonday = new Date(today);
-    thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    thisMonday.setHours(0, 0, 0, 0);
-    
-    // Parse the week's start date (e.g. "Jun 9" from "Jun 9 - Jun 15")
-    const weekStartStr = selectedWeek.dateRange.split(' - ')[0];
-    const weekStart = new Date(weekStartStr + ', 2026');
-    
-    return weekStart < thisMonday;
   };
 
   const getTrainingTypeLabel = (tt: string) => { switch (tt) { case "SpeedRoad": return "Speed Workout - Road"; case "SpeedTrack": return "Speed Workout - Track"; case "Tempo": return "Tempo Runs"; case "Threshold": return "Threshold Runs"; case "LongRun": return "Long Run"; case "Easy": return "Easy Run"; case "Recovery": return "Recovery Run"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals (Run/Walk)"; case "RacePace": return "Race Pace"; case "ClosePace": return "Close to Race Pace"; case "TimeTrial": return "Time Trial"; case "CrossTraining": return "Cross Training"; case "OrangeTheory": return "Cross Training"; case "Rest": return "Rest"; default: return tt; } };
@@ -387,7 +382,7 @@ export default function AdminPage() {
             const doneWk = allWk.filter(w => w.completed);
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { setSelectedClient(client.id); setSelectedWeekIndex(0); setClientTab("plan"); setEditingWeek(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
@@ -463,21 +458,44 @@ export default function AdminPage() {
             </div>
 
             {/* TRAINING & LOGS */}
-            {clientTab === "plan" && publishedWeeks.length > 0 && (
+            {clientTab === "plan" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <button onClick={() => setSelectedWeekIndex(Math.max(selectedWeekIndex - 1, 0))} disabled={selectedWeekIndex <= 0} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                {/* Current week badge */}
+                {adminWeekOffset === 0 && (
                   <div className="text-center">
-                    {isViewingCurrentWeek() && <p className="text-accent font-heading text-xs uppercase mb-1">Current Week</p>}
-                    <p className="font-heading text-lg uppercase text-white">{selectedWeek?.dateRange}</p>
-                    <p className="text-gray-400 text-xs">{selectedWeek?.focus}</p>
+                    <span className="inline-block bg-accent/10 border border-accent/30 rounded-lg py-1.5 px-4 text-accent font-heading text-xs uppercase">Current Week</span>
+                  </div>
+                )}
+                {adminWeekOffset !== 0 && (
+                  <div className="text-center">
+                    <button onClick={() => setAdminWeekOffset(0)} className="text-accent text-xs hover:underline">← Go to current week</button>
+                  </div>
+                )}
+
+                {/* Week Navigation */}
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                  <div className="text-center">
+                    <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
+                    {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}</p>}
                   </div>
                   <div className="flex items-center gap-2">
-                    {!isViewingPastWeek() && <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
-                    {isViewingPastWeek() && <span className="text-gray-600 text-xs italic">Past week (locked)</span>}
-                    <button onClick={() => setSelectedWeekIndex(Math.min(selectedWeekIndex + 1, publishedWeeks.length - 1))} disabled={selectedWeekIndex >= publishedWeeks.length - 1} className="text-gray-400 hover:text-white disabled:opacity-30"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
+                    {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-600 text-xs italic">Past week (locked)</span>}
+                    <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
+
+                {/* No plan for this week */}
+                {!selectedWeek && (
+                  <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
+                    <p className="text-gray-500">No published plan for this week.</p>
+                  </div>
+                )}
+
+                {/* Has a plan — show content */}
+                {selectedWeek && (
+                  <>
 
                 {/* Coach Message */}
                 <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
@@ -555,15 +573,9 @@ export default function AdminPage() {
                   ))}
                 </div>
                 {editingWeek && <div className="flex gap-3"><button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save Changes</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
+                </>)}
               </div>
             )}
-            {clientTab === "plan" && publishedWeeks.length === 0 && (
-              <div className="text-center py-12 space-y-3">
-                <div className="bg-accent/10 border border-accent/30 rounded-xl py-3 px-4 inline-block">
-                  <p className="text-accent font-heading text-sm uppercase">Current Week: {getCurrentWeekLabel()}</p>
-                </div>
-                <p className="text-gray-500">No published plans for this client yet. Create a week plan and publish it.</p>
-              </div>
             )}
 
             {/* DRAFTS */}
