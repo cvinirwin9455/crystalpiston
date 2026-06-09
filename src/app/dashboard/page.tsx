@@ -359,6 +359,28 @@ export default function DashboardPage() {
                     {workout.status === "partial" && workout.skipReason && (
                       <div className="mt-2 ml-9 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2"><p className="text-yellow-400 text-xs"><span className="font-medium">Partially completed:</span> {workout.skipReason}</p></div>
                     )}
+                    {workout.status === "complete" && workout.log && (
+                      <div className="mt-3 ml-9 pl-4 border-l-2 border-green-500/30">
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          {workout.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
+                          {workout.log.actualMiles && <span><span className="text-gray-500">Miles:</span> <span className="text-white">{workout.log.actualMiles}</span></span>}
+                          {workout.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{workout.log.actualPace}</span></span>}
+                          {workout.log.duration && <span><span className="text-gray-500">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
+                          {workout.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
+                          {workout.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
+                        </div>
+                        {workout.log.notes && <p className="text-gray-400 text-xs mt-1">{workout.log.notes}</p>}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {workout.log.energy && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Energy: {workout.log.energy}</span>}
+                          {workout.log.motivation && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Motivation: {workout.log.motivation}</span>}
+                          {workout.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {workout.log.sleep}</span>}
+                          {workout.log.recovery && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Recovery: {workout.log.recovery}</span>}
+                          {workout.log.mood && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Mood: {workout.log.mood}</span>}
+                          {workout.log.hunger && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Appetite: {workout.log.hunger}</span>}
+                          {workout.log.strength && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Body: {workout.log.strength}</span>}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Skip/Partial Dialog - direct, no toggle needed */}
                     {showSkipDialog === workout.id && (

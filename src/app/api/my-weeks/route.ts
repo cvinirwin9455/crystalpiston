@@ -8,8 +8,16 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Use service role to bypass RLS
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
   // Get the client record for this user
-  const { data: client } = await supabase
+  const { data: client } = await adminClient
     .from('clients')
     .select('id')
     .eq('user_id', user.id)
@@ -20,7 +28,7 @@ export async function GET() {
   }
 
   // Fetch published weeks with workouts and logs
-  const { data: weeks, error } = await supabase
+  const { data: weeks, error } = await adminClient
     .from('weeks')
     .select(`
       id,
