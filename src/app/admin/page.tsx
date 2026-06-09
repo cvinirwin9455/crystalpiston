@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
@@ -53,51 +53,91 @@ export default function AdminPage() {
   const getWeeksInMonth = (month: Date) => { const weeks: Date[][] = []; const firstDay = new Date(month.getFullYear(), month.getMonth(), 1); const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0); let current = getMonday(firstDay); while (current <= lastDay || weeks.length < 5) { const week: Date[] = []; for (let i = 0; i < 7; i++) { week.push(new Date(current)); current.setDate(current.getDate() + 1); } weeks.push(week); if (current > lastDay && weeks.length >= 4) break; } return weeks; };
   const selectWeek = (monday: Date) => { const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6); setSelectedWeekStart(monday); setWeekPlan({ ...weekPlan, dateRange: `${formatDate(monday)} - ${formatDate(sunday)}` }); setShowWeekPicker(false); };
 
-  const [clients, setClients] = useState<Client[]>([
-    { id: "c1", name: "Sarah M.", email: "sarah@email.com", gender: "female", goal: "War Eagle 50K", startDate: "2026-05-05", planDuration: "2026-07-26", owed: 525, paid: 175, status: "active", messages: [{ id: "m1", date: "Jun 9, 2026", message: "Training is loaded. The two workouts are Tuesday and Thursday. The important piece of the Descending 1200s is to not start out too fast." }, { id: "m2", date: "Jun 2, 2026", message: "Jeff will be here to guide you through hills week. Great job at War Eagle!" }], weeks: [
-      { weekId: "w-curr", label: "This Week", dateRange: "Jun 9 - Jun 15", focus: "Descending 1200s & Race Pace", status: "published", coachMessage: "Training is loaded. Tuesday and Thursday are the key workouts.", workouts: [
-        { id: "w1-mon", day: "Monday", date: "Jun 9", type: "cross", trainingType: "CrossTraining", title: "Gym Session", miles: null, description: "Cross training class", completed: false },
-        { id: "w1-tue", day: "Tuesday", date: "Jun 10", type: "run", trainingType: "SpeedTrack", title: "Descending 1200s", miles: 8, description: "3 mi WU | Descending 1200s | 1 mi CD", paceTarget: "Reps from 8:30 down to 7:40", location: "Kickapoo Track", coachNotes: "Rep 1: 400@8:30, 400@8:20, 400@8:10, Recovery. Rep 2-4 descend further.", completed: false },
-        { id: "w1-wed", day: "Wednesday", date: "Jun 11", type: "run", trainingType: "Easy", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: false },
-        { id: "w1-thu", day: "Thursday", date: "Jun 12", type: "run", trainingType: "ClosePace", title: "Race Pace", miles: 10, description: "2 mi WU | 7mi @ 8:50 | 1 CD", paceTarget: "8:20-8:50/mi", completed: false },
-        { id: "w1-fri", day: "Friday", date: "Jun 13", type: "cross", trainingType: "CrossTraining", title: "Gym Session", miles: null, description: "Cross training class", completed: false },
-        { id: "w1-sat", day: "Saturday", date: "Jun 14", type: "run", trainingType: "LongRun", title: "Long Run", miles: 17, description: "17 mi default pace", completed: false },
-        { id: "w1-sun", day: "Sunday", date: "Jun 15", type: "run", trainingType: "Recovery", title: "Easy Recovery", miles: 7, description: "7 easy recovery", completed: false },
-      ]},
-      { weekId: "w-prev", label: "Last Week", dateRange: "Jun 2 - Jun 8", focus: "Hills & Specificity", status: "published", coachMessage: "Specificity training on hills. Jeff will guide you.", workouts: [
-        { id: "w2-mon", day: "Monday", date: "Jun 2", type: "cross", trainingType: "CrossTraining", title: "Bike / Strength", miles: null, description: "Bike and strength work.", completed: true, log: { rpe: "6", stress: "", notes: "Felt good", energy: "7", motivation: "8", sleep: "7", strength: "7", recovery: "6", mood: "8", hunger: "7" } },
-        { id: "w2-tue", day: "Tuesday", date: "Jun 3", type: "run", trainingType: "Hills", title: "HILLS - Technique Day", miles: 7, description: "2 WU | 1 down | 1 up | 1 down | 1 up | 1 CD", paceTarget: "Downhill close to race pace", location: "Hills", completed: true, log: { rpe: "8", stress: "", notes: "Jeff was great help", energy: "8", motivation: "9", sleep: "7", strength: "7", recovery: "7", mood: "9", hunger: "6", actualMiles: "7.2", actualPace: "8:45", onPeriod: "yes" } },
-        { id: "w2-wed", day: "Wednesday", date: "Jun 4", type: "run", trainingType: "Easy", title: "Easy Run", miles: 5, description: "5 mi easy", location: "Table Rock Coffee Roasters", completed: true, log: { rpe: "4", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "6", recovery: "7", mood: "7", hunger: "8", onPeriod: "yes" } },
-        { id: "w2-thu", day: "Thursday", date: "Jun 5", type: "run", trainingType: "SpeedRoad", title: "Strides", miles: 7, description: "7 mi w/strides", completed: true, log: { rpe: "7", stress: "", notes: "Legs heavy", energy: "6", motivation: "7", sleep: "6", strength: "6", recovery: "5", mood: "7", hunger: "7" } },
-        { id: "w2-fri", day: "Friday", date: "Jun 6", type: "cross", trainingType: "CrossTraining", title: "Bike / Strength", miles: null, description: "Bike and strength.", completed: true, log: { rpe: "5", stress: "", notes: "", energy: "7", motivation: "7", sleep: "8", strength: "7", recovery: "7", mood: "8", hunger: "7" } },
-        { id: "w2-sat", day: "Saturday", date: "Jun 7", type: "run", trainingType: "RacePace", title: "Race Pace Workout", miles: 12, description: "5 WU | 5@9:15 (2 min rest) | 2 CD", paceTarget: "9:15/mi", completed: true, log: { rpe: "9", stress: "Travel Day", notes: "War Eagle!", energy: "8", motivation: "9", sleep: "7", strength: "8", recovery: "6", mood: "9", hunger: "8", actualMiles: "12.1", actualPace: "9:12" } },
-        { id: "w2-sun", day: "Sunday", date: "Jun 8", type: "rest", trainingType: "Rest", title: "Complete Rest", miles: null, description: "Rest day.", completed: true, log: { rpe: "", stress: "", notes: "Great week", energy: "8", motivation: "8", sleep: "9", strength: "7", recovery: "8", mood: "9", hunger: "7" } },
-      ]},
-      { weekId: "w-draft1", label: "Next Week", dateRange: "Jun 16 - Jun 22", focus: "Tempo & Long Run Build", status: "draft", coachMessage: "Building into the long run. Stay disciplined on tempo day.", workouts: [
-        { id: "d1-mon", day: "Monday", date: "Jun 16", type: "cross", trainingType: "CrossTraining", title: "Gym Session", miles: null, description: "Cross training class", completed: false },
-        { id: "d1-tue", day: "Tuesday", date: "Jun 17", type: "run", trainingType: "Tempo", title: "Tempo Run", miles: 9, description: "2 WU | 5@8:30 | 2 CD", paceTarget: "8:30/mi", completed: false },
-        { id: "d1-wed", day: "Wednesday", date: "Jun 18", type: "run", trainingType: "Easy", title: "Easy Run", miles: 5, description: "5 mi easy", completed: false },
-        { id: "d1-thu", day: "Thursday", date: "Jun 19", type: "run", trainingType: "SpeedTrack", title: "Track 800s", miles: 7, description: "1 WU | 6x800/400 | 1 CD", paceTarget: "7:20-7:30", location: "Kickapoo Track", completed: false },
-        { id: "d1-fri", day: "Friday", date: "Jun 20", type: "rest", trainingType: "Rest", title: "Rest", miles: null, description: "Complete rest", completed: false },
-        { id: "d1-sat", day: "Saturday", date: "Jun 21", type: "run", trainingType: "LongRun", title: "Long Run", miles: 20, description: "20 mi easy effort", completed: false },
-        { id: "d1-sun", day: "Sunday", date: "Jun 22", type: "run", trainingType: "Recovery", title: "Recovery", miles: 5, description: "5 mi very easy", completed: false },
-      ]},
-    ]},
-    { id: "c2", name: "Mike T.", email: "mike@email.com", gender: "male", goal: "Sub-4 Marathon", startDate: "2026-04-01", planDuration: "2026-10-12", owed: 400, paid: 400, status: "active", messages: [], weeks: [{ weekId: "mw1", label: "This Week", dateRange: "Jun 9 - Jun 15", focus: "Tempo & Long Run", status: "published", coachMessage: "Big week. Stay disciplined.", workouts: [{ id: "m1", day: "Tuesday", date: "Jun 10", type: "run", trainingType: "Tempo", title: "Tempo Run", miles: 10, description: "2 WU | 6@7:15 | 2 CD", paceTarget: "7:15/mi", completed: true, log: { rpe: "7", stress: "", notes: "Felt strong", energy: "9", motivation: "9", sleep: "8", strength: "8", recovery: "7", mood: "8", hunger: "7", actualMiles: "10.0", actualPace: "7:18" } }] }] },
-    { id: "c3", name: "Jessica R.", email: "jessica@email.com", gender: "female", goal: "First 5K", startDate: "2026-06-01", planDuration: "2026-08-15", owed: 200, paid: 100, status: "active", messages: [], weeks: [] },
-    { id: "c4", name: "David K.", email: "david@email.com", gender: "male", goal: "Half Marathon PR", startDate: "2026-03-15", planDuration: "2026-09-20", owed: 450, paid: 450, status: "active", messages: [], weeks: [] },
-    { id: "c5", name: "Amy L.", email: "amy@email.com", gender: "female", goal: "Trail 50K", startDate: "2026-04-10", planDuration: "2026-11-01", owed: 600, paid: 300, status: "active", messages: [], weeks: [] },
-    { id: "c6", name: "Brian W.", email: "brian@email.com", gender: "male", goal: "BQ Marathon", startDate: "2026-01-15", planDuration: "2026-10-15", owed: 500, paid: 500, status: "active", messages: [], weeks: [] },
-    { id: "c7", name: "Carla P.", email: "carla@email.com", gender: "female", goal: "100 Miler", startDate: "2026-02-01", planDuration: "2026-12-01", owed: 800, paid: 400, status: "active", messages: [], weeks: [] },
-    { id: "c8", name: "Derek H.", email: "derek@email.com", gender: "male", goal: "Couch to 5K", startDate: "2026-05-20", planDuration: "2026-08-20", owed: 150, paid: 75, status: "active", messages: [], weeks: [] },
-    { id: "c9", name: "Emily S.", email: "emily@email.com", gender: "female", goal: "Marathon Finish", startDate: "2026-03-01", planDuration: "2026-10-30", owed: 500, paid: 500, status: "active", messages: [], weeks: [] },
-    { id: "c10", name: "Frank M.", email: "frank@email.com", gender: "male", goal: "Sub-20 5K", startDate: "2026-04-15", planDuration: "2026-09-01", owed: 300, paid: 300, status: "active", messages: [], weeks: [] },
-    { id: "c11", name: "Grace T.", email: "grace@email.com", gender: "female", goal: "Trail Half", startDate: "2026-05-01", planDuration: "2026-10-15", owed: 400, paid: 200, status: "active", messages: [], weeks: [] },
-    { id: "c12", name: "Tom R.", email: "tom@email.com", gender: "male", goal: "10K PR", startDate: "2025-11-01", planDuration: "2026-03-01", owed: 300, paid: 300, status: "archived", messages: [], weeks: [] },
-    { id: "c13", name: "Lisa N.", email: "lisa@email.com", gender: "female", goal: "First Half Marathon", startDate: "2025-09-15", planDuration: "2026-02-01", owed: 400, paid: 400, status: "archived", messages: [], weeks: [] },
-    { id: "c14", name: "Kevin J.", email: "kevin@email.com", gender: "male", goal: "Ultra 50 Mile", startDate: "2025-10-01", planDuration: "2026-04-15", owed: 600, paid: 600, status: "archived", messages: [], weeks: [] },
-    { id: "c15", name: "Rachel B.", email: "rachel@email.com", gender: "female", goal: "Postpartum Return", startDate: "2025-12-01", planDuration: "2026-05-01", owed: 350, paid: 350, status: "archived", messages: [], weeks: [] },
-  ]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [createError, setCreateError] = useState("");
+  const [createLoading, setCreateLoading] = useState(false);
+
+  // Fetch clients from API
+  const fetchClients = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clients');
+      if (res.ok) {
+        const data = await res.json();
+        // Map API response to Client type
+        const mapped: Client[] = data.map((c: any) => ({
+          id: c.userId,
+          name: c.name || '',
+          email: c.email || '',
+          gender: c.gender || 'female',
+          goal: c.goal || '',
+          startDate: c.startDate || '',
+          planDuration: c.planEnd || '',
+          owed: c.owed || 0,
+          paid: c.paid || 0,
+          status: c.status === 'inactive' ? 'archived' : 'active',
+          weeks: [],
+          messages: [],
+        }));
+        setClients(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch clients:', err);
+    } finally {
+      setLoadingClients(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  // Create new client via API
+  const handleCreateClient = async () => {
+    setCreateError("");
+    setCreateLoading(true);
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newClientForm.name,
+          email: newClientForm.email,
+          gender: newClientForm.gender,
+          goal: newClientForm.goal,
+          startDate: newClientForm.startDate,
+          planEnd: newClientForm.planDuration,
+          owed: newClientForm.owed,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateError(data.error || 'Failed to create client');
+      } else {
+        setShowCreateClient(false);
+        setNewClientForm({ name: "", email: "", password: "", gender: "female", goal: "", startDate: "", planDuration: "", owed: "" });
+        fetchClients(); // Refresh the list
+      }
+    } catch (err) {
+      setCreateError('Network error. Please try again.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // Archive client via API
+  const handleArchiveClient = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/clients/${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchClients();
+        setSelectedClient(null);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      console.error('Failed to archive client:', err);
+    }
+  };
 
   const selectedClientData = clients.find((c) => c.id === selectedClient);
   const selectedClientWeeks = selectedClientData?.weeks || [];
@@ -164,7 +204,7 @@ export default function AdminPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             Notification Settings
           </button>
-          <a href="/" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
+          <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
         </div>
       </aside>
 
@@ -193,7 +233,8 @@ export default function AdminPage() {
               <div><label className="text-gray-400 text-xs block mb-1">Plan End</label><input type="date" value={newClientForm.planDuration} onChange={(e) => setNewClientForm({ ...newClientForm, planDuration: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Owed ($)</label><input type="text" value={newClientForm.owed} onChange={(e) => setNewClientForm({ ...newClientForm, owed: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="300" /></div>
             </div>
-            <div className="flex gap-3"><button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Create Account</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
+            <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
+            {createError && <p className="text-red-400 text-xs mt-2">{createError}</p>}
           </div>
         )}
 
