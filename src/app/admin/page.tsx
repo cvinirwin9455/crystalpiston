@@ -152,7 +152,8 @@ export default function AdminPage() {
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
   // Fetch weeks for a client from the API
-  const fetchWeeks = useCallback(async (clientId: string) => {
+  // resetIndex: if true, jump to current week. If false, keep current position.
+  const fetchWeeks = useCallback(async (clientId: string, resetIndex = false) => {
     try {
       const res = await fetch(`/api/weeks?client_id=${clientId}`);
       if (res.ok) {
@@ -185,15 +186,17 @@ export default function AdminPage() {
         // Update the client's weeks in state
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: mapped } : c));
         
-        // Find current real week and default to it
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        const monday = new Date(today);
-        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const publishedMapped = mapped.filter((w: any) => w.status === 'published');
-        const currentIdx = publishedMapped.findIndex((w: any) => w.dateRange.startsWith(mondayStr));
-        setSelectedWeekIndex(currentIdx >= 0 ? currentIdx : 0);
+        // Only reset index on initial load, not on refresh
+        if (resetIndex) {
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          const monday = new Date(today);
+          monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const publishedMapped = mapped.filter(w => w.status === 'published');
+          const currentIdx = publishedMapped.findIndex(w => w.dateRange.startsWith(mondayStr));
+          setSelectedWeekIndex(currentIdx >= 0 ? currentIdx : 0);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch weeks:', err);
@@ -207,7 +210,7 @@ export default function AdminPage() {
       const client = clients.find(c => c.id === selectedClient);
       if (client && client.clientId) {
         setWeeksLoadedFor(selectedClient);
-        fetchWeeks(client.clientId);
+        fetchWeeks(client.clientId, true); // true = reset index to current week
       }
     }
   }, [selectedClient, clients]);
