@@ -2,19 +2,50 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Prototype routing: "crystal" in username goes to admin, anyone else goes to dashboard
-    if (email.toLowerCase().includes("crystal")) {
-      window.location.href = "/admin";
-    } else {
-      window.location.href = "/dashboard";
+    setError("");
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
     }
+
+    // Get user role to redirect appropriately
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+
+    router.refresh();
   };
 
   return (
@@ -39,17 +70,24 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="bg-secondary/50 border border-white/10 rounded-2xl p-8 space-y-6">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-              Username
+              Email
             </label>
             <input
-              type="text"
+              type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-accent transition-colors"
-              placeholder="Username or email"
+              placeholder="you@example.com"
+              required
             />
           </div>
 
@@ -64,20 +102,21 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-accent transition-colors"
               placeholder="Enter your password"
+              required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full btn-primary text-center block"
+            disabled={loading}
+            className="w-full btn-primary text-center block disabled:opacity-50"
           >
-            Log In
+            {loading ? "Signing in..." : "Log In"}
           </button>
 
           <p className="text-center text-gray-500 text-sm">
-            Don&apos;t have an account?{" "}
-            <a href="#" className="text-accent hover:underline">
-              Contact Crystal
+            <a href="/forgot-password" className="text-accent hover:underline">
+              Forgot your password?
             </a>
           </p>
         </form>
