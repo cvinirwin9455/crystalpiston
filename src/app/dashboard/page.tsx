@@ -37,7 +37,7 @@ export default function DashboardPage() {
           const data = await res.json();
           const mapped: WeekData[] = data.map((w: any, index: number) => ({
             weekId: w.weekId,
-            label: index === 0 ? "This Week" : index === 1 ? "Last Week" : w.dateRange,
+            label: w.dateRange,
             dateRange: w.dateRange,
             focus: w.focus || '',
             coachMessage: w.coachMessage || '',
@@ -60,6 +60,26 @@ export default function DashboardPage() {
             })),
           }));
           setWeeks(mapped);
+          
+          // Set initial week index to current week
+          if (mapped.length > 0) {
+            const today = new Date();
+            let bestIndex = mapped.length - 1;
+            for (let i = 0; i < mapped.length; i++) {
+              const startStr = mapped[i].dateRange.split(' - ')[0];
+              const weekStart = new Date(startStr + ', 2026');
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekEnd.getDate() + 6);
+              if (today >= weekStart && today <= weekEnd) {
+                bestIndex = i;
+                break;
+              } else if (weekStart > today) {
+                bestIndex = Math.max(0, i - 1);
+                break;
+              }
+            }
+            setCurrentWeekIndex(bestIndex);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch weeks:', err);
