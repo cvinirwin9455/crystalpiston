@@ -204,7 +204,10 @@ export default function AdminPage() {
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
     const client = clients.find(c => c.id === selectedClient);
-    if (!client || !client.clientId) return;
+    if (!client || !client.clientId) {
+      alert("Error: No client record found. Please refresh and try again.");
+      return;
+    }
 
     const workouts = weekPlan.days.map((day) => ({
       day: day.day,

@@ -49,21 +49,37 @@ export async function GET() {
   }
 
   // Flatten the response for easier frontend use
-  const formatted = clients?.map(c => ({
-    userId: c.id,
-    clientId: c.clients?.[0]?.id || null,
-    name: c.name,
-    email: c.email,
-    gender: c.gender,
-    status: c.status,
-    avatarUrl: c.avatar_url,
-    goal: c.clients?.[0]?.goal || '',
-    startDate: c.clients?.[0]?.start_date || '',
-    planEnd: c.clients?.[0]?.plan_end || '',
-    owed: c.clients?.[0]?.owed || 0,
-    paid: c.clients?.[0]?.paid || 0,
-    createdAt: c.created_at,
-  })) || []
+  // Auto-create clients records for any users missing one
+  const formatted = []
+  for (const c of clients || []) {
+    let clientId = c.clients?.[0]?.id || null
+
+    // If no clients record exists, create one
+    if (!clientId) {
+      const { data: newClient } = await supabase
+        .from('clients')
+        .insert({ user_id: c.id })
+        .select('id')
+        .single()
+      if (newClient) clientId = newClient.id
+    }
+
+    formatted.push({
+      userId: c.id,
+      clientId,
+      name: c.name,
+      email: c.email,
+      gender: c.gender,
+      status: c.status,
+      avatarUrl: c.avatar_url,
+      goal: c.clients?.[0]?.goal || '',
+      startDate: c.clients?.[0]?.start_date || '',
+      planEnd: c.clients?.[0]?.plan_end || '',
+      owed: c.clients?.[0]?.owed || 0,
+      paid: c.clients?.[0]?.paid || 0,
+      createdAt: c.created_at,
+    })
+  }
 
   return NextResponse.json(formatted)
 }
