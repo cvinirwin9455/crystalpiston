@@ -191,7 +191,7 @@ export default function AdminPage() {
     }
   }, [selectedClient]);
 
-  // Load weeks when a client is selected
+  // Load weeks when a client is selected (also re-runs when clients list loads)
   useEffect(() => {
     if (selectedClient) {
       const client = clients.find(c => c.id === selectedClient);
@@ -199,7 +199,7 @@ export default function AdminPage() {
         fetchWeeks(client.clientId);
       }
     }
-  }, [selectedClient]);
+  }, [selectedClient, clients]);
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
