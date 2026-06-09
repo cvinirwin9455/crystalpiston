@@ -1,6 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Helper: create admin client with service role key
+async function createAdminClient() {
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
+
 // GET /api/clients - List all clients
 export async function GET() {
   const supabase = await createClient()
@@ -21,81 +31,57 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Fetch all users with role 'client' joined with their client record
-  // Use service role to bypass RLS for admin operations
-  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-  const adminClient = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const adminClient = await createAdminClient()
 
-  const { data: clients, error } = await adminClient
+  // Query users and clients separately to avoid join issues
+  const { data: clientUsers, error: usersError } = await adminClient
     .from('users')
-    .select(`
-      id,
-      email,
-      name,
-      gender,
-      status,
-      avatar_url,
-      created_at,
-      clients (
-        id,
-        goal,
-        start_date,
-        plan_end,
-        owed,
-        paid
-      )
-    `)
+    .select('id, email, name, gender, status, avatar_url, created_at')
     .eq('role', 'client')
     .order('name')
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (usersError) {
+    return NextResponse.json({ error: usersError.message }, { status: 500 })
   }
 
-  // Flatten the response for easier frontend use
-  // Auto-create clients records for any users missing one (using service role to bypass RLS)
-  const formatted = []
-  for (const c of clients || []) {
-    let clientId = c.clients?.[0]?.id || null
+  const { data: clientRecords } = await adminClient
+    .from('clients')
+    .select('id, user_id, goal, start_date, plan_end, owed, paid')
 
-    // If no clients record exists, create one using service role
-    if (!clientId) {
-      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-      const adminClient = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-      )
-      const { data: newClient, error: insertError } = await adminClient
+  // Build a lookup map: user_id -> client record
+  const clientMap = new Map<string, any>()
+  for (const cr of clientRecords || []) {
+    clientMap.set(cr.user_id, cr)
+  }
+
+  // Build response, auto-create missing client records
+  const formatted = []
+  for (const u of clientUsers || []) {
+    let clientRecord = clientMap.get(u.id) || null
+
+    if (!clientRecord) {
+      const { data: newClient } = await adminClient
         .from('clients')
-        .insert({ user_id: c.id })
-        .select('id')
+        .insert({ user_id: u.id })
+        .select('id, user_id, goal, start_date, plan_end, owed, paid')
         .single()
-      if (newClient) {
-        clientId = newClient.id
-      } else {
-        console.error('Failed to auto-create client record:', insertError?.message)
-      }
+      if (newClient) clientRecord = newClient
     }
 
     formatted.push({
-      userId: c.id,
-      clientId,
-      name: c.name,
-      email: c.email,
-      gender: c.gender,
-      status: c.status,
-      avatarUrl: c.avatar_url,
-      goal: c.clients?.[0]?.goal || '',
-      startDate: c.clients?.[0]?.start_date || '',
-      planEnd: c.clients?.[0]?.plan_end || '',
-      owed: c.clients?.[0]?.owed || 0,
-      paid: c.clients?.[0]?.paid || 0,
-      createdAt: c.created_at,
+      userId: u.id,
+      clientId: clientRecord?.id || null,
+      name: u.name,
+      email: u.email,
+      gender: u.gender,
+      status: u.status,
+      avatarUrl: u.avatar_url,
+      goal: clientRecord?.goal || '',
+      startDate: clientRecord?.start_date || '',
+      planEnd: clientRecord?.plan_end || '',
+      owed: clientRecord?.owed || 0,
+      paid: clientRecord?.paid || 0,
+      createdAt: u.created_at,
     })
   }
 
@@ -129,11 +115,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
   }
 
-  // Use Supabase Admin API to invite user by email
-  // This sends them an invite email with a link to set their password
-  const supabaseAdmin = await createAdminClient()
-  
-  const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+  const adminClient = await createAdminClient()
+
+  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: {
       name,
       role: 'client',
@@ -147,16 +131,16 @@ export async function POST(request: Request) {
 
   const newUserId = inviteData.user.id
 
-  // The trigger will auto-create the users row, but we need to update gender
+  // Update gender on the auto-created users row
   if (gender) {
-    await supabase
+    await adminClient
       .from('users')
       .update({ gender })
       .eq('id', newUserId)
   }
 
   // Create the clients record
-  const { error: clientError } = await supabase
+  const { error: clientError } = await adminClient
     .from('clients')
     .insert({
       user_id: newUserId,
@@ -182,20 +166,4 @@ export async function POST(request: Request) {
 function getBaseUrl(request: Request) {
   const url = new URL(request.url)
   return `${url.protocol}//${url.host}`
-}
-
-// Helper: create admin client with service role key
-async function createAdminClient() {
-  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-  
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  )
 }
