@@ -30,7 +30,7 @@ export default function About() {
               <p>
                 Based in the Southwest Region of Missouri, Crystal is a running
                 coach with a diverse athletic background spanning CrossFit (L1
-                certified), Powerlifting, Title Boxing &amp; Kickboxing coaching,
+                certified), Title Boxing &amp; Kickboxing coaching,
                 and running roads and trails.
               </p>
               <p>
@@ -53,8 +53,8 @@ export default function About() {
                 <p className="text-gray-400 text-sm">Certified</p>
               </div>
               <div className="bg-primary/50 rounded-xl p-4 border border-white/5">
-                <p className="text-accent font-heading text-lg">Powerlifting</p>
-                <p className="text-gray-400 text-sm">Coach</p>
+                <p className="text-accent font-heading text-lg">Running</p>
+                <p className="text-gray-400 text-sm">Roads &amp; Trails Coach</p>
               </div>
               <div className="bg-primary/50 rounded-xl p-4 border border-white/5">
                 <p className="text-accent font-heading text-lg">Boxing</p>
