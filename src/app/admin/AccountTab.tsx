@@ -29,6 +29,7 @@ export default function AccountTab({ clientData, onSave, onArchive }: { clientDa
   const [goal, setGoal] = useState(clientData.goal);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -88,6 +89,7 @@ export default function AccountTab({ clientData, onSave, onArchive }: { clientDa
       });
       if (res.ok) {
         setSaveSuccess(true);
+        setEditing(false);
         onSave();
         setTimeout(() => setSaveSuccess(false), 3000);
       }
@@ -168,34 +170,64 @@ export default function AccountTab({ clientData, onSave, onArchive }: { clientDa
     <div className="space-y-6">
       {/* Client Details */}
       <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
-        <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Client Details</h4>
-        <div className="grid md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label className="text-gray-500 text-xs block mb-1">Name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="text-gray-500 text-xs block mb-1">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="text-gray-500 text-xs block mb-1">Gender</label>
-            <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-gray-500 text-xs block mb-1">Goal</label>
-            <input type="text" value={goal} onChange={(e) => setGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-gray-400 text-xs font-heading uppercase">Client Details</h4>
+          {!editing && <button onClick={() => setEditing(true)} className="text-accent text-xs hover:underline">Edit</button>}
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
-            {saving ? "Saving..." : "Save Details"}
-          </button>
-          {saveSuccess && <span className="text-green-400 text-xs">Saved!</span>}
-        </div>
+
+        {!editing ? (
+          /* View Mode */
+          <div className="grid md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Name</p>
+              <p className="text-white text-sm">{name || "—"}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Email</p>
+              <p className="text-white text-sm">{email || "—"}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Gender</p>
+              <p className="text-white text-sm capitalize">{gender || "—"}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Goal</p>
+              <p className="text-white text-sm">{goal || "—"}</p>
+            </div>
+          </div>
+        ) : (
+          /* Edit Mode */
+          <>
+            <div className="grid md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Name</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Gender</label>
+                <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Goal</label>
+                <input type="text" value={goal} onChange={(e) => setGoal(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
+              {saveSuccess && <span className="text-green-400 text-xs">Saved!</span>}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Plans & Payments */}
