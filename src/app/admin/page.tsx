@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import AccountTab from "./AccountTab";
 
@@ -176,6 +176,12 @@ export default function AdminPage() {
   const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
   const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
+  const adminMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    adminMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [adminMessages]);
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
   // Fetch messages when Messages tab is opened for a client
@@ -922,6 +928,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
+                  <div ref={adminMessagesEndRef} />
                 </div>
 
                 {/* Input Area - fixed at bottom */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
@@ -37,6 +37,12 @@ export default function DashboardPage() {
 
   const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [clientMessages]);
 
   // Fetch messages from API - only when Messages tab is active
   // (fetching marks messages as read in DB, so we don't want to do it on every page load)
@@ -618,6 +624,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area - fixed at bottom */}
