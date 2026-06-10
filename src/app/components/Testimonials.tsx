@@ -82,12 +82,12 @@ export default function Testimonials() {
                 <div className="border-t border-white/10">
                   <div className="grid md:grid-cols-5 gap-0">
                     {/* Image */}
-                    <div className="md:col-span-2 relative min-h-[300px] md:min-h-[400px]">
+                    <div className="md:col-span-2 relative aspect-[3/4] md:aspect-auto md:min-h-[400px]">
                       <Image
                         src={t.image}
                         alt={`${t.name} - Pistol Performance Coaching Client`}
                         fill
-                        className="object-cover"
+                        className="object-cover object-top"
                         quality={85}
                       />
                     </div>
