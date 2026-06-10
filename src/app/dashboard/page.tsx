@@ -15,12 +15,51 @@ export default function DashboardPage() {
 
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
-  const [clientMessages] = useState([
-    { id: "m1", date: "Jun 9, 2026", from: "crystal", message: "Training is loaded. The two workouts are Tuesday and Thursday. The Descending 1200s workout will get sent to your watch." },
-    { id: "m2", date: "Jun 8, 2026", from: "client", message: "War Eagle was great! Felt strong the whole time. Ready for a big week!" },
-    { id: "m3", date: "Jun 2, 2026", from: "crystal", message: "Jeff will be here to guide you through hills week. Great job at War Eagle!" },
-    { id: "m4", date: "Jun 1, 2026", from: "client", message: "Feeling good heading into War Eagle. Should I do anything different the day before?" },
-  ]);
+  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Fetch messages from API
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch('/api/messages');
+        if (res.ok) {
+          const data = await res.json();
+          setClientMessages(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch messages:', err);
+      }
+    };
+    fetchMessages();
+  }, []);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    setSendingMessage(true);
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newMessage }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setClientMessages(prev => [...prev, {
+          id: data.messageId,
+          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          from: 'client',
+          message: newMessage.trim(),
+        }]);
+        setNewMessage("");
+        setShowMessageForm(false);
+      }
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   const [clientInfo] = useState({ name: "Sarah M.", goal: "War Eagle 50K", planDuration: "July 26, 2026", startDate: "May 5, 2026", owed: 525.0, paid: 175.0, balance: 350.0 });
 
@@ -512,10 +551,15 @@ export default function DashboardPage() {
               <div className="bg-secondary/50 border border-accent/30 rounded-xl p-5 mb-6">
                 <p className="text-accent text-xs font-heading uppercase mb-2">Message Crystal</p>
                 <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Ask a question, share an update..." />
-                <div className="flex gap-3 mt-3"><button className="bg-accent text-white font-bold py-2 px-6 rounded-lg text-sm">Send</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div>
+                <div className="flex gap-3 mt-3"><button onClick={handleSendMessage} disabled={sendingMessage || !newMessage.trim()} className="bg-accent text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{sendingMessage ? "Sending..." : "Send"}</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div>
               </div>
             )}
             <div className="space-y-4">
+              {clientMessages.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No messages yet. Send Crystal a message!</p>
+                </div>
+              )}
               {clientMessages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[80%] rounded-2xl p-4 ${msg.from === "client" ? "bg-accent/10 border border-accent/30" : "bg-secondary/50 border border-gold/20"}`}>

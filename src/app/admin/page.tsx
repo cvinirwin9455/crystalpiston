@@ -146,8 +146,54 @@ export default function AdminPage() {
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
   const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
-  const clientMessages = selectedClientData?.messages || [];
+  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
+
+  // Fetch messages when Messages tab is opened for a client
+  useEffect(() => {
+    if (selectedClient && clientTab === "messages") {
+      const fetchMessages = async () => {
+        try {
+          const res = await fetch(`/api/messages?with_user_id=${selectedClient}`);
+          if (res.ok) {
+            const data = await res.json();
+            setAdminMessages(data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch messages:', err);
+        }
+      };
+      fetchMessages();
+    }
+  }, [selectedClient, clientTab]);
+
+  const handleSendAdminMessage = async () => {
+    if (!newMessage.trim() || !selectedClient) return;
+    setSendingAdminMessage(true);
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toUserId: selectedClient, message: newMessage }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminMessages(prev => [...prev, {
+          id: data.messageId,
+          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          from: 'crystal',
+          message: newMessage.trim(),
+        }]);
+        setNewMessage("");
+        setShowMessageForm(false);
+      }
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    } finally {
+      setSendingAdminMessage(false);
+    }
+  };
 
   // Calendar-based week navigation for admin (same as client)
   const [adminWeekOffset, setAdminWeekOffset] = useState(0);
@@ -678,11 +724,11 @@ export default function AdminPage() {
             {clientTab === "messages" && (
               <div className="space-y-4">
                 <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
-                  {!showMessageForm ? <div className="flex items-center justify-between"><p className="text-gold text-xs font-heading uppercase">Message {selectedClientData.name.split(" ")[0]}</p><button onClick={() => setShowMessageForm(true)} className="text-accent text-xs hover:underline">+ New Message</button></div> : <div className="space-y-3"><textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Write message..." /><div className="flex gap-3"><button className="bg-accent text-white font-bold py-2 px-4 rounded-lg text-sm">Send</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div><p className="text-gray-600 text-xs">Client will receive an email notification</p></div>}
+                  {!showMessageForm ? <div className="flex items-center justify-between"><p className="text-gold text-xs font-heading uppercase">Message {selectedClientData.name.split(" ")[0]}</p><button onClick={() => setShowMessageForm(true)} className="text-accent text-xs hover:underline">+ New Message</button></div> : <div className="space-y-3"><textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Write message..." /><div className="flex gap-3"><button onClick={handleSendAdminMessage} disabled={sendingAdminMessage || !newMessage.trim()} className="bg-accent text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">{sendingAdminMessage ? "Sending..." : "Send"}</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div><p className="text-gray-600 text-xs">Client will receive an email notification</p></div>}
                 </div>
-                {/* Chat thread - same view as client sees */}
+                {/* Chat thread */}
                 <div className="space-y-3">
-                  {clientMessages.map((msg) => (
+                  {adminMessages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-start" : "justify-end"}`}>
                       <div className={`max-w-[80%] rounded-2xl p-4 ${msg.from === "client" ? "bg-secondary/50 border border-white/10" : "bg-accent/10 border border-accent/30"}`}>
                         <div className="flex items-center gap-2 mb-1"><span className={`text-xs font-heading uppercase ${msg.from === "client" ? "text-white" : "text-accent"}`}>{msg.from === "client" ? selectedClientData.name.split(" ")[0] : "You"}</span><span className="text-gray-500 text-xs">{msg.date}</span></div>
@@ -690,7 +736,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
-                  {clientMessages.length === 0 && <p className="text-gray-500 text-center py-8 text-sm">No messages yet. Start the conversation!</p>}
+                  {adminMessages.length === 0 && <p className="text-gray-500 text-center py-8 text-sm">No messages yet. Start the conversation!</p>}
                 </div>
               </div>
             )}
