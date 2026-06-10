@@ -78,7 +78,24 @@ export default function DashboardPage() {
     }
   };
 
-  const [clientInfo] = useState({ name: "Sarah M.", goal: "War Eagle 50K", planDuration: "July 26, 2026", startDate: "May 5, 2026", owed: 525.0, paid: 175.0, balance: 350.0 });
+  const [clientInfo, setClientInfo] = useState<{name: string; goal: string; planEnd: string; startDate: string; owed: number; paid: number} | null>(null);
+
+  // Fetch client's own plan info
+  useEffect(() => {
+    const fetchPlanInfo = async () => {
+      try {
+        // Get client's plans via the plans API (client can view their own)
+        const res = await fetch('/api/my-plans');
+        if (res.ok) {
+          const data = await res.json();
+          if (data) setClientInfo(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch plan info:', err);
+      }
+    };
+    fetchPlanInfo();
+  }, []);
 
   const [weeks, setWeeks] = useState<WeekData[]>([]); // All published weeks from API
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, +1 = next week
@@ -617,60 +634,44 @@ export default function DashboardPage() {
         {/* ACCOUNT TAB */}
         {activeTab === "account" && (
           <div className="space-y-6">
-            {/* Profile Picture */}
-            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-4">Profile Picture</h2>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold text-gray-400">{clientInfo.name.charAt(0)}</div>
-                <div>
-                  <button className="bg-primary/50 border border-white/10 hover:border-accent text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors">Upload Photo</button>
-                  <p className="text-gray-600 text-xs mt-1">JPG or PNG, max 2MB. Optional.</p>
+            {/* Current Plan & Payment */}
+            {clientInfo ? (
+              <>
+                <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+                  <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
+                  <div className="space-y-3 text-sm">
+                    {clientInfo.goal && <div className="flex justify-between"><span className="text-gray-400">Goal:</span><span className="text-white font-medium">{clientInfo.goal}</span></div>}
+                    {clientInfo.startDate && <div className="flex justify-between"><span className="text-gray-400">Start Date:</span><span className="text-white">{new Date(clientInfo.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>}
+                    {clientInfo.planEnd && <div className="flex justify-between"><span className="text-gray-400">Plan End:</span><span className="text-white">{new Date(clientInfo.planEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>}
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Email Notifications for Client */}
-            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-4">Email Notifications</h2>
-              <p className="text-gray-500 text-xs mb-4">You&apos;ll receive emails when:</p>
-              <div className="space-y-3 text-sm text-gray-300">
-                <div className="flex items-center gap-2"><span className="text-green-400">&#10003;</span>Crystal publishes a new training week</div>
-                <div className="flex items-center gap-2"><span className="text-green-400">&#10003;</span>Crystal sends you a message</div>
-                <div className="flex items-center gap-2"><span className="text-green-400">&#10003;</span>Payment reminders</div>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-                <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-gray-400">Name:</span><span className="text-white">{clientInfo.name}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Goal:</span><span className="text-white">{clientInfo.goal}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Plan Duration:</span><span className="text-white">{clientInfo.planDuration}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Start Date:</span><span className="text-white">{clientInfo.startDate}</span></div>
-              </div>
-            </div>
-            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-4">Payment Status</h2>
-              {clientInfo.balance > 0 ? (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-1"><svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><p className="text-red-400 text-sm font-medium">Balance Due</p></div>
-                  <p className="text-gray-400 text-xs">You have an outstanding balance. Contact Crystal to arrange payment.</p>
+                <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+                  <h2 className="font-heading text-xl uppercase text-accent mb-4">Payment Status</h2>
+                  {(clientInfo.owed - clientInfo.paid) > 0 ? (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-center gap-2 mb-1"><svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><p className="text-red-400 text-sm font-medium">Balance Due</p></div>
+                      <p className="text-gray-400 text-xs">You have an outstanding balance. Contact Crystal to arrange payment.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-center gap-2"><svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><p className="text-green-400 text-sm font-medium">All Paid Up!</p></div>
+                    </div>
+                  )}
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">${clientInfo.owed.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
+                    {(clientInfo.owed - clientInfo.paid) > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">${(clientInfo.owed - clientInfo.paid).toFixed(2)}</span></div>}
+                  </div>
+                  <div className="w-full bg-primary/50 rounded-full h-2 mt-4"><div className={`h-2 rounded-full ${(clientInfo.owed - clientInfo.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${clientInfo.owed > 0 ? Math.min(100, (clientInfo.paid / clientInfo.owed) * 100) : 100}%` }} /></div>
+                  <p className="text-gray-600 text-xs mt-1 text-right">{clientInfo.owed > 0 ? Math.round((clientInfo.paid / clientInfo.owed) * 100) : 100}% paid</p>
                 </div>
-              ) : (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
-                  <div className="flex items-center gap-2"><svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><p className="text-green-400 text-sm font-medium">All Paid Up!</p></div>
-                </div>
-              )}
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">${clientInfo.owed.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
-                {clientInfo.balance > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">${clientInfo.balance.toFixed(2)}</span></div>}
+              </>
+            ) : (
+              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6 text-center">
+                <p className="text-gray-500">No active plan. Contact Crystal for details.</p>
               </div>
-              <div className="w-full bg-primary/50 rounded-full h-2 mt-4"><div className={`h-2 rounded-full ${clientInfo.balance > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${Math.min(100, (clientInfo.paid / clientInfo.owed) * 100)}%` }} /></div>
-              <p className="text-gray-600 text-xs mt-1 text-right">{Math.round((clientInfo.paid / clientInfo.owed) * 100)}% paid</p>
-            </div>
-            </div>
+            )}
           </div>
         )}
       </main>
