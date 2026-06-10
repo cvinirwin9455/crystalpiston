@@ -38,24 +38,27 @@ export default function DashboardPage() {
   const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
 
-  // Fetch messages from API
+  // Fetch messages from API - only when Messages tab is active
+  // (fetching marks messages as read in DB, so we don't want to do it on every page load)
   useEffect(() => {
+    if (activeTab !== "messages") return;
     const fetchMessages = async () => {
       try {
         const res = await fetch('/api/messages');
         if (res.ok) {
           const data = await res.json();
           setClientMessages(data);
+          setUnreadCount(0); // Messages are now marked read
         }
       } catch (err) {
         console.error('Failed to fetch messages:', err);
       }
     };
     fetchMessages();
-    // Poll every 30 seconds for new messages
+    // Poll every 30 seconds for new messages while on Messages tab
     const interval = setInterval(fetchMessages, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeTab]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
