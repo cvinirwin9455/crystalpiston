@@ -347,21 +347,63 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentHistory, setPaymentHistory] = useState<{amount: number; date: string}[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string}[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
+  const [loggingPayment, setLoggingPayment] = useState(false);
+
+  // Fetch payments from API on mount
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const res = await fetch(`/api/payments?plan_id=${plan.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentHistory(data.map((p: any) => ({
+            id: p.id,
+            amount: parseFloat(p.amount),
+            date: p.payment_date,
+          })));
+        }
+      } catch (err) {
+        console.error("Failed to fetch payments:", err);
+      } finally {
+        setLoadingPayments(false);
+      }
+    };
+    fetchPayments();
+  }, [plan.id]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
     return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
-  const handleLogPayment = () => {
+  const handleLogPayment = async () => {
     if (!paymentAmount) return;
-    const amount = parseFloat(paymentAmount);
-    const newPaid = plan.paid + amount;
-    onUpdate(plan.id, { paid: newPaid.toString() });
-    setPaymentHistory(prev => [...prev, { amount, date: paymentDate }]);
-    setPaymentAmount("");
-    setShowPaymentForm(false);
+    setLoggingPayment(true);
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: plan.id,
+          amount: paymentAmount,
+          paymentDate: paymentDate,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const amount = parseFloat(paymentAmount);
+        setPaymentHistory(prev => [{ id: data.payment.id, amount, date: paymentDate }, ...prev]);
+        onUpdate(plan.id, { paid: data.newPaidTotal.toString() });
+        setPaymentAmount("");
+        setShowPaymentForm(false);
+      }
+    } catch (err) {
+      console.error("Failed to log payment:", err);
+    } finally {
+      setLoggingPayment(false);
+    }
   };
 
   return (
@@ -404,17 +446,22 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
       </div>
 
       {/* Payment History */}
-      {paymentHistory.length > 0 && (
+      {!loadingPayments && paymentHistory.length > 0 && (
         <div className="mt-3 border-t border-white/5 pt-3">
-          <p className="text-gray-500 text-xs mb-2">Recent Payments</p>
+          <p className="text-gray-500 text-xs mb-2">Payment History</p>
           <div className="space-y-1">
-            {paymentHistory.map((p, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
+            {paymentHistory.map((p) => (
+              <div key={p.id} className="flex items-center justify-between text-xs">
                 <span className="text-gray-400">{formatDate(p.date)}</span>
                 <span className="text-green-400 font-medium">+${p.amount.toFixed(2)}</span>
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {loadingPayments && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <p className="text-gray-500 text-xs">Loading payments...</p>
         </div>
       )}
 
@@ -436,7 +483,7 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={handleLogPayment} disabled={!paymentAmount} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded text-xs disabled:opacity-50">Log Payment</button>
+                <button onClick={handleLogPayment} disabled={!paymentAmount || loggingPayment} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded text-xs disabled:opacity-50">{loggingPayment ? "Saving..." : "Log Payment"}</button>
                 <button onClick={() => { setShowPaymentForm(false); setPaymentAmount(""); }} className="text-gray-400 text-xs">Cancel</button>
               </div>
             </div>

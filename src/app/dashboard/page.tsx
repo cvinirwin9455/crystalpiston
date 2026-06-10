@@ -27,6 +27,9 @@ export default function DashboardPage() {
       }
     };
     fetchUnread();
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
   }, []);
   const [showMessageForm, setShowMessageForm] = useState(false);
 
@@ -49,6 +52,9 @@ export default function DashboardPage() {
       }
     };
     fetchMessages();
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(fetchMessages, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSendMessage = async () => {
@@ -178,7 +184,7 @@ export default function DashboardPage() {
           
           for (const w of mapped) {
             const startStr = w.dateRange.split(' - ')[0];
-            const weekMonday = new Date(startStr + ', 2026');
+            const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
             weekMonday.setHours(0, 0, 0, 0);
             const diffDays = Math.round((weekMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
             const offset = Math.round(diffDays / 7);

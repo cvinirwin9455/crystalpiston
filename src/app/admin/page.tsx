@@ -14,6 +14,9 @@ export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account">("plan");
   const [editingWeek, setEditingWeek] = useState(false);
+  const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
+  const [editedCoachMessage, setEditedCoachMessage] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [messageIndex, setMessageIndex] = useState(0);
@@ -30,8 +33,10 @@ export default function AdminPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [showWeekPicker, setShowWeekPicker] = useState(false);
-  const [pickerMonth, setPickerMonth] = useState(new Date(2026, 5));
+  const [pickerMonth, setPickerMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth()));
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
   const [newClientForm, setNewClientForm] = useState({ name: "", email: "", password: "", gender: "female" as "female" | "male", goal: "", startDate: "", planDuration: "", owed: "" });
 
   const [weekPlan, setWeekPlan] = useState({
@@ -298,7 +303,7 @@ export default function AdminPage() {
           
           for (const w of publishedMapped) {
             const startStr = w.dateRange.split(' - ')[0];
-            const weekMonday = new Date(startStr + ', 2026');
+            const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
             weekMonday.setHours(0, 0, 0, 0);
             const diffDays = Math.round((weekMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
             const offset = Math.round(diffDays / 7);
@@ -348,6 +353,11 @@ export default function AdminPage() {
     }));
 
     try {
+      // If editing an existing draft, delete the old one first
+      if (editingDraftId) {
+        await fetch(`/api/weeks/${editingDraftId}`, { method: 'DELETE' });
+      }
+
       const res = await fetch('/api/weeks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -375,6 +385,7 @@ export default function AdminPage() {
           ],
         });
         setSelectedWeekStart(null);
+        setEditingDraftId(null);
         // Refresh weeks
         fetchWeeks(client.clientId);
         setClientTab(publishStatus === "draft" ? "drafts" : "plan");
@@ -416,6 +427,125 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Failed to unpublish week:', err);
+    }
+  };
+
+  // Enter edit mode: populate editedWorkouts from current week data
+  const enterEditMode = () => {
+    if (!selectedWeek) return;
+    const workoutEdits: Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }> = {};
+    for (const w of selectedWeek.workouts) {
+      workoutEdits[w.id] = {
+        type: w.type,
+        trainingType: w.trainingType || '',
+        miles: w.miles?.toString() || '',
+        title: w.title || '',
+        description: w.description || '',
+        paceTarget: w.paceTarget || '',
+        location: w.location || '',
+        coachNotes: w.coachNotes || '',
+      };
+    }
+    setEditedWorkouts(workoutEdits);
+    setEditedCoachMessage(selectedWeek.coachMessage || '');
+    setEditingWeek(true);
+  };
+
+  const updateEditedWorkout = (workoutId: string, field: string, value: string) => {
+    setEditedWorkouts(prev => ({
+      ...prev,
+      [workoutId]: { ...prev[workoutId], [field]: value },
+    }));
+  };
+
+  // Save all edited workout changes
+  const handleSaveEditedWeek = async () => {
+    if (!selectedWeek) return;
+    setSavingEdit(true);
+    try {
+      // Update the week's coach message
+      await fetch(`/api/weeks/${selectedWeek.weekId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachMessage: editedCoachMessage }),
+      });
+
+      // Update each workout
+      const promises = selectedWeek.workouts.map((w) => {
+        const edited = editedWorkouts[w.id];
+        if (!edited) return Promise.resolve();
+        return fetch(`/api/workouts/${w.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: edited.type,
+            trainingType: edited.type === 'rest' ? 'Rest' : edited.trainingType,
+            miles: edited.miles || null,
+            title: edited.title || null,
+            description: edited.description || null,
+            paceTarget: edited.paceTarget || null,
+            location: edited.location || null,
+            coachNotes: edited.coachNotes || null,
+          }),
+        });
+      });
+      await Promise.all(promises);
+
+      // Refresh weeks and exit edit mode
+      const client = clients.find(c => c.id === selectedClient);
+      if (client && client.clientId) {
+        await fetchWeeks(client.clientId);
+      }
+      setEditingWeek(false);
+      setEditedWorkouts({});
+    } catch (err) {
+      console.error('Failed to save week edits:', err);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Edit a draft: populate the Create Week form with draft data and switch to create tab
+  const handleEditDraft = (week: WeekData) => {
+    setEditingDraftId(week.weekId);
+    setWeekPlan({
+      dateRange: week.dateRange,
+      focus: week.focus,
+      coachMessage: week.coachMessage,
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((dayName) => {
+        const workout = week.workouts.find(w => w.day === dayName);
+        return {
+          day: dayName,
+          type: workout?.type || 'rest',
+          trainingType: workout?.trainingType || '',
+          title: workout?.title || '',
+          miles: workout?.miles?.toString() || '',
+          description: workout?.description || '',
+          paceTarget: workout?.paceTarget || '',
+          location: workout?.location || '',
+          coachNotes: workout?.coachNotes || '',
+          distanceUnit: 'mi',
+        };
+      }),
+    });
+    setClientTab('create');
+  };
+
+  // Delete a draft week
+  const handleDeleteDraft = async (weekId: string) => {
+    setDeletingWeekId(weekId);
+    try {
+      const res = await fetch(`/api/weeks/${weekId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const client = clients.find(c => c.id === selectedClient);
+        if (client && client.clientId) {
+          await fetchWeeks(client.clientId);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete week:', err);
+    } finally {
+      setDeletingWeekId(null);
     }
   };
 
@@ -557,7 +687,7 @@ export default function AdminPage() {
                     {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}</p>}
                   </div>
                   <div className="flex items-center gap-2">
-                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => setEditingWeek(!editingWeek)} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
+                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
                     {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-600 text-xs italic">Past week (locked)</span>}
                     <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
@@ -577,7 +707,7 @@ export default function AdminPage() {
                 {/* Coach Message */}
                 <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
                   <p className="text-gold text-xs font-heading uppercase mb-1">Weekly Message</p>
-                  {editingWeek ? <textarea defaultValue={selectedWeek?.coachMessage} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} /> : <p className="text-gray-300 text-sm">{selectedWeek?.coachMessage || <span className="text-gray-600 italic">No message</span>}</p>}
+                  {editingWeek ? <textarea value={editedCoachMessage} onChange={(e) => setEditedCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} /> : <p className="text-gray-300 text-sm">{selectedWeek?.coachMessage || <span className="text-gray-600 italic">No message</span>}</p>}
                 </div>
 
                 {/* Workouts */}
@@ -633,38 +763,38 @@ export default function AdminPage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-3">
                             <span className="text-white font-heading text-sm uppercase w-24">{w.day}</span>
-                            <select defaultValue={w.type} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                            <select value={editedWorkouts[w.id]?.type || w.type} onChange={(e) => updateEditedWorkout(w.id, 'type', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
                               <option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
                             </select>
-                            {w.type === "run" && (
+                            {(editedWorkouts[w.id]?.type || w.type) === "run" && (
                               <>
-                                <select defaultValue={w.trainingType} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
                                   <option value="" disabled>Select Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option>
                                 </select>
-                                <input type="text" defaultValue={w.miles?.toString() || ""} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
+                                <input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => updateEditedWorkout(w.id, 'miles', e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
                               </>
                             )}
                           </div>
-                          {w.type !== "rest" && (
+                          {(editedWorkouts[w.id]?.type || w.type) !== "rest" && (
                             <div className="grid md:grid-cols-3 gap-2">
-                              <input type="text" defaultValue={w.title} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" />
-                              <input type="text" defaultValue={w.description} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" />
-                              <input type="text" defaultValue={w.paceTarget || ""} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
+                              <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" />
+                              <input type="text" value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" />
+                              <input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
                             </div>
                           )}
-                          {w.type === "run" && (
+                          {(editedWorkouts[w.id]?.type || w.type) === "run" && (
                             <div className="grid md:grid-cols-2 gap-2">
-                              <input type="text" defaultValue={w.location || ""} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
-                              <input type="text" defaultValue={w.coachNotes || ""} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                              <input type="text" value={editedWorkouts[w.id]?.location || ''} onChange={(e) => updateEditedWorkout(w.id, 'location', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
+                              <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
                             </div>
                           )}
-                          {w.type === "cross" && <textarea defaultValue={w.description} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
+                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
-                {editingWeek && <div className="flex gap-3"><button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save Changes</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
+                {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
                 </>)}
               </div>
             )}
@@ -684,8 +814,8 @@ export default function AdminPage() {
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => publishWeek(week.weekId)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Publish</button>
-                        <button className="text-gray-400 hover:text-white text-xs border border-white/10 py-2 px-3 rounded-lg">Edit</button>
-                        <button className="text-red-400 hover:text-red-300 text-xs">Delete</button>
+                        <button onClick={() => handleEditDraft(week)} className="text-gray-400 hover:text-white text-xs border border-white/10 py-2 px-3 rounded-lg">Edit</button>
+                        <button onClick={() => handleDeleteDraft(week.weekId)} disabled={deletingWeekId === week.weekId} className="text-red-400 hover:text-red-300 text-xs disabled:opacity-50">{deletingWeekId === week.weekId ? "Deleting..." : "Delete"}</button>
                       </div>
                     </div>
                     <div className="grid grid-cols-7 gap-1">
@@ -705,8 +835,8 @@ export default function AdminPage() {
             {/* CREATE WEEK */}
             {clientTab === "create" && (
               <div className="space-y-4">
-                <h3 className="font-heading text-lg uppercase text-white">Create Week Plan</h3>
-                <p className="text-gray-400 text-sm">New weeks are saved as <span className="text-yellow-400">Draft</span> until you publish them.</p>
+                <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
+                <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "New weeks are saved as "}<span className="text-yellow-400">{editingDraftId ? "" : "Draft"}</span>{editingDraftId ? "" : " until you publish them."}</p>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="relative">
                     <label className="text-gray-400 text-xs block mb-1">Week Date Range</label>
