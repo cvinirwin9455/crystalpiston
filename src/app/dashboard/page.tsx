@@ -562,36 +562,56 @@ export default function DashboardPage() {
           </>
         )}
 
-        {/* MESSAGES TAB */}
+        {/* MESSAGES TAB - Chat Style */}
         {activeTab === "messages" && (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-heading text-2xl uppercase text-white">Messages</h2>
-              {!showMessageForm && <button onClick={() => setShowMessageForm(true)} className="bg-accent hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded-lg">+ New Message</button>}
-            </div>
-            {showMessageForm && (
-              <div className="bg-secondary/50 border border-accent/30 rounded-xl p-5 mb-6">
-                <p className="text-accent text-xs font-heading uppercase mb-2">Message Crystal</p>
-                <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={3} placeholder="Ask a question, share an update..." />
-                <div className="flex gap-3 mt-3"><button onClick={handleSendMessage} disabled={sendingMessage || !newMessage.trim()} className="bg-accent text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{sendingMessage ? "Sending..." : "Send"}</button><button onClick={() => { setShowMessageForm(false); setNewMessage(""); }} className="text-gray-400 text-sm">Cancel</button></div>
+          <div className="flex flex-col h-[calc(100vh-200px)] bg-secondary/20 border border-white/10 rounded-2xl overflow-hidden">
+            {/* Chat Header */}
+            <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-bold">C</span></div>
+                <div><p className="text-white text-sm font-medium">Crystal</p><p className="text-gray-500 text-xs">Coach</p></div>
               </div>
-            )}
-            <div className="space-y-4">
+            </div>
+
+            {/* Messages Area - scrollable */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {clientMessages.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No messages yet. Send Crystal a message!</p>
+                <div className="text-center py-12 text-gray-500">
+                  <p className="text-sm">No messages yet.</p>
+                  <p className="text-xs mt-1">Send Crystal a message below!</p>
                 </div>
               )}
               {clientMessages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[80%] rounded-2xl p-4 ${msg.from === "client" ? "bg-accent/10 border border-accent/30" : "bg-secondary/50 border border-gold/20"}`}>
-                    <div className="flex items-center gap-2 mb-1"><span className={`text-xs font-heading uppercase ${msg.from === "client" ? "text-accent" : "text-gold"}`}>{msg.from === "client" ? "You" : "Crystal"}</span><span className="text-gray-500 text-xs">{msg.date}</span></div>
-                    <p className="text-gray-300 text-sm">{msg.message}</p>
+                  <div className={`max-w-[75%] ${msg.from === "client" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
+                    <p className={`text-sm ${msg.from === "client" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
+                    <p className={`text-xs mt-1 ${msg.from === "client" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </>
+
+            {/* Input Area - fixed at bottom */}
+            <div className="px-4 py-3 border-t border-white/10 bg-secondary/50">
+              <div className="flex items-end gap-3">
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                  className="flex-1 bg-primary/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-accent resize-none max-h-32"
+                  rows={1}
+                  placeholder="Type a message..."
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={sendingMessage || !newMessage.trim()}
+                  className="bg-accent hover:bg-red-700 text-white p-2.5 rounded-xl disabled:opacity-30 transition-colors flex-shrink-0"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ACCOUNT TAB */}
