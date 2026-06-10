@@ -605,10 +605,21 @@ export default function AdminPage() {
                                 {w.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{w.log.rpe}/10</span></span>}
                                 {w.log.actualMiles && <span><span className="text-gray-500">Miles:</span> <span className="text-white">{w.log.actualMiles}</span></span>}
                                 {w.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
+                                {w.log.duration && <span><span className="text-gray-500">Duration:</span> <span className="text-white">{w.log.duration}</span></span>}
                                 {w.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
                                 {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                               </div>
                               {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {w.log.energy && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Energy: {w.log.energy}/10</span>}
+                                {w.log.motivation && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Motivation: {w.log.motivation}/10</span>}
+                                {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {w.log.sleep}/10</span>}
+                                {w.log.recovery && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Recovery: {w.log.recovery}/10</span>}
+                                {w.log.mood && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Mood: {w.log.mood}/10</span>}
+                                {w.log.hunger && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Appetite: {w.log.hunger}/10</span>}
+                                {w.log.strength && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Body: {w.log.strength}/10</span>}
+                              </div>
+                              {w.skipReason && <p className="text-yellow-400 text-xs mt-2"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
                             </div>
                           )}
                         </>

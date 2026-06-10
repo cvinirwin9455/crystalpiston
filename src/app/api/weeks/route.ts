@@ -23,100 +23,102 @@ export async function GET(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data: weeks, error } = await adminClient
+  // Fetch weeks
+  const { data: weeks, error: weeksError } = await adminClient
     .from('weeks')
-    .select(`
-      id,
-      client_id,
-      date_range,
-      focus,
-      coach_message,
-      status,
-      created_at,
-      workouts (
-        id,
-        day,
-        type,
-        training_type,
-        title,
-        miles,
-        description,
-        pace_target,
-        location,
-        coach_notes,
-        sort_order,
-        workout_logs (
-          id,
-          status,
-          skip_reason,
-          rpe,
-          actual_miles,
-          actual_pace,
-          stress,
-          notes,
-          on_period,
-          duration,
-          energy,
-          motivation,
-          sleep,
-          strength,
-          recovery,
-          mood,
-          hunger
-        )
-      )
-    `)
+    .select('id, client_id, date_range, focus, coach_message, status, created_at')
     .eq('client_id', clientId)
     .order('date_range', { ascending: true })
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (weeksError) {
+    return NextResponse.json({ error: weeksError.message }, { status: 500 })
+  }
+
+  if (!weeks || weeks.length === 0) {
+    return NextResponse.json([])
+  }
+
+  // Fetch all workouts for these weeks
+  const weekIds = weeks.map(w => w.id)
+  const { data: workouts } = await adminClient
+    .from('workouts')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order')
+    .in('week_id', weekIds)
+    .order('sort_order', { ascending: true })
+
+  // Fetch all workout logs
+  const workoutIds = (workouts || []).map(wo => wo.id)
+  let logs: any[] = []
+  if (workoutIds.length > 0) {
+    const { data: logsData } = await adminClient
+      .from('workout_logs')
+      .select('id, workout_id, status, skip_reason, rpe, actual_miles, actual_pace, stress, notes, on_period, duration, energy, motivation, sleep, strength, recovery, mood, hunger')
+      .in('workout_id', workoutIds)
+    logs = logsData || []
+  }
+
+  // Build lookup maps
+  const logsByWorkoutId = new Map<string, any>()
+  for (const log of logs) {
+    logsByWorkoutId.set(log.workout_id, log)
+  }
+
+  const workoutsByWeekId = new Map<string, any[]>()
+  for (const wo of workouts || []) {
+    if (!workoutsByWeekId.has(wo.week_id)) {
+      workoutsByWeekId.set(wo.week_id, [])
+    }
+    workoutsByWeekId.get(wo.week_id)!.push(wo)
   }
 
   // Format response
-  const formatted = weeks?.map(w => ({
-    weekId: w.id,
-    clientId: w.client_id,
-    dateRange: w.date_range,
-    focus: w.focus,
-    coachMessage: w.coach_message,
-    status: w.status,
-    createdAt: w.created_at,
-    workouts: (w.workouts || [])
-      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-      .map((wo: any) => ({
-        id: wo.id,
-        day: wo.day,
-        type: wo.type,
-        trainingType: wo.training_type,
-        title: wo.title,
-        miles: wo.miles ? parseFloat(wo.miles) : null,
-        description: wo.description,
-        paceTarget: wo.pace_target,
-        location: wo.location,
-        coachNotes: wo.coach_notes,
-        sortOrder: wo.sort_order,
-        completed: wo.workout_logs && wo.workout_logs.length > 0,
-        status: wo.workout_logs?.[0]?.status || null,
-        skipReason: wo.workout_logs?.[0]?.skip_reason || null,
-        log: wo.workout_logs?.[0] ? {
-          rpe: wo.workout_logs[0].rpe?.toString() || '',
-          stress: wo.workout_logs[0].stress?.toString() || '',
-          notes: wo.workout_logs[0].notes || '',
-          energy: wo.workout_logs[0].energy?.toString() || '',
-          motivation: wo.workout_logs[0].motivation?.toString() || '',
-          sleep: wo.workout_logs[0].sleep?.toString() || '',
-          strength: wo.workout_logs[0].strength?.toString() || '',
-          recovery: wo.workout_logs[0].recovery?.toString() || '',
-          mood: wo.workout_logs[0].mood?.toString() || '',
-          hunger: wo.workout_logs[0].hunger?.toString() || '',
-          actualMiles: wo.workout_logs[0].actual_miles?.toString() || '',
-          actualPace: wo.workout_logs[0].actual_pace || '',
-          onPeriod: wo.workout_logs[0].on_period ? 'yes' : 'no',
-          duration: wo.workout_logs[0].duration || '',
-        } : undefined,
-      })),
-  })) || []
+  const formatted = weeks.map(w => {
+    const weekWorkouts = workoutsByWeekId.get(w.id) || []
+    return {
+      weekId: w.id,
+      clientId: w.client_id,
+      dateRange: w.date_range,
+      focus: w.focus,
+      coachMessage: w.coach_message,
+      status: w.status,
+      createdAt: w.created_at,
+      workouts: weekWorkouts.map(wo => {
+        const log = logsByWorkoutId.get(wo.id)
+        return {
+          id: wo.id,
+          day: wo.day,
+          type: wo.type,
+          trainingType: wo.training_type,
+          title: wo.title,
+          miles: wo.miles ? parseFloat(wo.miles) : null,
+          description: wo.description,
+          paceTarget: wo.pace_target,
+          location: wo.location,
+          coachNotes: wo.coach_notes,
+          sortOrder: wo.sort_order,
+          completed: !!log,
+          status: log?.status || null,
+          skipReason: log?.skip_reason || null,
+          log: log ? {
+            rpe: log.rpe?.toString() || '',
+            stress: log.stress?.toString() || '',
+            notes: log.notes || '',
+            energy: log.energy?.toString() || '',
+            motivation: log.motivation?.toString() || '',
+            sleep: log.sleep?.toString() || '',
+            strength: log.strength?.toString() || '',
+            recovery: log.recovery?.toString() || '',
+            mood: log.mood?.toString() || '',
+            hunger: log.hunger?.toString() || '',
+            actualMiles: log.actual_miles?.toString() || '',
+            actualPace: log.actual_pace || '',
+            onPeriod: log.on_period ? 'yes' : 'no',
+            duration: log.duration || '',
+          } : undefined,
+        }
+      }),
+    }
+  })
 
   return NextResponse.json(formatted)
 }
