@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import AccountTab from "./AccountTab";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
@@ -787,56 +788,11 @@ export default function AdminPage() {
 
             {/* ACCOUNT */}
             {clientTab === "account" && (
-              <div className="space-y-6">
-                <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
-                  <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Client Details</h4>
-                  <div className="grid md:grid-cols-4 gap-4 mb-4">
-                    <div><label className="text-gray-500 text-xs block mb-1">Name</label><input type="text" defaultValue={selectedClientData.name} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Email</label><input type="email" defaultValue={selectedClientData.email} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Start Date</label><input type="date" defaultValue={selectedClientData.startDate} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Plan End</label><input type="date" defaultValue={selectedClientData.planDuration} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
-                  </div>
-                  <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save Details</button>
-                </div>
-
-                {/* Payment Management */}
-                <div className={`bg-primary/30 border rounded-xl p-5 ${(selectedClientData.owed - selectedClientData.paid) > 0 ? "border-red-500/20" : "border-green-500/20"}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-gray-400 text-xs font-heading uppercase">Payment</h4>
-                    {(selectedClientData.owed - selectedClientData.paid) > 0 ? (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold">Balance Due</span>
-                    ) : (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">Paid in Full</span>
-                    )}
-                  </div>
-                  <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div><label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label><input type="number" defaultValue={selectedClientData.owed} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Total Paid ($)</label><input type="number" defaultValue={selectedClientData.paid} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" /></div>
-                    <div><label className="text-gray-500 text-xs block mb-1">Outstanding</label><p className={`text-lg font-bold mt-1 ${(selectedClientData.owed - selectedClientData.paid) > 0 ? "text-red-400" : "text-green-400"}`}>{(selectedClientData.owed - selectedClientData.paid) > 0 ? `$${(selectedClientData.owed - selectedClientData.paid).toFixed(2)}` : "Paid"}</p></div>
-                  </div>
-                  <div className="w-full bg-primary/50 rounded-full h-2 mb-4"><div className={`h-2 rounded-full ${(selectedClientData.owed - selectedClientData.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${Math.min(100, (selectedClientData.paid / selectedClientData.owed) * 100)}%` }} /></div>
-                  <div className="flex gap-3">
-                    <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Update Payment</button>
-                    {(selectedClientData.owed - selectedClientData.paid) > 0 && (
-                      <button className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                        Send Payment Reminder
-                      </button>
-                    )}
-                  </div>
-                  {(selectedClientData.owed - selectedClientData.paid) > 0 && <p className="text-gray-600 text-xs mt-2">Sends an email to {selectedClientData.name.split(" ")[0]} reminding them of their outstanding balance.</p>}
-                </div>
-
-                {/* Danger Zone */}
-                <div className="bg-primary/30 border border-red-500/20 rounded-xl p-5">
-                  <h4 className="text-red-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
-                  <p className="text-gray-500 text-xs mb-3">Archiving hides the client but keeps their data. Deleting is permanent.</p>
-                  <div className="flex flex-wrap gap-3">
-                    {selectedClientData.status === "active" ? <button onClick={() => { setClients(clients.map(c => c.id === selectedClient ? { ...c, status: "archived" as const } : c)); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive Client</button> : <button onClick={() => { setClients(clients.map(c => c.id === selectedClient ? { ...c, status: "active" as const } : c)); }} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate Client</button>}
-                    {!showDeleteConfirm ? <button onClick={() => setShowDeleteConfirm(true)} className="border border-red-500/30 text-red-400 py-2 px-4 rounded-lg text-sm">Delete Client</button> : <div className="flex items-center gap-2"><span className="text-red-400 text-xs">Are you sure? This cannot be undone.</span><button onClick={() => { setClients(clients.filter(c => c.id !== selectedClient)); setSelectedClient(null); setShowDeleteConfirm(false); }} className="bg-red-600 text-white py-1 px-3 rounded text-xs">Yes, Delete</button><button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 text-xs">Cancel</button></div>}
-                  </div>
-                </div>
-              </div>
+              <AccountTab 
+                clientData={selectedClientData} 
+                onSave={() => fetchClients()} 
+                onArchive={() => handleArchiveClient(selectedClientData.id)}
+              />
             )}
           </div>
         ) : (

@@ -1,14 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// PATCH /api/clients/[id] - Update a client
+async function getAdminClient() {
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
+
+// PATCH /api/clients/[id] - Update a client's details
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   const supabase = await createClient()
 
-  // Verify the requesting user is admin
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,16 +34,19 @@ export async function PATCH(
 
   const userId = params.id
   const body = await request.json()
-  const { name, gender, status, goal, startDate, planEnd, owed, paid } = body
+  const { name, email, gender, status, goal } = body
 
-  // Update users table
+  const adminClient = await getAdminClient()
+
+  // Update users table (name, email, gender, status)
   const userUpdates: Record<string, any> = {}
   if (name !== undefined) userUpdates.name = name
+  if (email !== undefined) userUpdates.email = email
   if (gender !== undefined) userUpdates.gender = gender
   if (status !== undefined) userUpdates.status = status
 
   if (Object.keys(userUpdates).length > 0) {
-    const { error: userError } = await supabase
+    const { error: userError } = await adminClient
       .from('users')
       .update(userUpdates)
       .eq('id', userId)
@@ -45,18 +56,11 @@ export async function PATCH(
     }
   }
 
-  // Update clients table
-  const clientUpdates: Record<string, any> = {}
-  if (goal !== undefined) clientUpdates.goal = goal
-  if (startDate !== undefined) clientUpdates.start_date = startDate
-  if (planEnd !== undefined) clientUpdates.plan_end = planEnd
-  if (owed !== undefined) clientUpdates.owed = parseFloat(owed)
-  if (paid !== undefined) clientUpdates.paid = parseFloat(paid)
-
-  if (Object.keys(clientUpdates).length > 0) {
-    const { error: clientError } = await supabase
+  // Update clients table (goal)
+  if (goal !== undefined) {
+    const { error: clientError } = await adminClient
       .from('clients')
-      .update(clientUpdates)
+      .update({ goal })
       .eq('user_id', userId)
 
     if (clientError) {
@@ -74,7 +78,6 @@ export async function DELETE(
 ) {
   const supabase = await createClient()
 
-  // Verify the requesting user is admin
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -90,10 +93,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  const adminClient = await getAdminClient()
   const userId = params.id
 
-  // Soft delete: set status to 'inactive'
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('users')
     .update({ status: 'inactive' })
     .eq('id', userId)
