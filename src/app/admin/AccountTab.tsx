@@ -104,6 +104,16 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
     if (!newPlanStart || !newPlanEnd || !clientData.clientId) return;
     setCreatingPlan(true);
     try {
+      // Auto-complete any existing active plan
+      const activePlan = plans.find(p => p.status === "active");
+      if (activePlan) {
+        await fetch("/api/plans", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planId: activePlan.id, status: "completed" }),
+        });
+      }
+
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,15 +126,19 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
       });
       if (res.ok) {
         const data = await res.json();
-        setPlans(prev => [{
-          id: data.plan.id,
-          clientId: data.plan.client_id,
-          startDate: data.plan.start_date,
-          endDate: data.plan.end_date,
-          owed: parseFloat(data.plan.owed) || 0,
-          paid: parseFloat(data.plan.paid) || 0,
-          status: data.plan.status,
-        }, ...prev]);
+        // Update local state: mark old active as completed, add new one
+        setPlans(prev => [
+          {
+            id: data.plan.id,
+            clientId: data.plan.client_id,
+            startDate: data.plan.start_date,
+            endDate: data.plan.end_date,
+            owed: parseFloat(data.plan.owed) || 0,
+            paid: parseFloat(data.plan.paid) || 0,
+            status: data.plan.status,
+          },
+          ...prev.map(p => p.status === "active" ? { ...p, status: "completed" } : p),
+        ]);
         setShowNewPlan(false);
         setNewPlanStart("");
         setNewPlanEnd("");
@@ -233,6 +247,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         {showNewPlan && (
           <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-4">
             <p className="text-accent text-xs font-heading uppercase mb-3">Create New Plan</p>
+            {plans.some(p => p.status === "active") && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
+                <p className="text-yellow-400 text-xs">The current active plan will be marked as completed when you create a new one.</p>
+              </div>
+            )}
             <div className="grid md:grid-cols-3 gap-4 mb-3">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Start Date</label>
@@ -304,6 +323,7 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [paymentHistory, setPaymentHistory] = useState<{amount: number; date: string}[]>([]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -312,8 +332,10 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
 
   const handleLogPayment = () => {
     if (!paymentAmount) return;
-    const newPaid = plan.paid + parseFloat(paymentAmount);
+    const amount = parseFloat(paymentAmount);
+    const newPaid = plan.paid + amount;
     onUpdate(plan.id, { paid: newPaid.toString() });
+    setPaymentHistory(prev => [...prev, { amount, date: paymentDate }]);
     setPaymentAmount("");
     setShowPaymentForm(false);
   };
@@ -356,7 +378,22 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
         <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
       </div>
 
-      {/* Log Payment button - only for active plans with balance due */}
+      {/* Payment History */}
+      {paymentHistory.length > 0 && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <p className="text-gray-500 text-xs mb-2">Recent Payments</p>
+          <div className="space-y-1">
+            {paymentHistory.map((p, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">{formatDate(p.date)}</span>
+                <span className="text-green-400 font-medium">+${p.amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Log Payment button */}
       {plan.status === "active" && (plan.owed - plan.paid) > 0 && (
         <div className="mt-3">
           {!showPaymentForm ? (

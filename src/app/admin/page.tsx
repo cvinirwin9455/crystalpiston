@@ -878,7 +878,6 @@ export default function AdminPage() {
             {(() => {
               const allDrafts = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "draft").map(w => ({ client: c, week: w })));
               const unpaidClients = clients.filter(c => c.status === "active" && c.owed - c.paid > 0);
-              const recentLogs = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "published").flatMap(w => w.workouts.filter(wo => wo.log).map(wo => ({ client: c, workout: wo }))));
               return (
                 <>
                   {/* Drafts Ready to Publish */}
@@ -902,23 +901,7 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* Recent Client Activity */}
-                  {recentLogs.length > 0 && (
-                    <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
-                      <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">Recent Client Logs</h3>
-                      <div className="space-y-2">
-                        {recentLogs.slice(0, 5).map((item, i) => (
-                          <button key={i} onClick={() => { setSelectedClient(item.client.id); setClientTab("plan"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
-                            <div className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
-                              <div><p className="text-white text-sm">{item.client.name} <span className="text-gray-500">logged</span> {item.workout.title}</p><p className="text-gray-500 text-xs">Effort: {item.workout.log?.rpe}/10 {item.workout.log?.actualMiles && `• ${item.workout.log.actualMiles} mi`} {item.workout.log?.onPeriod === "yes" && "• On Period"}</p></div>
-                            </div>
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Unread Messages */}
                   {totalUnread > 0 && (
