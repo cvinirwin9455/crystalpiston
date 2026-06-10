@@ -586,7 +586,11 @@ export default function AdminPage() {
                       {!editingWeek ? (
                         <>
                           <div className="flex items-center gap-4">
-                            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${w.completed ? "bg-green-500" : "bg-gray-600"}`} />
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${w.status === "complete" ? "bg-green-500 border-green-500" : w.status === "partial" ? "bg-yellow-500 border-yellow-500" : w.status === "skipped" ? "bg-red-500 border-red-500" : w.completed ? "bg-green-500 border-green-500" : "border-gray-500"}`}>
+                              {(w.status === "complete" || (w.completed && !w.status)) && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              {w.status === "partial" && <span className="text-white text-xs font-bold">½</span>}
+                              {w.status === "skipped" && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-medium text-sm">{w.day}</span>
