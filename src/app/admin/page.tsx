@@ -792,6 +792,17 @@ export default function AdminPage() {
                 clientData={selectedClientData} 
                 onSave={() => fetchClients()} 
                 onArchive={() => handleArchiveClient(selectedClientData.id)}
+                onDelete={async () => {
+                  try {
+                    const res = await fetch(`/api/clients/${selectedClientData.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      fetchClients();
+                      setSelectedClient(null);
+                    }
+                  } catch (err) {
+                    console.error('Failed to delete client:', err);
+                  }
+                }}
               />
             )}
           </div>

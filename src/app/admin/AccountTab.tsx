@@ -22,7 +22,7 @@ type ClientData = {
   status: string;
 };
 
-export default function AccountTab({ clientData, onSave, onArchive }: { clientData: ClientData; onSave: () => void; onArchive: () => void }) {
+export default function AccountTab({ clientData, onSave, onArchive, onDelete }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void }) {
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
@@ -268,60 +268,127 @@ export default function AccountTab({ clientData, onSave, onArchive }: { clientDa
         {loadingPlans && <p className="text-gray-500 text-sm">Loading plans...</p>}
         {!loadingPlans && plans.length === 0 && <p className="text-gray-500 text-sm">No plans yet. Create one above.</p>}
         {plans.map((plan) => (
-          <div key={plan.id} className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5 opacity-70"}`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
-                  {plan.status}
-                </span>
-              </div>
-              {plan.status === "active" && (
-                <button onClick={() => handleUpdatePlan(plan.id, { status: "completed" })} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
-              )}
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-gray-500 text-xs">Plan Cost</p>
-                <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Paid</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    defaultValue={plan.paid}
-                    onBlur={(e) => handleUpdatePlan(plan.id, { paid: e.target.value })}
-                    className="w-24 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-accent"
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Balance</p>
-                <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-                  {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
-                </p>
-              </div>
-            </div>
-            <div className="w-full bg-primary/50 rounded-full h-1.5 mt-2">
-              <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
-            </div>
-          </div>
+          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} />
         ))}
       </div>
 
       {/* Danger Zone */}
       <div className="bg-primary/30 border border-red-500/20 rounded-xl p-5">
         <h4 className="text-red-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
-        <p className="text-gray-500 text-xs mb-3">Archiving hides the client but keeps their data.</p>
+        <p className="text-gray-500 text-xs mb-3">Archiving hides the client but keeps their data. They can no longer log in.</p>
         <div className="flex flex-wrap gap-3">
           {clientData.status === "active" ? (
             <button onClick={onArchive} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive Client</button>
           ) : (
             <button onClick={onArchive} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate Client</button>
           )}
+          {!showDeleteConfirm ? (
+            <button onClick={() => setShowDeleteConfirm(true)} className="border border-red-500/30 text-red-400 py-2 px-4 rounded-lg text-sm">Delete Client Permanently</button>
+          ) : (
+            <div className="w-full mt-3 bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <p className="text-red-400 text-sm font-bold mb-2">Are you absolutely sure?</p>
+              <p className="text-gray-400 text-xs mb-1">This will permanently delete:</p>
+              <ul className="text-gray-400 text-xs mb-3 list-disc list-inside">
+                <li>All training plans and workout data</li>
+                <li>All messages between you and this client</li>
+                <li>All payment history</li>
+                <li>The client&apos;s account and login access</li>
+              </ul>
+              <p className="text-red-400 text-xs font-bold mb-3">This action cannot be undone.</p>
+              <div className="flex gap-3">
+                <button onClick={onDelete} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Yes, Permanently Delete</button>
+                <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Sub-component for individual plan card with payment logging
+function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, updates: any) => void }) {
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const handleLogPayment = () => {
+    if (!paymentAmount) return;
+    const newPaid = plan.paid + parseFloat(paymentAmount);
+    onUpdate(plan.id, { paid: newPaid.toString() });
+    setPaymentAmount("");
+    setShowPaymentForm(false);
+  };
+
+  return (
+    <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5 opacity-80"}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
+            {plan.status}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {plan.status === "active" && (
+            <button onClick={() => onUpdate(plan.id, { status: "completed" })} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
+          )}
+          {plan.status === "completed" && (
+            <button onClick={() => onUpdate(plan.id, { status: "active" })} className="text-gray-500 text-xs hover:text-blue-400">Reactivate Plan</button>
+          )}
+        </div>
+      </div>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div>
+          <p className="text-gray-500 text-xs">Plan Cost</p>
+          <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 text-xs">Total Paid</p>
+          <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 text-xs">Balance</p>
+          <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
+            {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+          </p>
+        </div>
+      </div>
+      <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">
+        <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
+      </div>
+
+      {/* Log Payment button - only for active plans with balance due */}
+      {plan.status === "active" && (plan.owed - plan.paid) > 0 && (
+        <div className="mt-3">
+          {!showPaymentForm ? (
+            <button onClick={() => setShowPaymentForm(true)} className="text-accent text-xs hover:underline">+ Log Payment</button>
+          ) : (
+            <div className="bg-secondary/50 border border-white/10 rounded-lg p-3 mt-2">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-gray-500 text-xs block mb-1">Amount ($)</label>
+                  <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs block mb-1">Date</label>
+                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleLogPayment} disabled={!paymentAmount} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded text-xs disabled:opacity-50">Log Payment</button>
+                <button onClick={() => { setShowPaymentForm(false); setPaymentAmount(""); }} className="text-gray-400 text-xs">Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
