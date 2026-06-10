@@ -56,6 +56,28 @@ export default function AdminPage() {
   const [loadingClients, setLoadingClients] = useState(true);
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
+  const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
+  const [totalUnread, setTotalUnread] = useState(0);
+
+  // Fetch unread message counts
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/messages/unread');
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadByClient(data.byClient || {});
+          setTotalUnread(data.total || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unread counts:', err);
+      }
+    };
+    fetchUnread();
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch clients from API
   const fetchClients = useCallback(async () => {
@@ -435,6 +457,9 @@ export default function AdminPage() {
                   <p className="text-gray-500 text-xs truncate">{client.goal}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
+                  {unreadByClient[client.id] > 0 && (
+                    <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
+                  )}
                   <p className="text-gray-400 text-xs">{doneWk.length}/{allWk.length}</p>
                 </div>
               </button>
@@ -499,7 +524,12 @@ export default function AdminPage() {
             {/* Tabs */}
             <div className="flex gap-1 flex-wrap">
               {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-                <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>{tab.label}</button>
+                <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                  {tab.label}
+                  {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[selectedClient]}</span>
+                  )}
+                </button>
               ))}
             </div>
 

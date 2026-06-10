@@ -11,6 +11,23 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/messages/unread');
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCount(data.total || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
+      }
+    };
+    fetchUnread();
+  }, []);
   const [showMessageForm, setShowMessageForm] = useState(false);
 
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
@@ -273,7 +290,12 @@ export default function DashboardPage() {
       <div className="border-b border-white/10 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-6 flex gap-1">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key as typeof activeTab)} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>{tab.label}</button>
+            <button key={tab.key} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+              {tab.label}
+              {tab.key === "messages" && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadCount}</span>
+              )}
+            </button>
           ))}
         </div>
       </div>
