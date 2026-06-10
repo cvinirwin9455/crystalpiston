@@ -667,7 +667,6 @@ export default function AdminPage() {
                 </>)}
               </div>
             )}
-            )}
 
             {/* DRAFTS */}
             {clientTab === "drafts" && (
