@@ -54,6 +54,17 @@ export async function GET() {
     clientMap.set(cr.user_id, cr)
   }
 
+  // Fetch active plans to get goals
+  const { data: activePlans } = await adminClient
+    .from('plans')
+    .select('client_id, goal')
+    .eq('status', 'active')
+
+  const activePlanByClientId = new Map<string, any>()
+  for (const plan of activePlans || []) {
+    activePlanByClientId.set(plan.client_id, plan)
+  }
+
   // Build response, auto-create missing client records
   const formatted = []
   for (const u of clientUsers || []) {
@@ -68,6 +79,8 @@ export async function GET() {
       if (newClient) clientRecord = newClient
     }
 
+    const activePlan = clientRecord ? activePlanByClientId.get(clientRecord.id) : null
+
     formatted.push({
       userId: u.id,
       clientId: clientRecord?.id || null,
@@ -76,7 +89,7 @@ export async function GET() {
       gender: u.gender,
       status: u.status,
       avatarUrl: u.avatar_url,
-      goal: clientRecord?.goal || '',
+      goal: activePlan?.goal || clientRecord?.goal || '',
       startDate: clientRecord?.start_date || '',
       planEnd: clientRecord?.plan_end || '',
       owed: clientRecord?.owed || 0,

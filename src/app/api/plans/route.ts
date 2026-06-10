@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const adminClient = await getAdminClient()
   const { data: plans, error } = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, owed, paid, status, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, startDate, endDate, owed } = body
+  const { clientId, startDate, endDate, owed, goal } = body
 
   if (!clientId || !startDate || !endDate) {
     return NextResponse.json({ error: 'clientId, startDate, and endDate are required' }, { status: 400 })
@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       client_id: clientId,
       start_date: startDate,
       end_date: endDate,
+      goal: goal || null,
       owed: owed ? parseFloat(owed) : 0,
       paid: 0,
       status: 'active',

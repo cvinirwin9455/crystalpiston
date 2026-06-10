@@ -7,6 +7,7 @@ type Plan = {
   clientId: string;
   startDate: string;
   endDate: string;
+  goal: string;
   owed: number;
   paid: number;
   status: string;
@@ -37,6 +38,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
   const [newPlanStart, setNewPlanStart] = useState("");
   const [newPlanEnd, setNewPlanEnd] = useState("");
   const [newPlanOwed, setNewPlanOwed] = useState("");
+  const [newPlanGoal, setNewPlanGoal] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -64,6 +66,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             clientId: p.client_id,
             startDate: p.start_date,
             endDate: p.end_date,
+            goal: p.goal || '',
             owed: parseFloat(p.owed) || 0,
             paid: parseFloat(p.paid) || 0,
             status: p.status,
@@ -122,6 +125,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
           startDate: newPlanStart,
           endDate: newPlanEnd,
           owed: newPlanOwed,
+          goal: newPlanGoal,
         }),
       });
       if (res.ok) {
@@ -133,6 +137,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             clientId: data.plan.client_id,
             startDate: data.plan.start_date,
             endDate: data.plan.end_date,
+            goal: data.plan.goal || '',
             owed: parseFloat(data.plan.owed) || 0,
             paid: parseFloat(data.plan.paid) || 0,
             status: data.plan.status,
@@ -143,6 +148,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         setNewPlanStart("");
         setNewPlanEnd("");
         setNewPlanOwed("");
+        setNewPlanGoal("");
       }
     } catch (err) {
       console.error("Failed to create plan:", err);
@@ -252,7 +258,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
                 <p className="text-yellow-400 text-xs">The current active plan will be marked as completed when you create a new one.</p>
               </div>
             )}
-            <div className="grid md:grid-cols-3 gap-4 mb-3">
+            <div className="grid md:grid-cols-4 gap-4 mb-3">
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Goal</label>
+                <input type="text" value={newPlanGoal} onChange={(e) => setNewPlanGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. War Eagle 50K" />
+              </div>
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Start Date</label>
                 <input type="date" value={newPlanStart} onChange={(e) => setNewPlanStart(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
@@ -345,6 +355,7 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>
+                {plan.goal && <span className="text-gray-400 text-xs">• {plan.goal}</span>}
           <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
             {plan.status}
           </span>
