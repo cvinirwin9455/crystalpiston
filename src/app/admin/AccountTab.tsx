@@ -177,7 +177,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
 
         {!editing ? (
           /* View Mode */
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <div>
               <p className="text-gray-500 text-xs mb-1">Name</p>
               <p className="text-white text-sm">{name || "—"}</p>
@@ -190,15 +190,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               <p className="text-gray-500 text-xs mb-1">Gender</p>
               <p className="text-white text-sm capitalize">{gender || "—"}</p>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Goal</p>
-              <p className="text-white text-sm">{goal || "—"}</p>
-            </div>
           </div>
         ) : (
           /* Edit Mode */
           <>
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
@@ -213,10 +209,6 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
                   <option value="female">Female</option>
                   <option value="male">Male</option>
                 </select>
-              </div>
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">Goal</label>
-                <input type="text" value={goal} onChange={(e) => setGoal(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
               </div>
             </div>
             <div className="flex items-center gap-3">

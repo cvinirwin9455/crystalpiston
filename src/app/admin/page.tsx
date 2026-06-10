@@ -920,6 +920,24 @@ export default function AdminPage() {
                     </div>
                   )}
 
+                  {/* Unread Messages */}
+                  {totalUnread > 0 && (
+                    <div className="bg-secondary/50 border border-accent/20 rounded-xl p-5">
+                      <h3 className="font-heading text-sm uppercase text-accent mb-3">Unread Messages ({totalUnread})</h3>
+                      <div className="space-y-2">
+                        {clients.filter(c => unreadByClient[c.id] > 0).map((c) => (
+                          <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("messages"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-xs font-bold text-accent">{c.name.charAt(0)}</div>
+                              <p className="text-white text-sm">{c.name}</p>
+                            </div>
+                            <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[c.id]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Payment Overview */}
                   {unpaidClients.length > 0 && (
                     <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
@@ -937,30 +955,6 @@ export default function AdminPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* All Clients Quick View */}
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
-                    <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">All Active Clients</h3>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {clients.filter(c => c.status === "active").map((c) => {
-                        const allWk = c.weeks.filter(w => w.status === "published").flatMap(w => w.workouts);
-                        const doneWk = allWk.filter(w => w.completed);
-                        const drafts = c.weeks.filter(w => w.status === "draft").length;
-                        return (
-                          <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("plan"); }} className="bg-primary/30 border border-white/5 rounded-lg p-4 hover:border-accent/30 transition-all text-left">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{c.name.charAt(0)}</div>
-                              <div><p className="text-white text-sm font-medium">{c.name}</p><p className="text-gray-500 text-xs">{c.goal}</p></div>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-gray-400">{doneWk.length}/{allWk.length} workouts</span>
-                              {drafts > 0 && <span className="text-yellow-400">{drafts} draft{drafts > 1 ? "s" : ""}</span>}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </>
               );
             })()}
