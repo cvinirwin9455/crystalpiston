@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// GET /api/my-plans - Get the logged-in client's active plan info
+// GET /api/my-plans - Get the logged-in client's plans (active + history)
 export async function GET() {
   const supabase = await createClient()
 
@@ -24,47 +24,30 @@ export async function GET() {
     .single()
 
   if (!client) {
-    return NextResponse.json(null)
+    return NextResponse.json({ activePlan: null, allPlans: [] })
   }
 
-  // Get the active plan (or most recent completed if no active)
-  const { data: activePlan } = await adminClient
+  // Get all plans for this client
+  const { data: plans } = await adminClient
     .from('plans')
     .select('id, start_date, end_date, goal, owed, paid, status')
     .eq('client_id', client.id)
-    .eq('status', 'active')
-    .single()
+    .order('start_date', { ascending: false })
 
-  if (activePlan) {
-    return NextResponse.json({
-      goal: activePlan.goal || '',
-      startDate: activePlan.start_date,
-      planEnd: activePlan.end_date,
-      owed: parseFloat(activePlan.owed) || 0,
-      paid: parseFloat(activePlan.paid) || 0,
-      status: activePlan.status,
-    })
+  if (!plans || plans.length === 0) {
+    return NextResponse.json({ activePlan: null, allPlans: [] })
   }
 
-  // No active plan — check for most recent completed
-  const { data: recentPlan } = await adminClient
-    .from('plans')
-    .select('id, start_date, end_date, goal, owed, paid, status')
-    .eq('client_id', client.id)
-    .order('end_date', { ascending: false })
-    .limit(1)
-    .single()
+  const formatted = plans.map(p => ({
+    goal: p.goal || '',
+    startDate: p.start_date,
+    planEnd: p.end_date,
+    owed: parseFloat(p.owed) || 0,
+    paid: parseFloat(p.paid) || 0,
+    status: p.status,
+  }))
 
-  if (recentPlan) {
-    return NextResponse.json({
-      goal: recentPlan.goal || '',
-      startDate: recentPlan.start_date,
-      planEnd: recentPlan.end_date,
-      owed: parseFloat(recentPlan.owed) || 0,
-      paid: parseFloat(recentPlan.paid) || 0,
-      status: recentPlan.status,
-    })
-  }
+  const activePlan = formatted.find(p => p.status === 'active') || null
 
-  return NextResponse.json(null)
+  return NextResponse.json({ activePlan, allPlans: formatted })
 }

@@ -78,17 +78,20 @@ export default function DashboardPage() {
     }
   };
 
-  const [clientInfo, setClientInfo] = useState<{name: string; goal: string; planEnd: string; startDate: string; owed: number; paid: number} | null>(null);
+  const [clientInfo, setClientInfo] = useState<{goal: string; planEnd: string; startDate: string; owed: number; paid: number; status: string} | null>(null);
+  const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string}[]>([]);
 
   // Fetch client's own plan info
   useEffect(() => {
     const fetchPlanInfo = async () => {
       try {
-        // Get client's plans via the plans API (client can view their own)
         const res = await fetch('/api/my-plans');
         if (res.ok) {
           const data = await res.json();
-          if (data) setClientInfo(data);
+          if (data) {
+            setClientInfo(data.activePlan || null);
+            setAllPlans(data.allPlans || []);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch plan info:', err);
@@ -671,6 +674,36 @@ export default function DashboardPage() {
               <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6 text-center">
                 <p className="text-gray-500">No active plan. Contact Crystal for details.</p>
               </div>
+            )}
+
+            {/* Plan History */}
+            {allPlans.filter(p => p.status !== "active").length > 0 && (
+              <details className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+                <summary className="font-heading text-sm uppercase text-gray-400 cursor-pointer hover:text-white">
+                  Plan History ({allPlans.filter(p => p.status !== "active").length})
+                </summary>
+                <div className="mt-4 space-y-4">
+                  {allPlans.filter(p => p.status !== "active").map((plan, i) => (
+                    <div key={i} className="border border-white/5 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {plan.goal && <span className="text-white text-sm font-medium">{plan.goal}</span>}
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">{plan.status}</span>
+                        </div>
+                      </div>
+                      <p className="text-gray-500 text-xs mb-2">
+                        {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(plan.planEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-400">Cost: ${plan.owed.toFixed(2)}</span>
+                        <span className={`font-medium ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                          {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
             )}
           </div>
         )}
