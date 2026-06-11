@@ -437,11 +437,12 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   };
 
   return (
-    <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5 opacity-80"}`}>
+    <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5"}`}>
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-medium">{plan.goal || formatDate(plan.startDate) + " — " + formatDate(plan.endDate)}</span>
-                {plan.goal && <span className="text-gray-500 text-xs ml-2">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
+        <div className="flex items-center gap-2 flex-wrap">
+          {plan.goal && <span className="text-white text-sm font-medium">{plan.goal}</span>}
+          {!plan.goal && <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
+          {plan.goal && <span className="text-gray-400 text-xs">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
           <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
             {plan.status}
           </span>
