@@ -10,6 +10,62 @@ async function getAdminClient() {
   )
 }
 
+// POST /api/clients/[id] - Resend invite email
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const userId = params.id
+  const adminClient = await getAdminClient()
+
+  // Get the user's email
+  const { data: clientUser } = await adminClient
+    .from('users')
+    .select('email, name')
+    .eq('id', userId)
+    .single()
+
+  if (!clientUser || !clientUser.email) {
+    return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+  }
+
+  // Get the base URL from the request
+  const url = new URL(request.url)
+  const baseUrl = `${url.protocol}//${url.host}`
+
+  // Resend the invite
+  const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(clientUser.email, {
+    data: {
+      name: clientUser.name,
+      role: 'client',
+    },
+    redirectTo: `${baseUrl}/auth/callback?next=/set-password`,
+  })
+
+  if (inviteError) {
+    return NextResponse.json({ error: inviteError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, message: `Invite resent to ${clientUser.email}` })
+}
+
 // PATCH /api/clients/[id] - Update a client's details
 export async function PATCH(
   request: Request,

@@ -8,7 +8,7 @@ type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; 
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; weeks: WeekData[]; messages: CoachMessage[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; weeks: WeekData[]; messages: CoachMessage[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -62,6 +62,8 @@ export default function AdminPage() {
   const [loadingClients, setLoadingClients] = useState(true);
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
+  const [resendingInvite, setResendingInvite] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
   const [totalUnread, setTotalUnread] = useState(0);
 
@@ -103,6 +105,7 @@ export default function AdminPage() {
           owed: c.owed || 0,
           paid: c.paid || 0,
           status: c.status === 'inactive' ? 'archived' : 'active',
+          inviteStatus: c.inviteStatus || 'accepted',
           weeks: [],
           messages: [],
         }));
@@ -163,6 +166,27 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Failed to archive client:', err);
+    }
+  };
+
+  // Resend invite email
+  const handleResendInvite = async (userId: string) => {
+    setResendingInvite(true);
+    setResendSuccess(false);
+    try {
+      const res = await fetch(`/api/clients/${userId}`, { method: 'POST' });
+      if (res.ok) {
+        setResendSuccess(true);
+        setTimeout(() => setResendSuccess(false), 5000);
+        fetchClients(); // Refresh to update invite status
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to resend invite');
+      }
+    } catch (err) {
+      console.error('Failed to resend invite:', err);
+    } finally {
+      setResendingInvite(false);
     }
   };
 
@@ -653,7 +677,7 @@ export default function AdminPage() {
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
-                  <p className="text-gray-500 text-xs truncate">{client.goal}</p>
+                  <p className="text-gray-500 text-xs truncate">{client.inviteStatus !== "accepted" ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span> : client.goal}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   {unreadByClient[client.id] > 0 && (
@@ -719,6 +743,37 @@ export default function AdminPage() {
                 {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
               </div>
             </div>
+
+            {/* Invite Status Banner */}
+            {selectedClientData.inviteStatus !== "accepted" && (
+              <div className={`flex items-center justify-between rounded-xl p-4 ${selectedClientData.inviteStatus === "pending" ? "bg-blue-500/10 border border-blue-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
+                <div className="flex items-center gap-3">
+                  {selectedClientData.inviteStatus === "pending" ? (
+                    <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                  )}
+                  <div>
+                    <p className={`text-sm font-medium ${selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}`}>
+                      {selectedClientData.inviteStatus === "pending" ? "Invite Pending" : "Invite Expired"}
+                    </p>
+                    <p className="text-gray-400 text-xs">
+                      {selectedClientData.inviteStatus === "pending" 
+                        ? `Invite sent to ${selectedClientData.email}. Waiting for them to set their password.`
+                        : `The invite link sent to ${selectedClientData.email} has expired. Resend to give them a new link.`
+                      }
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleResendInvite(selectedClientData.id)} 
+                  disabled={resendingInvite}
+                  className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50 flex-shrink-0"
+                >
+                  {resendingInvite ? "Sending..." : resendSuccess ? "Sent ✓" : "Resend Invite"}
+                </button>
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-1 flex-wrap">

@@ -44,6 +44,13 @@ export async function GET() {
     return NextResponse.json({ error: usersError.message }, { status: 500 })
   }
 
+  // Fetch auth user data to determine invite status
+  const { data: { users: authUsers } } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
+  const authUserMap = new Map<string, any>()
+  for (const au of authUsers || []) {
+    authUserMap.set(au.id, au)
+  }
+
   const { data: clientRecords } = await adminClient
     .from('clients')
     .select('id, user_id, goal, start_date, plan_end, owed, paid')
@@ -85,6 +92,22 @@ export async function GET() {
     const owed = activePlan ? (parseFloat(activePlan.owed) || 0) : 0
     const paid = activePlan ? (parseFloat(activePlan.paid) || 0) : 0
 
+    // Determine invite status from auth user data
+    const authUser = authUserMap.get(u.id)
+    let inviteStatus: 'accepted' | 'pending' | 'expired' = 'accepted'
+    if (authUser) {
+      if (authUser.last_sign_in_at) {
+        inviteStatus = 'accepted'
+      } else if (authUser.email_confirmed_at) {
+        inviteStatus = 'accepted'
+      } else {
+        // Check if invite was sent more than 7 days ago (Supabase default expiry)
+        const invitedAt = new Date(authUser.invited_at || authUser.created_at)
+        const daysSinceInvite = (Date.now() - invitedAt.getTime()) / (1000 * 60 * 60 * 24)
+        inviteStatus = daysSinceInvite > 7 ? 'expired' : 'pending'
+      }
+    }
+
     formatted.push({
       userId: u.id,
       clientId: clientRecord?.id || null,
@@ -98,6 +121,7 @@ export async function GET() {
       planEnd: activePlan?.end_date || clientRecord?.plan_end || '',
       owed,
       paid,
+      inviteStatus,
       createdAt: u.created_at,
     })
   }
