@@ -56,7 +56,33 @@ export default function AdminPage() {
   const getMonday = (d: Date) => { const date = new Date(d); const day = date.getDay(); const diff = day === 0 ? -6 : 1 - day; date.setDate(date.getDate() + diff); return date; };
   const formatDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const getWeeksInMonth = (month: Date) => { const weeks: Date[][] = []; const firstDay = new Date(month.getFullYear(), month.getMonth(), 1); const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0); let current = getMonday(firstDay); while (current <= lastDay || weeks.length < 5) { const week: Date[] = []; for (let i = 0; i < 7; i++) { week.push(new Date(current)); current.setDate(current.getDate() + 1); } weeks.push(week); if (current > lastDay && weeks.length >= 4) break; } return weeks; };
-  const selectWeek = (monday: Date) => { const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6); setSelectedWeekStart(monday); setWeekPlan({ ...weekPlan, dateRange: `${formatDate(monday)} - ${formatDate(sunday)}` }); setShowWeekPicker(false); };
+  const [weekDateWarning, setWeekDateWarning] = useState("");
+  const selectWeek = (monday: Date) => {
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    setSelectedWeekStart(monday);
+    setWeekPlan({ ...weekPlan, dateRange: `${formatDate(monday)} - ${formatDate(sunday)}` });
+    setShowWeekPicker(false);
+    // Validate against active plan dates
+    if (activePlan && activePlan.startDate && activePlan.endDate) {
+      const planStart = new Date(activePlan.startDate);
+      const planEnd = new Date(activePlan.endDate);
+      planStart.setHours(0, 0, 0, 0);
+      planEnd.setHours(23, 59, 59, 999);
+      const weekStart = new Date(monday);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(sunday);
+      weekEnd.setHours(0, 0, 0, 0);
+      if (weekStart < planStart || weekEnd > planEnd) {
+        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        setWeekDateWarning(`This week falls outside the active plan (${fmt(planStart)} – ${fmt(planEnd)}). You won't be able to save until you select a week within the plan dates, or update the plan dates in the Account tab.`);
+      } else {
+        setWeekDateWarning("");
+      }
+    } else {
+      setWeekDateWarning("");
+    }
+  };
 
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
@@ -478,6 +504,7 @@ export default function AdminPage() {
         });
         setSelectedWeekStart(null);
         setEditingDraftId(null);
+        setWeekDateWarning("");
         // Refresh weeks
         fetchWeeks(client.clientId);
         setClientTab(publishStatus === "draft" ? "drafts" : "plan");
@@ -1007,6 +1034,13 @@ export default function AdminPage() {
                   </div>
                   <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={weekPlan.focus} onChange={(e) => setWeekPlan({ ...weekPlan, focus: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
                 </div>
+                {/* Week date validation warning */}
+                {weekDateWarning && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-3">
+                    <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                    <p className="text-red-400 text-xs">{weekDateWarning}</p>
+                  </div>
+                )}
                 <div><label className="text-gold text-xs font-heading uppercase block mb-1">Weekly Message to Client</label><textarea value={weekPlan.coachMessage} onChange={(e) => setWeekPlan({ ...weekPlan, coachMessage: e.target.value })} className="w-full bg-primary/50 border border-gold/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold resize-none" rows={2} placeholder="Shown at top of client's plan when published..." /></div>
 
                 {/* Mon-Sun */}
@@ -1039,7 +1073,7 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3"><button onClick={() => handleSaveWeek("draft")} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save as Draft</button><button onClick={() => handleSaveWeek("published")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save & Publish</button></div>
+                <div className="flex gap-3"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button></div>
                 </>
                 )}
               </div>
