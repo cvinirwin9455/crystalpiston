@@ -17,13 +17,17 @@ export default function AuthCallbackPage() {
       const hash = window.location.hash;
 
       if (hash && hash.includes("access_token")) {
+        // Check if this is a recovery or an invite
+        const isRecovery = hash.includes("type=recovery");
+        const targetPage = isRecovery ? "/reset-password" : "/set-password";
+
         // Give Supabase a moment to process the token
         await new Promise(resolve => setTimeout(resolve, 500));
 
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-          router.push("/set-password");
+          router.push(targetPage);
           return;
         }
       }

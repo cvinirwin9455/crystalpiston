@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -10,8 +10,50 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+
+  // Wait for session to be established from hash fragment
+  useEffect(() => {
+    const checkSession = async () => {
+      // First check if there's already a session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setChecking(false);
+        return;
+      }
+
+      // Wait for auth state change (hash token being processed)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session) {
+          setChecking(false);
+          subscription.unsubscribe();
+        }
+      });
+
+      // Timeout: if no session after 5 seconds, redirect to login
+      const timeout = setTimeout(() => {
+        subscription.unsubscribe();
+        setChecking(false);
+        setError("Your reset link has expired. Please request a new one.");
+      }, 5000);
+
+      return () => {
+        clearTimeout(timeout);
+        subscription.unsubscribe();
+      };
+    };
+    checkSession();
+  }, []);
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <p className="text-gray-400">Verifying your reset link...</p>
+      </div>
+    );
+  }
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
