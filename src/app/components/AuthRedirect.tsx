@@ -26,9 +26,13 @@ export default function AuthRedirect() {
       return;
     }
 
-    // If there's an access token (invite link)
+    // If there's an access token (invite or recovery link)
     if (hash.includes("access_token")) {
-      const handleInvite = async () => {
+      // Determine if this is a password recovery or an invite
+      const isRecovery = hash.includes("type=recovery");
+      const targetPage = isRecovery ? "/reset-password" : "/set-password";
+
+      const handleAuth = async () => {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
 
@@ -38,7 +42,7 @@ export default function AuthRedirect() {
             subscription.unsubscribe();
             // Small delay to ensure session is fully set
             setTimeout(() => {
-              window.location.href = "/set-password";
+              window.location.href = targetPage;
             }, 200);
           }
         });
@@ -47,11 +51,11 @@ export default function AuthRedirect() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           subscription.unsubscribe();
-          window.location.href = "/set-password";
+          window.location.href = targetPage;
         }
       };
 
-      handleInvite();
+      handleAuth();
     }
   }, []);
 

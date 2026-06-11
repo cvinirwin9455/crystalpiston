@@ -42,10 +42,15 @@ export default function RootLayout({
               (function() {
                 var hash = window.location.hash;
                 if (hash && hash.indexOf('access_token') !== -1) {
-                  // Store the hash and redirect to set-password
-                  // The hash will be picked up by Supabase client on that page
-                  sessionStorage.setItem('supabase_auth_hash', hash);
-                  window.location.replace('/set-password' + hash);
+                  // Check if this is a password recovery or an invite
+                  if (hash.indexOf('type=recovery') !== -1) {
+                    // Password reset flow -> go to reset-password
+                    window.location.replace('/reset-password' + hash);
+                  } else {
+                    // Invite flow -> go to set-password
+                    sessionStorage.setItem('supabase_auth_hash', hash);
+                    window.location.replace('/set-password' + hash);
+                  }
                 } else if (hash && hash.indexOf('error') !== -1 && hash.indexOf('expired') !== -1) {
                   window.location.replace('/login?error=link_expired');
                 }
