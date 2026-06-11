@@ -37,7 +37,7 @@ export default function AdminPage() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
-  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", password: "", gender: "female" as "female" | "male", goal: "", startDate: "", planDuration: "", owed: "" });
+  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male" });
 
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
@@ -160,10 +160,6 @@ export default function AdminPage() {
           name: newClientForm.name,
           email: newClientForm.email,
           gender: newClientForm.gender,
-          goal: newClientForm.goal,
-          startDate: newClientForm.startDate,
-          planEnd: newClientForm.planDuration,
-          owed: newClientForm.owed,
         }),
       });
       const data = await res.json();
@@ -171,7 +167,7 @@ export default function AdminPage() {
         setCreateError(data.error || 'Failed to create client');
       } else {
         setShowCreateClient(false);
-        setNewClientForm({ name: "", email: "", password: "", gender: "female", goal: "", startDate: "", planDuration: "", owed: "" });
+        setNewClientForm({ name: "", email: "", gender: "female" });
         fetchClients(); // Refresh the list
       }
     } catch (err) {
@@ -704,7 +700,14 @@ export default function AdminPage() {
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
-                  <p className="text-gray-500 text-xs truncate">{client.inviteStatus !== "accepted" ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span> : client.goal}</p>
+                  <p className="text-gray-500 text-xs truncate">
+                    {client.inviteStatus !== "accepted" 
+                      ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                      : client.goal 
+                        ? client.goal 
+                        : <span className="text-yellow-400">No active plan</span>
+                    }
+                  </p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   {unreadByClient[client.id] > 0 && (
@@ -738,17 +741,11 @@ export default function AdminPage() {
         {showCreateClient && (
           <div className="p-6 bg-secondary/30 border-b border-white/10">
             <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
+            <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
               <div><label className="text-gray-400 text-xs block mb-1">Full Name</label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Sarah Miller" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Email</label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="client@email.com" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Password</label><input type="text" value={newClientForm.password} onChange={(e) => setNewClientForm({ ...newClientForm, password: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Temp password" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Gender</label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
-            </div>
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
-              <div><label className="text-gray-400 text-xs block mb-1">Goal</label><input type="text" value={newClientForm.goal} onChange={(e) => setNewClientForm({ ...newClientForm, goal: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="First 5K" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Start Date</label><input type="date" value={newClientForm.startDate} onChange={(e) => setNewClientForm({ ...newClientForm, startDate: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Plan End</label><input type="date" value={newClientForm.planDuration} onChange={(e) => setNewClientForm({ ...newClientForm, planDuration: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Owed ($)</label><input type="text" value={newClientForm.owed} onChange={(e) => setNewClientForm({ ...newClientForm, owed: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="300" /></div>
             </div>
             <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
             {createError && <p className="text-red-400 text-xs mt-2">{createError}</p>}
@@ -761,7 +758,14 @@ export default function AdminPage() {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
-                <p className="text-gray-400 text-sm">{selectedClientData.goal}</p>
+                <p className="text-sm">
+                  {selectedClientData.inviteStatus !== "accepted"
+                    ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                    : selectedClientData.goal
+                      ? <span className="text-gray-400">{selectedClientData.goal}</span>
+                      : <span className="text-yellow-400">No active plan</span>
+                  }
+                </p>
               </div>
               <div className="flex items-center gap-6 text-sm">
                 <div className="text-center"><p className="text-accent font-heading text-xl">{completedWorkouts.length}/{allClientWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
@@ -1086,7 +1090,7 @@ export default function AdminPage() {
                 <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><span className="text-white text-xs font-bold">{selectedClientData.name.charAt(0)}</span></div>
-                    <div><p className="text-white text-sm font-medium">{selectedClientData.name}</p><p className="text-gray-500 text-xs">{selectedClientData.goal}</p></div>
+                    <div><p className="text-white text-sm font-medium">{selectedClientData.name}</p><p className="text-gray-500 text-xs">{selectedClientData.goal || "No active plan"}</p></div>
                   </div>
                 </div>
 
