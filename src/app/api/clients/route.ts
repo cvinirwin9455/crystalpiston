@@ -54,10 +54,10 @@ export async function GET() {
     clientMap.set(cr.user_id, cr)
   }
 
-  // Fetch active plans to get goals
+  // Fetch active plans to get goals and plan-level financials
   const { data: activePlans } = await adminClient
     .from('plans')
-    .select('client_id, goal')
+    .select('client_id, goal, owed, paid, start_date, end_date')
     .eq('status', 'active')
 
   const activePlanByClientId = new Map<string, any>()
@@ -81,6 +81,10 @@ export async function GET() {
 
     const activePlan = clientRecord ? activePlanByClientId.get(clientRecord.id) : null
 
+    // Use active plan financials if available, otherwise fall back to legacy clients table
+    const owed = activePlan ? (parseFloat(activePlan.owed) || 0) : 0
+    const paid = activePlan ? (parseFloat(activePlan.paid) || 0) : 0
+
     formatted.push({
       userId: u.id,
       clientId: clientRecord?.id || null,
@@ -90,10 +94,10 @@ export async function GET() {
       status: u.status,
       avatarUrl: u.avatar_url,
       goal: activePlan?.goal || clientRecord?.goal || '',
-      startDate: clientRecord?.start_date || '',
-      planEnd: clientRecord?.plan_end || '',
-      owed: clientRecord?.owed || 0,
-      paid: clientRecord?.paid || 0,
+      startDate: activePlan?.start_date || clientRecord?.start_date || '',
+      planEnd: activePlan?.end_date || clientRecord?.plan_end || '',
+      owed,
+      paid,
       createdAt: u.created_at,
     })
   }
@@ -152,20 +156,37 @@ export async function POST(request: Request) {
       .eq('id', newUserId)
   }
 
-  // Create the clients record
-  const { error: clientError } = await adminClient
+  // Create the clients record (no owed/paid - those live on plans now)
+  const { data: newClientRecord, error: clientError } = await adminClient
     .from('clients')
     .insert({
       user_id: newUserId,
       goal: goal || null,
       start_date: startDate || null,
       plan_end: planEnd || null,
-      owed: owed ? parseFloat(owed) : 0,
+      owed: 0,
       paid: 0,
     })
+    .select('id')
+    .single()
 
   if (clientError) {
     return NextResponse.json({ error: clientError.message }, { status: 500 })
+  }
+
+  // Create an initial plan if owed amount was provided
+  if (owed && parseFloat(owed) > 0 && newClientRecord) {
+    await adminClient
+      .from('plans')
+      .insert({
+        client_id: newClientRecord.id,
+        start_date: startDate || new Date().toISOString().split('T')[0],
+        end_date: planEnd || null,
+        goal: goal || null,
+        owed: parseFloat(owed),
+        paid: 0,
+        status: 'active',
+      })
   }
 
   return NextResponse.json({ 
