@@ -274,6 +274,7 @@ export default function DashboardPage() {
 
   const markSkipped = async (workoutId: string) => {
     if (!currentWeek) return;
+    const workout = currentWeek.workouts.find(w => w.id === workoutId);
     setSavingLog(true);
     try {
       const res = await fetch('/api/workout-logs', {
@@ -283,6 +284,23 @@ export default function DashboardPage() {
           workoutId,
           status: skipType,
           skipReason: skipReason || null,
+          // Include log data for partial completions
+          ...(skipType === "partial" && workout?.log ? {
+            rpe: workout.log.rpe || null,
+            actualMiles: workout.log.actualMiles || null,
+            actualPace: workout.log.actualPace || null,
+            stress: workout.log.stress || null,
+            notes: workout.log.notes || null,
+            onPeriod: workout.log.onPeriod || null,
+            duration: workout.log.duration || null,
+            energy: workout.log.energy || null,
+            motivation: workout.log.motivation || null,
+            sleep: workout.log.sleep || null,
+            strength: workout.log.strength || null,
+            recovery: workout.log.recovery || null,
+            mood: workout.log.mood || null,
+            hunger: workout.log.hunger || null,
+          } : {}),
         }),
       });
       if (res.ok) {
@@ -438,16 +456,27 @@ export default function DashboardPage() {
                     {/* Log toggle */}
                     {!workout.completed && weekOffset === 0 && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
                       <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
-                        <button onClick={() => setExpandedWorkout(workout.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                          I Did This
-                        </button>
-                        <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("partial"); }} className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">Partially Done</button>
-                        <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">I Skipped This</button>
+                        {workout.type === "rest" ? (
+                          /* Rest day: simple checkmark + optional notes */
+                          <button onClick={() => setExpandedWorkout(workout.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            Mark Complete
+                          </button>
+                        ) : (
+                          /* Run/Cross: full options */
+                          <>
+                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("skipped"); /* reuse skipType to track which form to show */ }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              I Did This
+                            </button>
+                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("partial"); }} className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">Partially Done</button>
+                            <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">I Skipped This</button>
+                          </>
+                        )}
                       </div>
                     )}
                     {expandedWorkout === workout.id && !workout.completed && (
-                      <div className="mt-2 ml-9"><button onClick={() => setExpandedWorkout(null)} className="text-gray-400 hover:text-white text-xs">Cancel</button></div>
+                      <div className="mt-2 ml-9"><button onClick={() => { setExpandedWorkout(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-xs">Cancel</button></div>
                     )}
                     {workout.status === "skipped" && workout.skipReason && (
                       <div className="mt-2 ml-9 bg-red-500/10 border border-red-500/20 rounded-lg p-2"><p className="text-red-400 text-xs"><span className="font-medium">Skipped:</span> {workout.skipReason}</p></div>
@@ -478,17 +507,15 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    {/* Skip/Partial Dialog - direct, no toggle needed */}
+                    {/* Skip Dialog - only for "I Skipped This" */}
                     {showSkipDialog === workout.id && (
                       <div className="mt-3 ml-9 bg-secondary/50 border border-white/10 rounded-xl p-4">
-                        <p className={`text-sm font-medium mb-3 ${skipType === "skipped" ? "text-red-400" : "text-yellow-400"}`}>
-                          {skipType === "skipped" ? "Why did you skip this workout?" : "What part did you complete?"}
-                        </p>
+                        <p className="text-sm font-medium mb-3 text-red-400">Why did you skip this workout?</p>
                         <div className="mb-3">
-                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder={skipType === "skipped" ? "e.g. Sick, injury, schedule conflict, too tired..." : "e.g. Did 4 miles instead of 7 — knee started hurting at mile 4"} />
+                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder="e.g. Sick, injury, schedule conflict, too tired..." />
                         </div>
                         <div className="flex gap-3">
-                          <button onClick={() => markSkipped(workout.id)} disabled={!skipReason || savingLog} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason || savingLog ? "bg-gray-600 cursor-not-allowed" : skipType === "skipped" ? "bg-red-600 hover:bg-red-700" : "bg-yellow-600 hover:bg-yellow-700"}`}>{savingLog ? "Saving..." : skipType === "skipped" ? "Mark as Skipped" : "Mark as Partial"}</button>
+                          <button onClick={() => markSkipped(workout.id)} disabled={!skipReason || savingLog} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason || savingLog ? "bg-gray-600 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"}`}>{savingLog ? "Saving..." : "Mark as Skipped"}</button>
                           <button onClick={() => { setShowSkipDialog(null); setSkipReason(""); }} className="text-gray-400 text-xs">Cancel</button>
                         </div>
                       </div>
@@ -498,7 +525,32 @@ export default function DashboardPage() {
                   {/* Expanded Log Form */}
                   {expandedWorkout === workout.id && (
                     <div className="border-t border-white/10 bg-primary/30 p-5">
-                      <h4 className="font-heading text-sm uppercase text-accent mb-4">Your Workout Log</h4>
+                      {/* REST DAY - simple notes + complete */}
+                      {workout.type === "rest" && (
+                        <>
+                          <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Rest Day Check-in</h4>
+                          <div className="mb-4">
+                            <label className="text-gray-400 text-xs block mb-1">Anything to share with Crystal about today? (optional)</label>
+                            <textarea value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder="e.g. Feeling good and recovered, went for a light walk, legs still sore from yesterday..." />
+                          </div>
+                          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                            <button onClick={() => { setExpandedWorkout(null); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
+                            <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete Rest Day"}</button>
+                          </div>
+                        </>
+                      )}
+
+                      {/* RUN / CROSS - full metrics form (used for both Complete and Partial) */}
+                      {workout.type !== "rest" && (
+                        <>
+                      {/* Partial indicator */}
+                      {skipType === "partial" && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
+                          <p className="text-yellow-400 text-xs font-medium mb-1">Logging as Partially Done</p>
+                          <p className="text-gray-400 text-xs">Fill in what you actually did below, then explain what you couldn&apos;t complete.</p>
+                        </div>
+                      )}
+                      <h4 className="font-heading text-sm uppercase text-accent mb-4">{skipType === "partial" ? "What Did You Do?" : "Your Workout Log"}</h4>
 
                       {/* RUN-specific fields */}
                       {workout.type === "run" && (
@@ -533,26 +585,24 @@ export default function DashboardPage() {
                         </>
                       )}
 
-                      {/* REST fields */}
-                      {workout.type === "rest" && (
-                        <div className="grid md:grid-cols-2 gap-4 mb-4">
-                          <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
-                          <div><label className="text-gray-400 text-xs block mb-1">Did you fully rest?</label><input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Yes, light walk, etc." /></div>
+                      {/* Partial: what didn't you complete? */}
+                      {skipType === "partial" && (
+                        <div className="mb-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
+                          <label className="text-yellow-400 text-xs block mb-1">What couldn&apos;t you complete and why?</label>
+                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-500 resize-none" rows={2} placeholder="e.g. Did 4 miles instead of 7 — knee started hurting at mile 4" />
                         </div>
                       )}
 
-                      {/* Notes (all types) */}
-                      {workout.type !== "rest" && (
-                        <div className="mb-4"><label className="text-gray-400 text-xs block mb-1">Notes</label><input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="How did it feel? Anything notable?" /></div>
-                      )}
+                      {/* Notes (all non-rest types) */}
+                      <div className="mb-4"><label className="text-gray-400 text-xs block mb-1">Notes</label><input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="How did it feel? Anything notable?" /></div>
 
-                      {/* Period tracking (female clients only) */}
+                      {/* Period tracking */}
                       <div className="mb-4 flex items-center gap-3">
                         <button onClick={() => updateWorkoutLog(workout.id, "onPeriod", (workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "no" : "yes")} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
                         <span className="text-gray-400 text-xs">On period today</span>
                       </div>
 
-                      {/* Body Check - Intuitive slider-style labels */}
+                      {/* Body Check */}
                       <div className="border-t border-white/5 pt-4">
                         <p className="text-gold text-xs font-heading uppercase mb-1">How are you feeling today?</p>
                         <p className="text-gray-600 text-xs mb-3">Rate each from 1 (very poor) to 10 (excellent)</p>
@@ -583,9 +633,15 @@ export default function DashboardPage() {
 
                       {/* Save & Close */}
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-                        <button onClick={() => setExpandedWorkout(null)} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
-                        <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete & Save"}</button>
+                        <button onClick={() => { setExpandedWorkout(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
+                        {skipType === "partial" ? (
+                          <button onClick={async () => { await markSkipped(workout.id); setExpandedWorkout(null); }} disabled={savingLog || !skipReason} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Save as Partially Done"}</button>
+                        ) : (
+                          <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete & Save"}</button>
+                        )}
                       </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
