@@ -93,6 +93,131 @@ export default function AdminPage() {
   const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
   const [totalUnread, setTotalUnread] = useState(0);
 
+  // Templates state
+  type Template = { id: string; name: string; type: "week" | "day"; category: string; data: any; created_at: string };
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [showSaveWeekTemplate, setShowSaveWeekTemplate] = useState(false);
+  const [showSaveDayTemplate, setShowSaveDayTemplate] = useState<number | null>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [templateCategory, setTemplateCategory] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  // Fetch templates
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/templates');
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch templates:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  const weekTemplates = templates.filter(t => t.type === 'week');
+  const dayTemplates = templates.filter(t => t.type === 'day');
+
+  // Save week as template
+  const handleSaveWeekTemplate = async () => {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName.trim(),
+          type: 'week',
+          category: templateCategory.trim() || null,
+          data: {
+            focus: weekPlan.focus,
+            coachMessage: weekPlan.coachMessage,
+            days: weekPlan.days,
+          },
+        }),
+      });
+      if (res.ok) {
+        setShowSaveWeekTemplate(false);
+        setTemplateName("");
+        setTemplateCategory("");
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to save template:', err);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Save individual day as template
+  const handleSaveDayTemplate = async (dayIndex: number) => {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    const day = weekPlan.days[dayIndex];
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName.trim(),
+          type: 'day',
+          category: templateCategory.trim() || null,
+          data: day,
+        }),
+      });
+      if (res.ok) {
+        setShowSaveDayTemplate(null);
+        setTemplateName("");
+        setTemplateCategory("");
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to save day template:', err);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Load week template into form
+  const loadWeekTemplate = (template: Template) => {
+    const data = template.data;
+    setWeekPlan({
+      ...weekPlan,
+      focus: data.focus || '',
+      coachMessage: data.coachMessage || '',
+      days: data.days || weekPlan.days,
+    });
+  };
+
+  // Load day template into a specific day
+  const loadDayTemplate = (dayIndex: number, template: Template) => {
+    const data = template.data;
+    const updated = [...weekPlan.days];
+    updated[dayIndex] = { ...updated[dayIndex], ...data, day: updated[dayIndex].day };
+    setWeekPlan({ ...weekPlan, days: updated });
+  };
+
+  // Delete template
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId }),
+      });
+      if (res.ok) {
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to delete template:', err);
+    }
+  };
+
   // Fetch unread message counts
   useEffect(() => {
     const fetchUnread = async () => {
@@ -1016,6 +1141,17 @@ export default function AdminPage() {
                 </div>
                 <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "New weeks are saved as "}<span className="text-yellow-400">{editingDraftId ? "" : "Draft"}</span>{editingDraftId ? "" : " until you publish them."}</p>
+                {/* Load from Week Template */}
+                {weekTemplates.length > 0 && (
+                  <div className="bg-secondary/30 border border-white/10 rounded-lg p-3 flex items-center gap-3 flex-wrap">
+                    <span className="text-gray-400 text-xs font-heading uppercase">Load Template:</span>
+                    {weekTemplates.map((t) => (
+                      <button key={t.id} onClick={() => loadWeekTemplate(t)} className="bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                        {t.name}{t.category && <span className="text-gray-500 ml-1">({t.category})</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="relative">
                     <label className="text-gray-400 text-xs block mb-1">Week Date Range</label>
@@ -1074,10 +1210,52 @@ export default function AdminPage() {
                       {day.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-3"><input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Orange Theory)" /><input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /></div><textarea value={day.description} onChange={(e) => updateDayPlan(i, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
                       {day.type === "rest" && <div className="mt-2"><input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes (optional)" /></div>}
                       {day.type !== "rest" && <button type="button" className="text-accent text-xs hover:underline mt-2">+ Add another workout</button>}
+                      {/* Day template actions */}
+                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
+                        {dayTemplates.length > 0 && (
+                          <div className="relative group">
+                            <button type="button" className="text-gray-500 hover:text-white text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Load Day Template</button>
+                            <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 z-50 bg-secondary border border-white/10 rounded-lg p-2 shadow-xl min-w-48">
+                              {dayTemplates.map((t) => (
+                                <button key={t.id} type="button" onClick={() => loadDayTemplate(i, t)} className="block w-full text-left text-xs text-gray-300 hover:text-white hover:bg-white/5 px-2 py-1.5 rounded transition-colors">
+                                  {t.name}{t.category && <span className="text-gray-600 ml-1">({t.category})</span>}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {day.type !== "rest" && day.title && (
+                          showSaveDayTemplate === i ? (
+                            <div className="flex items-center gap-2">
+                              <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-32 focus:outline-none focus:border-accent" placeholder="Template name" />
+                              <input type="text" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-24 focus:outline-none focus:border-accent" placeholder="Category" />
+                              <button type="button" onClick={() => handleSaveDayTemplate(i)} disabled={!templateName.trim() || savingTemplate} className="text-green-400 text-xs hover:text-green-300 disabled:opacity-50">{savingTemplate ? "..." : "Save"}</button>
+                              <button type="button" onClick={() => { setShowSaveDayTemplate(null); setTemplateName(""); setTemplateCategory(""); }} className="text-gray-500 text-xs hover:text-white">Cancel</button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => { setShowSaveDayTemplate(i); setTemplateName(day.title || `${day.day} ${day.trainingType || day.type}`); }} className="text-gray-500 hover:text-gold text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Save Day as Template</button>
+                          )
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button></div>
+                <div className="flex gap-3 flex-wrap"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => setShowSaveWeekTemplate(true)} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button></div>
+                {/* Save Week Template Dialog */}
+                {showSaveWeekTemplate && (
+                  <div className="bg-gold/5 border border-gold/20 rounded-lg p-4 mt-3">
+                    <p className="text-gold text-xs font-heading uppercase mb-3">Save Week as Template</p>
+                    <p className="text-gray-400 text-xs mb-3">This saves the current week layout (workouts, focus, coach message) as a reusable template. You can load it for any client in the future.</p>
+                    <div className="grid md:grid-cols-2 gap-3 mb-3">
+                      <div><label className="text-gray-400 text-xs block mb-1">Template Name *</label><input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold" placeholder="e.g. 5K Base Week 3" /></div>
+                      <div><label className="text-gray-400 text-xs block mb-1">Category (optional)</label><input type="text" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold" placeholder="e.g. Base Building, Race Prep, Recovery" /></div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={handleSaveWeekTemplate} disabled={!templateName.trim() || savingTemplate} className="bg-gold hover:bg-yellow-600 text-primary font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingTemplate ? "Saving..." : "Save Template"}</button>
+                      <button onClick={() => { setShowSaveWeekTemplate(false); setTemplateName(""); setTemplateCategory(""); }} className="text-gray-400 text-sm">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 </>
                 )}
               </div>
@@ -1291,6 +1469,59 @@ export default function AdminPage() {
                 </>
               );
             })()}
+
+            {/* Templates Library */}
+            <div className="bg-secondary/50 border border-gold/20 rounded-xl p-5">
+              <h3 className="font-heading text-sm uppercase text-gold mb-3">Training Templates ({templates.length})</h3>
+              {templates.length === 0 ? (
+                <p className="text-gray-500 text-sm">No templates saved yet. Create one from the Create Week form when building a client&apos;s plan.</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Week Templates */}
+                  {weekTemplates.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs font-heading uppercase mb-2">Week Templates ({weekTemplates.length})</p>
+                      <div className="space-y-2">
+                        {weekTemplates.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
+                            <div>
+                              <p className="text-white text-sm font-medium">{t.name}</p>
+                              <p className="text-gray-500 text-xs">
+                                {t.category && <span className="text-gold">{t.category}</span>}
+                                {t.category && ' · '}
+                                {t.data.days?.filter((d: any) => d.type === 'run').length || 0} runs, {t.data.days?.filter((d: any) => d.type === 'cross').length || 0} cross, {t.data.days?.filter((d: any) => d.type === 'rest').length || 0} rest
+                              </p>
+                            </div>
+                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Day Templates */}
+                  {dayTemplates.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs font-heading uppercase mb-2">Day Templates ({dayTemplates.length})</p>
+                      <div className="grid md:grid-cols-2 gap-2">
+                        {dayTemplates.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
+                            <div>
+                              <p className="text-white text-xs font-medium">{t.name}</p>
+                              <p className="text-gray-500 text-xs">
+                                {t.category && <span className="text-gold">{t.category}</span>}
+                                {t.category && ' · '}
+                                {t.data.type === 'run' ? `Run${t.data.miles ? ` · ${t.data.miles}mi` : ''}` : t.data.type === 'cross' ? 'Cross Training' : 'Rest'}
+                              </p>
+                            </div>
+                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
               </>
             )}
           </div>
