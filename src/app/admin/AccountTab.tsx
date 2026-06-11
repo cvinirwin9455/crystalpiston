@@ -516,10 +516,19 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
         <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
       </div>
 
-      {/* Completion Reason (shown on completed plans) */}
-      {plan.status === "completed" && plan.completionReason && (
+      {/* Completion info (shown on completed plans) */}
+      {plan.status === "completed" && (plan.owed - plan.paid) > 0 && (
         <div className="mt-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
-          <p className="text-yellow-400 text-xs font-heading uppercase mb-1">Completion Notes</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-yellow-400 text-xs font-heading uppercase">Completed with Balance Due</p>
+            <p className="text-yellow-400 text-xs font-bold">${(plan.owed - plan.paid).toFixed(2)} unpaid</p>
+          </div>
+          {plan.completionReason && <p className="text-gray-300 text-xs mt-1">{plan.completionReason}</p>}
+        </div>
+      )}
+      {plan.status === "completed" && (plan.owed - plan.paid) <= 0 && plan.completionReason && (
+        <div className="mt-3 bg-green-500/5 border border-green-500/20 rounded-lg p-3">
+          <p className="text-green-400 text-xs font-heading uppercase mb-1">Completion Notes</p>
           <p className="text-gray-300 text-xs">{plan.completionReason}</p>
         </div>
       )}
