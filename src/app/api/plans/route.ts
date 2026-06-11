@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const adminClient = await getAdminClient()
   const { data: plans, error } = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
@@ -100,7 +100,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { planId, startDate, endDate, owed, paid, status } = body
+  const { planId, startDate, endDate, owed, paid, status, completionReason } = body
 
   if (!planId) {
     return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -114,6 +114,7 @@ export async function PATCH(request: Request) {
   if (owed !== undefined) updates.owed = parseFloat(owed)
   if (paid !== undefined) updates.paid = parseFloat(paid)
   if (status !== undefined) updates.status = status
+  if (completionReason !== undefined) updates.completion_reason = completionReason
 
   const { error } = await adminClient
     .from('plans')

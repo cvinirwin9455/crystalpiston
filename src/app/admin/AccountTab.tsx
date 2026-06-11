@@ -11,6 +11,7 @@ type Plan = {
   owed: number;
   paid: number;
   status: string;
+  completionReason: string;
 };
 
 type ClientData = {
@@ -70,6 +71,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             owed: parseFloat(p.owed) || 0,
             paid: parseFloat(p.paid) || 0,
             status: p.status,
+            completionReason: p.completion_reason || '',
           })));
         }
       } catch (err) {
@@ -107,16 +109,6 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
     if (!newPlanStart || !newPlanEnd || !clientData.clientId) return;
     setCreatingPlan(true);
     try {
-      // Auto-complete any existing active plan
-      const activePlan = plans.find(p => p.status === "active");
-      if (activePlan) {
-        await fetch("/api/plans", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId: activePlan.id, status: "completed" }),
-        });
-      }
-
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,7 +122,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
       });
       if (res.ok) {
         const data = await res.json();
-        // Update local state: mark old active as completed, add new one
+        // Update local state: add new plan
         setPlans(prev => [
           {
             id: data.plan.id,
@@ -141,8 +133,9 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             owed: parseFloat(data.plan.owed) || 0,
             paid: parseFloat(data.plan.paid) || 0,
             status: data.plan.status,
+            completionReason: '',
           },
-          ...prev.map(p => p.status === "active" ? { ...p, status: "completed" } : p),
+          ...prev,
         ]);
         setShowNewPlan(false);
         setNewPlanStart("");
@@ -157,7 +150,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
     }
   };
 
-  const handleUpdatePlan = async (planId: string, updates: { paid?: string; status?: string }) => {
+  const handleUpdatePlan = async (planId: string, updates: { paid?: string; status?: string; completionReason?: string }) => {
     try {
       const res = await fetch("/api/plans", {
         method: "PATCH",
@@ -171,6 +164,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               ...p,
               ...(updates.paid !== undefined ? { paid: parseFloat(updates.paid) } : {}),
               ...(updates.status !== undefined ? { status: updates.status } : {}),
+              ...(updates.completionReason !== undefined ? { completionReason: updates.completionReason } : {}),
             };
           }
           return p;
@@ -246,18 +240,28 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
       <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-gray-400 text-xs font-heading uppercase">Plans & Payments</h4>
-          <button onClick={() => setShowNewPlan(!showNewPlan)} className="text-accent text-xs hover:underline">+ New Plan</button>
+          {/* Only show + New Plan if no active plan exists */}
+          {!plans.some(p => p.status === "active") ? (
+            <button onClick={() => setShowNewPlan(!showNewPlan)} className="text-accent text-xs hover:underline">+ New Plan</button>
+          ) : (
+            <span className="text-gray-500 text-xs italic">Active plan in progress</span>
+          )}
         </div>
 
-        {/* New Plan Form */}
-        {showNewPlan && (
+        {/* Instruction when trying to create plan while one is active */}
+        {plans.some(p => p.status === "active") && showNewPlan && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-4">
+            <p className="text-yellow-400 text-sm font-medium mb-2">You already have an active plan</p>
+            <p className="text-gray-300 text-xs mb-2">You need to complete the current plan before creating a new one. This ensures clean tracking of goals, payments, and training history.</p>
+            <p className="text-gray-400 text-xs">To create a new plan: scroll down to the active plan below and click &ldquo;Mark Complete&rdquo;. If there&apos;s an outstanding balance, you&apos;ll be asked to provide a reason.</p>
+            <button onClick={() => setShowNewPlan(false)} className="text-gray-400 text-xs mt-3 hover:text-white">Dismiss</button>
+          </div>
+        )}
+
+        {/* New Plan Form - only shown when no active plan */}
+        {showNewPlan && !plans.some(p => p.status === "active") && (
           <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-4">
             <p className="text-accent text-xs font-heading uppercase mb-3">Create New Plan</p>
-            {plans.some(p => p.status === "active") && (
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
-                <p className="text-yellow-400 text-xs">The current active plan will be marked as completed when you create a new one.</p>
-              </div>
-            )}
             <div className="grid md:grid-cols-4 gap-4 mb-3">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Goal</label>
@@ -350,6 +354,11 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string}[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loggingPayment, setLoggingPayment] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [completionReason, setCompletionReason] = useState("");
+  const [completing, setCompleting] = useState(false);
+
+  const hasOutstandingBalance = (plan.owed - plan.paid) > 0;
 
   // Fetch payments from API on mount
   useEffect(() => {
@@ -406,6 +415,23 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
     }
   };
 
+  const handleCompletePlan = async () => {
+    // If outstanding balance, require reason
+    if (hasOutstandingBalance && !completionReason.trim()) return;
+    setCompleting(true);
+    try {
+      if (hasOutstandingBalance) {
+        onUpdate(plan.id, { status: "completed", completionReason: completionReason.trim() });
+      } else {
+        onUpdate(plan.id, { status: "completed" });
+      }
+      setShowCompleteConfirm(false);
+      setCompletionReason("");
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   return (
     <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5 opacity-80"}`}>
       <div className="flex items-center justify-between mb-2">
@@ -418,13 +444,54 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
         </div>
         <div className="flex items-center gap-2">
           {plan.status === "active" && (
-            <button onClick={() => onUpdate(plan.id, { status: "completed" })} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
+            <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
           )}
           {plan.status === "completed" && (
             <button onClick={() => onUpdate(plan.id, { status: "active" })} className="text-gray-500 text-xs hover:text-blue-400">Reactivate Plan</button>
           )}
         </div>
       </div>
+
+      {/* Completion confirmation dialog */}
+      {showCompleteConfirm && (
+        <div className="bg-secondary/50 border border-white/10 rounded-lg p-4 mb-3">
+          {hasOutstandingBalance ? (
+            <>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
+                <p className="text-yellow-400 text-sm font-medium mb-1">Outstanding Balance: ${(plan.owed - plan.paid).toFixed(2)}</p>
+                <p className="text-gray-300 text-xs">This plan has an unpaid balance. Please explain why the plan is being completed with outstanding payment, and why the client didn&apos;t finish (if applicable). This will be saved for your records.</p>
+              </div>
+              <div className="mb-3">
+                <label className="text-gray-400 text-xs block mb-1">Reason for completing with balance due <span className="text-red-400">*</span></label>
+                <textarea
+                  value={completionReason}
+                  onChange={(e) => setCompletionReason(e.target.value)}
+                  className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none"
+                  rows={3}
+                  placeholder="e.g. Client decided to take a break, will resume next quarter. Remaining balance waived / will carry over to next plan."
+                />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleCompletePlan} disabled={!completionReason.trim() || completing} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+                  {completing ? "Completing..." : "Complete Plan"}
+                </button>
+                <button onClick={() => { setShowCompleteConfirm(false); setCompletionReason(""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-300 text-sm mb-3">Are you sure you want to mark this plan as complete? This client is paid in full.</p>
+              <div className="flex gap-3">
+                <button onClick={handleCompletePlan} disabled={completing} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+                  {completing ? "Completing..." : "Yes, Complete Plan"}
+                </button>
+                <button onClick={() => setShowCompleteConfirm(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="grid md:grid-cols-3 gap-4">
         <div>
           <p className="text-gray-500 text-xs">Plan Cost</p>
@@ -444,6 +511,14 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
       <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">
         <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
       </div>
+
+      {/* Completion Reason (shown on completed plans) */}
+      {plan.status === "completed" && plan.completionReason && (
+        <div className="mt-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
+          <p className="text-yellow-400 text-xs font-heading uppercase mb-1">Completion Notes</p>
+          <p className="text-gray-300 text-xs">{plan.completionReason}</p>
+        </div>
+      )}
 
       {/* Payment History */}
       {!loadingPayments && paymentHistory.length > 0 && (

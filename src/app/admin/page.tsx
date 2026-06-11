@@ -327,7 +327,11 @@ export default function AdminPage() {
     }
   }, [selectedClient]);
 
-  // Load weeks once when a client is first selected
+  // Active plan for the selected client
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string } | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+
+  // Load weeks and active plan once when a client is first selected
   const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
   useEffect(() => {
     if (!selectedClient || weeksLoadedFor === selectedClient) return;
@@ -335,8 +339,38 @@ export default function AdminPage() {
     if (client && client.clientId) {
       setWeeksLoadedFor(selectedClient);
       fetchWeeks(client.clientId, true);
+      // Fetch active plan
+      setLoadingPlan(true);
+      fetch(`/api/plans?client_id=${client.clientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((plans: any[]) => {
+          const active = plans.find((p: any) => p.status === 'active');
+          if (active) {
+            setActivePlan({
+              id: active.id,
+              startDate: active.start_date,
+              endDate: active.end_date,
+              goal: active.goal || '',
+              owed: parseFloat(active.owed) || 0,
+              paid: parseFloat(active.paid) || 0,
+              status: active.status,
+            });
+          } else {
+            setActivePlan(null);
+          }
+        })
+        .catch(() => setActivePlan(null))
+        .finally(() => setLoadingPlan(false));
     }
   }, [selectedClient, clients.length]);
+
+  // Reset active plan when switching clients
+  useEffect(() => {
+    if (!selectedClient) {
+      setActivePlan(null);
+      setWeeksLoadedFor(null);
+    }
+  }, [selectedClient]);
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
@@ -344,6 +378,34 @@ export default function AdminPage() {
     if (!client || !client.clientId) {
       alert("Error: No client record found. Please refresh and try again.");
       return;
+    }
+
+    // Validate active plan exists
+    if (!activePlan) {
+      alert("Cannot create a week without an active plan. Go to Account tab to create a plan first.");
+      return;
+    }
+
+    // Validate week date range falls within plan dates
+    if (weekPlan.dateRange && activePlan.startDate && activePlan.endDate) {
+      const weekStartStr = weekPlan.dateRange.split(' - ')[0];
+      const weekEndStr = weekPlan.dateRange.split(' - ')[1];
+      const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());
+      const weekEnd = new Date(weekEndStr + ', ' + new Date().getFullYear());
+      const planStart = new Date(activePlan.startDate);
+      const planEnd = new Date(activePlan.endDate);
+      
+      // Allow 1 day buffer for timezone differences
+      planStart.setHours(0, 0, 0, 0);
+      planEnd.setHours(23, 59, 59, 999);
+      weekStart.setHours(0, 0, 0, 0);
+      weekEnd.setHours(0, 0, 0, 0);
+
+      if (weekStart < planStart || weekEnd > planEnd) {
+        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        alert(`This week (${weekPlan.dateRange}) falls outside the active plan dates (${fmt(planStart)} – ${fmt(planEnd)}). Please select a week within the plan period, or update the plan dates in the Account tab.`);
+        return;
+      }
     }
 
     const workouts = weekPlan.days.map((day) => ({
@@ -841,6 +903,31 @@ export default function AdminPage() {
             {/* CREATE WEEK */}
             {clientTab === "create" && (
               <div className="space-y-4">
+                {/* Block if no active plan */}
+                {!activePlan && !loadingPlan && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center">
+                    <svg className="w-12 h-12 text-yellow-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                    <h3 className="font-heading text-lg uppercase text-yellow-400 mb-2">No Active Plan</h3>
+                    <p className="text-gray-300 text-sm mb-3">You need to create an active plan for {selectedClientData?.name.split(" ")[0]} before you can build weekly training.</p>
+                    <p className="text-gray-400 text-xs mb-4">A plan defines the training period (start & end dates), goal, and payment terms. Weeks must fall within the plan dates.</p>
+                    <button onClick={() => setClientTab("account")} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Go to Account → Create Plan</button>
+                  </div>
+                )}
+                {loadingPlan && (
+                  <div className="text-center py-8"><p className="text-gray-400">Loading plan data...</p></div>
+                )}
+                {/* Show create form only when active plan exists */}
+                {activePlan && (
+                  <>
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
+                      <p className="text-gray-400 text-xs">{new Date(activePlan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(activePlan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
+                    <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                  </div>
+                </div>
                 <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "New weeks are saved as "}<span className="text-yellow-400">{editingDraftId ? "" : "Draft"}</span>{editingDraftId ? "" : " until you publish them."}</p>
                 <div className="grid md:grid-cols-2 gap-4">
@@ -898,6 +985,8 @@ export default function AdminPage() {
                   ))}
                 </div>
                 <div className="flex gap-3"><button onClick={() => handleSaveWeek("draft")} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save as Draft</button><button onClick={() => handleSaveWeek("published")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm">Save & Publish</button></div>
+                </>
+                )}
               </div>
             )}
 
