@@ -95,6 +95,7 @@ export default function DashboardPage() {
 
   const [clientInfo, setClientInfo] = useState<{goal: string; planEnd: string; startDate: string; owed: number; paid: number; status: string} | null>(null);
   const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string}[]>([]);
+  const [clientGender, setClientGender] = useState<string | null>(null);
 
   // Fetch client's own plan info
   useEffect(() => {
@@ -106,6 +107,7 @@ export default function DashboardPage() {
           if (data) {
             setClientInfo(data.activePlan || null);
             setAllPlans(data.allPlans || []);
+            setClientGender(data.gender || null);
           }
         }
       } catch (err) {
@@ -444,7 +446,8 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
-                          {workout.paceTarget && <p className="text-accent text-xs mt-1">Target: {workout.paceTarget}</p>}
+                          {workout.type === "run" && workout.miles && <p className="text-accent text-sm font-medium mt-1">{workout.miles} miles programmed</p>}
+                          {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
                           {workout.location && <p className="text-gray-500 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>
@@ -596,11 +599,13 @@ export default function DashboardPage() {
                       {/* Notes (all non-rest types) */}
                       <div className="mb-4"><label className="text-gray-400 text-xs block mb-1">Notes</label><input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="How did it feel? Anything notable?" /></div>
 
-                      {/* Period tracking */}
+                      {/* Period tracking - female clients only */}
+                      {clientGender === "female" && (
                       <div className="mb-4 flex items-center gap-3">
                         <button onClick={() => updateWorkoutLog(workout.id, "onPeriod", (workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "no" : "yes")} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
                         <span className="text-gray-400 text-xs">On period today</span>
                       </div>
+                      )}
 
                       {/* Body Check */}
                       <div className="border-t border-white/5 pt-4">

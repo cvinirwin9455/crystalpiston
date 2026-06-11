@@ -16,6 +16,13 @@ export async function GET() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
+  // Get the user's gender
+  const { data: userProfile } = await adminClient
+    .from('users')
+    .select('gender')
+    .eq('id', user.id)
+    .single()
+
   // Get the client record
   const { data: client } = await adminClient
     .from('clients')
@@ -24,7 +31,7 @@ export async function GET() {
     .single()
 
   if (!client) {
-    return NextResponse.json({ activePlan: null, allPlans: [] })
+    return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null })
   }
 
   // Get all plans for this client
@@ -49,5 +56,5 @@ export async function GET() {
 
   const activePlan = formatted.find(p => p.status === 'active') || null
 
-  return NextResponse.json({ activePlan, allPlans: formatted })
+  return NextResponse.json({ activePlan, allPlans: formatted, gender: userProfile?.gender || null })
 }

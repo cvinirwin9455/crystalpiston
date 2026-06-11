@@ -314,34 +314,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         )}
       </div>
 
-      {/* Danger Zone */}
-      <div className="bg-primary/30 border border-red-500/20 rounded-xl p-5">
-        <h4 className="text-red-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
+      {/* Account Actions */}
+      <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
+        <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
         <p className="text-gray-500 text-xs mb-3">Archiving hides the client but keeps their data. They can no longer log in.</p>
         <div className="flex flex-wrap gap-3">
           {clientData.status === "active" ? (
             <button onClick={onArchive} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive Client</button>
           ) : (
             <button onClick={onArchive} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate Client</button>
-          )}
-          {!showDeleteConfirm ? (
-            <button onClick={() => setShowDeleteConfirm(true)} className="border border-red-500/30 text-red-400 py-2 px-4 rounded-lg text-sm">Delete Client Permanently</button>
-          ) : (
-            <div className="w-full mt-3 bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-              <p className="text-red-400 text-sm font-bold mb-2">Are you absolutely sure?</p>
-              <p className="text-gray-400 text-xs mb-1">This will permanently delete:</p>
-              <ul className="text-gray-400 text-xs mb-3 list-disc list-inside">
-                <li>All training plans and workout data</li>
-                <li>All messages between you and this client</li>
-                <li>All payment history</li>
-                <li>The client&apos;s account and login access</li>
-              </ul>
-              <p className="text-red-400 text-xs font-bold mb-3">This action cannot be undone.</p>
-              <div className="flex gap-3">
-                <button onClick={onDelete} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Yes, Permanently Delete</button>
-                <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
-              </div>
-            </div>
           )}
         </div>
       </div>
