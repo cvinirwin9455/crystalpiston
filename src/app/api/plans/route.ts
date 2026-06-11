@@ -116,10 +116,21 @@ export async function PATCH(request: Request) {
   if (status !== undefined) updates.status = status
   if (completionReason !== undefined) updates.completion_reason = completionReason
 
-  const { error } = await adminClient
+  let { error } = await adminClient
     .from('plans')
     .update(updates)
     .eq('id', planId)
+
+  // If the update failed (e.g. completion_reason column doesn't exist yet), retry without it
+  if (error && updates.completion_reason !== undefined) {
+    const fallbackUpdates = { ...updates }
+    delete fallbackUpdates.completion_reason
+    const result = await adminClient
+      .from('plans')
+      .update(fallbackUpdates)
+      .eq('id', planId)
+    error = result.error
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -169,6 +169,9 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
           }
           return p;
         }));
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error("Plan update failed:", errData);
       }
     } catch (err) {
       console.error("Failed to update plan:", err);
@@ -420,13 +423,14 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
     if (hasOutstandingBalance && !completionReason.trim()) return;
     setCompleting(true);
     try {
-      if (hasOutstandingBalance) {
-        onUpdate(plan.id, { status: "completed", completionReason: completionReason.trim() });
-      } else {
-        onUpdate(plan.id, { status: "completed" });
-      }
+      const updates = hasOutstandingBalance 
+        ? { status: "completed", completionReason: completionReason.trim() }
+        : { status: "completed" };
+      await onUpdate(plan.id, updates);
       setShowCompleteConfirm(false);
       setCompletionReason("");
+    } catch (err) {
+      console.error("Failed to complete plan:", err);
     } finally {
       setCompleting(false);
     }
