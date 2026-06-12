@@ -142,6 +142,7 @@ export default function AdminPage() {
   const dayTemplates = templates.filter(t => t.type === 'day');
 
   // Save week as template
+  const saveTemplateRef = useRef<HTMLDivElement>(null);
   const handleSaveWeekTemplate = async () => {
     if (!templateName.trim()) return;
     setSavingTemplate(true);
@@ -1182,6 +1183,7 @@ export default function AdminPage() {
                 </div>
                 <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "New weeks are saved as "}<span className="text-yellow-400">{editingDraftId ? "" : "Draft"}</span>{editingDraftId ? "" : " until you publish them."}</p>
+                <p className="text-gray-500 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
                 {/* Load from Week Template */}
                 {weekTemplates.length > 0 && (
                   <div className="bg-secondary/30 border border-white/10 rounded-lg p-3 flex items-center gap-3 flex-wrap">
@@ -1195,7 +1197,7 @@ export default function AdminPage() {
                 )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="relative">
-                    <label className="text-gray-400 text-xs block mb-1">Week Date Range</label>
+                    <label className="text-gray-400 text-xs block mb-1">Week Date Range <span className="text-accent">*</span></label>
                     <button onClick={() => setShowWeekPicker(!showWeekPicker)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-left text-sm flex items-center justify-between hover:border-white/30"><span className={weekPlan.dateRange ? "text-white" : "text-gray-500"}>{weekPlan.dateRange || "Select a week..."}</span><svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></button>
                     {showWeekPicker && (
                       <div className="absolute top-full left-0 mt-2 z-50 bg-secondary border border-white/10 rounded-xl p-4 shadow-2xl w-80">
@@ -1294,10 +1296,11 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3 flex-wrap"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => setShowSaveWeekTemplate(true)} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button></div>
+                <div className="flex gap-3 flex-wrap"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button></div>
+                {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
-                  <div className="bg-gold/5 border border-gold/20 rounded-lg p-4 mt-3">
+                  <div ref={saveTemplateRef} className="bg-gold/5 border border-gold/20 rounded-lg p-4 mt-3">
                     <p className="text-gold text-xs font-heading uppercase mb-3">Save Week as Template</p>
                     <p className="text-gray-400 text-xs mb-3">This saves the current week layout (workouts, focus, coach message) as a reusable template. You can load it for any client in the future.</p>
                     <div className="grid md:grid-cols-2 gap-3 mb-3">
