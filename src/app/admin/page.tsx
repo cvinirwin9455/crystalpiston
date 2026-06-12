@@ -24,11 +24,11 @@ export default function AdminPage() {
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [notifications, setNotifications] = useState({
-    workoutCompleted: true,
-    workoutSkipped: true,
-    workoutPartial: true,
-    clientMessage: true,
-    dailySummary: false,
+    workoutCompleted: "immediate",
+    workoutSkipped: "immediate",
+    workoutPartial: "immediate",
+    clientMessage: "immediate",
+    dailySummary: "off",
   });
   const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1410,49 +1410,66 @@ export default function AdminPage() {
                   <button onClick={() => setShowNotificationSettings(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
                 </div>
 
-                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Email Notifications</h3>
-                  <p className="text-gray-500 text-xs mb-6">Choose what triggers an email to you. Emails are sent to your account email.</p>
+                <p className="text-gray-400 text-sm">Choose how often you want to be notified for each type of activity. Changes save automatically.</p>
 
-                  <div className="space-y-4">
-                    {[
-                      { key: "workoutCompleted", label: "Client completes a workout", desc: "Get notified when a client logs and marks a workout as complete" },
-                      { key: "workoutSkipped", label: "Client skips a workout", desc: "Get notified when a client marks a workout as skipped with their reason" },
-                      { key: "workoutPartial", label: "Client partially completes a workout", desc: "Get notified when a client only partially finishes a workout" },
-                      { key: "clientMessage", label: "Client sends a message", desc: "Get notified immediately when a client sends you a message" },
-                      { key: "dailySummary", label: "Daily summary email", desc: "Receive one email at end of day summarizing all client activity" },
-                    ].map((item) => (
-                      <div key={item.key} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg p-4">
-                        <div>
-                          <p className="text-white text-sm font-medium">{item.label}</p>
-                          <p className="text-gray-500 text-xs mt-0.5">{item.desc}</p>
-                        </div>
-                        <button
-                          onClick={() => setNotifications({ ...notifications, [item.key]: !(notifications as Record<string, boolean>)[item.key] })}
-                          className={`w-11 h-6 rounded-full relative transition-colors ${(notifications as Record<string, boolean>)[item.key] ? "bg-green-500" : "bg-gray-600"}`}
-                        >
-                          <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${(notifications as Record<string, boolean>)[item.key] ? "translate-x-5.5 left-[1px]" : "left-0.5"}`} style={{ transform: (notifications as Record<string, boolean>)[item.key] ? "translateX(22px)" : "translateX(0)" }} />
-                        </button>
-                      </div>
-                    ))}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400">Workout Activity</h3>
+
+                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1"><span className="text-green-400">&#10003;</span><p className="text-white text-sm font-medium">Client completes a workout</p></div>
+                    <p className="text-gray-500 text-xs mb-3">Includes their effort rating, actual miles, pace, and any notes</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNotifications({ ...notifications, workoutCompleted: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "immediate" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => setNotifications({ ...notifications, workoutCompleted: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "daily" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => setNotifications({ ...notifications, workoutCompleted: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "off" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                    </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-white/5">
-                    <p className="text-gray-400 text-xs mb-3">Notification email address:</p>
-                    <div className="flex gap-3">
-                      <input type="email" defaultValue="crystal@pistolperformance.com" className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-                      <button className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Save</button>
+                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1"><span className="text-red-400">&#10007;</span><p className="text-white text-sm font-medium">Client skips a workout</p></div>
+                    <p className="text-gray-500 text-xs mb-3">Includes their reason for skipping so you can follow up if needed</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNotifications({ ...notifications, workoutSkipped: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "immediate" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => setNotifications({ ...notifications, workoutSkipped: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "daily" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => setNotifications({ ...notifications, workoutSkipped: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "off" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1"><span className="text-yellow-400">&#189;</span><p className="text-white text-sm font-medium">Client partially completes a workout</p></div>
+                    <p className="text-gray-500 text-xs mb-3">Includes what they did and their reason for stopping early</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNotifications({ ...notifications, workoutPartial: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "immediate" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => setNotifications({ ...notifications, workoutPartial: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "daily" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => setNotifications({ ...notifications, workoutPartial: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "off" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">How It Works</h3>
-                  <div className="space-y-3 text-sm text-gray-400">
-                    <div className="flex items-start gap-3"><span className="text-green-400 mt-0.5">&#10003;</span><p>When a client marks a workout <strong className="text-white">complete</strong>, you get an email with their log details (effort, miles, pace, notes)</p></div>
-                    <div className="flex items-start gap-3"><span className="text-red-400 mt-0.5">&#10007;</span><p>When a client <strong className="text-white">skips</strong> a workout, you get their reason immediately so you can follow up</p></div>
-                    <div className="flex items-start gap-3"><span className="text-yellow-400 mt-0.5">&#189;</span><p>When a client <strong className="text-white">partially completes</strong>, you see what they did and why they stopped</p></div>
-                    <div className="flex items-start gap-3"><span className="text-accent mt-0.5">&#9993;</span><p>When a client <strong className="text-white">sends a message</strong>, you get it right away so nothing is missed</p></div>
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400">Messages</h3>
+
+                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1"><span className="text-accent">&#9993;</span><p className="text-white text-sm font-medium">Client sends you a message</p></div>
+                    <p className="text-gray-500 text-xs mb-3">Get notified when a client messages you through the platform</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNotifications({ ...notifications, clientMessage: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => setNotifications({ ...notifications, clientMessage: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => setNotifications({ ...notifications, clientMessage: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400">Summary &amp; Reports</h3>
+
+                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1"><span className="text-gold">&#128202;</span><p className="text-white text-sm font-medium">Daily activity summary</p></div>
+                    <p className="text-gray-500 text-xs mb-3">One email at end of day with all client activity: workouts logged, messages received, missed workouts</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNotifications({ ...notifications, dailySummary: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "daily" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>On</button>
+                      <button onClick={() => setNotifications({ ...notifications, dailySummary: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "off" || (notifications as any).dailySummary === false ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                    </div>
                   </div>
                 </div>
               </>
