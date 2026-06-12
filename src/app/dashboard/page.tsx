@@ -96,6 +96,8 @@ export default function DashboardPage() {
   const [clientInfo, setClientInfo] = useState<{goal: string; planEnd: string; startDate: string; owed: number; paid: number; status: string} | null>(null);
   const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string}[]>([]);
   const [clientGender, setClientGender] = useState<string | null>(null);
+  const [notifPlanPublished, setNotifPlanPublished] = useState(true);
+  const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
 
   // Fetch client's own plan info
   useEffect(() => {
@@ -782,6 +784,61 @@ export default function DashboardPage() {
                 </div>
               </details>
             )}
+
+            {/* Notification Preferences */}
+            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <h2 className="font-heading text-xl uppercase text-accent mb-2">Notification Preferences</h2>
+              <p className="text-gray-500 text-xs mb-6">Choose how you want to be notified about updates from Crystal.</p>
+
+              <div className="space-y-5">
+                {/* New Training Plan Published */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-sm font-medium">New Training Plan Published</p>
+                      <p className="text-gray-500 text-xs mt-0.5">Get notified when Crystal publishes your weekly training plan</p>
+                    </div>
+                    <button
+                      onClick={() => setNotifPlanPublished(!notifPlanPublished)}
+                      className={`w-11 h-6 rounded-full relative transition-colors ${notifPlanPublished ? "bg-green-500" : "bg-gray-600"}`}
+                    >
+                      <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform" style={{ transform: notifPlanPublished ? "translateX(22px)" : "translateX(2px)" }} />
+                    </button>
+                  </div>
+                  {!notifPlanPublished && (
+                    <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2.5">
+                      <p className="text-yellow-400 text-xs">Turning this off means you&apos;ll need to log in regularly to check if Crystal has published your plan for the week. We recommend keeping this on.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Messages from Crystal */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-white text-sm font-medium">Messages from Crystal</p>
+                      <p className="text-gray-500 text-xs mt-0.5">How you receive message notifications</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setNotifMessages("immediate")} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                      Send immediately
+                    </button>
+                    <button onClick={() => setNotifMessages("daily")} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                      Daily summary
+                    </button>
+                    <button onClick={() => setNotifMessages("off")} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                      Off
+                    </button>
+                  </div>
+                  <p className="text-gray-600 text-xs mt-2">
+                    {notifMessages === "immediate" && "You'll receive an email each time Crystal sends you a message."}
+                    {notifMessages === "daily" && "You'll receive one email per day summarising any messages from Crystal."}
+                    {notifMessages === "off" && "You won't receive email notifications for messages. Check the app to read them."}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
