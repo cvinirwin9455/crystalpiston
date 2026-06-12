@@ -28,6 +28,17 @@ const testimonials = [
       "Crystal created a training plan, and we worked hard for 18 weeks. Last weekend, we finished War Eagle 50k! Moral of the story: if you share your dreams with Crystal, be prepared to work hard and watch those dreams come true. She sincerely believes that we are all capable of amazing things, and she guides the way with expert knowledge and care.",
     ],
   },
+  {
+    id: "karlee",
+    name: "Karlee H.",
+    headline: "Community, Coaching & a 50K Dream",
+    image: null,
+    paragraphs: [
+      "Crystal truly has a way of including people and creating community. When I first started running with Crystal I was postpartum and only running with a stroller by myself in my neighborhood, she would come meet me on her lunch break to run with me. Slowly but surely she got me running the group runs on the weekends. I've met so many amazing people through this running group and I attribute it to Crystal nudging and pushing me to get out of my comfort zone.",
+      "I hired Crystal as my coach to train me for a 50k! We spent countless hours on trails and road together. Crystal is full of inspiration and gets to know her clients well, she knows when to push.",
+      "This training season has really shown me the difference that having a coach can make. I'm so grateful to have her not only as a coach but someone I consider a close friend.",
+    ],
+  },
 ];
 
 export default function Testimonials() {
@@ -80,20 +91,22 @@ export default function Testimonials() {
               {/* Expanded Content */}
               {expanded === t.id && (
                 <div className="border-t border-white/10">
-                  <div className="grid md:grid-cols-5 gap-0">
-                    {/* Image */}
-                    <div className="md:col-span-2 relative aspect-[3/4] md:aspect-auto md:min-h-[400px]">
-                      <Image
-                        src={t.image}
-                        alt={`${t.name} - Pistol Performance Coaching Client`}
-                        fill
-                        className="object-cover object-top"
-                        quality={85}
-                      />
-                    </div>
+                  <div className={`grid ${t.image ? "md:grid-cols-5" : ""} gap-0`}>
+                    {/* Image (only if exists) */}
+                    {t.image && (
+                      <div className="md:col-span-2 relative aspect-[3/4] md:aspect-auto md:min-h-[400px]">
+                        <Image
+                          src={t.image}
+                          alt={`${t.name} - Pistol Performance Coaching Client`}
+                          fill
+                          className="object-cover object-top"
+                          quality={85}
+                        />
+                      </div>
+                    )}
 
                     {/* Testimonial Text */}
-                    <div className="md:col-span-3 p-6 md:p-8 flex flex-col justify-center">
+                    <div className={`${t.image ? "md:col-span-3" : ""} p-6 md:p-8 flex flex-col justify-center`}>
                       <svg
                         className="w-8 h-8 text-accent/30 mb-4"
                         fill="currentColor"
