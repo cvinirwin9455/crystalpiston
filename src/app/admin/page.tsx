@@ -43,16 +43,33 @@ export default function AdminPage() {
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
     days: [
-      { day: "Monday", type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-      { day: "Tuesday", type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-      { day: "Wednesday", type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-      { day: "Thursday", type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-      { day: "Friday", type: "cross" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-      { day: "Saturday", type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-      { day: "Sunday", type: "rest" as string, trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+      { day: "Monday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Tuesday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Wednesday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Thursday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Friday", workouts: [{ type: "cross" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Saturday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Sunday", workouts: [{ type: "rest" as string, trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
     ],
   });
-  const updateDayPlan = (index: number, field: string, value: string) => { const updated = [...weekPlan.days]; (updated[index] as Record<string, string>)[field] = value; setWeekPlan({ ...weekPlan, days: updated }); };
+  const updateDayPlan = (dayIndex: number, workoutIndex: number, field: string, value: string) => {
+    const updated = [...weekPlan.days];
+    const workouts = [...updated[dayIndex].workouts];
+    (workouts[workoutIndex] as Record<string, string>)[field] = value;
+    updated[dayIndex] = { ...updated[dayIndex], workouts };
+    setWeekPlan({ ...weekPlan, days: updated });
+  };
+  const addWorkoutToDay = (dayIndex: number) => {
+    const updated = [...weekPlan.days];
+    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] };
+    setWeekPlan({ ...weekPlan, days: updated });
+  };
+  const removeWorkoutFromDay = (dayIndex: number, workoutIndex: number) => {
+    const updated = [...weekPlan.days];
+    const workouts = updated[dayIndex].workouts.filter((_, wi) => wi !== workoutIndex);
+    updated[dayIndex] = { ...updated[dayIndex], workouts: workouts.length > 0 ? workouts : [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] };
+    setWeekPlan({ ...weekPlan, days: updated });
+  };
 
   const getMonday = (d: Date) => { const date = new Date(d); const day = date.getDay(); const diff = day === 0 ? -6 : 1 - day; date.setDate(date.getDate() + diff); return date; };
   const formatDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -156,11 +173,12 @@ export default function AdminPage() {
     }
   };
 
-  // Save individual day as template
+  // Save individual day as template (saves the first workout of that day)
   const handleSaveDayTemplate = async (dayIndex: number) => {
     if (!templateName.trim()) return;
     setSavingTemplate(true);
     const day = weekPlan.days[dayIndex];
+    const firstWorkout = day.workouts[0];
     try {
       const res = await fetch('/api/templates', {
         method: 'POST',
@@ -169,7 +187,7 @@ export default function AdminPage() {
           name: templateName.trim(),
           type: 'day',
           category: templateCategory.trim() || null,
-          data: day,
+          data: firstWorkout,
         }),
       });
       if (res.ok) {
@@ -188,19 +206,32 @@ export default function AdminPage() {
   // Load week template into form
   const loadWeekTemplate = (template: Template) => {
     const data = template.data;
+    // Handle both old format (flat days) and new format (days with workouts array)
+    const days = (data.days || []).map((d: any) => {
+      if (d.workouts) return d; // Already new format
+      return { day: d.day, workouts: [{ type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '', description: d.description || '', paceTarget: d.paceTarget || '', location: d.location || '', coachNotes: d.coachNotes || '', distanceUnit: d.distanceUnit || 'mi' }] };
+    });
     setWeekPlan({
       ...weekPlan,
       focus: data.focus || '',
       coachMessage: data.coachMessage || '',
-      days: data.days || weekPlan.days,
+      days: days.length === 7 ? days : weekPlan.days,
     });
   };
 
-  // Load day template into a specific day
+  // Load day template into a specific day (replaces first workout or adds)
   const loadDayTemplate = (dayIndex: number, template: Template) => {
     const data = template.data;
     const updated = [...weekPlan.days];
-    updated[dayIndex] = { ...updated[dayIndex], ...data, day: updated[dayIndex].day };
+    // Replace the first workout with the template data
+    const newWorkout = { type: data.type || 'run', trainingType: data.trainingType || '', title: data.title || '', miles: data.miles || '', description: data.description || '', paceTarget: data.paceTarget || '', location: data.location || '', coachNotes: data.coachNotes || '', distanceUnit: data.distanceUnit || 'mi' };
+    if (updated[dayIndex].workouts.length === 1 && !updated[dayIndex].workouts[0].title) {
+      // Replace the empty default
+      updated[dayIndex] = { ...updated[dayIndex], workouts: [newWorkout] };
+    } else {
+      // Add as additional workout
+      updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, newWorkout] };
+    }
     setWeekPlan({ ...weekPlan, days: updated });
     setShowLoadDayTemplate(null);
   };
@@ -582,17 +613,19 @@ export default function AdminPage() {
       }
     }
 
-    const workouts = weekPlan.days.map((day) => ({
-      day: day.day,
-      type: day.type,
-      trainingType: day.trainingType || null,
-      title: day.title || null,
-      miles: day.miles || null,
-      description: day.description || null,
-      paceTarget: day.paceTarget || null,
-      location: day.location || null,
-      coachNotes: day.coachNotes || null,
-    }));
+    const workouts = weekPlan.days.flatMap((day) => 
+      day.workouts.map((w) => ({
+        day: day.day,
+        type: w.type,
+        trainingType: w.trainingType || null,
+        title: w.title || null,
+        miles: w.miles || null,
+        description: w.description || null,
+        paceTarget: w.paceTarget || null,
+        location: w.location || null,
+        coachNotes: w.coachNotes || null,
+      }))
+    );
 
     try {
       // If editing an existing draft, delete the old one first
@@ -617,13 +650,13 @@ export default function AdminPage() {
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
           days: [
-            { day: "Monday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-            { day: "Tuesday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-            { day: "Wednesday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-            { day: "Thursday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-            { day: "Friday", type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-            { day: "Saturday", type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
-            { day: "Sunday", type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" },
+            { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
           ],
         });
         setSelectedWeekStart(null);
@@ -756,18 +789,23 @@ export default function AdminPage() {
       focus: week.focus,
       coachMessage: week.coachMessage,
       days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((dayName) => {
-        const workout = week.workouts.find(w => w.day === dayName);
+        const dayWorkouts = week.workouts.filter(w => w.day === dayName);
+        if (dayWorkouts.length === 0) {
+          return { day: dayName, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] };
+        }
         return {
           day: dayName,
-          type: workout?.type || 'rest',
-          trainingType: workout?.trainingType || '',
-          title: workout?.title || '',
-          miles: workout?.miles?.toString() || '',
-          description: workout?.description || '',
-          paceTarget: workout?.paceTarget || '',
-          location: workout?.location || '',
-          coachNotes: workout?.coachNotes || '',
-          distanceUnit: 'mi',
+          workouts: dayWorkouts.map(w => ({
+            type: w.type || 'rest',
+            trainingType: w.trainingType || '',
+            title: w.title || '',
+            miles: w.miles?.toString() || '',
+            description: w.description || '',
+            paceTarget: w.paceTarget || '',
+            location: w.location || '',
+            coachNotes: w.coachNotes || '',
+            distanceUnit: 'mi',
+          })),
         };
       }),
     });
@@ -1189,35 +1227,45 @@ export default function AdminPage() {
                 {/* Mon-Sun */}
                 <div className="space-y-3">
                   {weekPlan.days.map((day, i) => (
-                    <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.type === "rest" ? "opacity-70" : ""}`}>
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-heading text-sm uppercase w-24">{day.day}</span>
-                        <select value={day.type || ""} onChange={(e) => { updateDayPlan(i, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, "trainingType", "Rest"); updateDayPlan(i, "title", ""); updateDayPlan(i, "miles", ""); } else { updateDayPlan(i, "trainingType", ""); if (day.title === "") updateDayPlan(i, "title", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                          <option value="" disabled>Select Workout Type</option><option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
-                        </select>
-                        {day.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}
-                        {day.type === "run" && (
-                          <>
-                            <select value={day.trainingType || ""} onChange={(e) => updateDayPlan(i, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
-                              <option value="" disabled>Select Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option>
-                            </select>
-                            <div className="flex items-center gap-1">
-                              <input type="text" value={day.miles} onChange={(e) => updateDayPlan(i, "miles", e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" />
-                              <button type="button" onClick={() => updateDayPlan(i, "distanceUnit", day.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={day.distanceUnit === "km" ? "text-accent" : "text-white"}>{day.distanceUnit === "km" ? "Kilometre" : "Mile"}</span></button>
-                            </div>
-                          </>
-                        )}
+                    <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-white font-heading text-sm uppercase">{day.day}</span>
+                        <span className="text-gray-600 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
                       </div>
-                      {day.type === "run" && (<div className="grid md:grid-cols-3 gap-2 mt-3"><input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" /><input type="text" value={day.description} onChange={(e) => updateDayPlan(i, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" /><input type="text" value={day.paceTarget} onChange={(e) => updateDayPlan(i, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" /></div>)}
-                      {day.type === "run" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /><input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" /></div>)}
-                      {day.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-3"><input type="text" value={day.title} onChange={(e) => updateDayPlan(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Orange Theory)" /><input type="text" value={day.location} onChange={(e) => updateDayPlan(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /></div><textarea value={day.description} onChange={(e) => updateDayPlan(i, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
-                      {day.type === "rest" && <div className="mt-2"><input type="text" value={day.coachNotes} onChange={(e) => updateDayPlan(i, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes (optional)" /></div>}
-                      {day.type !== "rest" && <button type="button" className="text-accent text-xs hover:underline mt-2">+ Add another workout</button>}
-                      {/* Day template actions */}
-                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
+                      {/* Workouts for this day */}
+                      {day.workouts.map((wo, wi) => (
+                        <div key={wi} className={`${wi > 0 ? "mt-3 pt-3 border-t border-white/5" : ""}`}>
+                          <div className="flex items-center gap-3">
+                            {day.workouts.length > 1 && <span className="text-gray-600 text-xs w-4">{wi + 1}.</span>}
+                            <select value={wo.type || ""} onChange={(e) => { updateDayPlan(i, wi, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, wi, "trainingType", "Rest"); updateDayPlan(i, wi, "title", ""); updateDayPlan(i, wi, "miles", ""); } else { updateDayPlan(i, wi, "trainingType", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                              <option value="" disabled>Type</option><option value="run">Run</option><option value="cross">Cross Training</option><option value="rest">Rest</option>
+                            </select>
+                            {wo.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}
+                            {wo.type === "run" && (
+                              <>
+                                <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                  <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option>
+                                </select>
+                                <div className="flex items-center gap-1">
+                                  <input type="text" value={wo.miles} onChange={(e) => updateDayPlan(i, wi, "miles", e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" />
+                                  <button type="button" onClick={() => updateDayPlan(i, wi, "distanceUnit", wo.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
+                                </div>
+                              </>
+                            )}
+                            {day.workouts.length > 1 && <button type="button" onClick={() => removeWorkoutFromDay(i, wi)} className="text-red-400 hover:text-red-300 text-xs ml-auto">Remove</button>}
+                          </div>
+                          {wo.type === "run" && (<div className="grid md:grid-cols-3 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" /><input type="text" value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" /><input type="text" value={wo.paceTarget} onChange={(e) => updateDayPlan(i, wi, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" /></div>)}
+                          {wo.type === "run" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" /></div>)}
+                          {wo.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title (e.g. Orange Theory)" /><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /></div><textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
+                          {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes (optional)" /></div>}
+                        </div>
+                      ))}
+                      {/* Add another workout + template actions */}
+                      <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5">
+                        <button type="button" onClick={() => addWorkoutToDay(i)} className="text-accent text-xs hover:underline">+ Add another workout</button>
                         {dayTemplates.length > 0 && (
                           <div className="relative">
-                            <button type="button" onClick={() => setShowLoadDayTemplate(showLoadDayTemplate === i ? null : i)} className="text-gray-500 hover:text-white text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Load Day Template</button>
+                            <button type="button" onClick={() => setShowLoadDayTemplate(showLoadDayTemplate === i ? null : i)} className="text-gray-500 hover:text-white text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Load Template</button>
                             {showLoadDayTemplate === i && (
                               <div className="absolute bottom-full left-0 mb-2 z-50 bg-secondary border border-white/10 rounded-lg p-2 shadow-xl min-w-48">
                                 {dayTemplates.map((t) => (
@@ -1230,7 +1278,7 @@ export default function AdminPage() {
                             )}
                           </div>
                         )}
-                        {day.type !== "rest" && day.title && (
+                        {day.workouts[0]?.type !== "rest" && day.workouts[0]?.title && (
                           showSaveDayTemplate === i ? (
                             <div className="flex items-center gap-2">
                               <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-32 focus:outline-none focus:border-accent" placeholder="Template name" />
@@ -1239,7 +1287,7 @@ export default function AdminPage() {
                               <button type="button" onClick={() => { setShowSaveDayTemplate(null); setTemplateName(""); setTemplateCategory(""); }} className="text-gray-500 text-xs hover:text-white">Cancel</button>
                             </div>
                           ) : (
-                            <button type="button" onClick={() => { setShowSaveDayTemplate(i); setTemplateName(day.title || `${day.day} ${day.trainingType || day.type}`); }} className="text-gray-500 hover:text-gold text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Save Day as Template</button>
+                            <button type="button" onClick={() => { setShowSaveDayTemplate(i); setTemplateName(day.workouts[0]?.title || `${day.day} ${day.workouts[0]?.trainingType || day.workouts[0]?.type}`); }} className="text-gray-500 hover:text-gold text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Save as Template</button>
                           )
                         )}
                       </div>
