@@ -50,17 +50,62 @@ export async function POST(
   const url = new URL(request.url)
   const baseUrl = `${url.protocol}//${url.host}`
 
-  // Resend the invite
-  const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(clientUser.email, {
-    data: {
-      name: clientUser.name,
-      role: 'client',
+  // Generate a new invite link for the existing user
+  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: 'invite',
+    email: clientUser.email,
+    options: {
+      data: {
+        name: clientUser.name,
+        role: 'client',
+      },
+      redirectTo: `${baseUrl}/auth/callback?next=/set-password`,
     },
-    redirectTo: `${baseUrl}/auth/callback?next=/set-password`,
   })
 
-  if (inviteError) {
-    return NextResponse.json({ error: inviteError.message }, { status: 500 })
+  if (linkError) {
+    return NextResponse.json({ error: linkError.message }, { status: 500 })
+  }
+
+  // Extract the hashed_token from the generated link
+  const hashedToken = linkData?.properties?.hashed_token
+  if (!hashedToken) {
+    return NextResponse.json({ error: 'Failed to generate invite token' }, { status: 500 })
+  }
+
+  // Construct the invite URL using token_hash format
+  const inviteUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+
+  // Send email via Resend API directly
+  const resendApiKey = process.env.RESEND_API_KEY
+  const senderEmail = process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com'
+
+  if (!resendApiKey) {
+    return NextResponse.json({ error: 'Email service not configured. Add RESEND_API_KEY to environment variables.' }, { status: 500 })
+  }
+
+  const emailRes = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${resendApiKey}`,
+    },
+    body: JSON.stringify({
+      from: `Pistol Performance Coaching <${senderEmail}>`,
+      to: [clientUser.email],
+      subject: "You're invited to Pistol Performance Coaching!",
+      html: `
+        <h2>You've been invited to Pistol Performance Coaching!</h2>
+        <p>Crystal has set up your training account. Click the link below to set your password and get started.</p>
+        <p><a href="${inviteUrl}">Set Up Your Account</a></p>
+        <p>If you didn't expect this email, you can safely ignore it.</p>
+      `,
+    }),
+  })
+
+  if (!emailRes.ok) {
+    const errData = await emailRes.json().catch(() => ({}))
+    return NextResponse.json({ error: errData.message || 'Failed to send email' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true, message: `Invite resent to ${clientUser.email}` })
