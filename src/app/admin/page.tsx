@@ -79,8 +79,18 @@ export default function AdminPage() {
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
     setSelectedWeekStart(monday);
-    setWeekPlan({ ...weekPlan, dateRange: `${formatDate(monday)} - ${formatDate(sunday)}` });
+    const dateRange = `${formatDate(monday)} - ${formatDate(sunday)}`;
+    setWeekPlan({ ...weekPlan, dateRange });
     setShowWeekPicker(false);
+
+    // Check if a week already exists for this date range (published or draft)
+    const clientData = clients.find(c => c.id === selectedClient);
+    const existingWeek = clientData?.weeks.find(w => w.dateRange === dateRange);
+    if (existingWeek && existingWeek.weekId !== editingDraftId) {
+      setWeekDateWarning(`A week already exists for ${dateRange} (${existingWeek.status}). You cannot create a duplicate. Go to ${existingWeek.status === 'draft' ? 'Drafts' : 'Training & Logs'} to view or edit it.`);
+      return;
+    }
+
     // Validate against active plan dates
     if (activePlan && activePlan.startDate && activePlan.endDate) {
       const planStart = new Date(activePlan.startDate);
@@ -1048,7 +1058,6 @@ export default function AdminPage() {
                                 <span className="text-white font-medium text-sm">{w.day}</span>
                                 <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
-                                {w.completed && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Done</span>}
                               </div>
                               <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
@@ -1296,7 +1305,7 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3 flex-wrap"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button></div>
+                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
                 {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
@@ -1605,58 +1614,7 @@ export default function AdminPage() {
               );
             })()}
 
-            {/* Templates Library */}
-            <div className="bg-secondary/50 border border-gold/20 rounded-xl p-5">
-              <h3 className="font-heading text-sm uppercase text-gold mb-3">Training Templates ({templates.length})</h3>
-              {templates.length === 0 ? (
-                <p className="text-gray-500 text-sm">No templates saved yet. Create one from the Create Week form when building a client&apos;s plan.</p>
-              ) : (
-                <div className="space-y-4">
-                  {/* Week Templates */}
-                  {weekTemplates.length > 0 && (
-                    <div>
-                      <p className="text-gray-400 text-xs font-heading uppercase mb-2">Week Templates ({weekTemplates.length})</p>
-                      <div className="space-y-2">
-                        {weekTemplates.map((t) => (
-                          <div key={t.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
-                            <div>
-                              <p className="text-white text-sm font-medium">{t.name}</p>
-                              <p className="text-gray-500 text-xs">
-                                {t.category && <span className="text-gold">{t.category}</span>}
-                                {t.category && ' · '}
-                                {t.data.days?.filter((d: any) => d.type === 'run').length || 0} runs, {t.data.days?.filter((d: any) => d.type === 'cross').length || 0} cross, {t.data.days?.filter((d: any) => d.type === 'rest').length || 0} rest
-                              </p>
-                            </div>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Day Templates */}
-                  {dayTemplates.length > 0 && (
-                    <div>
-                      <p className="text-gray-400 text-xs font-heading uppercase mb-2">Day Templates ({dayTemplates.length})</p>
-                      <div className="grid md:grid-cols-2 gap-2">
-                        {dayTemplates.map((t) => (
-                          <div key={t.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
-                            <div>
-                              <p className="text-white text-xs font-medium">{t.name}</p>
-                              <p className="text-gray-500 text-xs">
-                                {t.category && <span className="text-gold">{t.category}</span>}
-                                {t.category && ' · '}
-                                {t.data.type === 'run' ? `Run${t.data.miles ? ` · ${t.data.miles}mi` : ''}` : t.data.type === 'cross' ? 'Cross Training' : 'Rest'}
-                              </p>
-                            </div>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+
               </>
             )}
           </div>
