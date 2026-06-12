@@ -1,0 +1,201 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+// GET /api/weeks?client_id=xxx - Get all weeks for a client
+export async function GET(request: Request) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(request.url)
+  const clientId = searchParams.get('client_id')
+
+  if (!clientId) {
+    return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
+  }
+
+  // Use service role to bypass RLS for admin reads
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Fetch weeks
+  const { data: weeks, error: weeksError } = await adminClient
+    .from('weeks')
+    .select('id, client_id, date_range, focus, coach_message, status, created_at')
+    .eq('client_id', clientId)
+    .order('date_range', { ascending: true })
+
+  if (weeksError) {
+    return NextResponse.json({ error: weeksError.message }, { status: 500 })
+  }
+
+  if (!weeks || weeks.length === 0) {
+    return NextResponse.json([])
+  }
+
+  // Fetch all workouts for these weeks
+  const weekIds = weeks.map(w => w.id)
+  const { data: workouts } = await adminClient
+    .from('workouts')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order')
+    .in('week_id', weekIds)
+    .order('sort_order', { ascending: true })
+
+  // Fetch all workout logs
+  const workoutIds = (workouts || []).map(wo => wo.id)
+  let logs: any[] = []
+  if (workoutIds.length > 0) {
+    const { data: logsData } = await adminClient
+      .from('workout_logs')
+      .select('id, workout_id, status, skip_reason, rpe, actual_miles, actual_pace, stress, notes, on_period, duration, energy, motivation, sleep, strength, recovery, mood, hunger')
+      .in('workout_id', workoutIds)
+    logs = logsData || []
+  }
+
+  // Build lookup maps
+  const logsByWorkoutId = new Map<string, any>()
+  for (const log of logs) {
+    logsByWorkoutId.set(log.workout_id, log)
+  }
+
+  const workoutsByWeekId = new Map<string, any[]>()
+  for (const wo of workouts || []) {
+    if (!workoutsByWeekId.has(wo.week_id)) {
+      workoutsByWeekId.set(wo.week_id, [])
+    }
+    workoutsByWeekId.get(wo.week_id)!.push(wo)
+  }
+
+  // Format response
+  const formatted = weeks.map(w => {
+    const weekWorkouts = workoutsByWeekId.get(w.id) || []
+    return {
+      weekId: w.id,
+      clientId: w.client_id,
+      dateRange: w.date_range,
+      focus: w.focus,
+      coachMessage: w.coach_message,
+      status: w.status,
+      createdAt: w.created_at,
+      workouts: weekWorkouts.map(wo => {
+        const log = logsByWorkoutId.get(wo.id)
+        return {
+          id: wo.id,
+          day: wo.day,
+          type: wo.type,
+          trainingType: wo.training_type,
+          title: wo.title,
+          miles: wo.miles ? parseFloat(wo.miles) : null,
+          description: wo.description,
+          paceTarget: wo.pace_target,
+          location: wo.location,
+          coachNotes: wo.coach_notes,
+          sortOrder: wo.sort_order,
+          completed: !!log,
+          status: log?.status || null,
+          skipReason: log?.skip_reason || null,
+          log: log ? {
+            rpe: log.rpe?.toString() || '',
+            stress: log.stress?.toString() || '',
+            notes: log.notes || '',
+            energy: log.energy?.toString() || '',
+            motivation: log.motivation?.toString() || '',
+            sleep: log.sleep?.toString() || '',
+            strength: log.strength?.toString() || '',
+            recovery: log.recovery?.toString() || '',
+            mood: log.mood?.toString() || '',
+            hunger: log.hunger?.toString() || '',
+            actualMiles: log.actual_miles?.toString() || '',
+            actualPace: log.actual_pace || '',
+            onPeriod: log.on_period ? 'yes' : 'no',
+            duration: log.duration || '',
+          } : undefined,
+        }
+      }),
+    }
+  })
+
+  return NextResponse.json(formatted)
+}
+
+// POST /api/weeks - Create a new week with workouts
+export async function POST(request: Request) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Use service role for DB writes to bypass RLS
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const body = await request.json()
+  const { clientId, dateRange, focus, coachMessage, status, workouts } = body
+
+  if (!clientId || !dateRange) {
+    return NextResponse.json({ error: 'clientId and dateRange are required' }, { status: 400 })
+  }
+
+  // Create the week
+  const { data: week, error: weekError } = await adminClient
+    .from('weeks')
+    .insert({
+      client_id: clientId,
+      date_range: dateRange,
+      focus: focus || null,
+      coach_message: coachMessage || null,
+      status: status || 'draft',
+    })
+    .select()
+    .single()
+
+  if (weekError) {
+    return NextResponse.json({ error: weekError.message }, { status: 500 })
+  }
+
+  // Create workouts if provided
+  if (workouts && workouts.length > 0) {
+    const workoutRows = workouts.map((w: any, index: number) => ({
+      week_id: week.id,
+      day: w.day,
+      type: w.type || 'run',
+      training_type: w.trainingType || null,
+      title: w.title || null,
+      miles: w.miles ? parseFloat(w.miles) : null,
+      description: w.description || null,
+      pace_target: w.paceTarget || null,
+      location: w.location || null,
+      coach_notes: w.coachNotes || null,
+      sort_order: index,
+    }))
+
+    const { error: workoutsError } = await adminClient
+      .from('workouts')
+      .insert(workoutRows)
+
+    if (workoutsError) {
+      return NextResponse.json({ error: workoutsError.message }, { status: 500 })
+    }
+  }
+
+  return NextResponse.json({ success: true, weekId: week.id })
+}

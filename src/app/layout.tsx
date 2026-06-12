@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
+import AuthRedirect from "./components/AuthRedirect";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,7 +34,35 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
-      <body className="font-body">{children}</body>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Catch Supabase auth hash fragments BEFORE React hydrates
+              (function() {
+                var hash = window.location.hash;
+                if (hash && hash.indexOf('access_token') !== -1) {
+                  // Check if this is a password recovery or an invite
+                  if (hash.indexOf('type=recovery') !== -1) {
+                    // Password reset flow -> go to reset-password
+                    window.location.replace('/reset-password' + hash);
+                  } else {
+                    // Invite flow -> go to set-password
+                    sessionStorage.setItem('supabase_auth_hash', hash);
+                    window.location.replace('/set-password' + hash);
+                  }
+                } else if (hash && hash.indexOf('error') !== -1 && hash.indexOf('expired') !== -1) {
+                  window.location.replace('/login?error=link_expired');
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className="font-body">
+        <AuthRedirect />
+        {children}
+      </body>
     </html>
   );
 }
