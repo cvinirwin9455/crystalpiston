@@ -169,6 +169,23 @@ export default function AdminPage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [loggedInUser, setLoggedInUser] = useState<string>("");
+
+  // Fetch logged-in user name
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
+          setLoggedInUser(profile?.name || user.email || '');
+        }
+      } catch (err) { console.error(err); }
+    };
+    fetchMe();
+  }, []);
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [resendingInvite, setResendingInvite] = useState(false);
@@ -928,7 +945,7 @@ export default function AdminPage() {
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
             <Image src="/IMG_5861.PNG" alt="Logo" width={36} height={36} className="rounded-full" />
-            <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">Crystal</p></div>
+            <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
           </div>
           <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-accent mb-2" />
           <div className="flex gap-1 mb-2">

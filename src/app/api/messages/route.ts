@@ -142,7 +142,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Send email notification based on who is sending to whom
+  // Send email notification based on who is sending to whom (fire and forget, don't block response)
+  try {
   const { data: senderProfile } = await adminClient
     .from('users')
     .select('role, name')
@@ -224,6 +225,9 @@ export async function POST(request: Request) {
         }
       }
     }
+  }
+  } catch (notifErr) {
+    console.error('Notification error (message still sent):', notifErr)
   }
 
   return NextResponse.json({
