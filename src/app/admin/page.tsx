@@ -99,6 +99,7 @@ export default function AdminPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [showSaveWeekTemplate, setShowSaveWeekTemplate] = useState(false);
   const [showSaveDayTemplate, setShowSaveDayTemplate] = useState<number | null>(null);
+  const [showLoadDayTemplate, setShowLoadDayTemplate] = useState<number | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -201,6 +202,7 @@ export default function AdminPage() {
     const updated = [...weekPlan.days];
     updated[dayIndex] = { ...updated[dayIndex], ...data, day: updated[dayIndex].day };
     setWeekPlan({ ...weekPlan, days: updated });
+    setShowLoadDayTemplate(null);
   };
 
   // Delete template
@@ -1214,15 +1216,18 @@ export default function AdminPage() {
                       {/* Day template actions */}
                       <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
                         {dayTemplates.length > 0 && (
-                          <div className="relative group">
-                            <button type="button" className="text-gray-500 hover:text-white text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Load Day Template</button>
-                            <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 z-50 bg-secondary border border-white/10 rounded-lg p-2 shadow-xl min-w-48">
-                              {dayTemplates.map((t) => (
-                                <button key={t.id} type="button" onClick={() => loadDayTemplate(i, t)} className="block w-full text-left text-xs text-gray-300 hover:text-white hover:bg-white/5 px-2 py-1.5 rounded transition-colors">
-                                  {t.name}{t.category && <span className="text-gray-600 ml-1">({t.category})</span>}
-                                </button>
-                              ))}
-                            </div>
+                          <div className="relative">
+                            <button type="button" onClick={() => setShowLoadDayTemplate(showLoadDayTemplate === i ? null : i)} className="text-gray-500 hover:text-white text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Load Day Template</button>
+                            {showLoadDayTemplate === i && (
+                              <div className="absolute bottom-full left-0 mb-2 z-50 bg-secondary border border-white/10 rounded-lg p-2 shadow-xl min-w-48">
+                                {dayTemplates.map((t) => (
+                                  <button key={t.id} type="button" onClick={() => loadDayTemplate(i, t)} className="block w-full text-left text-xs text-gray-300 hover:text-white hover:bg-white/5 px-2 py-1.5 rounded transition-colors">
+                                    {t.name}{t.category && <span className="text-gray-600 ml-1">({t.category})</span>}
+                                  </button>
+                                ))}
+                                <button type="button" onClick={() => setShowLoadDayTemplate(null)} className="block w-full text-left text-xs text-gray-500 hover:text-white px-2 py-1.5 rounded mt-1 border-t border-white/5">Cancel</button>
+                              </div>
+                            )}
                           </div>
                         )}
                         {day.type !== "rest" && day.title && (
