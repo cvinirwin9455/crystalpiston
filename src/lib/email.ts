@@ -1,9 +1,5 @@
 // Email utility for sending notifications via Resend
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY
-const SENDER_EMAIL = process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com'
-const SENDER_NAME = 'Pistol Performance Coaching'
-
 interface SendEmailParams {
   to: string
   subject: string
@@ -11,8 +7,12 @@ interface SendEmailParams {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailParams): Promise<boolean> {
-  if (!RESEND_API_KEY) {
-    console.error('RESEND_API_KEY not configured')
+  const apiKey = process.env.RESEND_API_KEY
+  const senderEmail = process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com'
+  const senderName = 'Pistol Performance Coaching'
+
+  if (!apiKey) {
+    console.error('RESEND_API_KEY not configured - check Vercel environment variables')
     return false
   }
 
@@ -21,10 +21,10 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: `${SENDER_NAME} <${SENDER_EMAIL}>`,
+        from: `${senderName} <${senderEmail}>`,
         to: [to],
         subject,
         html: wrapInBrandedTemplate(html),
@@ -33,7 +33,7 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      console.error('Failed to send email:', err)
+      console.error('Failed to send email:', JSON.stringify(err))
       return false
     }
 
