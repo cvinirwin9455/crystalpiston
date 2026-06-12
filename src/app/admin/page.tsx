@@ -23,6 +23,8 @@ export default function AdminPage() {
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTemplatesView, setShowTemplatesView] = useState(false);
+  const [notifEmail, setNotifEmail] = useState("crystal@pistolpc.com");
+  const [notifEmailSaved, setNotifEmailSaved] = useState(false);
   const [notifications, setNotifications] = useState({
     workoutCompleted: "immediate",
     workoutSkipped: "immediate",
@@ -1471,6 +1473,17 @@ export default function AdminPage() {
                       <button onClick={() => setNotifications({ ...notifications, dailySummary: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "off" || (notifications as any).dailySummary === false ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
+                </div>
+
+                {/* Email Destination */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Send Notifications To</h3>
+                  <p className="text-gray-500 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
+                  <div className="flex gap-3">
+                    <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
+                    <button onClick={() => setNotifEmailSaved(true)} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
+                  </div>
+                  <p className="text-gray-600 text-xs mt-2">Separate multiple addresses with a comma.</p>
                 </div>
               </>
             ) : showTemplatesView ? (
