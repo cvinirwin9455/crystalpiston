@@ -100,7 +100,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { planId, startDate, endDate, owed, paid, status, completionReason } = body
+  const { planId, startDate, endDate, owed, paid, status, completionReason, goal } = body
 
   if (!planId) {
     return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -115,6 +115,7 @@ export async function PATCH(request: Request) {
   if (paid !== undefined) updates.paid = parseFloat(paid)
   if (status !== undefined) updates.status = status
   if (completionReason !== undefined) updates.completion_reason = completionReason
+  if (goal !== undefined) updates.goal = goal || null
 
   let { error } = await adminClient
     .from('plans')

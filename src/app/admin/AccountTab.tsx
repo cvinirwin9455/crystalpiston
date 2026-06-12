@@ -341,6 +341,34 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [completionReason, setCompletionReason] = useState("");
   const [completing, setCompleting] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [editGoal, setEditGoal] = useState(plan.goal);
+  const [editStartDate, setEditStartDate] = useState(plan.startDate);
+  const [editEndDate, setEditEndDate] = useState(plan.endDate);
+  const [editOwed, setEditOwed] = useState(plan.owed.toString());
+  const [savingPlanEdit, setSavingPlanEdit] = useState(false);
+
+  const handleSavePlanEdit = async () => {
+    setSavingPlanEdit(true);
+    try {
+      const res = await fetch("/api/plans", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed }),
+      });
+      if (res.ok) {
+        // Update local state via parent
+        onUpdate(plan.id, { paid: plan.paid.toString() }); // Trigger a re-render
+        setEditingPlan(false);
+        // Force refresh plans by triggering parent
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error("Failed to save plan edit:", err);
+    } finally {
+      setSavingPlanEdit(false);
+    }
+  };
 
   const hasOutstandingBalance = (plan.owed - plan.paid) > 0;
 
@@ -430,13 +458,45 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
         </div>
         <div className="flex items-center gap-2">
           {plan.status === "active" && (
-            <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
+            <>
+              <button onClick={() => setEditingPlan(!editingPlan)} className="text-gray-500 text-xs hover:text-accent">{editingPlan ? "Cancel Edit" : "Edit Plan"}</button>
+              <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
+            </>
           )}
           {plan.status === "completed" && (
             <button onClick={() => onUpdate(plan.id, { status: "active" })} className="text-gray-500 text-xs hover:text-blue-400">Reactivate Plan</button>
           )}
         </div>
       </div>
+
+      {/* Edit Plan Form */}
+      {editingPlan && plan.status === "active" && (
+        <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-3">
+          <p className="text-accent text-xs font-heading uppercase mb-3">Edit Plan</p>
+          <div className="grid md:grid-cols-4 gap-3 mb-3">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Goal</label>
+              <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. War Eagle 50K" />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Start Date</label>
+              <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">End Date</label>
+              <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
+              <input type="number" value={editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
+            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Completion confirmation dialog */}
       {showCompleteConfirm && (
