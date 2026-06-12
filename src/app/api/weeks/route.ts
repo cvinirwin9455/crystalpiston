@@ -197,5 +197,51 @@ export async function POST(request: Request) {
     }
   }
 
+  // If week is published immediately, notify the client
+  if (status === 'published') {
+    try {
+      // Get the client's user_id
+      const { data: client } = await adminClient
+        .from('clients')
+        .select('user_id')
+        .eq('id', clientId)
+        .single()
+
+      if (client) {
+        // Check notification preferences
+        const { data: notifPrefs } = await adminClient
+          .from('notification_preferences')
+          .select('plan_published')
+          .eq('user_id', client.user_id)
+          .single()
+
+        const shouldNotify = notifPrefs ? notifPrefs.plan_published : true
+
+        if (shouldNotify) {
+          const { data: clientUser } = await adminClient
+            .from('users')
+            .select('email, name')
+            .eq('id', client.user_id)
+            .single()
+
+          if (clientUser?.email) {
+            const { sendEmail, buildPlanPublishedEmail } = await import('@/lib/email')
+            const url = new URL(request.url)
+            const siteUrl = `${url.protocol}//${url.host}`
+            const emailContent = buildPlanPublishedEmail(
+              clientUser.name || 'there',
+              dateRange,
+              focus || '',
+              siteUrl
+            )
+            sendEmail({ to: clientUser.email, ...emailContent }).catch(console.error)
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to send publish notification:', notifErr)
+    }
+  }
+
   return NextResponse.json({ success: true, weekId: week.id })
 }

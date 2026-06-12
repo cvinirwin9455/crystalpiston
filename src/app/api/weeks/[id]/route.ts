@@ -44,6 +44,63 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // If status changed to published, notify the client
+  if (status === 'published') {
+    try {
+      // Get the week's client_id and date_range
+      const { data: week } = await supabase
+        .from('weeks')
+        .select('client_id, date_range, focus')
+        .eq('id', weekId)
+        .single()
+
+      if (week) {
+        // Get the client's user_id
+        const { data: client } = await supabase
+          .from('clients')
+          .select('user_id')
+          .eq('id', week.client_id)
+          .single()
+
+        if (client) {
+          // Check notification preferences
+          const { data: notifPrefs } = await supabase
+            .from('notification_preferences')
+            .select('plan_published')
+            .eq('user_id', client.user_id)
+            .single()
+
+          const shouldNotify = notifPrefs ? notifPrefs.plan_published : true
+
+          if (shouldNotify) {
+            // Get client's email and name
+            const { data: clientUser } = await supabase
+              .from('users')
+              .select('email, name')
+              .eq('id', client.user_id)
+              .single()
+
+            if (clientUser?.email) {
+              const { sendEmail, buildPlanPublishedEmail } = await import('@/lib/email')
+              const url = new URL(request.url)
+              const siteUrl = `${url.protocol}//${url.host}`
+              const emailContent = buildPlanPublishedEmail(
+                clientUser.name || 'there',
+                week.date_range || dateRange || '',
+                week.focus || focus || '',
+                siteUrl
+              )
+              // Fire and forget
+              sendEmail({ to: clientUser.email, ...emailContent }).catch(console.error)
+            }
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to send publish notification:', notifErr)
+    }
+  }
+
   return NextResponse.json({ success: true })
 }
 

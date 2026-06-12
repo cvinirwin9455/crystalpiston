@@ -142,6 +142,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Send email notification if Crystal is sending to a client
+  const { data: senderProfile } = await adminClient
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (senderProfile?.role === 'admin' && recipientId) {
+    // Check recipient's notification preferences
+    const { data: notifPrefs } = await adminClient
+      .from('notification_preferences')
+      .select('messages')
+      .eq('user_id', recipientId)
+      .single()
+
+    const messagesPref = notifPrefs?.messages || 'immediate'
+
+    if (messagesPref === 'immediate') {
+      // Get recipient's email and name
+      const { data: recipient } = await adminClient
+        .from('users')
+        .select('email, name')
+        .eq('id', recipientId)
+        .single()
+
+      if (recipient?.email) {
+        const { sendEmail, buildNewMessageEmail } = await import('@/lib/email')
+        const url = new URL(request.url)
+        const siteUrl = `${url.protocol}//${url.host}`
+        const emailContent = buildNewMessageEmail(recipient.name || 'there', message.trim(), siteUrl)
+        // Fire and forget - don't block the response
+        sendEmail({ to: recipient.email, ...emailContent }).catch(console.error)
+      }
+    }
+  }
+
   return NextResponse.json({
     success: true,
     messageId: newMessage.id,
