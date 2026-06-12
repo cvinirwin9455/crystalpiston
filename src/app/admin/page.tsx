@@ -1283,7 +1283,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
-                <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "New weeks are saved as "}<span className="text-yellow-400">{editingDraftId ? "" : "Draft"}</span>{editingDraftId ? "" : " until you publish them."}</p>
+                <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
                 <p className="text-gray-500 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
                 {/* Load from Week Template */}
                 {weekTemplates.length > 0 && (
