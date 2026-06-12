@@ -13,12 +13,30 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // Check for error params (e.g. expired invite link)
+  // Check for hash fragments (invite/recovery links that landed here by mistake)
+  // Also check for error params
   useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      if (hash.includes("type=recovery")) {
+        window.location.replace("/reset-password" + hash);
+        return;
+      } else {
+        window.location.replace("/set-password" + hash);
+        return;
+      }
+    }
+    if (hash && hash.includes("error")) {
+      setError("Your invite link has expired or is invalid. Contact Crystal for a new one.");
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
     if (err === "link_expired") {
       setError("Your invite link has expired. Contact Crystal for a new one.");
+    } else if (err === "auth_code_error") {
+      setError("Authentication failed. Please try again or contact Crystal for a new invite.");
     } else if (err) {
       setError("Authentication error. Please try again.");
     }
