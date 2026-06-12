@@ -23,7 +23,7 @@ export default function AdminPage() {
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTemplatesView, setShowTemplatesView] = useState(false);
-  const [notifEmail, setNotifEmail] = useState("crystal@pistolpc.com");
+  const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
   const [notifications, setNotifications] = useState({
     workoutCompleted: "immediate",
@@ -32,6 +32,59 @@ export default function AdminPage() {
     clientMessage: "immediate",
     dailySummary: "off",
   });
+  const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
+
+  // Fetch admin notification preferences
+  useEffect(() => {
+    const fetchAdminNotifPrefs = async () => {
+      try {
+        const res = await fetch('/api/notification-preferences');
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications({
+            workoutCompleted: data.workoutCompleted || 'immediate',
+            workoutSkipped: data.workoutSkipped || 'immediate',
+            workoutPartial: data.workoutPartial || 'immediate',
+            clientMessage: data.clientMessage || 'immediate',
+            dailySummary: data.dailySummary || 'off',
+          });
+          setNotifEmail(data.notificationEmails || '');
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin notification prefs:', err);
+      } finally {
+        setAdminNotifLoaded(true);
+      }
+    };
+    fetchAdminNotifPrefs();
+  }, []);
+
+  // Save admin notification preferences (called on every change)
+  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string) => {
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workoutCompleted: updatedNotifs.workoutCompleted,
+          workoutSkipped: updatedNotifs.workoutSkipped,
+          workoutPartial: updatedNotifs.workoutPartial,
+          clientMessage: updatedNotifs.clientMessage,
+          dailySummary: updatedNotifs.dailySummary,
+          ...(email !== undefined ? { notificationEmails: email } : {}),
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save admin notification prefs:', err);
+    }
+  };
+
+  // Helper: update a notification setting and auto-save
+  const updateNotifSetting = (key: string, value: string) => {
+    const updated = { ...notifications, [key]: value };
+    setNotifications(updated);
+    saveAdminNotifPrefs(updated);
+  };
   const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -1421,9 +1474,9 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 mb-1"><span className="text-green-400">&#10003;</span><p className="text-white text-sm font-medium">Client completes a workout</p></div>
                     <p className="text-gray-500 text-xs mb-3">Includes their effort rating, actual miles, pace, and any notes</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setNotifications({ ...notifications, workoutCompleted: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "immediate" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => setNotifications({ ...notifications, workoutCompleted: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "daily" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
-                      <button onClick={() => setNotifications({ ...notifications, workoutCompleted: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "off" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                      <button onClick={() => updateNotifSetting("workoutCompleted", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "immediate" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => updateNotifSetting("workoutCompleted", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "daily" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => updateNotifSetting("workoutCompleted", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "off" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
 
@@ -1431,9 +1484,9 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 mb-1"><span className="text-red-400">&#10007;</span><p className="text-white text-sm font-medium">Client skips a workout</p></div>
                     <p className="text-gray-500 text-xs mb-3">Includes their reason for skipping so you can follow up if needed</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setNotifications({ ...notifications, workoutSkipped: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "immediate" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => setNotifications({ ...notifications, workoutSkipped: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "daily" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
-                      <button onClick={() => setNotifications({ ...notifications, workoutSkipped: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "off" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                      <button onClick={() => updateNotifSetting("workoutSkipped", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "immediate" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => updateNotifSetting("workoutSkipped", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "daily" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => updateNotifSetting("workoutSkipped", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "off" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
 
@@ -1441,9 +1494,9 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 mb-1"><span className="text-yellow-400">&#189;</span><p className="text-white text-sm font-medium">Client partially completes a workout</p></div>
                     <p className="text-gray-500 text-xs mb-3">Includes what they did and their reason for stopping early</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setNotifications({ ...notifications, workoutPartial: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "immediate" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => setNotifications({ ...notifications, workoutPartial: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "daily" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
-                      <button onClick={() => setNotifications({ ...notifications, workoutPartial: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "off" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                      <button onClick={() => updateNotifSetting("workoutPartial", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "immediate" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => updateNotifSetting("workoutPartial", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "daily" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => updateNotifSetting("workoutPartial", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "off" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
                 </div>
@@ -1455,9 +1508,9 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 mb-1"><span className="text-accent">&#9993;</span><p className="text-white text-sm font-medium">Client sends you a message</p></div>
                     <p className="text-gray-500 text-xs mb-3">Get notified when a client messages you through the platform</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setNotifications({ ...notifications, clientMessage: "immediate" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => setNotifications({ ...notifications, clientMessage: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
-                      <button onClick={() => setNotifications({ ...notifications, clientMessage: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                      <button onClick={() => updateNotifSetting("clientMessage", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
+                      <button onClick={() => updateNotifSetting("clientMessage", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
+                      <button onClick={() => updateNotifSetting("clientMessage", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
                 </div>
@@ -1469,8 +1522,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 mb-1"><span className="text-gold">&#128202;</span><p className="text-white text-sm font-medium">Daily activity summary</p></div>
                     <p className="text-gray-500 text-xs mb-3">One email at end of day with all client activity: workouts logged, messages received, missed workouts</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setNotifications({ ...notifications, dailySummary: "daily" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "daily" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>On</button>
-                      <button onClick={() => setNotifications({ ...notifications, dailySummary: "off" as any })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "off" || (notifications as any).dailySummary === false ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
+                      <button onClick={() => updateNotifSetting("dailySummary", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "daily" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>On</button>
+                      <button onClick={() => updateNotifSetting("dailySummary", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "off" || (notifications as any).dailySummary === false ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
                 </div>
@@ -1481,7 +1534,7 @@ export default function AdminPage() {
                   <p className="text-gray-500 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
                   <div className="flex gap-3">
                     <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
-                    <button onClick={() => setNotifEmailSaved(true)} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
+                    <button onClick={() => { saveAdminNotifPrefs(notifications, notifEmail); setNotifEmailSaved(true); setTimeout(() => setNotifEmailSaved(false), 3000); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
                   </div>
                   <p className="text-gray-600 text-xs mt-2">Separate multiple addresses with a comma.</p>
                 </div>
