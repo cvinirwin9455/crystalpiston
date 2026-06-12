@@ -152,33 +152,15 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (senderProfile?.role === 'admin' && recipientId) {
-    // Crystal sending to client: check client's preferences
-    const { data: notifPrefs } = await adminClient
-      .from('notification_preferences')
-      .select('messages')
-      .eq('user_id', recipientId)
-      .single()
+  // Check recipient's role to determine notification logic
+  const { data: recipientProfile } = await adminClient
+    .from('users')
+    .select('role, email, name')
+    .eq('id', recipientId)
+    .single()
 
-    const messagesPref = notifPrefs?.messages || 'immediate'
-
-    if (messagesPref === 'immediate') {
-      const { data: recipient } = await adminClient
-        .from('users')
-        .select('email, name')
-        .eq('id', recipientId)
-        .single()
-
-      if (recipient?.email) {
-        const { sendEmail, buildNewMessageEmail } = await import('@/lib/email')
-        const url = new URL(request.url)
-        const siteUrl = `${url.protocol}//${url.host}`
-        const emailContent = buildNewMessageEmail(recipient.name || 'there', message.trim(), siteUrl)
-        sendEmail({ to: recipient.email, ...emailContent }).catch(console.error)
-      }
-    }
-  } else if (senderProfile?.role !== 'admin' && recipientId) {
-    // Client sending to Crystal: check Crystal's preferences
+  if (recipientProfile?.role === 'admin') {
+    // Sending TO an admin (Crystal): check admin's notification preferences
     const { data: adminNotifPrefs } = await adminClient
       .from('notification_preferences')
       .select('client_message, notification_emails')
@@ -192,13 +174,8 @@ export async function POST(request: Request) {
       if (adminNotifPrefs?.notification_emails) {
         notifEmails = adminNotifPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
       }
-      if (notifEmails.length === 0) {
-        const { data: adminUser } = await adminClient
-          .from('users')
-          .select('email')
-          .eq('id', recipientId)
-          .single()
-        if (adminUser?.email) notifEmails = [adminUser.email]
+      if (notifEmails.length === 0 && recipientProfile.email) {
+        notifEmails = [recipientProfile.email]
       }
 
       if (notifEmails.length > 0) {
@@ -226,6 +203,23 @@ export async function POST(request: Request) {
           sendEmail({ to: email, subject: `New message from ${senderName}`, html: emailHtml }).catch(console.error)
         }
       }
+    }
+  } else if (recipientProfile?.role === 'client') {
+    // Sending TO a client: check client's message preferences
+    const { data: notifPrefs } = await adminClient
+      .from('notification_preferences')
+      .select('messages')
+      .eq('user_id', recipientId)
+      .maybeSingle()
+
+    const messagesPref = notifPrefs?.messages || 'immediate'
+
+    if (messagesPref === 'immediate' && recipientProfile.email) {
+      const { sendEmail, buildNewMessageEmail } = await import('@/lib/email')
+      const url = new URL(request.url)
+      const siteUrl = `${url.protocol}//${url.host}`
+      const emailContent = buildNewMessageEmail(recipientProfile.name || 'there', message.trim(), siteUrl)
+      sendEmail({ to: recipientProfile.email, ...emailContent }).catch(console.error)
     }
   }
   } catch (notifErr) {
