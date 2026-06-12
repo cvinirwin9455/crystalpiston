@@ -1,30 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light") {
-      setTheme("light");
-      document.documentElement.classList.add("light");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    if (newTheme === "light") {
-      document.documentElement.classList.add("light");
-    } else {
-      document.documentElement.classList.remove("light");
-    }
-  };
 
   return (
     <nav className="fixed top-0 w-full bg-primary/95 backdrop-blur-sm z-50 border-b border-white/10">
@@ -52,9 +32,6 @@ export default function Navigation() {
           <a href="/login" className="hover:text-accent transition-colors">
             Client Login
           </a>
-          <button onClick={toggleTheme} className="text-gray-400 hover:text-white transition-colors" title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}>
-            {theme === "dark" ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}
-          </button>
           <a href="#contact" className="btn-primary text-sm">
             Let&apos;s Run
           </a>
@@ -91,9 +68,6 @@ export default function Navigation() {
           <a href="/login" className="block hover:text-accent transition-colors" onClick={() => setIsOpen(false)}>
             Client Login
           </a>
-          <button onClick={toggleTheme} className="block text-gray-400 hover:text-white transition-colors text-left">
-            {theme === "dark" ? "Light Mode" : "Dark Mode"}
-          </button>
           <a href="#contact" className="block btn-primary text-sm text-center" onClick={() => setIsOpen(false)}>
             Let&apos;s Run
           </a>

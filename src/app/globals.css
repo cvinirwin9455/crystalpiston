@@ -9,51 +9,6 @@
   body {
     @apply bg-primary text-white;
   }
-  /* Light mode overrides */
-  html.light body {
-    @apply bg-white text-gray-900;
-  }
-  html.light .bg-primary {
-    background-color: #ffffff !important;
-  }
-  html.light .bg-secondary\/50, html.light .bg-secondary\/30, html.light .bg-secondary\/20 {
-    background-color: #f8f9fa !important;
-  }
-  html.light .bg-primary\/30, html.light .bg-primary\/50 {
-    background-color: #f1f3f5 !important;
-  }
-  html.light .border-white\/10, html.light .border-white\/5 {
-    border-color: #e2e8f0 !important;
-  }
-  html.light .text-white {
-    color: #1a202c !important;
-  }
-  html.light .text-gray-300 {
-    color: #4a5568 !important;
-  }
-  html.light .text-gray-400 {
-    color: #718096 !important;
-  }
-  html.light .text-gray-500 {
-    color: #a0aec0 !important;
-  }
-  html.light .text-gray-600 {
-    color: #718096 !important;
-  }
-  html.light .bg-white\/5, html.light .bg-white\/10 {
-    background-color: #f7fafc !important;
-  }
-  html.light .hover\:bg-white\/5:hover {
-    background-color: #edf2f7 !important;
-  }
-  html.light input, html.light textarea, html.light select {
-    background-color: #f7fafc !important;
-    border-color: #e2e8f0 !important;
-    color: #1a202c !important;
-  }
-  html.light input::placeholder, html.light textarea::placeholder {
-    color: #a0aec0 !important;
-  }
 }
 
 @layer components {
