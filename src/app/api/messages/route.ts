@@ -57,12 +57,13 @@ export async function GET(request: Request) {
   }
 
   // No with_user_id: client fetching their own messages with Crystal
-  const { data: adminUser } = await adminClient
+  const { data: adminUsers } = await adminClient
     .from('users')
     .select('id')
     .eq('role', 'admin')
-    .single()
+    .limit(1)
 
+  const adminUser = adminUsers?.[0]
   if (!adminUser) {
     return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
   }
@@ -116,12 +117,13 @@ export async function POST(request: Request) {
   // If toUserId not provided (client sending), find the admin
   let recipientId = toUserId
   if (!recipientId) {
-    const { data: adminUser } = await adminClient
+    const { data: adminUsers } = await adminClient
       .from('users')
       .select('id')
       .eq('role', 'admin')
-      .single()
+      .limit(1)
     
+    const adminUser = adminUsers?.[0]
     if (!adminUser) {
       return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
     }
