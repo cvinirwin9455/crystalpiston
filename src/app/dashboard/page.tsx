@@ -98,6 +98,43 @@ export default function DashboardPage() {
   const [clientGender, setClientGender] = useState<string | null>(null);
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
+  const [notifLoaded, setNotifLoaded] = useState(false);
+  const [notifSaving, setNotifSaving] = useState(false);
+
+  // Fetch notification preferences
+  useEffect(() => {
+    const fetchNotifPrefs = async () => {
+      try {
+        const res = await fetch('/api/notification-preferences');
+        if (res.ok) {
+          const data = await res.json();
+          setNotifPlanPublished(data.planPublished);
+          setNotifMessages(data.messages);
+        }
+      } catch (err) {
+        console.error('Failed to fetch notification prefs:', err);
+      } finally {
+        setNotifLoaded(true);
+      }
+    };
+    fetchNotifPrefs();
+  }, []);
+
+  // Save notification preferences
+  const saveNotifPrefs = async (planPublished: boolean, messages: string) => {
+    setNotifSaving(true);
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planPublished, messages }),
+      });
+    } catch (err) {
+      console.error('Failed to save notification prefs:', err);
+    } finally {
+      setNotifSaving(false);
+    }
+  };
 
   // Fetch client's own plan info
   useEffect(() => {
@@ -799,7 +836,7 @@ export default function DashboardPage() {
                       <p className="text-gray-500 text-xs mt-0.5">Get notified when Crystal publishes your weekly training plan</p>
                     </div>
                     <button
-                      onClick={() => setNotifPlanPublished(!notifPlanPublished)}
+                      onClick={() => { const newVal = !notifPlanPublished; setNotifPlanPublished(newVal); saveNotifPrefs(newVal, notifMessages); }}
                       className={`w-11 h-6 rounded-full relative transition-colors ${notifPlanPublished ? "bg-green-500" : "bg-gray-600"}`}
                     >
                       <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform" style={{ transform: notifPlanPublished ? "translateX(22px)" : "translateX(2px)" }} />
@@ -821,13 +858,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setNotifMessages("immediate")} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                    <button onClick={() => { setNotifMessages("immediate"); saveNotifPrefs(notifPlanPublished, "immediate"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Send immediately
                     </button>
-                    <button onClick={() => setNotifMessages("daily")} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                    <button onClick={() => { setNotifMessages("daily"); saveNotifPrefs(notifPlanPublished, "daily"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Daily summary
                     </button>
-                    <button onClick={() => setNotifMessages("off")} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                    <button onClick={() => { setNotifMessages("off"); saveNotifPrefs(notifPlanPublished, "off"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Off
                     </button>
                   </div>
