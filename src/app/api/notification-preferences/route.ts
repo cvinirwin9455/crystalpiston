@@ -28,6 +28,7 @@ export async function GET() {
       clientMessage: prefs?.client_message || 'immediate',
       dailySummary: prefs?.daily_summary || 'off',
       notificationEmails: prefs?.notification_emails || '',
+      theme: prefs?.theme || 'dark',
     })
   }
 
@@ -35,6 +36,7 @@ export async function GET() {
   return NextResponse.json({
     planPublished: prefs?.plan_published ?? true,
     messages: prefs?.messages || 'immediate',
+    theme: prefs?.theme || 'dark',
   })
 }
 
@@ -45,7 +47,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails } = body
+  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme } = body
 
   // Build updates object
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
@@ -61,6 +63,9 @@ export async function PUT(request: Request) {
   if (clientMessage !== undefined) updates.client_message = clientMessage
   if (dailySummary !== undefined) updates.daily_summary = dailySummary
   if (notificationEmails !== undefined) updates.notification_emails = notificationEmails
+  
+  // Shared fields
+  if (theme !== undefined) updates.theme = theme
 
   const { data: existing } = await supabase
     .from('notification_preferences')
@@ -88,6 +93,7 @@ export async function PUT(request: Request) {
         client_message: clientMessage || 'immediate',
         daily_summary: dailySummary || 'off',
         notification_emails: notificationEmails || null,
+        theme: theme || 'dark',
       })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

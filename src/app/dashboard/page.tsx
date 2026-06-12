@@ -101,6 +101,7 @@ export default function DashboardPage() {
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   // Fetch logged-in user name
   useEffect(() => {
@@ -116,7 +117,29 @@ export default function DashboardPage() {
       } catch (err) { console.error(err); }
     };
     fetchMe();
+    // Fetch theme preference
+    fetch('/api/notification-preferences').then(res => res.ok ? res.json() : null).then(data => {
+      if (data?.theme) {
+        setTheme(data.theme);
+        if (data.theme === 'light') document.documentElement.classList.add('light');
+      }
+    }).catch(console.error);
   }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    if (newTheme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    fetch('/api/notification-preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: newTheme }),
+    }).catch(console.error);
+  };
 
   // Fetch notification preferences
   useEffect(() => {
@@ -393,7 +416,12 @@ export default function DashboardPage() {
             <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
             <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
           </div>
-          <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleTheme} className="text-gray-400 hover:text-white transition-colors" title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+              {theme === 'dark' ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}
+            </button>
+            <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
+          </div>
         </div>
       </header>
 
