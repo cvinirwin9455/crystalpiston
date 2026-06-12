@@ -183,7 +183,7 @@ export async function POST(request: Request) {
       .from('notification_preferences')
       .select('client_message, notification_emails')
       .eq('user_id', recipientId)
-      .single()
+      .maybeSingle()
 
     const clientMessagePref = adminNotifPrefs?.client_message || 'immediate'
 
