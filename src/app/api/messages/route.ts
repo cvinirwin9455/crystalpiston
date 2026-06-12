@@ -142,15 +142,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Send email notification if Crystal is sending to a client
+  // Send email notification based on who is sending to whom
   const { data: senderProfile } = await adminClient
     .from('users')
-    .select('role')
+    .select('role, name')
     .eq('id', user.id)
     .single()
 
   if (senderProfile?.role === 'admin' && recipientId) {
-    // Check recipient's notification preferences
+    // Crystal sending to client: check client's preferences
     const { data: notifPrefs } = await adminClient
       .from('notification_preferences')
       .select('messages')
@@ -160,7 +160,6 @@ export async function POST(request: Request) {
     const messagesPref = notifPrefs?.messages || 'immediate'
 
     if (messagesPref === 'immediate') {
-      // Get recipient's email and name
       const { data: recipient } = await adminClient
         .from('users')
         .select('email, name')
@@ -172,8 +171,57 @@ export async function POST(request: Request) {
         const url = new URL(request.url)
         const siteUrl = `${url.protocol}//${url.host}`
         const emailContent = buildNewMessageEmail(recipient.name || 'there', message.trim(), siteUrl)
-        // Fire and forget - don't block the response
         sendEmail({ to: recipient.email, ...emailContent }).catch(console.error)
+      }
+    }
+  } else if (senderProfile?.role !== 'admin' && recipientId) {
+    // Client sending to Crystal: check Crystal's preferences
+    const { data: adminNotifPrefs } = await adminClient
+      .from('notification_preferences')
+      .select('client_message, notification_emails')
+      .eq('user_id', recipientId)
+      .single()
+
+    const clientMessagePref = adminNotifPrefs?.client_message || 'immediate'
+
+    if (clientMessagePref === 'immediate') {
+      let notifEmails: string[] = []
+      if (adminNotifPrefs?.notification_emails) {
+        notifEmails = adminNotifPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+      }
+      if (notifEmails.length === 0) {
+        const { data: adminUser } = await adminClient
+          .from('users')
+          .select('email')
+          .eq('id', recipientId)
+          .single()
+        if (adminUser?.email) notifEmails = [adminUser.email]
+      }
+
+      if (notifEmails.length > 0) {
+        const { sendEmail } = await import('@/lib/email')
+        const url = new URL(request.url)
+        const siteUrl = `${url.protocol}//${url.host}`
+        const senderName = senderProfile?.name || 'A client'
+        const truncated = message.trim().length > 150 ? message.trim().slice(0, 150) + '...' : message.trim()
+
+        const emailHtml = `
+          <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New message from ${senderName}</h2>
+          <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px; color: #e0e0e0; line-height: 1.5;">${truncated}</p>
+          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+            <tr>
+              <td align="center">
+                <a href="${siteUrl}/admin" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
+              </td>
+            </tr>
+          </table>
+        `
+
+        for (const email of notifEmails) {
+          sendEmail({ to: email, subject: `New message from ${senderName}`, html: emailHtml }).catch(console.error)
+        }
       }
     }
   }
