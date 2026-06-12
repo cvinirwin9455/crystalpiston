@@ -157,6 +157,17 @@ export async function PATCH(
     }
   }
 
+  // If email changed, also update the auth user email
+  if (email !== undefined) {
+    const { error: authError } = await adminClient.auth.admin.updateUserById(userId, {
+      email: email,
+    })
+    if (authError) {
+      console.error('Failed to update auth email:', authError)
+      // Don't fail the whole request - the users table was already updated
+    }
+  }
+
   // Update clients table (goal)
   if (goal !== undefined) {
     const { error: clientError } = await adminClient
