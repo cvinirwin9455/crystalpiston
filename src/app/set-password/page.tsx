@@ -15,10 +15,13 @@ export default function SetPasswordPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let resolved = false;
+    
     const checkSession = async () => {
       // First check if there's already a session
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        resolved = true;
         setChecking(false);
         return;
       }
@@ -26,18 +29,19 @@ export default function SetPasswordPage() {
       // Wait for auth state change (hash token being processed)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (session) {
+          resolved = true;
           setChecking(false);
           subscription.unsubscribe();
         }
       });
 
-      // Timeout: if no session after 5 seconds, redirect to login
+      // Timeout: if no session after 8 seconds, redirect to login
       setTimeout(() => {
         subscription.unsubscribe();
-        if (checking) {
+        if (!resolved) {
           router.push("/login");
         }
-      }, 5000);
+      }, 8000);
     };
     checkSession();
   }, []);

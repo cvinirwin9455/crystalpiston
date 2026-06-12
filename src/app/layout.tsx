@@ -41,18 +41,22 @@ export default function RootLayout({
               // Catch Supabase auth hash fragments BEFORE React hydrates
               (function() {
                 var hash = window.location.hash;
+                var path = window.location.pathname;
+                
+                // If we're already on set-password or reset-password, don't redirect again
+                if (path === '/set-password' || path === '/reset-password') return;
+                
                 if (hash && hash.indexOf('access_token') !== -1) {
                   // Check if this is a password recovery or an invite
                   if (hash.indexOf('type=recovery') !== -1) {
-                    // Password reset flow -> go to reset-password
                     window.location.replace('/reset-password' + hash);
                   } else {
-                    // Invite flow -> go to set-password
-                    sessionStorage.setItem('supabase_auth_hash', hash);
                     window.location.replace('/set-password' + hash);
                   }
-                } else if (hash && hash.indexOf('error') !== -1 && hash.indexOf('expired') !== -1) {
-                  window.location.replace('/login?error=link_expired');
+                } else if (hash && hash.indexOf('error') !== -1) {
+                  var msg = 'link_expired';
+                  if (hash.indexOf('access_denied') !== -1) msg = 'link_expired';
+                  window.location.replace('/login?error=' + msg);
                 }
               })();
             `,
