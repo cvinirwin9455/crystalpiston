@@ -96,9 +96,8 @@ export async function GET() {
     const authUser = authUserMap.get(u.id)
     let inviteStatus: 'accepted' | 'pending' | 'expired' = 'accepted'
     if (authUser) {
-      if (authUser.last_sign_in_at) {
-        inviteStatus = 'accepted'
-      } else if (authUser.email_confirmed_at) {
+      // User has truly accepted if they have actually signed in (set their password and logged in)
+      if (authUser.last_sign_in_at && authUser.last_sign_in_at !== authUser.created_at) {
         inviteStatus = 'accepted'
       } else {
         // Check if invite was sent more than 7 days ago (Supabase default expiry)
