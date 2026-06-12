@@ -100,6 +100,23 @@ export default function DashboardPage() {
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
+  const [loggedInName, setLoggedInName] = useState("");
+
+  // Fetch logged-in user name
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
+          setLoggedInName(profile?.name || user.email || '');
+        }
+      } catch (err) { console.error(err); }
+    };
+    fetchMe();
+  }, []);
 
   // Fetch notification preferences
   useEffect(() => {
@@ -374,7 +391,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
-            <div><h1 className="font-heading text-xl uppercase text-white">My Training</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
+            <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
           </div>
           <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
         </div>
