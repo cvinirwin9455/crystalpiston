@@ -1522,7 +1522,6 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-sm">Choose how often you want to be notified for each type of activity. Changes save automatically.</p>
                 <div className="bg-primary/30 border border-white/5 rounded-lg p-3 mb-2">
                   <p className="text-gray-400 text-xs"><strong className="text-white">Immediately</strong> — You get an individual email each time any client triggers this event.</p>
-                  <p className="text-gray-400 text-xs mt-1"><strong className="text-white">Daily Summary</strong> — One combined email at end of day with all activity from all clients for this type.</p>
                   <p className="text-gray-400 text-xs mt-1"><strong className="text-white">Off</strong> — No emails. You&apos;ll only see this activity when you log in to the dashboard.</p>
                 </div>
 
@@ -1531,30 +1530,27 @@ export default function AdminPage() {
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-green-400">&#10003;</span><p className="text-white text-sm font-medium">Client completes a workout</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Immediately: one email per client per completed workout. Daily: one summary of all completions across all clients.</p>
+                    <p className="text-gray-500 text-xs mb-3">Get an email each time any client completes a workout with their effort, miles, pace, and notes</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("workoutCompleted", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "immediate" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => updateNotifSetting("workoutCompleted", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "daily" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
                       <button onClick={() => updateNotifSetting("workoutCompleted", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "off" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-red-400">&#10007;</span><p className="text-white text-sm font-medium">Client skips a workout</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Immediately: one email per skip with their reason. Daily: one summary of all skipped workouts across all clients.</p>
+                    <p className="text-gray-500 text-xs mb-3">Get an email each time any client skips a workout with their reason</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("workoutSkipped", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "immediate" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => updateNotifSetting("workoutSkipped", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "daily" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
                       <button onClick={() => updateNotifSetting("workoutSkipped", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "off" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-yellow-400">&#189;</span><p className="text-white text-sm font-medium">Client partially completes a workout</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Immediately: one email per partial completion. Daily: one summary of all partial completions across all clients.</p>
+                    <p className="text-gray-500 text-xs mb-3">Get an email each time any client partially completes a workout with what they did and why they stopped</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("workoutPartial", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "immediate" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => updateNotifSetting("workoutPartial", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "daily" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
                       <button onClick={() => updateNotifSetting("workoutPartial", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "off" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
@@ -1565,24 +1561,10 @@ export default function AdminPage() {
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-accent">&#9993;</span><p className="text-white text-sm font-medium">Client sends you a message</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Immediately: one email per message from any client. Daily: one summary of all unread messages across all clients.</p>
+                    <p className="text-gray-500 text-xs mb-3">Get an email each time a client sends you a message</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("clientMessage", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => updateNotifSetting("clientMessage", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Daily Summary</button>
                       <button onClick={() => updateNotifSetting("clientMessage", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400">Summary &amp; Reports</h3>
-
-                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1"><span className="text-gold">&#128202;</span><p className="text-white text-sm font-medium">Daily activity summary</p></div>
-                    <p className="text-gray-500 text-xs mb-3">One email at end of day with all client activity: workouts logged, messages received, missed workouts</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => updateNotifSetting("dailySummary", "daily")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "daily" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>On</button>
-                      <button onClick={() => updateNotifSetting("dailySummary", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).dailySummary === "off" || (notifications as any).dailySummary === false ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
                   </div>
                 </div>
