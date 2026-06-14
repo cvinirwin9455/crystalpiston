@@ -35,6 +35,21 @@ export default function AdminPage() {
     dailySummary: "off",
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
+  const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
+
+  // Update weekPlan defaults when adminDistanceUnit loads
+  useEffect(() => {
+    setWeekPlan(prev => ({
+      ...prev,
+      days: prev.days.map(day => ({
+        ...day,
+        workouts: day.workouts.map(wo => ({
+          ...wo,
+          distanceUnit: wo.miles ? wo.distanceUnit : adminDistanceUnit,
+        })),
+      })),
+    }));
+  }, [adminDistanceUnit]);
 
   // Fetch admin notification preferences
   useEffect(() => {
@@ -51,6 +66,7 @@ export default function AdminPage() {
             dailySummary: data.dailySummary || 'off',
           });
           setNotifEmail(data.notificationEmails || '');
+          setAdminDistanceUnit(data.distanceUnit || 'mi');
         }
       } catch (err) {
         console.error('Failed to fetch admin notification prefs:', err);
@@ -118,7 +134,7 @@ export default function AdminPage() {
   };
   const addWorkoutToDay = (dayIndex: number) => {
     const updated = [...weekPlan.days];
-    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] };
+    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] };
     setWeekPlan({ ...weekPlan, days: updated });
   };
   const removeWorkoutFromDay = (dayIndex: number, workoutIndex: number) => {
@@ -1573,6 +1589,16 @@ export default function AdminPage() {
                       <button onClick={() => updateNotifSetting("clientMessage", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
                       <button onClick={() => updateNotifSetting("clientMessage", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Distance Default */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Default Distance Unit</h3>
+                  <p className="text-gray-500 text-xs mb-4">Sets the default unit when creating workouts. You can still toggle individual workouts.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setAdminDistanceUnit('mi'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ distanceUnit: 'mi' }) }).catch(console.error); }} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === 'mi' ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
+                    <button onClick={() => { setAdminDistanceUnit('km'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ distanceUnit: 'km' }) }).catch(console.error); }} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === 'km' ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometres (km)</button>
                   </div>
                 </div>
 

@@ -104,9 +104,35 @@ export default function DashboardPage() {
   const [loggedInName, setLoggedInName] = useState("");
 
   // Distance conversion helpers
+  const [workoutUnitOverrides, setWorkoutUnitOverrides] = useState<Record<string, "mi" | "km">>({});
+  
+  const getDisplayUnit = (workoutId: string, originalUnit: string): "mi" | "km" => {
+    return workoutUnitOverrides[workoutId] || clientDistanceUnit;
+  };
+
+  const toggleWorkoutUnit = (workoutId: string, originalUnit: string) => {
+    const currentDisplay = workoutUnitOverrides[workoutId] || clientDistanceUnit;
+    const newUnit = currentDisplay === 'mi' ? 'km' : 'mi';
+    setWorkoutUnitOverrides(prev => ({ ...prev, [workoutId]: newUnit }));
+  };
+
+  const convertDistanceForWorkout = (miles: number | null, fromUnit: string, workoutId: string): number | null => {
+    if (miles === null) return null;
+    const displayUnit = workoutUnitOverrides[workoutId] || clientDistanceUnit;
+    if (fromUnit === displayUnit) return miles;
+    if (fromUnit === 'mi' && displayUnit === 'km') return Math.round(miles * 1.60934 * 100) / 100;
+    if (fromUnit === 'km' && displayUnit === 'mi') return Math.round(miles / 1.60934 * 100) / 100;
+    return miles;
+  };
+
+  const getWorkoutDistanceLabel = (workoutId: string): string => {
+    const unit = workoutUnitOverrides[workoutId] || clientDistanceUnit;
+    return unit === 'km' ? 'km' : 'miles';
+  };
+
   const convertDistance = (miles: number | null, fromUnit: string): number | null => {
     if (miles === null) return null;
-    if (fromUnit === clientDistanceUnit) return miles; // No conversion needed
+    if (fromUnit === clientDistanceUnit) return miles;
     if (fromUnit === 'mi' && clientDistanceUnit === 'km') return Math.round(miles * 1.60934 * 100) / 100;
     if (fromUnit === 'km' && clientDistanceUnit === 'mi') return Math.round(miles / 1.60934 * 100) / 100;
     return miles;
@@ -291,7 +317,7 @@ export default function DashboardPage() {
 
   const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []) : allWorkouts;
   const statsCompleted = statsWorkouts.filter(w => w.completed);
-  const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const statsMilesRaw = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || convertDistance(w.miles, w.distanceUnit || 'mi') || 0), 0);
   const statsAvgRpe = () => { const withRpe = statsCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
 
   const [showSkipDialog, setShowSkipDialog] = useState<string | null>(null);
@@ -476,7 +502,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(0)}</p><p className="text-gray-500 text-xs">Miles</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{statsMilesRaw.toFixed(0)}</p><p className="text-gray-500 text-xs">{distanceLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsCompleted.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>
@@ -515,14 +541,19 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
-                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDistance(workout.miles, workout.distanceUnit || 'mi')} {distanceLabel} programmed</p>}
+                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDistanceForWorkout(workout.miles, workout.distanceUnit || 'mi', workout.id)} {getWorkoutDistanceLabel(workout.id)} programmed</p>}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
                           {workout.location && <p className="text-gray-500 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDistance(workout.miles, workout.distanceUnit || 'mi')}</p><p className="text-gray-500 text-xs">{distanceLabel}</p></div>}
+                        {workout.miles && (
+                          <div>
+                            <p className="font-heading text-xl text-white">{convertDistanceForWorkout(workout.miles, workout.distanceUnit || 'mi', workout.id)}</p>
+                            <button onClick={() => toggleWorkoutUnit(workout.id, workout.distanceUnit || 'mi')} className="text-gray-500 text-xs hover:text-accent transition-colors">{getWorkoutDistanceLabel(workout.id)}</button>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {/* Log toggle */}

@@ -29,6 +29,7 @@ export async function GET() {
       dailySummary: prefs?.daily_summary || 'off',
       notificationEmails: prefs?.notification_emails || '',
       theme: prefs?.theme || 'dark',
+      distanceUnit: prefs?.distance_unit || 'mi',
     })
   }
 
