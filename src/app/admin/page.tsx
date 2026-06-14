@@ -503,8 +503,22 @@ export default function AdminPage() {
     : publishedWeeks;
   const statsWorkouts = planFilteredWeeks.flatMap((w) => w.workouts);
   const completedWorkouts = statsWorkouts.filter((w) => w.completed);
-  const totalMilesCompleted = statsWorkouts.filter(w => w.log).reduce((s, w) => s + (adminConvertDistance(Number(w.log?.actualMiles) || w.miles || 0, w.distanceUnit || 'mi') || 0), 0);
-  const totalMilesProgrammed = statsWorkouts.reduce((s, w) => s + (adminConvertDistance(w.miles || 0, w.distanceUnit || 'mi') || 0), 0);
+  const totalMilesCompleted = statsWorkouts.filter(w => w.log).reduce((s, w) => {
+    const raw = Number(w.log?.actualMiles) || w.miles || 0;
+    const unit = w.distanceUnit || 'mi';
+    if (unit === adminDistanceUnit) return s + raw;
+    if (unit === 'mi' && adminDistanceUnit === 'km') return s + raw * 1.60934;
+    if (unit === 'km' && adminDistanceUnit === 'mi') return s + raw / 1.60934;
+    return s + raw;
+  }, 0);
+  const totalMilesProgrammed = statsWorkouts.reduce((s, w) => {
+    const raw = w.miles || 0;
+    const unit = w.distanceUnit || 'mi';
+    if (unit === adminDistanceUnit) return s + raw;
+    if (unit === 'mi' && adminDistanceUnit === 'km') return s + raw * 1.60934;
+    if (unit === 'km' && adminDistanceUnit === 'mi') return s + raw / 1.60934;
+    return s + raw;
+  }, 0);
   const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
