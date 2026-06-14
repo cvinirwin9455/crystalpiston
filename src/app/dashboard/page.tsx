@@ -101,6 +101,8 @@ export default function DashboardPage() {
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
+  const [clientDistanceUnit, setClientDistanceUnit] = useState<"mi" | "km">("mi");
+  const [workoutUnitOverrides, setWorkoutUnitOverrides] = useState<Record<string, "mi" | "km">>({});
 
   // Fetch logged-in user name
   useEffect(() => {
@@ -127,6 +129,7 @@ export default function DashboardPage() {
           const data = await res.json();
           setNotifPlanPublished(data.planPublished);
           setNotifMessages(data.messages);
+          if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
         }
       } catch (err) {
         console.error('Failed to fetch notification prefs:', err);
@@ -150,6 +153,20 @@ export default function DashboardPage() {
       console.error('Failed to save notification prefs:', err);
     } finally {
       setNotifSaving(false);
+    }
+  };
+
+  // Save distance unit preference
+  const saveDistanceUnit = async (unit: "mi" | "km") => {
+    setClientDistanceUnit(unit);
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ distanceUnit: unit }),
+      });
+    } catch (err) {
+      console.error('Failed to save distance unit:', err);
     }
   };
 
@@ -271,8 +288,15 @@ export default function DashboardPage() {
     fetchWeeks();
   }, []);
 
+  // Distance conversion helpers
+  const getWorkoutUnit = (workoutId: string) => workoutUnitOverrides[workoutId] || clientDistanceUnit;
+  const convertDist = (miles: number, unit?: "mi" | "km") => (unit || clientDistanceUnit) === "km" ? +(miles * 1.60934).toFixed(1) : miles;
+  const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
+  const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
+
   const currentWeek = getWeekPlan(weekOffset);
   const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) : 0;
+  const weeklyTotalConverted = convertDist(weeklyTotal);
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed).length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
 
@@ -439,7 +463,7 @@ export default function DashboardPage() {
               <button onClick={() => setWeekOffset(weekOffset - 1)} disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
               <div className="text-center">
                 <h2 className="font-heading text-2xl uppercase text-white">{getWeekLabel(weekOffset)}</h2>
-                {currentWeek && <p className="text-gray-400 text-sm">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotal} miles</span></p>}
+                {currentWeek && <p className="text-gray-400 text-sm">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotalConverted} {distUnitShort}</span></p>}
               </div>
               <button onClick={() => setWeekOffset(weekOffset + 1)} disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
@@ -463,7 +487,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(0)}</p><p className="text-gray-500 text-xs">Miles</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(0)}</p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsCompleted.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>
@@ -502,14 +526,14 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
-                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{workout.miles} miles programmed</p>}
+                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id))} {getWorkoutUnit(workout.id) === "km" ? "km" : "miles"} programmed</p>}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
                           {workout.location && <p className="text-gray-500 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div><p className="font-heading text-xl text-white">{workout.miles}</p><p className="text-gray-500 text-xs">miles</p></div>}
+                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id))}</p><p className="text-gray-500 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
                       </div>
                     </div>
                     {/* Log toggle */}
@@ -839,9 +863,21 @@ export default function DashboardPage() {
               </details>
             )}
 
-            {/* Notification Preferences */}
+            {/* Account Preferences */}
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-2">Notification Preferences</h2>
+              <h2 className="font-heading text-xl uppercase text-accent mb-2">Account Preferences</h2>
+
+              {/* Distance Unit */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Distance Unit</p>
+                <p className="text-gray-500 text-xs mb-3">Choose how distances are displayed across your dashboard.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => saveDistanceUnit("mi")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
+                  <button onClick={() => saveDistanceUnit("km")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                </div>
+              </div>
+
+              <hr className="border-white/10 mb-6" />
               <p className="text-gray-500 text-xs mb-6">Choose how you want to be notified about updates from Crystal.</p>
 
               <div className="space-y-5">

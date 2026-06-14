@@ -6,6 +6,12 @@ const updates = [
   {
     date: "June 14, 2026",
     items: [
+      { area: "Admin", text: "Distance unit preference added — Crystal can switch between Miles and Kilometers in Account Preferences and all client views update automatically" },
+      { area: "Admin", text: "Client stats (Done, Distance, Dollars) now default to showing the current plan instead of all time" },
+      { area: "Admin", text: "Toggle added to switch between 'Current Plan' and 'All Time' stats when viewing a client" },
+      { area: "Client", text: "Distance unit preference added — clients can set their default to Miles or KM in Account Preferences" },
+      { area: "Client", text: "Per-workout toggle lets clients quickly switch between miles and km on any individual workout" },
+      { area: "Client", text: "Renamed 'Notification Preferences' to 'Account Preferences' to match the admin side" },
       { area: "Admin", text: "Added Progressive and Trail as new run types" },
       { area: "Admin", text: "Crystal and Curtis can now both see all client messages regardless of who sent them" },
       { area: "Admin", text: "Fixed an issue where Crystal couldn't see updates when Curtis was also logged in" },
