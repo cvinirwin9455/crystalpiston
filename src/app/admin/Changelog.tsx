@@ -6,6 +6,10 @@ const updates = [
   {
     date: "June 14, 2026",
     items: [
+      { area: "Admin", text: "Distance unit preference added — Crystal can switch between Miles and Kilometers in Account Preferences and it updates across all client views" },
+      { area: "Admin", text: "Client stats (Done, Distance, Dollars) now default to showing the current plan instead of all time" },
+      { area: "Admin", text: "Added a toggle to switch between 'Current Plan' and 'All Time' stats when viewing a client" },
+      { area: "Client", text: "Renamed 'Notification Preferences' section to 'Account Preferences' to match the admin side" },
       { area: "Admin", text: "Added Progressive and Trail as new run types" },
       { area: "Admin", text: "Crystal and Curtis can now both see all client messages regardless of who sent them" },
       { area: "Admin", text: "Fixed an issue where Crystal couldn't see updates when Curtis was also logged in" },

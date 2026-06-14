@@ -841,7 +841,7 @@ export default function DashboardPage() {
 
             {/* Notification Preferences */}
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <h2 className="font-heading text-xl uppercase text-accent mb-2">Notification Preferences</h2>
+              <h2 className="font-heading text-xl uppercase text-accent mb-2">Account Preferences</h2>
               <p className="text-gray-500 text-xs mb-6">Choose how you want to be notified about updates from Crystal.</p>
 
               <div className="space-y-5">
