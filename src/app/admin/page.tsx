@@ -1097,7 +1097,7 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(displayMilesCompleted).toFixed(2)}</p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? convertDist(displayMilesCompleted).toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? convertDist(displayMilesProgrammed).toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{displayCompleted.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
