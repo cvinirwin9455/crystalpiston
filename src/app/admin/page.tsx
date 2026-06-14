@@ -484,9 +484,9 @@ export default function AdminPage() {
 
   const selectedClientData = clients.find((c) => c.id === selectedClient);
   const selectedClientWeeks = selectedClientData?.weeks || [];
+  const [adminStatsFilter, setAdminStatsFilter] = useState<"plan" | "all">("plan");
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
   const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft");
-  const [adminStatsFilter, setAdminStatsFilter] = useState<"plan" | "all">("plan");
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
   
   // Filter workouts by active plan dates if "plan" filter is selected
