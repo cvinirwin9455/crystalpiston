@@ -56,33 +56,43 @@ export async function GET(request: Request) {
     return NextResponse.json(formatted)
   }
 
-  // No with_user_id: client fetching their own messages with Crystal
-  const { data: adminUsers } = await adminClient
-    .from('users')
-    .select('id')
-    .eq('role', 'admin')
-    .limit(1)
+  // No with_user_id: client fetching their own messages with their coach
+  const { data: clientRecord } = await adminClient
+    .from('clients')
+    .select('coach_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  const adminUser = adminUsers?.[0]
-  if (!adminUser) {
-    return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+  let coachId = clientRecord?.coach_id
+  if (!coachId) {
+    // Fallback: find any admin
+    const { data: adminUsers } = await adminClient
+      .from('users')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1)
+    coachId = adminUsers?.[0]?.id
+  }
+
+  if (!coachId) {
+    return NextResponse.json({ error: 'Coach not found' }, { status: 500 })
   }
 
   const { data: messages, error } = await adminClient
     .from('messages')
     .select('id, from_user_id, to_user_id, message, read, created_at')
-    .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${adminUser.id}),and(from_user_id.eq.${adminUser.id},to_user_id.eq.${user.id})`)
+    .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${coachId}),and(from_user_id.eq.${coachId},to_user_id.eq.${user.id})`)
     .order('created_at', { ascending: true })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Mark unread messages from admin as read
+  // Mark unread messages from coach as read
   await adminClient
     .from('messages')
     .update({ read: true })
-    .eq('from_user_id', adminUser.id)
+    .eq('from_user_id', coachId)
     .eq('to_user_id', user.id)
     .eq('read', false)
 
@@ -114,20 +124,32 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
-  // If toUserId not provided (client sending), find the admin
+  // If toUserId not provided (client sending), find their assigned coach
   let recipientId = toUserId
   if (!recipientId) {
-    const { data: adminUsers } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .limit(1)
-    
-    const adminUser = adminUsers?.[0]
-    if (!adminUser) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+    // Look up the client's assigned coach
+    const { data: clientRecord } = await adminClient
+      .from('clients')
+      .select('coach_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (clientRecord?.coach_id) {
+      recipientId = clientRecord.coach_id
+    } else {
+      // Fallback: find any admin
+      const { data: adminUsers } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('role', 'admin')
+        .limit(1)
+      
+      const adminUser = adminUsers?.[0]
+      if (!adminUser) {
+        return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+      }
+      recipientId = adminUser.id
     }
-    recipientId = adminUser.id
   }
 
   const { data: newMessage, error } = await adminClient

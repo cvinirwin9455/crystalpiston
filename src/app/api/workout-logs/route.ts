@@ -123,21 +123,39 @@ async function notifyCrystalWorkoutLog(
   else if (status === 'partial') prefField = 'workout_partial'
   else return
 
-  // Get the admin user
+  // Get the client's assigned coach
+  const { data: clientRecord } = await adminClient
+    .from('clients')
+    .select('coach_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  let coachId = clientRecord?.coach_id
+  if (!coachId) {
+    // Fallback: find any admin
+    const { data: fallbackAdmin } = await adminClient
+      .from('users')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1)
+    coachId = fallbackAdmin?.[0]?.id
+  }
+  if (!coachId) return
+
   const { data: adminUser } = await adminClient
     .from('users')
     .select('id, email')
-    .eq('role', 'admin')
+    .eq('id', coachId)
     .single()
 
   if (!adminUser) return
 
-  // Check Crystal's notification preferences
+  // Check coach's notification preferences
   const { data: adminPrefs } = await adminClient
     .from('notification_preferences')
     .select(`${prefField}, notification_emails`)
     .eq('user_id', adminUser.id)
-    .single()
+    .maybeSingle()
 
   const pref = adminPrefs?.[prefField] || 'immediate'
   if (pref !== 'immediate') return

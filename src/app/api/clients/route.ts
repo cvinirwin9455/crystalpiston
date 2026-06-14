@@ -51,15 +51,21 @@ export async function GET() {
     authUserMap.set(au.id, au)
   }
 
+  // Only fetch clients assigned to the current coach
   const { data: clientRecords } = await adminClient
     .from('clients')
-    .select('id, user_id, goal, start_date, plan_end, owed, paid')
+    .select('id, user_id, goal, start_date, plan_end, owed, paid, coach_id')
+    .eq('coach_id', user.id)
 
   // Build a lookup map: user_id -> client record
   const clientMap = new Map<string, any>()
   for (const cr of clientRecords || []) {
     clientMap.set(cr.user_id, cr)
   }
+
+  // Filter clientUsers to only those assigned to this coach
+  const assignedUserIds = new Set((clientRecords || []).map(cr => cr.user_id))
+  const filteredClientUsers = (clientUsers || []).filter(u => assignedUserIds.has(u.id))
 
   // Fetch active plans to get goals and plan-level financials
   const { data: activePlans } = await adminClient
@@ -72,19 +78,10 @@ export async function GET() {
     activePlanByClientId.set(plan.client_id, plan)
   }
 
-  // Build response, auto-create missing client records
+  // Build response
   const formatted = []
-  for (const u of clientUsers || []) {
+  for (const u of filteredClientUsers) {
     let clientRecord = clientMap.get(u.id) || null
-
-    if (!clientRecord) {
-      const { data: newClient } = await adminClient
-        .from('clients')
-        .insert({ user_id: u.id })
-        .select('id, user_id, goal, start_date, plan_end, owed, paid')
-        .single()
-      if (newClient) clientRecord = newClient
-    }
 
     const activePlan = clientRecord ? activePlanByClientId.get(clientRecord.id) : null
 
@@ -184,6 +181,7 @@ export async function POST(request: Request) {
     .from('clients')
     .insert({
       user_id: newUserId,
+      coach_id: user.id,
       goal: goal || null,
       start_date: startDate || null,
       plan_end: planEnd || null,
