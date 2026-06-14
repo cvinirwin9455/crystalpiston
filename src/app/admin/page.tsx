@@ -469,35 +469,6 @@ export default function AdminPage() {
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
   const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
 
-  // Filter weeks by active plan date range for "Current Plan" stats
-  const planFilteredWeeks = (() => {
-    if (!activePlan || !activePlan.startDate || !activePlan.endDate) return publishedWeeks;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
-    planStart.setHours(0, 0, 0, 0);
-    planEnd.setHours(23, 59, 59, 999);
-    return publishedWeeks.filter(w => {
-      const startStr = w.dateRange.split(' - ')[0];
-      const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
-      // Handle year boundary: if weekMonday is far in the future, it might be prev year
-      if (weekMonday > new Date(new Date().getFullYear(), 11, 31)) {
-        weekMonday.setFullYear(weekMonday.getFullYear() - 1);
-      }
-      weekMonday.setHours(0, 0, 0, 0);
-      return weekMonday >= planStart && weekMonday <= planEnd;
-    });
-  })();
-  const planFilteredWorkouts = planFilteredWeeks.flatMap((w) => w.workouts);
-  const planCompletedWorkouts = planFilteredWorkouts.filter((w) => w.completed);
-  const planMilesCompleted = planFilteredWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
-  const planMilesProgrammed = planFilteredWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
-
-  // Stats based on current filter
-  const displayWorkouts = adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
-  const displayCompleted = adminStatsFilter === "currentPlan" ? planCompletedWorkouts : completedWorkouts;
-  const displayMilesCompleted = adminStatsFilter === "currentPlan" ? planMilesCompleted : totalMilesCompleted;
-  const displayMilesProgrammed = adminStatsFilter === "currentPlan" ? planMilesProgrammed : totalMilesProgrammed;
-
   // Convert miles to km if needed
   const convertDistance = (miles: number) => distanceUnit === "km" ? miles * 1.60934 : miles;
   const distLabel = distanceUnit === "km" ? "KM" : "Miles";
@@ -698,6 +669,35 @@ export default function AdminPage() {
       setWeeksLoadedFor(null);
     }
   }, [selectedClient]);
+
+  // Filter weeks by active plan date range for "Current Plan" stats
+  const planFilteredWeeks = (() => {
+    if (!activePlan || !activePlan.startDate || !activePlan.endDate) return publishedWeeks;
+    const planStart = new Date(activePlan.startDate);
+    const planEnd = new Date(activePlan.endDate);
+    planStart.setHours(0, 0, 0, 0);
+    planEnd.setHours(23, 59, 59, 999);
+    return publishedWeeks.filter(w => {
+      const startStr = w.dateRange.split(' - ')[0];
+      const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
+      // Handle year boundary: if weekMonday is far in the future, it might be prev year
+      if (weekMonday > new Date(new Date().getFullYear(), 11, 31)) {
+        weekMonday.setFullYear(weekMonday.getFullYear() - 1);
+      }
+      weekMonday.setHours(0, 0, 0, 0);
+      return weekMonday >= planStart && weekMonday <= planEnd;
+    });
+  })();
+  const planFilteredWorkouts = planFilteredWeeks.flatMap((w) => w.workouts);
+  const planCompletedWorkouts = planFilteredWorkouts.filter((w) => w.completed);
+  const planMilesCompleted = planFilteredWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const planMilesProgrammed = planFilteredWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+
+  // Stats based on current filter
+  const displayWorkouts = adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
+  const displayCompleted = adminStatsFilter === "currentPlan" ? planCompletedWorkouts : completedWorkouts;
+  const displayMilesCompleted = adminStatsFilter === "currentPlan" ? planMilesCompleted : totalMilesCompleted;
+  const displayMilesProgrammed = adminStatsFilter === "currentPlan" ? planMilesProgrammed : totalMilesProgrammed;
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
