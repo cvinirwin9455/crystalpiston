@@ -997,7 +997,7 @@ export default function AdminPage() {
           </button>
           <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            Notification Settings
+            Account Preferences
           </button>
           <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
         </div>
@@ -1521,7 +1521,7 @@ export default function AdminPage() {
             {showNotificationSettings ? (
               <>
                 <div className="flex items-center justify-between">
-                  <h2 className="font-heading text-2xl uppercase text-white">Notification Settings</h2>
+                  <h2 className="font-heading text-2xl uppercase text-white">Account Preferences</h2>
                   <button onClick={() => setShowNotificationSettings(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
                 </div>
 
