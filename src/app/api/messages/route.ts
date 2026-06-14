@@ -23,20 +23,54 @@ export async function GET(request: Request) {
   const adminClient = await getAdminClient()
 
   if (withUserId) {
-    // Get conversation between current user and specified user
-    const { data: messages, error } = await adminClient
-      .from('messages')
-      .select('id, from_user_id, to_user_id, message, read, created_at')
-      .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${withUserId}),and(from_user_id.eq.${withUserId},to_user_id.eq.${user.id})`)
-      .order('created_at', { ascending: true })
+    // Admin viewing a client's messages: show all messages between that client and ANY admin
+    const { data: profile } = await adminClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    let messages: any[] = []
+    let queryError: any = null
+
+    if (profile?.role === 'admin') {
+      // Get all admin IDs
+      const { data: allAdmins } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('role', 'admin')
+
+      const adminIds = (allAdmins || []).map(a => a.id)
+
+      // Fetch messages between the client and ANY admin
+      const orFilter = adminIds.map(aid => `and(from_user_id.eq.${aid},to_user_id.eq.${withUserId}),and(from_user_id.eq.${withUserId},to_user_id.eq.${aid})`).join(',')
+
+      const result = await adminClient
+        .from('messages')
+        .select('id, from_user_id, to_user_id, message, read, created_at')
+        .or(orFilter)
+        .order('created_at', { ascending: true })
+
+      messages = result.data || []
+      queryError = result.error
+    } else {
+      const result = await adminClient
+        .from('messages')
+        .select('id, from_user_id, to_user_id, message, read, created_at')
+        .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${withUserId}),and(from_user_id.eq.${withUserId},to_user_id.eq.${user.id})`)
+        .order('created_at', { ascending: true })
+
+      messages = result.data || []
+      queryError = result.error
     }
 
-    const formatted = (messages || []).map(m => ({
+    if (queryError) {
+      return NextResponse.json({ error: queryError.message }, { status: 500 })
+    }
+
+    const formatted = messages.map(m => ({
       id: m.id,
-      from: m.from_user_id === user.id ? 'crystal' : 'client',
+      from: m.from_user_id === withUserId ? 'client' : 'crystal',
       fromUserId: m.from_user_id,
       toUserId: m.to_user_id,
       message: m.message,
@@ -45,7 +79,7 @@ export async function GET(request: Request) {
       date: new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     }))
 
-    // Mark unread messages from the other user as read
+    // Mark unread messages from the client as read (for current admin)
     await adminClient
       .from('messages')
       .update({ read: true })
