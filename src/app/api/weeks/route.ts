@@ -185,6 +185,7 @@ export async function POST(request: Request) {
       pace_target: w.paceTarget || null,
       location: w.location || null,
       coach_notes: w.coachNotes || null,
+      distance_unit: w.distanceUnit || 'mi',
       sort_order: index,
     }))
 

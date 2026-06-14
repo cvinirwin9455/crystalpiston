@@ -729,6 +729,7 @@ export default function AdminPage() {
         paceTarget: w.paceTarget || null,
         location: w.location || null,
         coachNotes: w.coachNotes || null,
+        distanceUnit: w.distanceUnit || 'mi',
       }))
     );
 

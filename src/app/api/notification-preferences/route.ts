@@ -37,6 +37,7 @@ export async function GET() {
     planPublished: prefs?.plan_published ?? true,
     messages: prefs?.messages || 'immediate',
     theme: prefs?.theme || 'dark',
+    distanceUnit: prefs?.distance_unit || 'mi',
   })
 }
 
@@ -47,7 +48,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme } = body
+  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit } = body
 
   // Build updates object
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
@@ -66,6 +67,7 @@ export async function PUT(request: Request) {
   
   // Shared fields
   if (theme !== undefined) updates.theme = theme
+  if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
 
   const { data: existing } = await supabase
     .from('notification_preferences')
