@@ -124,20 +124,21 @@ async function notifyCrystalWorkoutLog(
   else return
 
   // Get the admin user
-  const { data: adminUser } = await adminClient
+  const { data: adminUsers } = await adminClient
     .from('users')
     .select('id, email')
     .eq('role', 'admin')
-    .single()
+    .limit(1)
 
+  const adminUser = adminUsers?.[0]
   if (!adminUser) return
 
-  // Check Crystal's notification preferences
+  // Check admin's notification preferences
   const { data: adminPrefs } = await adminClient
     .from('notification_preferences')
     .select(`${prefField}, notification_emails`)
     .eq('user_id', adminUser.id)
-    .single()
+    .maybeSingle()
 
   const pref = adminPrefs?.[prefField] || 'immediate'
   if (pref !== 'immediate') return
