@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import AccountTab from "./AccountTab";
-import dynamic from "next/dynamic";
-const Changelog = dynamic(() => import("./Changelog"), { ssr: false });
+import Changelog from "./Changelog";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: string; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
@@ -37,20 +36,6 @@ export default function AdminPage() {
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
-
-  // Update weekPlan defaults when adminDistanceUnit loads
-  useEffect(() => {
-    setWeekPlan(prev => ({
-      ...prev,
-      days: prev.days.map(day => ({
-        ...day,
-        workouts: day.workouts.map(wo => ({
-          ...wo,
-          distanceUnit: wo.miles ? wo.distanceUnit : adminDistanceUnit,
-        })),
-      })),
-    }));
-  }, [adminDistanceUnit]);
 
   // Admin distance conversion helper
   const adminConvertDistance = (miles: number | null, fromUnit: string): number | null => {
