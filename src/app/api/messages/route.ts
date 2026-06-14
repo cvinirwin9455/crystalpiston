@@ -90,35 +90,40 @@ export async function GET(request: Request) {
     return NextResponse.json(formatted)
   }
 
-  // No with_user_id: client fetching their own messages with Crystal
-  const { data: adminUsers } = await adminClient
+  // No with_user_id: client fetching their own messages with any admin/coach
+  const { data: allAdminUsers } = await adminClient
     .from('users')
     .select('id')
     .eq('role', 'admin')
-    .limit(1)
 
-  const adminUser = adminUsers?.[0]
-  if (!adminUser) {
+  const adminIds = (allAdminUsers || []).map(a => a.id)
+
+  if (adminIds.length === 0) {
     return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
   }
+
+  // Get messages between this client and any admin
+  const clientOrFilter = adminIds.map(aid => `and(from_user_id.eq.${user.id},to_user_id.eq.${aid}),and(from_user_id.eq.${aid},to_user_id.eq.${user.id})`).join(',')
 
   const { data: messages, error } = await adminClient
     .from('messages')
     .select('id, from_user_id, to_user_id, message, read, created_at')
-    .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${adminUser.id}),and(from_user_id.eq.${adminUser.id},to_user_id.eq.${user.id})`)
+    .or(clientOrFilter)
     .order('created_at', { ascending: true })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Mark unread messages from admin as read
-  await adminClient
-    .from('messages')
-    .update({ read: true })
-    .eq('from_user_id', adminUser.id)
-    .eq('to_user_id', user.id)
-    .eq('read', false)
+  // Mark unread messages from any admin as read
+  for (const aid of adminIds) {
+    await adminClient
+      .from('messages')
+      .update({ read: true })
+      .eq('from_user_id', aid)
+      .eq('to_user_id', user.id)
+      .eq('read', false)
+  }
 
   return NextResponse.json((messages || []).map(m => ({
     id: m.id,
@@ -148,13 +153,14 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
-  // If toUserId not provided (client sending), find the admin
+  // If toUserId not provided (client sending), find the primary admin (first created)
   let recipientId = toUserId
   if (!recipientId) {
     const { data: adminUsers } = await adminClient
       .from('users')
       .select('id')
       .eq('role', 'admin')
+      .order('created_at', { ascending: true })
       .limit(1)
     
     const adminUser = adminUsers?.[0]
