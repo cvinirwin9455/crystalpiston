@@ -1167,7 +1167,7 @@ export default function AdminPage() {
                   <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
-                    {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}</p>}
+                    {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{convertDist(selectedWeek.workouts.reduce((s, w) => s + (w.miles || 0), 0)).toFixed(2)} {distUnitShort}</span></p>}
                   </div>
                   <div className="flex items-center gap-2">
                     {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
@@ -1292,7 +1292,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2"><h4 className="text-white font-medium">{week.dateRange}</h4><span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Draft</span></div>
-                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts</p>
+                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{convertDist(week.workouts.reduce((s, w) => s + (w.miles || 0), 0)).toFixed(2)} {distUnitShort}</span></p>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => publishWeek(week.weekId)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Publish</button>
@@ -1757,7 +1757,7 @@ export default function AdminPage() {
                           <div key={i} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
                             <div className="flex items-center gap-3">
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
-                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-500 text-xs">{item.week.dateRange} &mdash; {item.week.focus}</p></div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-500 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{convertDist(item.week.workouts.reduce((s: number, w: any) => s + (w.miles || 0), 0)).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
