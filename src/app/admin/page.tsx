@@ -35,6 +35,8 @@ export default function AdminPage() {
     dailySummary: "off",
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
+  const [distanceUnit, setDistanceUnit] = useState<"mi" | "km">("mi");
+  const [adminStatsFilter, setAdminStatsFilter] = useState<"currentPlan" | "allTime">("currentPlan");
 
   // Fetch admin notification preferences
   useEffect(() => {
@@ -51,6 +53,7 @@ export default function AdminPage() {
             dailySummary: data.dailySummary || 'off',
           });
           setNotifEmail(data.notificationEmails || '');
+          setDistanceUnit(data.distanceUnit || 'mi');
         }
       } catch (err) {
         console.error('Failed to fetch admin notification prefs:', err);
@@ -62,7 +65,7 @@ export default function AdminPage() {
   }, []);
 
   // Save admin notification preferences (called on every change)
-  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string) => {
+  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string) => {
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
@@ -74,6 +77,7 @@ export default function AdminPage() {
           clientMessage: updatedNotifs.clientMessage,
           dailySummary: updatedNotifs.dailySummary,
           ...(email !== undefined ? { notificationEmails: email } : {}),
+          ...(unit !== undefined ? { distanceUnit: unit } : {}),
         }),
       });
     } catch (err) {
@@ -464,6 +468,10 @@ export default function AdminPage() {
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
   const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+
+  // Convert miles to km if needed
+  const convertDistance = (miles: number) => distanceUnit === "km" ? miles * 1.60934 : miles;
+  const distLabel = distanceUnit === "km" ? "KM" : "Miles";
   const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -661,6 +669,35 @@ export default function AdminPage() {
       setWeeksLoadedFor(null);
     }
   }, [selectedClient]);
+
+  // Filter weeks by active plan date range for "Current Plan" stats
+  const planFilteredWeeks = (() => {
+    if (!activePlan || !activePlan.startDate || !activePlan.endDate) return publishedWeeks;
+    const planStart = new Date(activePlan.startDate);
+    const planEnd = new Date(activePlan.endDate);
+    planStart.setHours(0, 0, 0, 0);
+    planEnd.setHours(23, 59, 59, 999);
+    return publishedWeeks.filter(w => {
+      const startStr = w.dateRange.split(' - ')[0];
+      const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
+      // Handle year boundary: if weekMonday is far in the future, it might be prev year
+      if (weekMonday > new Date(new Date().getFullYear(), 11, 31)) {
+        weekMonday.setFullYear(weekMonday.getFullYear() - 1);
+      }
+      weekMonday.setHours(0, 0, 0, 0);
+      return weekMonday >= planStart && weekMonday <= planEnd;
+    });
+  })();
+  const planFilteredWorkouts = planFilteredWeeks.flatMap((w) => w.workouts);
+  const planCompletedWorkouts = planFilteredWorkouts.filter((w) => w.completed);
+  const planMilesCompleted = planFilteredWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const planMilesProgrammed = planFilteredWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+
+  // Stats based on current filter
+  const displayWorkouts = adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
+  const displayCompleted = adminStatsFilter === "currentPlan" ? planCompletedWorkouts : completedWorkouts;
+  const displayMilesCompleted = adminStatsFilter === "currentPlan" ? planMilesCompleted : totalMilesCompleted;
+  const displayMilesProgrammed = adminStatsFilter === "currentPlan" ? planMilesProgrammed : totalMilesProgrammed;
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
@@ -963,7 +1000,7 @@ export default function AdminPage() {
             const doneWk = allWk.filter(w => w.completed);
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentPlan"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
@@ -1043,11 +1080,16 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="flex items-center gap-6 text-sm">
-                <div className="text-center"><p className="text-accent font-heading text-xl">{completedWorkouts.length}/{allClientWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
-                <div className="text-center"><p className="text-white font-heading text-xl">{totalMilesCompleted.toFixed(0)}<span className="text-gray-500 text-sm">/{totalMilesProgrammed}</span></p><p className="text-gray-500 text-xs">Miles</p></div>
+                <div className="text-center"><p className="text-accent font-heading text-xl">{displayCompleted.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
+                <div className="text-center"><p className="text-white font-heading text-xl">{convertDistance(displayMilesCompleted).toFixed(0)}<span className="text-gray-500 text-sm">/{convertDistance(displayMilesProgrammed).toFixed(0)}</span></p><p className="text-gray-500 text-xs">{distLabel}</p></div>
                 <div className="text-center"><p className="text-green-400 font-heading text-xl">${selectedClientData.paid}</p><p className="text-gray-500 text-xs">/${selectedClientData.owed}</p></div>
                 {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
               </div>
+            </div>
+            {/* Stats filter toggle */}
+            <div className="flex items-center gap-2">
+              <button onClick={() => setAdminStatsFilter("currentPlan")} className={`px-3 py-1 rounded text-xs transition-colors ${adminStatsFilter === "currentPlan" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>Current Plan</button>
+              <button onClick={() => setAdminStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs transition-colors ${adminStatsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
             </div>
 
             {/* Invite Status Banner */}
@@ -1572,6 +1614,16 @@ export default function AdminPage() {
                       <button onClick={() => updateNotifSetting("clientMessage", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
                       <button onClick={() => updateNotifSetting("clientMessage", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Distance Unit Preference */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Distance Unit</h3>
+                  <p className="text-gray-500 text-xs mb-4">Choose how distances are displayed across your dashboard. This affects how you see client miles/km in stats and training views.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setDistanceUnit("mi"); saveAdminNotifPrefs(notifications, undefined, "mi"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${distanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
+                    <button onClick={() => { setDistanceUnit("km"); saveAdminNotifPrefs(notifications, undefined, "km"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${distanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
                   </div>
                 </div>
 
