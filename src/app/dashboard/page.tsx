@@ -159,6 +159,7 @@ export default function DashboardPage() {
   // Save distance unit preference
   const saveDistanceUnit = async (unit: "mi" | "km") => {
     setClientDistanceUnit(unit);
+    setWorkoutUnitOverrides({}); // Reset per-workout overrides when global preference changes
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
