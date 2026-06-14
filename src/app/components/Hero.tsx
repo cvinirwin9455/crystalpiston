@@ -8,7 +8,7 @@ export default function Hero() {
         src="/IMG_5209.jpeg"
         alt="Running background"
         fill
-        className="object-cover"
+        className="object-cover object-[center_25%]"
         priority
         quality={85}
       />
