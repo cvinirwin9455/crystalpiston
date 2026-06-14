@@ -290,7 +290,7 @@ export default function DashboardPage() {
 
   // Distance conversion helpers
   const getWorkoutUnit = (workoutId: string) => workoutUnitOverrides[workoutId] || clientDistanceUnit;
-  const convertDist = (miles: number, unit?: "mi" | "km") => (unit || clientDistanceUnit) === "km" ? +(miles * 1.60934).toFixed(1) : miles;
+  const convertDist = (miles: number, unit?: "mi" | "km") => (unit || clientDistanceUnit) === "km" ? +(miles * 1.60934).toFixed(2) : miles;
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
@@ -487,7 +487,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(0)}</p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}</p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsCompleted.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>

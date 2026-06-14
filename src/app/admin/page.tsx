@@ -462,7 +462,7 @@ export default function AdminPage() {
   const selectedClientData = clients.find((c) => c.id === selectedClient);
 
   // Distance conversion helper (uses admin preference)
-  const convertDist = (miles: number) => adminDistanceUnit === "km" ? +(miles * 1.60934).toFixed(1) : miles;
+  const convertDist = (miles: number) => adminDistanceUnit === "km" ? +(miles * 1.60934).toFixed(2) : miles;
   const distUnitLabel = adminDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
 
@@ -672,7 +672,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Plan-period stats filter
-  const [adminStatsFilter, setAdminStatsFilter] = useState<"currentPlan" | "allTime">("currentPlan");
+  const [adminStatsFilter, setAdminStatsFilter] = useState<"currentWeek" | "currentPlan" | "allTime">("currentPlan");
 
   // Filter workouts by active plan date range for "Current Plan" stats
   const planFilteredWorkouts = (() => {
@@ -693,10 +693,15 @@ export default function AdminPage() {
     return planWeeks.flatMap((w) => w.workouts);
   })();
 
-  const displayWorkouts = adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
+  // Current week workouts (uses selectedWeek which is based on adminWeekOffset)
+  const currentWeekWorkouts = selectedWeek ? selectedWeek.workouts : [];
+
+  const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts : adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
   const displayCompleted = displayWorkouts.filter((w) => w.completed);
   const displayMilesCompleted = displayWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
   const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+  const displayAvgRpe = (() => { const withRpe = displayCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
+  const displayCompletion = displayWorkouts.length > 0 ? Math.round((displayCompleted.length / displayWorkouts.length) * 100) : 0;
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
@@ -1078,17 +1083,25 @@ export default function AdminPage() {
                   }
                 </p>
               </div>
-              <div className="flex items-center gap-6 text-sm">
-                <div className="text-center"><p className="text-accent font-heading text-xl">{displayCompleted.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
-                <div className="text-center"><p className="text-white font-heading text-xl">{convertDist(displayMilesCompleted).toFixed(0)}<span className="text-gray-500 text-sm">/{convertDist(displayMilesProgrammed).toFixed(0)}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="text-green-400 font-heading text-xl">${selectedClientData.paid}</p><p className="text-gray-500 text-xs">/${selectedClientData.owed}</p></div>
-                {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
-              </div>
+              {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
             </div>
-            {/* Stats period toggle */}
-            <div className="flex items-center gap-2">
-              <button onClick={() => setAdminStatsFilter("currentPlan")} className={`px-3 py-1 rounded text-xs transition-colors ${adminStatsFilter === "currentPlan" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>Current Plan</button>
-              <button onClick={() => setAdminStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs transition-colors ${adminStatsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
+
+            {/* Stats Card (mirrors client dashboard layout) */}
+            <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
+                <div className="flex gap-1">
+                  <button onClick={() => setAdminStatsFilter("currentWeek")} className={`px-3 py-1 rounded text-xs ${adminStatsFilter === "currentWeek" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>This Week</button>
+                  <button onClick={() => setAdminStatsFilter("currentPlan")} className={`px-3 py-1 rounded text-xs ${adminStatsFilter === "currentPlan" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>Current Plan</button>
+                  <button onClick={() => setAdminStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${adminStatsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(displayMilesCompleted).toFixed(2)}</p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{displayCompleted.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
+              </div>
             </div>
 
             {/* Invite Status Banner */}
