@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const weekIds = weeks.map(w => w.id)
   const { data: workouts } = await adminClient
     .from('workouts')
-    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit')
     .in('week_id', weekIds)
     .order('sort_order', { ascending: true })
 
@@ -95,6 +95,7 @@ export async function GET(request: Request) {
           paceTarget: wo.pace_target,
           location: wo.location,
           coachNotes: wo.coach_notes,
+          distanceUnit: wo.distance_unit || 'mi',
           sortOrder: wo.sort_order,
           completed: !!log,
           status: log?.status || null,

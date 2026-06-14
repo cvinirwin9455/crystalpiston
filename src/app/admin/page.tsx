@@ -6,7 +6,7 @@ import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: string; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; weeks: WeekData[]; messages: CoachMessage[]; };
@@ -50,6 +50,16 @@ export default function AdminPage() {
       })),
     }));
   }, [adminDistanceUnit]);
+
+  // Admin distance conversion helper
+  const adminConvertDistance = (miles: number | null, fromUnit: string): number | null => {
+    if (miles === null) return null;
+    if (fromUnit === adminDistanceUnit) return miles;
+    if (fromUnit === 'mi' && adminDistanceUnit === 'km') return Math.round(miles * 1.60934 * 100) / 100;
+    if (fromUnit === 'km' && adminDistanceUnit === 'mi') return Math.round(miles / 1.60934 * 100) / 100;
+    return miles;
+  };
+  const adminDistanceLabel = adminDistanceUnit === 'km' ? 'km' : 'mi';
 
   // Fetch admin notification preferences
   useEffect(() => {
@@ -476,10 +486,25 @@ export default function AdminPage() {
   const selectedClientWeeks = selectedClientData?.weeks || [];
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
   const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft");
+  const [adminStatsFilter, setAdminStatsFilter] = useState<"plan" | "all">("plan");
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
-  const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
-  const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
-  const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+  
+  // Filter workouts by active plan dates if "plan" filter is selected
+  const planFilteredWeeks = activePlan && adminStatsFilter === "plan" 
+    ? publishedWeeks.filter(w => {
+        const weekStart = w.dateRange.split(' - ')[0];
+        const weekDate = new Date(weekStart + ', ' + new Date().getFullYear());
+        const planStart = new Date(activePlan.startDate);
+        const planEnd = new Date(activePlan.endDate);
+        planStart.setHours(0, 0, 0, 0);
+        planEnd.setHours(23, 59, 59, 999);
+        return weekDate >= planStart && weekDate <= planEnd;
+      })
+    : publishedWeeks;
+  const statsWorkouts = planFilteredWeeks.flatMap((w) => w.workouts);
+  const completedWorkouts = statsWorkouts.filter((w) => w.completed);
+  const totalMilesCompleted = statsWorkouts.filter(w => w.log).reduce((s, w) => s + (adminConvertDistance(Number(w.log?.actualMiles) || w.miles || 0, w.distanceUnit || 'mi') || 0), 0);
+  const totalMilesProgrammed = statsWorkouts.reduce((s, w) => s + (adminConvertDistance(w.miles || 0, w.distanceUnit || 'mi') || 0), 0);
   const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -592,6 +617,7 @@ export default function AdminPage() {
             paceTarget: wo.paceTarget || '',
             location: wo.location || '',
             coachNotes: wo.coachNotes || '',
+            distanceUnit: wo.distanceUnit || 'mi',
             completed: wo.completed || false,
             status: wo.status || undefined,
             skipReason: wo.skipReason || undefined,
@@ -1014,7 +1040,7 @@ export default function AdminPage() {
           </button>
           <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            Notification Settings
+            Account Preferences
           </button>
           <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
         </div>
@@ -1060,10 +1086,11 @@ export default function AdminPage() {
                 </p>
               </div>
               <div className="flex items-center gap-6 text-sm">
-                <div className="text-center"><p className="text-accent font-heading text-xl">{completedWorkouts.length}/{allClientWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
-                <div className="text-center"><p className="text-white font-heading text-xl">{totalMilesCompleted.toFixed(0)}<span className="text-gray-500 text-sm">/{totalMilesProgrammed}</span></p><p className="text-gray-500 text-xs">Miles</p></div>
+                <div className="text-center"><p className="text-accent font-heading text-xl">{completedWorkouts.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Done</p></div>
+                <div className="text-center"><p className="text-white font-heading text-xl">{totalMilesCompleted.toFixed(0)}<span className="text-gray-500 text-sm">/{totalMilesProgrammed.toFixed(0)}</span></p><p className="text-gray-500 text-xs">{adminDistanceLabel}</p></div>
                 <div className="text-center"><p className="text-green-400 font-heading text-xl">${selectedClientData.paid}</p><p className="text-gray-500 text-xs">/${selectedClientData.owed}</p></div>
                 {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
+                <button onClick={() => setAdminStatsFilter(adminStatsFilter === "plan" ? "all" : "plan")} className="text-xs text-gray-500 hover:text-accent border border-white/10 px-2 py-1 rounded">{adminStatsFilter === "plan" ? "This Plan" : "All Time"}</button>
               </div>
             </div>
 
@@ -1177,7 +1204,7 @@ export default function AdminPage() {
                               <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
                             </div>
-                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{w.miles}<span className="text-gray-500 text-xs ml-0.5">mi</span></span>}
+                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{adminConvertDistance(w.miles, w.distanceUnit || 'mi')}<span className="text-gray-500 text-xs ml-0.5">{adminDistanceLabel}</span></span>}
                           </div>
                           {w.log && (
                             <div className="mt-3 ml-7 pl-4 border-l-2 border-accent/30">
@@ -1268,7 +1295,7 @@ export default function AdminPage() {
                         <div key={w.id} className="bg-primary/50 rounded p-2 text-center">
                           <p className="text-gray-500 text-xs">{w.day.slice(0,3)}</p>
                           <p className="text-white text-xs font-medium truncate">{w.title || getTypeLabel(w.type)}</p>
-                          {w.miles && <p className="text-accent text-xs">{w.miles}mi</p>}
+                          {w.miles && <p className="text-accent text-xs">{adminConvertDistance(w.miles, w.distanceUnit || 'mi')}{adminDistanceLabel}</p>}
                         </div>
                       ))}
                     </div>
@@ -1538,7 +1565,7 @@ export default function AdminPage() {
             {showNotificationSettings ? (
               <>
                 <div className="flex items-center justify-between">
-                  <h2 className="font-heading text-2xl uppercase text-white">Notification Settings</h2>
+                  <h2 className="font-heading text-2xl uppercase text-white">Account Preferences</h2>
                   <button onClick={() => setShowNotificationSettings(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
                 </div>
 
