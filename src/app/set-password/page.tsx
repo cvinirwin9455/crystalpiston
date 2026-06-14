@@ -99,7 +99,7 @@ export default function SetPasswordPage() {
     <div className="min-h-screen bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={120} height={120} className="mx-auto mb-4" />
+          <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={150} height={150} className="mx-auto mb-4" />
           <h1 className="font-heading text-3xl uppercase text-white">
             Welcome to <span className="text-accent">Pistol Performance!</span>
           </h1>

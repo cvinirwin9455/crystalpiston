@@ -7,8 +7,8 @@ export default function Footer() {
         <Image
           src="/IMG_5861.PNG"
           alt="Pistol Performance Coaching"
-          width={120}
-          height={120}
+          width={160}
+          height={160}
         />
         <p className="text-gray-500 text-sm">
           &copy; {new Date().getFullYear()} Pistol Performance Coaching. Southwest Missouri.

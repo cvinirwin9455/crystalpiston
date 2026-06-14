@@ -89,8 +89,8 @@ export default function LoginPage() {
           <Image
             src="/IMG_5861.PNG"
             alt="Pistol Performance Coaching"
-            width={120}
-            height={120}
+            width={150}
+            height={150}
             className="mx-auto mb-4"
           />
           <h1 className="font-heading text-3xl uppercase text-white">

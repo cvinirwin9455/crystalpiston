@@ -390,7 +390,7 @@ export default function DashboardPage() {
       <header className="bg-secondary/50 border-b border-white/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
+            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={70} height={70} />
             <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
           </div>
           <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
