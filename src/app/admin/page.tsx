@@ -6,7 +6,7 @@ import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
@@ -463,8 +463,15 @@ export default function AdminPage() {
 
   const selectedClientData = clients.find((c) => c.id === selectedClient);
 
-  // Distance conversion helper (uses admin preference)
-  const convertDist = (miles: number) => adminDistanceUnit === "km" ? +(miles * 1.60934).toFixed(2) : miles;
+  // Distance conversion helper - converts from sourceUnit to admin's preferred unit
+  const convertDist = (value: number, sourceUnit?: "mi" | "km") => {
+    const from = sourceUnit || "mi";
+    const to = adminDistanceUnit;
+    if (from === to) return +value.toFixed(2);
+    if (from === "mi" && to === "km") return +(value * 1.60934).toFixed(2);
+    if (from === "km" && to === "mi") return +(value / 1.60934).toFixed(2);
+    return +value.toFixed(2);
+  };
   const distUnitLabel = adminDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
 
@@ -637,6 +644,7 @@ export default function AdminPage() {
             trainingType: wo.trainingType || '',
             title: wo.title || '',
             miles: wo.miles,
+            distanceUnit: wo.distanceUnit || 'mi',
             description: wo.description || '',
             paceTarget: wo.paceTarget || '',
             location: wo.location || '',
@@ -775,8 +783,8 @@ export default function AdminPage() {
   const displayMarked = displayWorkouts.filter((w) => w.completed);
   const displayComplete = displayWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
   const displayPartial = displayWorkouts.filter(w => w.status === "partial");
-  const displayMilesCompleted = displayComplete.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + displayPartial.reduce((s, w) => s + (Number(w.log?.actualMiles) || 0), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
-  const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+  const displayMilesCompleted = displayComplete.reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || w.miles || 0, w.distanceUnit), 0) + displayPartial.reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, w.distanceUnit), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
+  const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0);
   const displayAvgRpe = (() => { const withRpe = displayMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
   const displayCompletion = displayWorkouts.length > 0 ? Math.round(((displayComplete.length * 1 + displayPartial.length * 0.5) / displayWorkouts.length) * 100) : 0;
 
@@ -1184,7 +1192,7 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? convertDist(displayMilesCompleted).toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? convertDist(displayMilesProgrammed).toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? displayMilesCompleted.toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? displayMilesProgrammed.toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Workouts Marked</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
@@ -1254,7 +1262,7 @@ export default function AdminPage() {
                   <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
-                    {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{convertDist(selectedWeek.workouts.reduce((s, w) => s + (w.miles || 0), 0)).toFixed(2)} {distUnitShort}</span></p>}
+                    {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
                   </div>
                   <div className="flex items-center gap-2">
                     {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
@@ -1307,7 +1315,7 @@ export default function AdminPage() {
                               <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
                             </div>
-                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(w.miles)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
+                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(w.miles, w.distanceUnit)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
                           </div>
                           {w.log && (
                             <div className="mt-3 ml-7 pl-4 border-l-2 border-accent/30">
@@ -1428,7 +1436,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2"><h4 className="text-white font-medium">{week.dateRange}</h4><span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Draft</span></div>
-                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{convertDist(week.workouts.reduce((s, w) => s + (w.miles || 0), 0)).toFixed(2)} {distUnitShort}</span></p>
+                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{week.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => publishWeek(week.weekId)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Publish</button>
@@ -1441,7 +1449,7 @@ export default function AdminPage() {
                         <div key={w.id} className="bg-primary/50 rounded p-2 text-center">
                           <p className="text-gray-500 text-xs">{w.day.slice(0,3)}</p>
                           <p className="text-white text-xs font-medium truncate">{w.title || getTypeLabel(w.type)}</p>
-                          {w.miles && <p className="text-accent text-xs">{convertDist(w.miles)}{distUnitShort}</p>}
+                          {w.miles && <p className="text-accent text-xs">{convertDist(w.miles, w.distanceUnit)}{distUnitShort}</p>}
                         </div>
                       ))}
                     </div>
@@ -1893,7 +1901,7 @@ export default function AdminPage() {
                           <div key={i} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
                             <div className="flex items-center gap-3">
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
-                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-500 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{convertDist(item.week.workouts.reduce((s: number, w: any) => s + (w.miles || 0), 0)).toFixed(2)} {distUnitShort}</span></p></div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-500 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
