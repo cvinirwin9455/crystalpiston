@@ -76,14 +76,43 @@ export async function GET() {
     workoutsByWeekId.get(wo.week_id)!.push(wo)
   }
 
+  // Fetch client-added workouts for these weeks
+  let clientWorkoutsByWeekId = new Map<string, any[]>()
+  if (weekIds.length > 0) {
+    const { data: clientWorkouts } = await adminClient
+      .from('client_workouts')
+      .select('id, week_id, day, type, training_type, miles, notes, created_at')
+      .in('week_id', weekIds)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+    
+    for (const cw of clientWorkouts || []) {
+      if (!clientWorkoutsByWeekId.has(cw.week_id)) {
+        clientWorkoutsByWeekId.set(cw.week_id, [])
+      }
+      clientWorkoutsByWeekId.get(cw.week_id)!.push(cw)
+    }
+  }
+
   // Format response
   const formatted = weeks.map(w => {
     const weekWorkouts = workoutsByWeekId.get(w.id) || []
+    const weekClientWorkouts = clientWorkoutsByWeekId.get(w.id) || []
     return {
       weekId: w.id,
       dateRange: w.date_range,
       focus: w.focus || '',
       coachMessage: w.coach_message || '',
+      clientWorkouts: weekClientWorkouts.map(cw => ({
+        id: cw.id,
+        day: cw.day,
+        type: cw.type,
+        trainingType: cw.training_type,
+        miles: cw.miles ? parseFloat(cw.miles) : null,
+        notes: cw.notes,
+        createdAt: cw.created_at,
+        isClientAdded: true,
+      })),
       workouts: weekWorkouts.map(wo => {
         const log = logsByWorkoutId.get(wo.id)
         return {

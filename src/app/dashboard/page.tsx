@@ -5,7 +5,8 @@ import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
-type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; };
+type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; };
+type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
@@ -237,6 +238,16 @@ export default function DashboardPage() {
             dateRange: w.dateRange,
             focus: w.focus || '',
             coachMessage: w.coachMessage || '',
+            clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({
+              id: cw.id,
+              day: cw.day,
+              type: cw.type,
+              trainingType: cw.trainingType || null,
+              miles: cw.miles,
+              notes: cw.notes,
+              createdAt: cw.createdAt,
+              isClientAdded: true as const,
+            })),
             workouts: (w.workouts || []).map((wo: any) => ({
               id: wo.id,
               day: wo.day || '',
@@ -296,14 +307,17 @@ export default function DashboardPage() {
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
   const currentWeek = getWeekPlan(weekOffset);
-  const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) : 0;
+  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
+  const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) + clientMilesThisWeek : 0;
   const weeklyTotalConverted = convertDist(weeklyTotal);
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed).length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
+  const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk');
 
   const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []) : allWorkouts;
   const statsCompleted = statsWorkouts.filter(w => w.completed);
-  const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
+  const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + clientMilesForStats;
   const statsAvgRpe = () => { const withRpe = statsCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
 
   const [showSkipDialog, setShowSkipDialog] = useState<string | null>(null);
@@ -311,6 +325,77 @@ export default function DashboardPage() {
   const [skipType, setSkipType] = useState<"skipped" | "partial">("skipped");
 
   const [savingLog, setSavingLog] = useState(false);
+
+  // Client-added workout state
+  const [showAddWorkoutForDay, setShowAddWorkoutForDay] = useState<string | null>(null);
+  const [addWorkoutForm, setAddWorkoutForm] = useState({ type: "run", trainingType: "", miles: "", notes: "" });
+  const [savingClientWorkout, setSavingClientWorkout] = useState(false);
+  const [deletingClientWorkout, setDeletingClientWorkout] = useState<string | null>(null);
+
+  const handleAddClientWorkout = async (day: string) => {
+    if (!currentWeek) return;
+    const { type, trainingType, miles, notes } = addWorkoutForm;
+    if ((type === "run" || type === "walk") && (!trainingType || !miles)) {
+      alert("Run and Walk types require a subtype and distance.");
+      return;
+    }
+    setSavingClientWorkout(true);
+    try {
+      const res = await fetch('/api/client-workouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekId: currentWeek.weekId,
+          day,
+          type,
+          trainingType: trainingType || null,
+          miles: miles || null,
+          notes: notes || null,
+        }),
+      });
+      if (res.ok) {
+        const newWorkout = await res.json();
+        // Add to local state
+        const updated = weeks.map(w => {
+          if (w.weekId === currentWeek.weekId) {
+            return { ...w, clientWorkouts: [...w.clientWorkouts, { id: newWorkout.id, day, type, trainingType: trainingType || null, miles: miles ? parseFloat(miles) : null, notes: notes || null, createdAt: newWorkout.created_at, isClientAdded: true as const }] };
+          }
+          return w;
+        });
+        setWeeks(updated);
+        setShowAddWorkoutForDay(null);
+        setAddWorkoutForm({ type: "run", trainingType: "", miles: "", notes: "" });
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to add workout");
+      }
+    } catch (err) {
+      console.error('Failed to add client workout:', err);
+    } finally {
+      setSavingClientWorkout(false);
+    }
+  };
+
+  const handleDeleteClientWorkout = async (workoutId: string) => {
+    if (!currentWeek) return;
+    setDeletingClientWorkout(workoutId);
+    try {
+      const res = await fetch(`/api/client-workouts?id=${workoutId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const updated = weeks.map(w => {
+          if (w.weekId === currentWeek.weekId) {
+            return { ...w, clientWorkouts: w.clientWorkouts.filter(cw => cw.id !== workoutId) };
+          }
+          return w;
+        });
+        setWeeks(updated);
+      }
+    } catch (err) {
+      console.error('Failed to delete client workout:', err);
+    } finally {
+      setDeletingClientWorkout(null);
+    }
+  };
 
   const toggleCompleted = async (workoutId: string) => {
     if (!currentWeek) return;
@@ -732,6 +817,106 @@ export default function DashboardPage() {
                   )}
                 </div>
               ))}
+
+              {/* Client-Added Workouts + Add Workout Button per day */}
+              {weekOffset === 0 && ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                const dayClientWorkouts = currentWeek.clientWorkouts?.filter(cw => cw.day === day) || [];
+                const hasProgrammedForDay = currentWeek.workouts.some(w => w.day === day);
+                if (!hasProgrammedForDay && dayClientWorkouts.length === 0 && showAddWorkoutForDay !== day) return null;
+                return (
+                  <div key={`client-${day}`}>
+                    {/* Client-added workouts for this day */}
+                    {dayClientWorkouts.map(cw => (
+                      <div key={cw.id} className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 mt-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <span className="text-white font-heading uppercase text-sm">{cw.day}</span>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
+                                {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                              </div>
+                              {cw.notes && <p className="text-gray-400 text-sm">{cw.notes}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {cw.miles && <div className="text-right"><p className="font-heading text-xl text-white">{convertDist(cw.miles)}</p><p className="text-gray-500 text-xs">{distUnitShort}</p></div>}
+                            <button onClick={() => handleDeleteClientWorkout(cw.id)} disabled={deletingClientWorkout === cw.id} className="text-gray-600 hover:text-red-400 text-xs transition-colors">{deletingClientWorkout === cw.id ? "..." : "✕"}</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add Workout Button for this day */}
+                    {showAddWorkoutForDay === day ? (
+                      <div className="border border-cyan-500/20 bg-cyan-500/5 rounded-2xl p-4 mt-2">
+                        <p className="text-cyan-400 text-xs font-heading uppercase mb-3">Add Your Own Workout — {day}</p>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-gray-400 text-xs block mb-1">Type</label>
+                            <select value={addWorkoutForm.type} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, type: e.target.value, trainingType: "", miles: "" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
+                              <option value="run">Run</option>
+                              <option value="walk">Walk</option>
+                              <option value="cross">Cross Training</option>
+                              <option value="cycling">Cycling</option>
+                              <option value="stretching">Stretching</option>
+                              <option value="strength">Strength</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          {(addWorkoutForm.type === "run" || addWorkoutForm.type === "walk") && (
+                            <>
+                              <div>
+                                <label className="text-gray-400 text-xs block mb-1">Subtype *</label>
+                                <select value={addWorkoutForm.trainingType} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, trainingType: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
+                                  <option value="">Select type...</option>
+                                  <option value="Easy">Easy Run</option>
+                                  <option value="Recovery">Recovery Run</option>
+                                  <option value="LongRun">Long Run</option>
+                                  <option value="Tempo">Tempo</option>
+                                  <option value="Intervals">Intervals</option>
+                                  <option value="Hills">Hill Repeats</option>
+                                  <option value="Fartlek">Fartlek</option>
+                                  <option value="SpeedRoad">Speed - Road</option>
+                                  <option value="SpeedTrack">Speed - Track</option>
+                                  <option value="Trail">Trail</option>
+                                  <option value="Progressive">Progressive</option>
+                                  <option value="Treadmill">Treadmill</option>
+                                  {addWorkoutForm.type === "walk" && <option value="WalkRecovery">Walk Recovery</option>}
+                                  {addWorkoutForm.type === "walk" && <option value="WalkPower">Walk Power</option>}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-gray-400 text-xs block mb-1">Distance ({distUnitShort}) *</label>
+                                <input type="text" value={addWorkoutForm.miles} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, miles: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500" placeholder={`e.g. 3.5`} />
+                              </div>
+                            </>
+                          )}
+                          <div>
+                            <label className="text-gray-400 text-xs block mb-1">Notes</label>
+                            <textarea value={addWorkoutForm.notes} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, notes: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500 resize-none" rows={2} placeholder="What did you do?" />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleAddClientWorkout(day)} disabled={savingClientWorkout} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">{savingClientWorkout ? "Saving..." : "Save"}</button>
+                            <button onClick={() => { setShowAddWorkoutForDay(null); setAddWorkoutForm({ type: "run", trainingType: "", miles: "", notes: "" }); }} className="text-gray-400 hover:text-white text-xs">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      hasProgrammedForDay && (
+                        <button onClick={() => setShowAddWorkoutForDay(day)} className="w-full mt-2 border border-dashed border-cyan-500/30 rounded-xl py-2 text-cyan-500 hover:text-cyan-400 hover:border-cyan-500/50 text-xs transition-colors flex items-center justify-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                          Add your own workout — {day}
+                        </button>
+                      )
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
           </>)}

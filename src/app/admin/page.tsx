@@ -7,7 +7,8 @@ import Changelog from "./Changelog";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
-type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; };
+type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; };
+type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; weeks: WeekData[]; messages: CoachMessage[]; };
 
@@ -573,6 +574,16 @@ export default function AdminPage() {
           focus: w.focus || '',
           coachMessage: w.coachMessage || '',
           status: w.status as "published" | "draft",
+          clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({
+            id: cw.id,
+            day: cw.day,
+            type: cw.type,
+            trainingType: cw.trainingType || null,
+            miles: cw.miles,
+            notes: cw.notes,
+            createdAt: cw.createdAt,
+            isClientAdded: true as const,
+          })),
           workouts: (w.workouts || []).map((wo: any) => ({
             id: wo.id,
             day: wo.day || '',
@@ -696,9 +707,28 @@ export default function AdminPage() {
   // Current week workouts (uses selectedWeek which is based on adminWeekOffset)
   const currentWeekWorkouts = selectedWeek ? selectedWeek.workouts : [];
 
+  // Client-added workout miles (for stats)
+  const allClientAddedMiles = publishedWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0);
+  const planClientAddedMiles = (() => {
+    if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientAddedMiles;
+    const planStart = new Date(activePlan.startDate);
+    const planEnd = new Date(activePlan.endDate);
+    planStart.setHours(0, 0, 0, 0);
+    planEnd.setHours(23, 59, 59, 999);
+    const planWeeks = publishedWeeks.filter(w => {
+      const startStr = w.dateRange.split(' - ')[0];
+      const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
+      if (weekMonday > new Date(new Date().getFullYear(), 11, 31)) weekMonday.setFullYear(weekMonday.getFullYear() - 1);
+      weekMonday.setHours(0, 0, 0, 0);
+      return weekMonday >= planStart && weekMonday <= planEnd;
+    });
+    return planWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0);
+  })();
+  const currentWeekClientMiles = selectedWeek ? (selectedWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
+
   const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts : adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
   const displayCompleted = displayWorkouts.filter((w) => w.completed);
-  const displayMilesCompleted = displayWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const displayMilesCompleted = displayWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
   const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
   const displayAvgRpe = (() => { const withRpe = displayCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
   const displayCompletion = displayWorkouts.length > 0 ? Math.round((displayCompleted.length / displayWorkouts.length) * 100) : 0;
@@ -1275,6 +1305,32 @@ export default function AdminPage() {
                       )}
                     </div>
                   ))}
+
+                  {/* Client-Added Workouts */}
+                  {selectedWeek && (selectedWeek.clientWorkouts || []).length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-cyan-500/20">
+                      <p className="text-cyan-400 text-xs font-heading uppercase mb-3">Client-Added Workouts</p>
+                      {selectedWeek.clientWorkouts.map(cw => (
+                        <div key={cw.id} className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 mb-2">
+                          <div className="flex items-center gap-4">
+                            <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-medium text-sm">{cw.day}</span>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
+                                {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                              </div>
+                              {cw.notes && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                            </div>
+                            {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
                 </>)}
