@@ -1308,13 +1308,7 @@ export default function AdminPage() {
                               </div>
                               {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
                               <div className="flex flex-wrap gap-2 mt-2">
-                                {w.log.energy && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Energy: {w.log.energy}/10</span>}
-                                {w.log.motivation && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Motivation: {w.log.motivation}/10</span>}
                                 {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {w.log.sleep}/10</span>}
-                                {w.log.recovery && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Recovery: {w.log.recovery}/10</span>}
-                                {w.log.mood && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Mood: {w.log.mood}/10</span>}
-                                {w.log.hunger && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Appetite: {w.log.hunger}/10</span>}
-                                {w.log.strength && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Body: {w.log.strength}/10</span>}
                               </div>
                               {w.skipReason && <p className="text-yellow-400 text-xs mt-2"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
                             </div>
