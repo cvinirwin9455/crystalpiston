@@ -1348,6 +1348,14 @@ export default function AdminPage() {
                                 <input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => updateEditedWorkout(w.id, 'miles', e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
                               </>
                             )}
+                            {(editedWorkouts[w.id]?.type || w.type) === "walk" && (
+                              <>
+                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                  <option value="" disabled>Walk Type *</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
+                                </select>
+                                <input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => updateEditedWorkout(w.id, 'miles', e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Miles" />
+                              </>
+                            )}
                           </div>
                           {(editedWorkouts[w.id]?.type || w.type) !== "rest" && (
                             <div className="grid md:grid-cols-3 gap-2">
@@ -1356,7 +1364,7 @@ export default function AdminPage() {
                               <input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
                             </div>
                           )}
-                          {(editedWorkouts[w.id]?.type || w.type) === "run" && (
+                          {((editedWorkouts[w.id]?.type || w.type) === "run" || (editedWorkouts[w.id]?.type || w.type) === "walk") && (
                             <div className="grid md:grid-cols-2 gap-2">
                               <input type="text" value={editedWorkouts[w.id]?.location || ''} onChange={(e) => updateEditedWorkout(w.id, 'location', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
                               <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />

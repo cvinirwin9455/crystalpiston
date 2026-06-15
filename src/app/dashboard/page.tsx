@@ -805,12 +805,21 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* Miles, Pace, Stress */}
+                      {/* Run/Walk: Miles, Pace, Stress */}
+                      {(workout.type === "run" || workout.type === "walk") && (
                       <div className="grid md:grid-cols-3 gap-4 mb-4">
-                        <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder={workout.type === "run" ? "e.g. 7.2" : "optional"} /></div>
-                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder={workout.type === "run" ? "e.g. 8:45/mi" : "optional"} /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.2" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 8:45/mi" /></div>
                         <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
                       </div>
+                      )}
+                      {/* Other types: Stress only */}
+                      {workout.type !== "run" && workout.type !== "walk" && workout.type !== "rest" && (
+                      <div className="mb-4">
+                        <label className="text-gray-400 text-xs block mb-1">Stress Factors</label>
+                        <input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." />
+                      </div>
+                      )}
 
                       {/* Partial: what didn't you complete? */}
                       {skipType === "partial" && (
