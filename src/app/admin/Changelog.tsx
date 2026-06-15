@@ -6,6 +6,7 @@ const updates = [
   {
     date: "June 15, 2026",
     items: [
+      { area: "Marketing", text: "Added Tracie B.'s client story to the homepage testimonials" },
       { area: "Client", text: "Clients can now add their own workouts (runs, walks, cross training, strength, etc.) under each day" },
       { area: "Client", text: "Client-added workouts show with a cyan 'Client Added' badge grouped with that day's programmed workout" },
       { area: "Client", text: "Run/walk client workouts count toward weekly total miles/km" },
