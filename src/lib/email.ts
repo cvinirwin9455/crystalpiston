@@ -144,21 +144,25 @@ export function buildWorkoutCommentEmail(
   ].filter(Boolean).join(' — ')
 
   const html = `
-    <td style="padding: 32px;">
-      <p style="margin: 0 0 16px; color: #ffffff; font-size: 16px;">Hi ${recipientName},</p>
-      <p style="margin: 0 0 16px; color: #a0a0b0; font-size: 14px;">
+      <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hi ${recipientName},</h2>
+      <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">
         ${isFromCoach ? 'Crystal left a comment on your workout:' : `${senderName} replied on their workout:`}
       </p>
-      <div style="background-color: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 16px; border-left: 3px solid #d4a853;">
-        <p style="margin: 0 0 8px; color: #d4a853; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">${workoutDay} Workout</p>
+      <div style="margin: 0 0 16px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
+        <p style="margin: 0 0 6px; color: #d4a853; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">${workoutDay} Workout</p>
         <p style="margin: 0; color: #ffffff; font-size: 14px;">${workoutDetails}</p>
       </div>
-      <div style="background-color: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 24px; border-left: 3px solid ${isFromCoach ? '#a855f7' : '#ef4444'};">
-        <p style="margin: 0 0 4px; color: ${isFromCoach ? '#a855f7' : '#ef4444'}; font-size: 11px; font-weight: bold;">${senderName}</p>
-        <p style="margin: 0; color: #ffffff; font-size: 14px;">${comment}</p>
+      <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(${isFromCoach ? '168,85,247' : '239,68,68'},0.1); border-left: 3px solid ${isFromCoach ? '#a855f7' : '#ef4444'}; border-radius: 4px;">
+        <p style="margin: 0 0 4px; color: ${isFromCoach ? '#a855f7' : '#ef4444'}; font-size: 12px; font-weight: bold;">${senderName}</p>
+        <p style="margin: 0; color: #e0e0e0; font-size: 14px; line-height: 1.5;">${comment}</p>
       </div>
-      <a href="${siteUrl}/${isFromCoach ? 'dashboard' : 'admin'}" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold;">View & Reply</a>
-    </td>`
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+        <tr>
+          <td align="center">
+            <a href="${siteUrl}/${isFromCoach ? 'dashboard' : 'admin'}" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View & Reply</a>
+          </td>
+        </tr>
+      </table>`
 
   return { subject, html }
 }

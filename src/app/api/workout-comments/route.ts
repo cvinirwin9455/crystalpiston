@@ -164,16 +164,24 @@ export async function POST(request: Request) {
               .select('id, email, name')
               .eq('role', 'admin')
 
-            // Check admin notification preferences
-            const { data: adminNotifPrefs } = await adminClient
-              .from('notification_preferences')
-              .select('client_message, notification_emails')
-              .eq('user_id', adminUsers?.[0]?.id)
-              .single()
+            const adminUser = adminUsers?.[0]
+            if (adminUser) {
+              // Check admin notification preferences
+              const { data: adminNotifPrefs } = await adminClient
+                .from('notification_preferences')
+                .select('client_message, notification_emails')
+                .eq('user_id', adminUser.id)
+                .single()
 
-            if (adminNotifPrefs?.client_message !== 'off') {
-              recipientEmail = adminNotifPrefs?.notification_emails || adminUsers?.[0]?.email || null
-              recipientName = adminUsers?.[0]?.name || 'Crystal'
+              const shouldSend = !adminNotifPrefs || adminNotifPrefs.client_message !== 'off'
+              if (shouldSend) {
+                // Use notification_emails if set, otherwise admin's own email
+                const targetEmail = adminNotifPrefs?.notification_emails
+                  ? adminNotifPrefs.notification_emails.split(',')[0].trim()
+                  : adminUser.email
+                recipientEmail = targetEmail || null
+                recipientName = adminUser.name || 'Crystal'
+              }
             }
           }
 
