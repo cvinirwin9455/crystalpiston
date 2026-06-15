@@ -666,13 +666,17 @@ export default function AdminPage() {
           thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
           thisMonday.setHours(0, 0, 0, 0);
 
-          const publishedMapped = mapped.filter(w => w.status === 'published');
+          // Calculate navigation bounds based on ALL weeks (published + draft)
           let earliest = 0;
           let latest = 0;
           
-          for (const w of publishedMapped) {
+          for (const w of mapped) {
             const startStr = w.dateRange.split(' - ')[0];
             const weekMonday = new Date(startStr + ', ' + new Date().getFullYear());
+            // Handle year boundary
+            const monthDiff = weekMonday.getMonth() - today.getMonth();
+            if (monthDiff > 6) weekMonday.setFullYear(weekMonday.getFullYear() - 1);
+            if (monthDiff < -6) weekMonday.setFullYear(weekMonday.getFullYear() + 1);
             weekMonday.setHours(0, 0, 0, 0);
             const diffDays = Math.round((weekMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
             const offset = Math.round(diffDays / 7);
@@ -1275,6 +1279,7 @@ export default function AdminPage() {
                 {!selectedWeek && (
                   <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
                     <p className="text-gray-500">No published plan for this week.</p>
+                    <p className="text-gray-600 text-xs mt-1">Create a week plan or navigate to a week that has one.</p>
                   </div>
                 )}
 
