@@ -789,39 +789,28 @@ export default function DashboardPage() {
                       )}
                       <h4 className="font-heading text-sm uppercase text-accent mb-4">{skipType === "partial" ? "What Did You Do?" : "Your Workout Log"}</h4>
 
-                      {/* RUN-specific fields */}
-                      {workout.type === "run" && (
-                        <>
-                          <div className="bg-primary/50 border border-white/5 rounded-lg p-3 mb-4">
-                            <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">How hard did this workout feel?</label></div>
-                            <p className="text-gray-600 text-xs mb-2">1 = barely broke a sweat, 10 = gave everything I had</p>
-                            <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
-                            <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out effort</span></div>
-                          </div>
-                          <div className="grid md:grid-cols-3 gap-4 mb-4">
-                            <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.2" /></div>
-                            <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 8:45/mi" /></div>
-                            <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
-                          </div>
-                        </>
-                      )}
+                      {/* RPE + Sleep — side by side at top */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
+                          <p className="text-gray-600 text-xs mb-2">1 = easy, 10 = all-out</p>
+                          <div className="flex items-center gap-2"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
+                          <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out</span></div>
+                        </div>
+                        <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
+                          <p className="text-gray-600 text-xs mb-2">1 = terrible, 10 = great</p>
+                          <div className="flex items-center gap-2"><input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.sleep || ""} onChange={(e) => updateWorkoutLog(workout.id, "sleep", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{(workout.log as Record<string, string> | undefined)?.sleep || "—"}</span></div>
+                          <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Terrible</span><span className="text-gray-600 text-xs">Great</span></div>
+                        </div>
+                      </div>
 
-                      {/* CROSS TRAINING fields */}
-                      {workout.type === "cross" && (
-                        <>
-                          <div className="bg-primary/50 border border-white/5 rounded-lg p-3 mb-4">
-                            <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">How hard did this workout feel?</label></div>
-                            <p className="text-gray-600 text-xs mb-2">1 = barely broke a sweat, 10 = gave everything I had</p>
-                            <div className="flex items-center gap-3"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
-                            <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out effort</span></div>
-                          </div>
-                          <div className="grid md:grid-cols-3 gap-4 mb-4">
-                            <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 3.0 (optional)" /></div>
-                            <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 9:00/mi (optional)" /></div>
-                            <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
-                          </div>
-                        </>
-                      )}
+                      {/* Miles, Pace, Stress */}
+                      <div className="grid md:grid-cols-3 gap-4 mb-4">
+                        <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder={workout.type === "run" ? "e.g. 7.2" : "optional"} /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder={workout.type === "run" ? "e.g. 8:45/mi" : "optional"} /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
+                      </div>
 
                       {/* Partial: what didn't you complete? */}
                       {skipType === "partial" && (
@@ -841,23 +830,6 @@ export default function DashboardPage() {
                         <span className="text-gray-400 text-xs">On period today</span>
                       </div>
                       )}
-
-                      {/* Body Check — Sleep only */}
-                      <div className="border-t border-white/5 pt-4">
-                        <p className="text-gold text-xs font-heading uppercase mb-1">Sleep</p>
-                        <p className="text-gray-600 text-xs mb-3">Rate from 1 (very poor) to 10 (excellent)</p>
-                        <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm">😴</span>
-                            <label className="text-gray-300 text-xs">Sleep Quality</label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.sleep || ""} onChange={(e) => updateWorkoutLog(workout.id, "sleep", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
-                            <span className="text-white text-sm font-bold w-5 text-center">{(workout.log as Record<string, string> | undefined)?.sleep || "—"}</span>
-                          </div>
-                          <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Poor</span><span className="text-gray-600 text-xs">Great</span></div>
-                        </div>
-                      </div>
 
                       {/* Save & Close */}
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
