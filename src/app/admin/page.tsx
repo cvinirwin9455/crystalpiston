@@ -772,11 +772,13 @@ export default function AdminPage() {
   const currentWeekClientMiles = selectedWeek ? (selectedWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
 
   const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts.filter(w => w.type !== "rest") : adminStatsFilter === "currentPlan" ? planFilteredWorkouts.filter(w => w.type !== "rest") : allClientWorkouts.filter(w => w.type !== "rest");
-  const displayCompleted = displayWorkouts.filter((w) => w.completed);
-  const displayMilesCompleted = displayWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
+  const displayMarked = displayWorkouts.filter((w) => w.completed);
+  const displayComplete = displayWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
+  const displayPartial = displayWorkouts.filter(w => w.status === "partial");
+  const displayMilesCompleted = displayComplete.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + displayPartial.reduce((s, w) => s + (Number(w.log?.actualMiles) || 0), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
   const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
-  const displayAvgRpe = (() => { const withRpe = displayCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
-  const displayCompletion = displayWorkouts.length > 0 ? Math.round((displayCompleted.length / displayWorkouts.length) * 100) : 0;
+  const displayAvgRpe = (() => { const withRpe = displayMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
+  const displayCompletion = displayWorkouts.length > 0 ? Math.round(((displayComplete.length * 1 + displayPartial.length * 0.5) / displayWorkouts.length) * 100) : 0;
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
@@ -845,6 +847,7 @@ export default function AdminPage() {
         paceTarget: w.paceTarget || null,
         location: w.location || null,
         coachNotes: w.coachNotes || null,
+        distanceUnit: w.distanceUnit || 'mi',
       }))
     );
 
@@ -1182,7 +1185,7 @@ export default function AdminPage() {
               </div>
               <div className="grid grid-cols-4 gap-4">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? convertDist(displayMilesCompleted).toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? convertDist(displayMilesProgrammed).toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{displayCompleted.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Workouts Marked</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
               </div>

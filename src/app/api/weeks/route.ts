@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const weekIds = weeks.map(w => w.id)
   const { data: workouts } = await adminClient
     .from('workouts')
-    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit')
     .in('week_id', weekIds)
     .order('sort_order', { ascending: true })
 
@@ -119,6 +119,7 @@ export async function GET(request: Request) {
           trainingType: wo.training_type,
           title: wo.title,
           miles: wo.miles ? parseFloat(wo.miles) : null,
+          distanceUnit: wo.distance_unit || 'mi',
           description: wo.description,
           paceTarget: wo.pace_target,
           location: wo.location,
@@ -214,6 +215,7 @@ export async function POST(request: Request) {
       location: w.location || null,
       coach_notes: w.coachNotes || null,
       sort_order: index,
+      distance_unit: w.distanceUnit || 'mi',
     }))
 
     const { error: workoutsError } = await adminClient

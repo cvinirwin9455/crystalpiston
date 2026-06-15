@@ -315,11 +315,15 @@ export default function DashboardPage() {
   const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk');
 
   const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []).filter(w => w.type !== "rest") : allWorkouts.filter(w => w.type !== "rest");
-  const statsCompleted = statsWorkouts.filter(w => w.completed);
+  const statsMarked = statsWorkouts.filter(w => w.completed);
+  const statsComplete = statsWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
+  const statsPartial = statsWorkouts.filter(w => w.status === "partial");
+  const statsSkipped = statsWorkouts.filter(w => w.status === "skipped");
   const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
-  const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + clientMilesForStats;
+  const statsMiles = statsComplete.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + statsPartial.reduce((s, w) => s + (Number(w.log?.actualMiles) || 0), 0) + clientMilesForStats;
   const statsProgrammedMiles = statsWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
-  const statsAvgRpe = () => { const withRpe = statsCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
+  const statsWeightedCompletion = statsWorkouts.length > 0 ? Math.round(((statsComplete.length * 1 + statsPartial.length * 0.5) / statsWorkouts.length) * 100) : 0;
+  const statsAvgRpe = () => { const withRpe = statsMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
 
   const [showSkipDialog, setShowSkipDialog] = useState<string | null>(null);
   const [skipReason, setSkipReason] = useState("");
@@ -622,9 +626,9 @@ export default function DashboardPage() {
               </div>
               <div className="grid grid-cols-4 gap-4">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-500 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{statsCompleted.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Workouts Marked</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
               </div>
             </div>
 
@@ -708,7 +712,7 @@ export default function DashboardPage() {
                     {workout.status === "partial" && workout.skipReason && (
                       <div className="mt-2 ml-9 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2"><p className="text-yellow-400 text-xs"><span className="font-medium">Partially completed:</span> {workout.skipReason}</p></div>
                     )}
-                    {workout.status === "complete" && workout.log && (
+                    {(workout.status === "complete" || workout.status === "partial") && workout.log && (
                       <div className="mt-3 ml-9 pl-4 border-l-2 border-green-500/30">
                         <div className="flex flex-wrap gap-3 text-xs">
                           {workout.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
