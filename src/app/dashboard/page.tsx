@@ -590,9 +590,16 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Workout Cards */}
+            {/* Workout Cards - Grouped by Day */}
             <div className="space-y-4">
-              {currentWeek.workouts.map((workout) => (
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                const dayWorkouts = currentWeek.workouts.filter(w => w.day === day);
+                const dayClientWorkouts = (currentWeek.clientWorkouts || []).filter(cw => cw.day === day);
+                if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                return (
+                  <div key={day}>
+                    {/* Crystal's programmed workouts for this day */}
+                    {dayWorkouts.map((workout) => (
                 <div key={workout.id} className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
                   <div className="p-5">
                     <div className="flex items-start justify-between">
@@ -818,14 +825,7 @@ export default function DashboardPage() {
                 </div>
               ))}
 
-              {/* Client-Added Workouts + Add Workout Button per day */}
-              {weekOffset === 0 && ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                const dayClientWorkouts = currentWeek.clientWorkouts?.filter(cw => cw.day === day) || [];
-                const hasProgrammedForDay = currentWeek.workouts.some(w => w.day === day);
-                if (!hasProgrammedForDay && dayClientWorkouts.length === 0 && showAddWorkoutForDay !== day) return null;
-                return (
-                  <div key={`client-${day}`}>
-                    {/* Client-added workouts for this day */}
+                    {/* Client-Added Workouts for this day */}
                     {dayClientWorkouts.map(cw => (
                       <div key={cw.id} className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 mt-2">
                         <div className="flex items-start justify-between">
@@ -835,7 +835,6 @@ export default function DashboardPage() {
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <span className="text-white font-heading uppercase text-sm">{cw.day}</span>
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
@@ -851,8 +850,9 @@ export default function DashboardPage() {
                       </div>
                     ))}
 
-                    {/* Add Workout Button for this day */}
-                    {showAddWorkoutForDay === day ? (
+                    {/* Add Workout Button for this day (current week only) */}
+                    {weekOffset === 0 && (
+                      showAddWorkoutForDay === day ? (
                       <div className="border border-cyan-500/20 bg-cyan-500/5 rounded-2xl p-4 mt-2">
                         <p className="text-cyan-400 text-xs font-heading uppercase mb-3">Add Your Own Workout — {day}</p>
                         <div className="space-y-3">
@@ -907,13 +907,11 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ) : (
-                      hasProgrammedForDay && (
-                        <button onClick={() => setShowAddWorkoutForDay(day)} className="w-full mt-2 border border-dashed border-cyan-500/30 rounded-xl py-2 text-cyan-500 hover:text-cyan-400 hover:border-cyan-500/50 text-xs transition-colors flex items-center justify-center gap-1.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                          Add your own workout — {day}
-                        </button>
-                      )
-                    )}
+                      <button onClick={() => setShowAddWorkoutForDay(day)} className="w-full mt-2 border border-dashed border-cyan-500/30 rounded-xl py-2 text-cyan-500 hover:text-cyan-400 hover:border-cyan-500/50 text-xs transition-colors flex items-center justify-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        Add your own workout
+                      </button>
+                    ))}
                   </div>
                 );
               })}
