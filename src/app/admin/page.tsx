@@ -478,49 +478,10 @@ export default function AdminPage() {
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Workout comments state
+  // Workout comments state (declared here, useEffect placed after selectedWeek)
   const [workoutComments, setWorkoutComments] = useState<Record<string, {id: string; workoutId: string; userId: string; userName: string; message: string; createdAt: string; isCoach: boolean}[]>>({});
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
-
-  // Fetch workout comments when week changes
-  useEffect(() => {
-    if (!selectedWeek) return;
-    const completedIds = selectedWeek.workouts.filter(w => w.completed).map(w => w.id);
-    if (completedIds.length === 0) return;
-    const fetchComments = async () => {
-      try {
-        const res = await fetch(`/api/workout-comments?workout_ids=${completedIds.join(',')}`);
-        if (res.ok) {
-          const data = await res.json();
-          setWorkoutComments(prev => ({ ...prev, ...data }));
-        }
-      } catch (err) { console.error('Failed to fetch workout comments:', err); }
-    };
-    fetchComments();
-  }, [selectedWeek?.weekId]);
-
-  const handleSendWorkoutComment = async (workoutId: string) => {
-    const msg = commentInput[workoutId]?.trim();
-    if (!msg) return;
-    setSendingComment(workoutId);
-    try {
-      const res = await fetch('/api/workout-comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workoutId, message: msg }),
-      });
-      if (res.ok) {
-        const comment = await res.json();
-        setWorkoutComments(prev => ({
-          ...prev,
-          [workoutId]: [...(prev[workoutId] || []), comment],
-        }));
-        setCommentInput(prev => ({ ...prev, [workoutId]: '' }));
-      }
-    } catch (err) { console.error('Failed to send comment:', err); }
-    finally { setSendingComment(null); }
-  };
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -603,6 +564,45 @@ export default function AdminPage() {
   };
 
   const selectedWeek = getAdminWeekPlan(adminWeekOffset);
+
+  // Fetch workout comments when viewed week changes
+  useEffect(() => {
+    if (!selectedWeek) return;
+    const completedIds = selectedWeek.workouts.filter(w => w.completed).map(w => w.id);
+    if (completedIds.length === 0) return;
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/workout-comments?workout_ids=${completedIds.join(',')}`);
+        if (res.ok) {
+          const data = await res.json();
+          setWorkoutComments(prev => ({ ...prev, ...data }));
+        }
+      } catch (err) { console.error('Failed to fetch workout comments:', err); }
+    };
+    fetchComments();
+  }, [selectedWeek?.weekId]);
+
+  const handleSendWorkoutComment = async (workoutId: string) => {
+    const msg = commentInput[workoutId]?.trim();
+    if (!msg) return;
+    setSendingComment(workoutId);
+    try {
+      const res = await fetch('/api/workout-comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId, message: msg }),
+      });
+      if (res.ok) {
+        const comment = await res.json();
+        setWorkoutComments(prev => ({
+          ...prev,
+          [workoutId]: [...(prev[workoutId] || []), comment],
+        }));
+        setCommentInput(prev => ({ ...prev, [workoutId]: '' }));
+      }
+    } catch (err) { console.error('Failed to send comment:', err); }
+    finally { setSendingComment(null); }
+  };
 
   // Fetch weeks for a client from the API
   // resetIndex: if true, jump to current week. If false, keep current position.
