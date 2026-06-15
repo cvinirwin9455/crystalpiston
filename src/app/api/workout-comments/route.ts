@@ -36,6 +36,7 @@ export async function GET(request: Request) {
   // Get user names for all comment authors
   const userIds = [...new Set((comments || []).map(c => c.user_id))]
   let userNames: Record<string, string> = {}
+  let userRoles: Record<string, string> = {}
   if (userIds.length > 0) {
     const { data: users } = await adminClient
       .from('users')
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
       .in('id', userIds)
     for (const u of users || []) {
       userNames[u.id] = u.name || 'Unknown'
+      userRoles[u.id] = u.role || 'client'
     }
   }
 
@@ -57,7 +59,7 @@ export async function GET(request: Request) {
       userName: userNames[c.user_id] || 'Unknown',
       message: c.message,
       createdAt: c.created_at,
-      isCoach: c.user_id !== user.id, // If it's not the current user, it's the other party
+      isCoach: userRoles[c.user_id] === 'admin',
     })
   }
 

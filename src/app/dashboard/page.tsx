@@ -332,13 +332,12 @@ export default function DashboardPage() {
   const [sendingComment, setSendingComment] = useState<string | null>(null);
 
   // Fetch workout comments for current week's completed workouts
+  const completedWorkoutIds = currentWeek ? currentWeek.workouts.filter(w => w.completed).map(w => w.id).join(',') : '';
   useEffect(() => {
-    if (!currentWeek) return;
-    const completedIds = currentWeek.workouts.filter(w => w.completed).map(w => w.id);
-    if (completedIds.length === 0) return;
+    if (!completedWorkoutIds) return;
     const fetchComments = async () => {
       try {
-        const res = await fetch(`/api/workout-comments?workout_ids=${completedIds.join(',')}`);
+        const res = await fetch(`/api/workout-comments?workout_ids=${completedWorkoutIds}`);
         if (res.ok) {
           const data = await res.json();
           setWorkoutComments(prev => ({ ...prev, ...data }));
@@ -346,7 +345,7 @@ export default function DashboardPage() {
       } catch (err) { console.error('Failed to fetch workout comments:', err); }
     };
     fetchComments();
-  }, [currentWeek?.weekId]);
+  }, [completedWorkoutIds]);
 
   const handleSendWorkoutComment = async (workoutId: string) => {
     const msg = commentInput[workoutId]?.trim();
@@ -940,24 +939,28 @@ export default function DashboardPage() {
                                 <label className="text-gray-400 text-xs block mb-1">Subtype *</label>
                                 <select value={addWorkoutForm.trainingType} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, trainingType: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
                                   <option value="">Select type...</option>
-                                  <option value="ClosePace">Close to Race Pace</option>
-                                  <option value="Easy">Easy Run</option>
-                                  <option value="Fartlek">Fartlek</option>
-                                  <option value="Hills">Hill Repeats</option>
-                                  <option value="Intervals">Intervals (Run/Walk)</option>
-                                  <option value="LongRun">Long Run</option>
-                                  <option value="Progressive">Progressive</option>
-                                  <option value="RacePace">Race Pace</option>
-                                  <option value="Recovery">Recovery Run</option>
-                                  <option value="SpeedRoad">Speed Workout - Road</option>
-                                  <option value="SpeedTrack">Speed Workout - Track</option>
-                                  <option value="Tempo">Tempo Runs</option>
-                                  <option value="Threshold">Threshold Runs</option>
-                                  <option value="TimeTrial">Time Trial</option>
-                                  <option value="Trail">Trail</option>
-                                  <option value="Treadmill">Treadmill</option>
-                                  {addWorkoutForm.type === "walk" && <option value="WalkRecovery">Walk Recovery</option>}
-                                  {addWorkoutForm.type === "walk" && <option value="WalkPower">Walk Power</option>}
+                                  {addWorkoutForm.type === "run" && <>
+                                    <option value="ClosePace">Close to Race Pace</option>
+                                    <option value="Easy">Easy Run</option>
+                                    <option value="Fartlek">Fartlek</option>
+                                    <option value="Hills">Hill Repeats</option>
+                                    <option value="Intervals">Intervals (Run/Walk)</option>
+                                    <option value="LongRun">Long Run</option>
+                                    <option value="Progressive">Progressive</option>
+                                    <option value="RacePace">Race Pace</option>
+                                    <option value="Recovery">Recovery Run</option>
+                                    <option value="SpeedRoad">Speed Workout - Road</option>
+                                    <option value="SpeedTrack">Speed Workout - Track</option>
+                                    <option value="Tempo">Tempo Runs</option>
+                                    <option value="Threshold">Threshold Runs</option>
+                                    <option value="TimeTrial">Time Trial</option>
+                                    <option value="Trail">Trail</option>
+                                    <option value="Treadmill">Treadmill</option>
+                                  </>}
+                                  {addWorkoutForm.type === "walk" && <>
+                                    <option value="WalkRecovery">Walk Recovery</option>
+                                    <option value="WalkPower">Walk Power</option>
+                                  </>}
                                 </select>
                               </div>
                               <div>
