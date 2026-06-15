@@ -478,6 +478,50 @@ export default function AdminPage() {
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Workout comments state
+  const [workoutComments, setWorkoutComments] = useState<Record<string, {id: string; workoutId: string; userId: string; userName: string; message: string; createdAt: string; isCoach: boolean}[]>>({});
+  const [commentInput, setCommentInput] = useState<Record<string, string>>({});
+  const [sendingComment, setSendingComment] = useState<string | null>(null);
+
+  // Fetch workout comments when week changes
+  useEffect(() => {
+    if (!selectedWeek) return;
+    const completedIds = selectedWeek.workouts.filter(w => w.completed).map(w => w.id);
+    if (completedIds.length === 0) return;
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/workout-comments?workout_ids=${completedIds.join(',')}`);
+        if (res.ok) {
+          const data = await res.json();
+          setWorkoutComments(prev => ({ ...prev, ...data }));
+        }
+      } catch (err) { console.error('Failed to fetch workout comments:', err); }
+    };
+    fetchComments();
+  }, [selectedWeek?.weekId]);
+
+  const handleSendWorkoutComment = async (workoutId: string) => {
+    const msg = commentInput[workoutId]?.trim();
+    if (!msg) return;
+    setSendingComment(workoutId);
+    try {
+      const res = await fetch('/api/workout-comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId, message: msg }),
+      });
+      if (res.ok) {
+        const comment = await res.json();
+        setWorkoutComments(prev => ({
+          ...prev,
+          [workoutId]: [...(prev[workoutId] || []), comment],
+        }));
+        setCommentInput(prev => ({ ...prev, [workoutId]: '' }));
+      }
+    } catch (err) { console.error('Failed to send comment:', err); }
+    finally { setSendingComment(null); }
+  };
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     adminMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -726,7 +770,7 @@ export default function AdminPage() {
   })();
   const currentWeekClientMiles = selectedWeek ? (selectedWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
 
-  const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts : adminStatsFilter === "currentPlan" ? planFilteredWorkouts : allClientWorkouts;
+  const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts.filter(w => w.type !== "rest") : adminStatsFilter === "currentPlan" ? planFilteredWorkouts.filter(w => w.type !== "rest") : allClientWorkouts.filter(w => w.type !== "rest");
   const displayCompleted = displayWorkouts.filter((w) => w.completed);
   const displayMilesCompleted = displayWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
   const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
@@ -1273,6 +1317,24 @@ export default function AdminPage() {
                                 {w.log.strength && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Body: {w.log.strength}/10</span>}
                               </div>
                               {w.skipReason && <p className="text-yellow-400 text-xs mt-2"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
+                            </div>
+                          )}
+                          {/* Workout Comments Thread */}
+                          {w.completed && (
+                            <div className="mt-3 ml-7 pl-4 border-l-2 border-purple-500/30">
+                              {(workoutComments[w.id] || []).map(c => (
+                                <div key={c.id} className={`mb-2 ${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.userName}</span>
+                                    <span className="text-gray-600 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                  </div>
+                                  <p className="text-gray-300 text-xs">{c.message}</p>
+                                </div>
+                              ))}
+                              <div className="flex gap-2 mt-2">
+                                <input type="text" value={commentInput[w.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [w.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(w.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Add a comment on this workout..." />
+                                <button onClick={() => handleSendWorkoutComment(w.id)} disabled={sendingComment === w.id || !commentInput[w.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === w.id ? '...' : 'Send'}</button>
+                              </div>
                             </div>
                           )}
                         </>

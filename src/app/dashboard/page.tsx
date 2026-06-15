@@ -310,11 +310,11 @@ export default function DashboardPage() {
   const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
   const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) + clientMilesThisWeek : 0;
   const weeklyTotalConverted = convertDist(weeklyTotal);
-  const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed).length : 0;
+  const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
   const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk');
 
-  const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []) : allWorkouts;
+  const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []).filter(w => w.type !== "rest") : allWorkouts.filter(w => w.type !== "rest");
   const statsCompleted = statsWorkouts.filter(w => w.completed);
   const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
   const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + clientMilesForStats;
@@ -325,6 +325,50 @@ export default function DashboardPage() {
   const [skipType, setSkipType] = useState<"skipped" | "partial">("skipped");
 
   const [savingLog, setSavingLog] = useState(false);
+
+  // Workout comments state
+  const [workoutComments, setWorkoutComments] = useState<Record<string, {id: string; workoutId: string; userId: string; userName: string; message: string; createdAt: string; isCoach: boolean}[]>>({});
+  const [commentInput, setCommentInput] = useState<Record<string, string>>({});
+  const [sendingComment, setSendingComment] = useState<string | null>(null);
+
+  // Fetch workout comments for current week's completed workouts
+  useEffect(() => {
+    if (!currentWeek) return;
+    const completedIds = currentWeek.workouts.filter(w => w.completed).map(w => w.id);
+    if (completedIds.length === 0) return;
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/workout-comments?workout_ids=${completedIds.join(',')}`);
+        if (res.ok) {
+          const data = await res.json();
+          setWorkoutComments(prev => ({ ...prev, ...data }));
+        }
+      } catch (err) { console.error('Failed to fetch workout comments:', err); }
+    };
+    fetchComments();
+  }, [currentWeek?.weekId]);
+
+  const handleSendWorkoutComment = async (workoutId: string) => {
+    const msg = commentInput[workoutId]?.trim();
+    if (!msg) return;
+    setSendingComment(workoutId);
+    try {
+      const res = await fetch('/api/workout-comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId, message: msg }),
+      });
+      if (res.ok) {
+        const comment = await res.json();
+        setWorkoutComments(prev => ({
+          ...prev,
+          [workoutId]: [...(prev[workoutId] || []), comment],
+        }));
+        setCommentInput(prev => ({ ...prev, [workoutId]: '' }));
+      }
+    } catch (err) { console.error('Failed to send comment:', err); }
+    finally { setSendingComment(null); }
+  };
 
   // Client-added workout state
   const [showAddWorkoutForDay, setShowAddWorkoutForDay] = useState<string | null>(null);
@@ -629,14 +673,36 @@ export default function DashboardPage() {
                         {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id))}</p><p className="text-gray-500 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
                       </div>
                     </div>
+                    {/* Workout Comments Thread (shows on completed workouts) */}
+                    {workout.completed && workout.type !== "rest" && (
+                      <div className="mt-3 ml-9 pl-3 border-l-2 border-purple-500/30">
+                        {(workoutComments[workout.id] || []).length > 0 && (
+                          <div className="space-y-2 mb-2">
+                            {(workoutComments[workout.id] || []).map(c => (
+                              <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
+                                  <span className="text-gray-600 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                </div>
+                                <p className="text-gray-300 text-xs">{c.message}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
+                          <button onClick={() => handleSendWorkoutComment(workout.id)} disabled={sendingComment === workout.id || !commentInput[workout.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === workout.id ? '...' : 'Send'}</button>
+                        </div>
+                      </div>
+                    )}
                     {/* Log toggle */}
-                    {!workout.completed && weekOffset === 0 && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
+                    {((!workout.completed && weekOffset === 0) || (workout.type === "rest" && weekOffset === 0)) && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
                       <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
                         {workout.type === "rest" ? (
-                          /* Rest day: simple checkmark + optional notes */
-                          <button onClick={() => setExpandedWorkout(workout.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            Mark Complete
+                          /* Rest day: optional comment only (no completion needed) */
+                          <button onClick={() => setExpandedWorkout(workout.id)} className="border border-green-500/30 text-green-400 hover:bg-green-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                            Add Comment
                           </button>
                         ) : (
                           /* Run/Cross: full options */
@@ -701,17 +767,17 @@ export default function DashboardPage() {
                   {/* Expanded Log Form */}
                   {expandedWorkout === workout.id && (
                     <div className="border-t border-white/10 bg-primary/30 p-5">
-                      {/* REST DAY - simple notes + complete */}
+                      {/* REST DAY - optional comment only */}
                       {workout.type === "rest" && (
                         <>
-                          <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Rest Day Check-in</h4>
+                          <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Rest Day Notes</h4>
                           <div className="mb-4">
                             <label className="text-gray-400 text-xs block mb-1">Anything to share with Crystal about today? (optional)</label>
                             <textarea value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder="e.g. Feeling good and recovered, went for a light walk, legs still sore from yesterday..." />
                           </div>
                           <div className="flex items-center justify-between pt-2 border-t border-white/10">
                             <button onClick={() => { setExpandedWorkout(null); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
-                            <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete Rest Day"}</button>
+                            <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Save Comment"}</button>
                           </div>
                         </>
                       )}
@@ -874,17 +940,21 @@ export default function DashboardPage() {
                                 <label className="text-gray-400 text-xs block mb-1">Subtype *</label>
                                 <select value={addWorkoutForm.trainingType} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, trainingType: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
                                   <option value="">Select type...</option>
+                                  <option value="ClosePace">Close to Race Pace</option>
                                   <option value="Easy">Easy Run</option>
-                                  <option value="Recovery">Recovery Run</option>
-                                  <option value="LongRun">Long Run</option>
-                                  <option value="Tempo">Tempo</option>
-                                  <option value="Intervals">Intervals</option>
-                                  <option value="Hills">Hill Repeats</option>
                                   <option value="Fartlek">Fartlek</option>
-                                  <option value="SpeedRoad">Speed - Road</option>
-                                  <option value="SpeedTrack">Speed - Track</option>
-                                  <option value="Trail">Trail</option>
+                                  <option value="Hills">Hill Repeats</option>
+                                  <option value="Intervals">Intervals (Run/Walk)</option>
+                                  <option value="LongRun">Long Run</option>
                                   <option value="Progressive">Progressive</option>
+                                  <option value="RacePace">Race Pace</option>
+                                  <option value="Recovery">Recovery Run</option>
+                                  <option value="SpeedRoad">Speed Workout - Road</option>
+                                  <option value="SpeedTrack">Speed Workout - Track</option>
+                                  <option value="Tempo">Tempo Runs</option>
+                                  <option value="Threshold">Threshold Runs</option>
+                                  <option value="TimeTrial">Time Trial</option>
+                                  <option value="Trail">Trail</option>
                                   <option value="Treadmill">Treadmill</option>
                                   {addWorkoutForm.type === "walk" && <option value="WalkRecovery">Walk Recovery</option>}
                                   {addWorkoutForm.type === "walk" && <option value="WalkPower">Walk Power</option>}
