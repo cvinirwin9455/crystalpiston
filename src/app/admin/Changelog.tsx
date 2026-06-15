@@ -4,6 +4,21 @@ import { useState } from "react";
 
 const updates = [
   {
+    date: "June 15, 2026",
+    items: [
+      { area: "Client", text: "Clients can now add their own workouts — runs, strength, stretching, etc. — under each day" },
+      { area: "Client", text: "Client-added workouts show with a cyan 'Client Added' badge so they're easy to spot" },
+      { area: "Client", text: "Run/walk client workouts count toward the weekly total miles/km" },
+      { area: "Client", text: "Clients can delete their own added workouts (only current week)" },
+      { area: "Admin", text: "Crystal can see client-added workouts grouped with the same day's programmed workout" },
+      { area: "Admin", text: "Client-added run/walk miles are included in Crystal's stats view" },
+      { area: "Admin", text: "Crystal cannot edit/delete client-added workouts (read-only)" },
+      { area: "Admin", text: "Stats card now shows This Week / Current Plan / All Time toggle with Avg Effort and Completion %" },
+      { area: "Admin", text: "Total miles/km now visible on week headers, draft cards, and Drafts Ready to Publish" },
+      { area: "All", text: "Distance conversion now exact to 2 decimal places (e.g. 5 mi = 8.05 km)" },
+    ],
+  },
+  {
     date: "June 14, 2026",
     items: [
       { area: "Admin", text: "Distance unit preference added — Crystal can switch between Miles and Kilometers in Account Preferences and all client views update automatically" },
