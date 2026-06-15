@@ -39,6 +39,17 @@ const testimonials = [
       "This training season has really shown me the difference that having a coach can make. I'm so grateful to have her not only as a coach but someone I consider a close friend.",
     ],
   },
+  {
+    id: "tracie",
+    name: "Tracie B.",
+    headline: "From Half Marathon to Two Full Marathons",
+    image: "/7B68C58C-CDCF-422A-B550-A5694E52F59C.png",
+    paragraphs: [
+      "I got the crazy idea after running my first half marathon that I would sign up for a full marathon. Then a few months in I thought I better get some help to get this goal accomplished. I was introduced to Crystal.",
+      "She met with me and developed a plan based on my experience to meet my needs and my goals. She has been with me every step of the way, even calling me to cheer me across the finish line of my first marathon and then my second marathon.",
+      "She has inspired me to improve my running and has held me accountable to meet my goals. I absolutely love training with Crystal Pistol.",
+    ],
+  },
 ];
 
 export default function Testimonials() {
