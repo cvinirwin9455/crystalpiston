@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 
@@ -256,6 +256,7 @@ export default function DashboardPage() {
               trainingType: wo.trainingType || '',
               title: wo.title || '',
               miles: wo.miles,
+              distanceUnit: wo.distanceUnit || 'mi',
               description: wo.description || '',
               paceTarget: wo.paceTarget || '',
               location: wo.location || '',
@@ -302,14 +303,25 @@ export default function DashboardPage() {
 
   // Distance conversion helpers
   const getWorkoutUnit = (workoutId: string) => workoutUnitOverrides[workoutId] || clientDistanceUnit;
-  const convertDist = (miles: number, unit?: "mi" | "km") => (unit || clientDistanceUnit) === "km" ? +(miles * 1.60934).toFixed(2) : miles;
+  // Convert distance from one unit to the display unit
+  // sourceUnit: what unit the value was entered in (from DB)
+  // targetUnit: what unit to display in (from preference or override)
+  const convertDist = (value: number, targetUnit?: "mi" | "km", sourceUnit?: "mi" | "km") => {
+    const from = sourceUnit || "mi";
+    const to = targetUnit || clientDistanceUnit;
+    if (from === to) return +value.toFixed(2);
+    if (from === "mi" && to === "km") return +(value * 1.60934).toFixed(2);
+    if (from === "km" && to === "mi") return +(value / 1.60934).toFixed(2);
+    return +value.toFixed(2);
+  };
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
   const currentWeek = getWeekPlan(weekOffset);
   const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
-  const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, day) => sum + (day.miles || 0), 0) + clientMilesThisWeek : 0;
-  const weeklyTotalConverted = convertDist(weeklyTotal);
+  // Convert all programmed miles to client's preferred unit before summing
+  const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
+  const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
   const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk');
@@ -671,14 +683,14 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
-                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id))} {getWorkoutUnit(workout.id) === "km" ? "km" : "miles"} programmed</p>}
+                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} {getWorkoutUnit(workout.id) === "km" ? "km" : "miles"} programmed</p>}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
                           {workout.location && <p className="text-gray-500 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id))}</p><p className="text-gray-500 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
+                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p><p className="text-gray-500 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
                       </div>
                     </div>
                     {/* Log toggle */}
