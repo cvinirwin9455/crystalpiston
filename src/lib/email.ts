@@ -120,3 +120,45 @@ export function buildNewMessageEmail(clientName: string, messagePreview: string,
     `,
   }
 }
+
+
+export function buildWorkoutCommentEmail(
+  recipientName: string,
+  senderName: string,
+  workoutDay: string,
+  workoutType: string,
+  workoutTitle: string,
+  workoutMiles: string | null,
+  comment: string,
+  siteUrl: string,
+  isFromCoach: boolean
+): { subject: string; html: string } {
+  const subject = isFromCoach
+    ? `Crystal commented on your ${workoutDay} workout`
+    : `${senderName} replied on their ${workoutDay} workout`
+
+  const workoutDetails = [
+    workoutType,
+    workoutTitle,
+    workoutMiles ? `${workoutMiles} miles` : null,
+  ].filter(Boolean).join(' — ')
+
+  const html = `
+    <td style="padding: 32px;">
+      <p style="margin: 0 0 16px; color: #ffffff; font-size: 16px;">Hi ${recipientName},</p>
+      <p style="margin: 0 0 16px; color: #a0a0b0; font-size: 14px;">
+        ${isFromCoach ? 'Crystal left a comment on your workout:' : `${senderName} replied on their workout:`}
+      </p>
+      <div style="background-color: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 16px; border-left: 3px solid #d4a853;">
+        <p style="margin: 0 0 8px; color: #d4a853; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">${workoutDay} Workout</p>
+        <p style="margin: 0; color: #ffffff; font-size: 14px;">${workoutDetails}</p>
+      </div>
+      <div style="background-color: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 24px; border-left: 3px solid ${isFromCoach ? '#a855f7' : '#ef4444'};">
+        <p style="margin: 0 0 4px; color: ${isFromCoach ? '#a855f7' : '#ef4444'}; font-size: 11px; font-weight: bold;">${senderName}</p>
+        <p style="margin: 0; color: #ffffff; font-size: 14px;">${comment}</p>
+      </div>
+      <a href="${siteUrl}/${isFromCoach ? 'dashboard' : 'admin'}" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold;">View & Reply</a>
+    </td>`
+
+  return { subject, html }
+}
