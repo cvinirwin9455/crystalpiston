@@ -620,9 +620,8 @@ export default function DashboardPage() {
                   <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-3">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}</p><p className="text-gray-500 text-xs">Actual {distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{convertDist(statsProgrammedMiles).toFixed(2)}</p><p className="text-gray-500 text-xs">Programmed</p></div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-500 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsCompleted.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>
@@ -713,7 +712,7 @@ export default function DashboardPage() {
                       <div className="mt-3 ml-9 pl-4 border-l-2 border-green-500/30">
                         <div className="flex flex-wrap gap-3 text-xs">
                           {workout.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
-                          {workout.log.actualMiles && <span><span className="text-gray-500">Miles:</span> <span className="text-white">{workout.log.actualMiles}</span></span>}
+                          {workout.log.actualMiles && <span><span className="text-gray-500">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles)).toFixed(2)}</span></span>}
                           {workout.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{workout.log.actualPace}</span></span>}
                           {workout.log.duration && <span><span className="text-gray-500">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
                           {workout.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}

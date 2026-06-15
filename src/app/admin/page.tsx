@@ -957,6 +957,15 @@ export default function AdminPage() {
   // Save all edited workout changes
   const handleSaveEditedWeek = async () => {
     if (!selectedWeek) return;
+    // Validate miles for run/walk types
+    for (const w of selectedWeek.workouts) {
+      const edited = editedWorkouts[w.id];
+      if (!edited) continue;
+      if ((edited.type === 'run' || edited.type === 'walk') && edited.miles && !/^\d+(\.\d{1,2})?$/.test(edited.miles)) {
+        alert(`${w.day}: Distance must be a number with up to 2 decimal places (e.g. 4.34).`);
+        return;
+      }
+    }
     setSavingEdit(true);
     try {
       // Update the week's coach message
@@ -1345,7 +1354,7 @@ export default function AdminPage() {
                                 <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
                                   <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
                                 </select>
-                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => updateEditedWorkout(w.id, 'miles', e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" /><span className="text-gray-400 text-xs">{distUnitShort}</span></div>
+                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setAdminDistanceUnit(adminDistanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={adminDistanceUnit === "km" ? "text-accent" : "text-white"}>{adminDistanceUnit === "km" ? "km" : "mi"}</span></button></div>
                               </>
                             )}
                             {(editedWorkouts[w.id]?.type || w.type) === "walk" && (
@@ -1353,7 +1362,7 @@ export default function AdminPage() {
                                 <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
                                   <option value="" disabled>Walk Type *</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
                                 </select>
-                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => updateEditedWorkout(w.id, 'miles', e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist" /><span className="text-gray-400 text-xs">{distUnitShort}</span></div>
+                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setAdminDistanceUnit(adminDistanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={adminDistanceUnit === "km" ? "text-accent" : "text-white"}>{adminDistanceUnit === "km" ? "km" : "mi"}</span></button></div>
                               </>
                             )}
                           </div>
