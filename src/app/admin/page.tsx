@@ -1225,7 +1225,13 @@ export default function AdminPage() {
 
                 {/* Workouts */}
                 <div className="space-y-3">
-                  {selectedWeek?.workouts.map((w, wi) => (
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                    const dayWorkouts = selectedWeek?.workouts.filter(w => w.day === day) || [];
+                    const dayClientWorkouts = (selectedWeek?.clientWorkouts || []).filter(cw => cw.day === day);
+                    if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                    return (
+                      <div key={day}>
+                        {dayWorkouts.map((w, wi) => (
                     <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
                       {!editingWeek ? (
                         <>
@@ -1306,36 +1312,28 @@ export default function AdminPage() {
                     </div>
                   ))}
 
-                  {/* Client-Added Workouts are shown per-day inline */}
-                  {selectedWeek && (() => {
-                    // Group client workouts by day and show them after the last programmed workout for each day
-                    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                    const clientWorkouts = selectedWeek.clientWorkouts || [];
-                    if (clientWorkouts.length === 0) return null;
-                    return days.map(day => {
-                      const dayCWs = clientWorkouts.filter(cw => cw.day === day);
-                      if (dayCWs.length === 0) return null;
-                      return dayCWs.map(cw => (
-                        <div key={cw.id} className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-white font-medium text-sm">{cw.day}</span>
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
-                                <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
-                                {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                        {/* Client-Added Workouts for this day */}
+                        {dayClientWorkouts.map(cw => (
+                          <div key={cw.id} className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                               </div>
-                              {cw.notes && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                  <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
+                                  {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                                </div>
+                                {cw.notes && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                              </div>
+                              {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
-                            {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
                           </div>
-                        </div>
-                      ));
-                    });
-                  })()}
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
                 {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
                 </>)}
