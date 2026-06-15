@@ -318,6 +318,7 @@ export default function DashboardPage() {
   const statsCompleted = statsWorkouts.filter(w => w.completed);
   const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
   const statsMiles = statsCompleted.reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + clientMilesForStats;
+  const statsProgrammedMiles = statsWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
   const statsAvgRpe = () => { const withRpe = statsCompleted.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
 
   const [showSkipDialog, setShowSkipDialog] = useState<string | null>(null);
@@ -380,6 +381,10 @@ export default function DashboardPage() {
     const { type, trainingType, miles, notes } = addWorkoutForm;
     if ((type === "run" || type === "walk") && (!trainingType || !miles)) {
       alert("Run and Walk types require a subtype and distance.");
+      return;
+    }
+    if ((type === "run" || type === "walk") && miles && !/^\d+(\.\d{1,2})?$/.test(miles)) {
+      alert(`Distance must be a number with up to 2 decimal places (e.g. 4.34).`);
       return;
     }
     setSavingClientWorkout(true);
@@ -615,8 +620,9 @@ export default function DashboardPage() {
                   <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}</p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
+              <div className="grid grid-cols-5 gap-3">
+                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}</p><p className="text-gray-500 text-xs">Actual {distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{convertDist(statsProgrammedMiles).toFixed(2)}</p><p className="text-gray-500 text-xs">Programmed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsCompleted.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Completed</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWorkouts.length > 0 ? Math.round((statsCompleted.length / statsWorkouts.length) * 100) : 0}%</p><p className="text-gray-500 text-xs">Completion</p></div>
@@ -672,28 +678,6 @@ export default function DashboardPage() {
                         {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id))}</p><p className="text-gray-500 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
                       </div>
                     </div>
-                    {/* Workout Comments Thread (shows on completed workouts) */}
-                    {workout.completed && workout.type !== "rest" && (
-                      <div className="mt-3 ml-9 pl-3 border-l-2 border-purple-500/30">
-                        {(workoutComments[workout.id] || []).length > 0 && (
-                          <div className="space-y-2 mb-2">
-                            {(workoutComments[workout.id] || []).map(c => (
-                              <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
-                                  <span className="text-gray-600 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                                </div>
-                                <p className="text-gray-300 text-xs">{c.message}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
-                          <button onClick={() => handleSendWorkoutComment(workout.id)} disabled={sendingComment === workout.id || !commentInput[workout.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === workout.id ? '...' : 'Send'}</button>
-                        </div>
-                      </div>
-                    )}
                     {/* Log toggle */}
                     {((!workout.completed && weekOffset === 0) || (workout.type === "rest" && weekOffset === 0)) && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
                       <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
@@ -808,7 +792,7 @@ export default function DashboardPage() {
                       {/* Run/Walk: Miles, Pace, Stress */}
                       {(workout.type === "run" || workout.type === "walk") && (
                       <div className="grid md:grid-cols-3 gap-4 mb-4">
-                        <div><label className="text-gray-400 text-xs block mb-1">Actual Miles</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualMiles", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.2" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Actual {distUnitLabel}</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateWorkoutLog(workout.id, "actualMiles", v); }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.20" /></div>
                         <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 8:45/mi" /></div>
                         <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
                       </div>
@@ -844,13 +828,35 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
                         <button onClick={() => { setExpandedWorkout(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
                         {skipType === "partial" ? (
-                          <button onClick={async () => { await markSkipped(workout.id); setExpandedWorkout(null); }} disabled={savingLog || !skipReason} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Save as Partially Done"}</button>
+                          <button onClick={async () => { if ((workout.type === "run" || workout.type === "walk") && (!workout.log?.actualMiles || !/^\d+(\.\d{1,2})?$/.test(workout.log.actualMiles))) { alert(`Please enter a valid number for Actual ${clientDistanceUnit === "km" ? "KM" : "Miles"} (e.g. 4.34). Only numbers with up to 2 decimal places are allowed.`); return; } await markSkipped(workout.id); setExpandedWorkout(null); }} disabled={savingLog || !skipReason} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Save as Partially Done"}</button>
                         ) : (
-                          <button onClick={async () => { await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete & Save"}</button>
+                          <button onClick={async () => { if ((workout.type === "run" || workout.type === "walk") && (!workout.log?.actualMiles || !/^\d+(\.\d{1,2})?$/.test(workout.log.actualMiles))) { alert(`Please enter a valid number for Actual ${clientDistanceUnit === "km" ? "KM" : "Miles"} (e.g. 4.34). Only numbers with up to 2 decimal places are allowed.`); return; } await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete & Save"}</button>
                         )}
                       </div>
                         </>
                       )}
+                    </div>
+                  )}
+                  {/* Workout Comments Thread (bottom of card) */}
+                  {workout.completed && workout.type !== "rest" && (
+                    <div className="px-5 pb-4 pt-2 border-t border-white/5">
+                      {(workoutComments[workout.id] || []).length > 0 && (
+                        <div className="space-y-2 mb-2">
+                          {(workoutComments[workout.id] || []).map(c => (
+                            <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
+                                <span className="text-gray-600 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              </div>
+                              <p className="text-gray-300 text-xs">{c.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
+                        <button onClick={() => handleSendWorkoutComment(workout.id)} disabled={sendingComment === workout.id || !commentInput[workout.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === workout.id ? '...' : 'Send'}</button>
+                      </div>
                     </div>
                   )}
                 </div>
