@@ -4,6 +4,27 @@ import { useState } from "react";
 
 const updates = [
   {
+    date: "June 16, 2026",
+    items: [
+      { area: "All", text: "Day blocks are now collapsible — click any day to expand/collapse it" },
+      { area: "All", text: "Expand All / Collapse All buttons at the top of the week view" },
+      { area: "All", text: "Default Week View preference in Account Preferences (choose Expanded or Collapsed)" },
+      { area: "All", text: "Each day header now shows the full date (e.g., 16 June 2026)" },
+      { area: "All", text: "Rest days no longer count in the workout total on collapsed headers" },
+      { area: "All", text: "'Go to current week' arrow now points in the right direction depending on past/future" },
+      { area: "Client", text: "Client-added workouts no longer auto-complete — they show as planned until you mark them Done" },
+      { area: "Client", text: "'Client Added' tag renamed to 'Your Added Workout'" },
+      { area: "Client", text: "Stats: 'Workouts Marked' renamed to 'Programmed Workouts'" },
+      { area: "Client", text: "Stats: new 'Your Workouts' column shows completed/total of your own added workouts" },
+      { area: "Admin", text: "Crystal can now add workouts to a day when editing a published week" },
+      { area: "Admin", text: "Stats: 'Workouts Marked' renamed to 'Programmed Workouts'" },
+      { area: "Admin", text: "Stats: new 'Client Workouts' column shows how many the client added" },
+      { area: "Admin", text: "Dashboard now shows Drafts Ready to Publish immediately on first login" },
+      { area: "Admin", text: "Duplicate weeks can no longer be created (database constraint added)" },
+      { area: "Marketing", text: "Added Tracie B.'s client story to the homepage" },
+    ],
+  },
+  {
     date: "June 15, 2026",
     items: [
       { area: "Marketing", text: "Added Tracie B.'s client story to the homepage testimonials" },

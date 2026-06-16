@@ -1259,6 +1259,36 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* What's New */}
+            <details className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <summary className="font-heading text-sm uppercase text-gray-400 cursor-pointer hover:text-white">What&apos;s New</summary>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <p className="text-white text-sm font-medium mb-2">June 16, 2026</p>
+                  <ul className="space-y-1 text-gray-400 text-xs">
+                    <li>• Day blocks are now collapsible — tap any day to expand/collapse</li>
+                    <li>• Expand All / Collapse All buttons at the top of your week</li>
+                    <li>• Set your default view (Expanded or Collapsed) in preferences above</li>
+                    <li>• Each day now shows the full date (e.g., 16 June 2026)</li>
+                    <li>• Your added workouts now show as planned until you mark them Done</li>
+                    <li>• Stats updated: see your programmed workouts and your own added workouts separately</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-medium mb-2">June 15, 2026</p>
+                  <ul className="space-y-1 text-gray-400 text-xs">
+                    <li>• You can now add your own workouts under each day</li>
+                    <li>• Crystal can comment on your completed workouts (you get an email)</li>
+                    <li>• You can reply to Crystal&apos;s comments on any workout</li>
+                    <li>• Rest days no longer require completion — just optional comments</li>
+                    <li>• Workout log simplified: RPE, Sleep, Miles, Pace, Stress, Notes</li>
+                    <li>• Distance preference (Miles/KM) now works correctly everywhere</li>
+                    <li>• Per-workout mi/km toggle to quickly check conversions</li>
+                  </ul>
+                </div>
+              </div>
+            </details>
           </div>
         )}
       </main>
