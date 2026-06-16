@@ -239,7 +239,14 @@ export default function DashboardPage() {
   const getWeekPlan = (offset: number): WeekData | null => {
     const monday = getMondayForOffset(offset);
     const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return weeks.find(w => w.dateRange.startsWith(mondayStr)) || null;
+    // Try exact match first (week starts on Monday)
+    const exact = weeks.find(w => w.dateRange.startsWith(mondayStr));
+    if (exact) return exact;
+    // Try day before (week might start on Sunday)
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() - 1);
+    const sundayStr = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return weeks.find(w => w.dateRange.startsWith(sundayStr)) || null;
   };
 
   // Fetch published weeks from API

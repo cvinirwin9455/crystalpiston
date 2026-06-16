@@ -615,7 +615,13 @@ export default function AdminPage() {
   const getAdminWeekPlan = (offset: number): WeekData | null => {
     const monday = getAdminMondayForOffset(offset);
     const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return publishedWeeks.find(w => w.dateRange.startsWith(mondayStr)) || null;
+    const exact = publishedWeeks.find(w => w.dateRange.startsWith(mondayStr));
+    if (exact) return exact;
+    // Try day before (week might start on Sunday)
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() - 1);
+    const sundayStr = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return publishedWeeks.find(w => w.dateRange.startsWith(sundayStr)) || null;
   };
 
   const selectedWeek = getAdminWeekPlan(adminWeekOffset);
