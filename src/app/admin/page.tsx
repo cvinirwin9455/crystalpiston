@@ -1444,7 +1444,7 @@ export default function AdminPage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-3">
                             <span className="text-white font-heading text-sm uppercase w-24">{w.day}</span>
-                            <select value={editedWorkouts[w.id]?.type || w.type} onChange={(e) => updateEditedWorkout(w.id, 'type', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                            <select value={editedWorkouts[w.id]?.type || w.type} onChange={(e) => { updateEditedWorkout(w.id, 'type', e.target.value); if (e.target.value === 'rest') { updateEditedWorkout(w.id, 'trainingType', 'Rest'); updateEditedWorkout(w.id, 'miles', ''); } else if (editedWorkouts[w.id]?.trainingType === 'Rest') { updateEditedWorkout(w.id, 'trainingType', ''); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
                               <option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
                             </select>
                             {(editedWorkouts[w.id]?.type || w.type) === "run" && (
