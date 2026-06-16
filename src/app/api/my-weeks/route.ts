@@ -79,18 +79,23 @@ export async function GET() {
   // Fetch client-added workouts for these weeks
   let clientWorkoutsByWeekId = new Map<string, any[]>()
   if (weekIds.length > 0) {
-    const { data: clientWorkouts } = await adminClient
-      .from('client_workouts')
-      .select('id, week_id, day, type, training_type, miles, notes, created_at')
-      .in('week_id', weekIds)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-    
-    for (const cw of clientWorkouts || []) {
-      if (!clientWorkoutsByWeekId.has(cw.week_id)) {
-        clientWorkoutsByWeekId.set(cw.week_id, [])
+    try {
+      const { data: clientWorkouts } = await adminClient
+        .from('client_workouts')
+        .select('id, week_id, day, type, training_type, miles, notes, created_at')
+        .in('week_id', weekIds)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+      
+      for (const cw of clientWorkouts || []) {
+        if (!clientWorkoutsByWeekId.has(cw.week_id)) {
+          clientWorkoutsByWeekId.set(cw.week_id, [])
+        }
+        clientWorkoutsByWeekId.get(cw.week_id)!.push(cw)
       }
-      clientWorkoutsByWeekId.get(cw.week_id)!.push(cw)
+    } catch (err) {
+      // Table might not exist yet if migration hasn't been run
+      console.error('Failed to fetch client workouts (table may not exist):', err)
     }
   }
 
