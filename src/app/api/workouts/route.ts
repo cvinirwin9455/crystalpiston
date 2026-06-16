@@ -8,7 +8,16 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
+  // Use service role to bypass RLS for admin operations
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Check role using service role client (bypasses RLS on users table)
+  const { data: profile } = await adminClient
     .from('users')
     .select('role')
     .eq('id', user.id)
