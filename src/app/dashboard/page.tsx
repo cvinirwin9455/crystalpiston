@@ -629,8 +629,8 @@ export default function DashboardPage() {
               </div>
             )}
             {weekOffset !== 0 && (
-              <div className="text-center">
-                <button onClick={() => setWeekOffset(0)} className="text-accent text-xs hover:underline">← Go to current week</button>
+              <div className={weekOffset < 0 ? "text-right" : "text-left"}>
+                <button onClick={() => setWeekOffset(0)} className="text-accent text-xs hover:underline">{weekOffset < 0 ? "Go to current week →" : "← Go to current week"}</button>
               </div>
             )}
 
@@ -702,7 +702,7 @@ export default function DashboardPage() {
                 const weekStart = getMondayForOffset(weekOffset);
                 const dayDate = new Date(weekStart);
                 dayDate.setDate(weekStart.getDate() + dayIndex);
-                const dayDateStr = `${dayDate.getDate()}/${dayDate.getMonth() + 1}/${dayDate.getFullYear()}`;
+                const dayDateStr = dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">

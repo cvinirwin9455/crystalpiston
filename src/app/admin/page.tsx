@@ -1310,8 +1310,8 @@ export default function AdminPage() {
                   </div>
                 )}
                 {adminWeekOffset !== 0 && (
-                  <div className="text-center">
-                    <button onClick={() => setAdminWeekOffset(0)} className="text-accent text-xs hover:underline">← Go to current week</button>
+                  <div className={adminWeekOffset < 0 ? "text-right" : "text-left"}>
+                    <button onClick={() => setAdminWeekOffset(0)} className="text-accent text-xs hover:underline">{adminWeekOffset < 0 ? "Go to current week →" : "← Go to current week"}</button>
                   </div>
                 )}
 
@@ -1366,7 +1366,7 @@ export default function AdminPage() {
                     const adminWeekStart = getAdminMondayForOffset(adminWeekOffset);
                     const adminDayDate = new Date(adminWeekStart);
                     adminDayDate.setDate(adminWeekStart.getDate() + adminDayIndex);
-                    const adminDayDateStr = `${adminDayDate.getDate()}/${adminDayDate.getMonth() + 1}/${adminDayDate.getFullYear()}`;
+                    const adminDayDateStr = adminDayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                     return (
                       <div key={day} className="border border-white/10 rounded-xl overflow-hidden">
                         <button onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
