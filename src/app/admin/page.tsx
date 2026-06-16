@@ -1358,15 +1358,21 @@ export default function AdminPage() {
                     const dayWorkouts = selectedWeek?.workouts.filter(w => w.day === day) || [];
                     const dayClientWorkouts = (selectedWeek?.clientWorkouts || []).filter(cw => cw.day === day);
                     if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
-                    const totalWorkouts = dayWorkouts.length + dayClientWorkouts.length;
+                    const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                     const daySummary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
                     const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
                     const isAdminDayExpanded = adminExpandedDays[day] ?? adminDefaultExpanded;
+                    const adminDayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
+                    const adminWeekStart = getAdminMondayForOffset(adminWeekOffset);
+                    const adminDayDate = new Date(adminWeekStart);
+                    adminDayDate.setDate(adminWeekStart.getDate() + adminDayIndex);
+                    const adminDayDateStr = `${adminDayDate.getDate()}/${adminDayDate.getMonth() + 1}/${adminDayDate.getFullYear()}`;
                     return (
                       <div key={day} className="border border-white/10 rounded-xl overflow-hidden">
                         <button onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
+                            <span className="text-gray-500 text-xs ml-2">{adminDayDateStr}</span>
                             {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${convertDist(dayMiles).toFixed(1)} ${distUnitShort}` : ''}</span>}
                           </div>
                           <div className="flex items-center gap-2">

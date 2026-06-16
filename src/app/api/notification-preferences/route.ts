@@ -77,7 +77,7 @@ export async function PUT(request: Request) {
     .from('notification_preferences')
     .select('id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (existing) {
     const { error } = await supabase

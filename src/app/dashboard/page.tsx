@@ -693,10 +693,16 @@ export default function DashboardPage() {
                 const dayWorkouts = currentWeek.workouts.filter(w => w.day === day);
                 const dayClientWorkouts = (currentWeek.clientWorkouts || []).filter(cw => cw.day === day);
                 if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
-                const totalWorkouts = dayWorkouts.length + dayClientWorkouts.length;
+                const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                 const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
                 const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
                 const isExpanded = expandedDays[day] ?? defaultExpanded;
+                // Calculate date for this day
+                const dayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
+                const weekStart = getMondayForOffset(weekOffset);
+                const dayDate = new Date(weekStart);
+                dayDate.setDate(weekStart.getDate() + dayIndex);
+                const dayDateStr = `${dayDate.getDate()}/${dayDate.getMonth() + 1}/${dayDate.getFullYear()}`;
 
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
@@ -704,6 +710,7 @@ export default function DashboardPage() {
                     <button onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                       <div>
                         <span className="text-white font-heading uppercase text-sm">{day}</span>
+                        <span className="text-gray-500 text-xs ml-2">{dayDateStr}</span>
                         {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -940,7 +947,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Added Workout</span>
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                               </div>
