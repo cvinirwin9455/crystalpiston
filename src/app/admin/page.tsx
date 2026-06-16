@@ -402,9 +402,12 @@ export default function AdminPage() {
   }, [fetchClients]);
 
   // Fetch all drafts on initial load so dashboard shows them immediately
+  const draftsLoadedRef = useRef(false);
   useEffect(() => {
+    if (draftsLoadedRef.current) return;
     const fetchAllDrafts = async () => {
       if (clients.length === 0) return;
+      draftsLoadedRef.current = true;
       const clientsWithIds = clients.filter(c => c.clientId && c.weeks.length === 0);
       if (clientsWithIds.length === 0) return;
       for (const client of clientsWithIds) {
