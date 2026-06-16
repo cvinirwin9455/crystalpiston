@@ -30,6 +30,7 @@ export async function GET() {
       notificationEmails: prefs?.notification_emails || '',
       theme: prefs?.theme || 'dark',
       distanceUnit: prefs?.distance_unit || 'mi',
+      defaultExpanded: prefs?.default_expanded ?? true,
     })
   }
 
@@ -39,6 +40,7 @@ export async function GET() {
     messages: prefs?.messages || 'immediate',
     theme: prefs?.theme || 'dark',
     distanceUnit: prefs?.distance_unit || 'mi',
+    defaultExpanded: prefs?.default_expanded ?? true,
   })
 }
 
@@ -49,7 +51,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit } = body
+  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit, defaultExpanded } = body
 
   // Build updates object
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
@@ -69,6 +71,7 @@ export async function PUT(request: Request) {
   // Shared fields
   if (theme !== undefined) updates.theme = theme
   if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
+  if (defaultExpanded !== undefined) updates.default_expanded = defaultExpanded
 
   const { data: existing } = await supabase
     .from('notification_preferences')
@@ -98,6 +101,7 @@ export async function PUT(request: Request) {
         notification_emails: notificationEmails || null,
         theme: theme || 'dark',
         distance_unit: distanceUnit || 'mi',
+        default_expanded: defaultExpanded ?? true,
       })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

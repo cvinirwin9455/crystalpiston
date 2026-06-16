@@ -923,11 +923,11 @@ export default function DashboardPage() {
 
                     {/* Client-Added Workouts for this day */}
                     {dayClientWorkouts.map(cw => (
-                      <div key={cw.id} className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 mt-2">
+                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${completedClientWorkouts[cw.id] ? 'bg-green-500 border-green-500' : 'border-cyan-500'}`}>
+                              {completedClientWorkouts[cw.id] ? <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -936,6 +936,20 @@ export default function DashboardPage() {
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                               </div>
                               {cw.notes && <p className="text-gray-400 text-sm">{cw.notes}</p>}
+                              {/* Complete/Incomplete buttons */}
+                              {weekOffset === 0 && !completedClientWorkouts[cw.id] && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: true }))} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Done</button>
+                                  <input type="text" value={clientWorkoutNotes[cw.id] || ''} onChange={(e) => setClientWorkoutNotes(prev => ({ ...prev, [cw.id]: e.target.value }))} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-cyan-500" placeholder="Comment (optional)" />
+                                </div>
+                              )}
+                              {completedClientWorkouts[cw.id] && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className="text-green-400 text-xs font-medium">Completed</span>
+                                  {clientWorkoutNotes[cw.id] && <span className="text-gray-400 text-xs">— {clientWorkoutNotes[cw.id]}</span>}
+                                  <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false }))} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3">

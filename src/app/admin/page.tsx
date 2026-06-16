@@ -397,6 +397,46 @@ export default function AdminPage() {
     fetchClients();
   }, [fetchClients]);
 
+  // Fetch all drafts on initial load so dashboard shows them immediately
+  useEffect(() => {
+    const fetchAllDrafts = async () => {
+      if (clients.length === 0) return;
+      const clientsWithIds = clients.filter(c => c.clientId && c.weeks.length === 0);
+      if (clientsWithIds.length === 0) return;
+      for (const client of clientsWithIds) {
+        try {
+          const res = await fetch(`/api/weeks?client_id=${client.clientId}`);
+          if (res.ok) {
+            const data = await res.json();
+            const drafts = data.filter((w: any) => w.status === 'draft');
+            if (drafts.length > 0) {
+              const mapped = drafts.map((w: any) => ({
+                weekId: w.weekId,
+                label: w.dateRange,
+                dateRange: w.dateRange,
+                focus: w.focus || '',
+                coachMessage: w.coachMessage || '',
+                status: 'draft' as const,
+                clientWorkouts: [],
+                workouts: (w.workouts || []).map((wo: any) => ({
+                  id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
+                  trainingType: wo.trainingType || '', title: wo.title || '',
+                  miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
+                  description: wo.description || '', paceTarget: wo.paceTarget || '',
+                  location: wo.location || '', coachNotes: wo.coachNotes || '',
+                  completed: wo.completed || false, status: wo.status || undefined,
+                  skipReason: wo.skipReason || undefined, log: wo.log || undefined,
+                })),
+              }));
+              setClients(prev => prev.map(c => c.id === client.id ? { ...c, weeks: [...c.weeks, ...mapped] } : c));
+            }
+          }
+        } catch (err) { console.error('Failed to fetch drafts for', client.name, err); }
+      }
+    };
+    fetchAllDrafts();
+  }, [clients.length]);
+
   // Create new client via API
   const handleCreateClient = async () => {
     setCreateError("");
@@ -1421,6 +1461,13 @@ export default function AdminPage() {
                             </div>
                           </div>
                         ))}
+                        {/* Add workout to day button (edit mode) */}
+                        {editingWeek && (
+                          <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/weeks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: client.clientId, dateRange: selectedWeek.dateRange, focus: '', coachMessage: '', status: 'published', workouts: [{ day, type: 'run', trainingType: '', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] }) }); if (res.ok) { await fetchWeeks(client.clientId); enterEditMode(); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            Add workout to {day}
+                          </button>
+                        )}
                       </div>
                     );
                   })}
