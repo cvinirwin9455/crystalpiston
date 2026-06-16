@@ -13,6 +13,8 @@ export default function DashboardPage() {
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [defaultExpanded, setDefaultExpanded] = useState(true);
 
   // Fetch unread message count
   useEffect(() => {
@@ -131,6 +133,7 @@ export default function DashboardPage() {
           setNotifPlanPublished(data.planPublished);
           setNotifMessages(data.messages);
           if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
+          if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
         console.error('Failed to fetch notification prefs:', err);
@@ -169,6 +172,19 @@ export default function DashboardPage() {
       });
     } catch (err) {
       console.error('Failed to save distance unit:', err);
+    }
+  };
+
+  const saveDefaultExpanded = async (expanded: boolean) => {
+    setDefaultExpanded(expanded);
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ defaultExpanded: expanded }),
+      });
+    } catch (err) {
+      console.error('Failed to save default expanded:', err);
     }
   };
 
@@ -391,6 +407,8 @@ export default function DashboardPage() {
   const [addWorkoutForm, setAddWorkoutForm] = useState({ type: "run", trainingType: "", miles: "", notes: "" });
   const [savingClientWorkout, setSavingClientWorkout] = useState(false);
   const [deletingClientWorkout, setDeletingClientWorkout] = useState<string | null>(null);
+  const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
+  const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
 
   const handleAddClientWorkout = async (day: string) => {
     if (!currentWeek) return;
@@ -654,14 +672,40 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Workout Cards - Grouped by Day */}
-            <div className="space-y-4">
+            {/* Workout Cards - Grouped by Day (Collapsible) */}
+            <div className="space-y-3">
+              {/* Expand/Collapse All */}
+              <div className="flex justify-end mb-2">
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+              </div>
+
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
                 const dayWorkouts = currentWeek.workouts.filter(w => w.day === day);
                 const dayClientWorkouts = (currentWeek.clientWorkouts || []).filter(cw => cw.day === day);
                 if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                const totalWorkouts = dayWorkouts.length + dayClientWorkouts.length;
+                const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
+                const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+                const isExpanded = expandedDays[day] ?? defaultExpanded;
+
                 return (
-                  <div key={day}>
+                  <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
+                    {/* Day Header - always visible */}
+                    <button onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
+                      <div>
+                        <span className="text-white font-heading uppercase text-sm">{day}</span>
+                        {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                        <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </button>
+
+                    {/* Day Content - only when expanded */}
+                    {isExpanded && (
+                      <div className="p-4 space-y-3">
                     {/* Crystal's programmed workouts for this day */}
                     {dayWorkouts.map((workout) => (
                 <div key={workout.id} className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
@@ -972,6 +1016,8 @@ export default function DashboardPage() {
                         Add your own workout
                       </button>
                     ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1118,6 +1164,16 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   <button onClick={() => saveDistanceUnit("mi")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                   <button onClick={() => saveDistanceUnit("km")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                </div>
+              </div>
+
+              {/* Default Week View */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Default Week View</p>
+                <p className="text-gray-500 text-xs mb-3">Choose whether day blocks are expanded or collapsed by default.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => saveDefaultExpanded(true)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
+                  <button onClick={() => saveDefaultExpanded(false)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
                 </div>
               </div>
 
