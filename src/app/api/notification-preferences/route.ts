@@ -73,39 +73,15 @@ export async function PUT(request: Request) {
   if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
   if (defaultExpanded !== undefined) updates.default_expanded = defaultExpanded
 
-  const { data: existing } = await supabase
+  // Upsert: update if exists, insert if not
+  const { error } = await supabase
     .from('notification_preferences')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle()
+    .upsert({
+      user_id: user.id,
+      ...updates,
+    }, { onConflict: 'user_id' })
 
-  if (existing) {
-    const { error } = await supabase
-      .from('notification_preferences')
-      .update(updates)
-      .eq('user_id', user.id)
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  } else {
-    const { error } = await supabase
-      .from('notification_preferences')
-      .insert({
-        user_id: user.id,
-        plan_published: planPublished !== undefined ? planPublished : true,
-        messages: messages || 'immediate',
-        workout_completed: workoutCompleted || 'immediate',
-        workout_skipped: workoutSkipped || 'immediate',
-        workout_partial: workoutPartial || 'immediate',
-        client_message: clientMessage || 'immediate',
-        daily_summary: dailySummary || 'off',
-        notification_emails: notificationEmails || null,
-        theme: theme || 'dark',
-        distance_unit: distanceUnit || 'mi',
-        default_expanded: defaultExpanded ?? true,
-      })
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }
