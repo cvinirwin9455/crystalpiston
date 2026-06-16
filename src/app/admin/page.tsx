@@ -1384,7 +1384,7 @@ export default function AdminPage() {
                         <div className="p-3 space-y-3">
                         {dayWorkouts.map((w, wi) => (
                     <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
-                      {!editingWeek ? (
+                      {(!editingWeek || w.completed) ? (
                         <>
                           <div className="flex items-center gap-4">
                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${w.status === "complete" ? "bg-green-500 border-green-500" : w.status === "partial" ? "bg-yellow-500 border-yellow-500" : w.status === "skipped" ? "bg-red-500 border-red-500" : w.completed ? "bg-green-500 border-green-500" : "border-gray-500"}`}>
@@ -1419,6 +1419,9 @@ export default function AdminPage() {
                               </div>
                               {w.skipReason && <p className="text-yellow-400 text-xs mt-2"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
                             </div>
+                          )}
+                          {editingWeek && w.completed && (
+                            <p className="text-gray-600 text-xs mt-2 italic">This workout has been completed and cannot be edited.</p>
                           )}
                           {/* Workout Comments Thread */}
                           {w.completed && (
