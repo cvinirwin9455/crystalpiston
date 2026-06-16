@@ -21,6 +21,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Use service role to bypass RLS for admin writes
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
   const workoutId = params.id
   const body = await request.json()
   const { day, type, trainingType, title, miles, description, paceTarget, location, coachNotes, sortOrder } = body
@@ -37,7 +45,7 @@ export async function PATCH(
   if (coachNotes !== undefined) updates.coach_notes = coachNotes
   if (sortOrder !== undefined) updates.sort_order = sortOrder
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('workouts')
     .update(updates)
     .eq('id', workoutId)

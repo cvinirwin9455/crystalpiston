@@ -25,7 +25,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'weekId and day are required' }, { status: 400 })
   }
 
-  const { data: workout, error } = await supabase
+  // Use service role to bypass RLS for admin writes
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data: workout, error } = await adminClient
     .from('workouts')
     .insert({
       week_id: weekId,
