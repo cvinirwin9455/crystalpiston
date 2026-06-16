@@ -38,6 +38,8 @@ export default function AdminPage() {
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
+  const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
+  const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
   // Fetch admin notification preferences
   useEffect(() => {
@@ -55,6 +57,7 @@ export default function AdminPage() {
           });
           setNotifEmail(data.notificationEmails || '');
           if (data.distanceUnit) setAdminDistanceUnit(data.distanceUnit);
+          if (data.defaultExpanded !== undefined) setAdminDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
         console.error('Failed to fetch admin notification prefs:', err);
@@ -66,7 +69,7 @@ export default function AdminPage() {
   }, []);
 
   // Save admin notification preferences (called on every change)
-  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string) => {
+  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean) => {
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
@@ -79,6 +82,7 @@ export default function AdminPage() {
           dailySummary: updatedNotifs.dailySummary,
           ...(email !== undefined ? { notificationEmails: email } : {}),
           ...(unit !== undefined ? { distanceUnit: unit } : {}),
+          ...(expanded !== undefined ? { defaultExpanded: expanded } : {}),
         }),
       });
     } catch (err) {
@@ -1335,12 +1339,33 @@ export default function AdminPage() {
 
                 {/* Workouts */}
                 <div className="space-y-3">
+                  {/* Expand/Collapse All */}
+                  <div className="flex justify-end mb-2">
+                    <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setAdminExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
+                    <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setAdminExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+                  </div>
                   {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
                     const dayWorkouts = selectedWeek?.workouts.filter(w => w.day === day) || [];
                     const dayClientWorkouts = (selectedWeek?.clientWorkouts || []).filter(cw => cw.day === day);
                     if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                    const totalWorkouts = dayWorkouts.length + dayClientWorkouts.length;
+                    const daySummary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
+                    const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+                    const isAdminDayExpanded = adminExpandedDays[day] ?? adminDefaultExpanded;
                     return (
-                      <div key={day}>
+                      <div key={day} className="border border-white/10 rounded-xl overflow-hidden">
+                        <button onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
+                          <div>
+                            <span className="text-white font-heading uppercase text-sm">{day}</span>
+                            {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${convertDist(dayMiles).toFixed(1)} ${distUnitShort}` : ''}</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </div>
+                        </button>
+                        {isAdminDayExpanded && (
+                        <div className="p-3 space-y-3">
                         {dayWorkouts.map((w, wi) => (
                     <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
                       {!editingWeek ? (
@@ -1463,11 +1488,13 @@ export default function AdminPage() {
                         ))}
                         {/* Add workout to day button (edit mode) */}
                         {editingWeek && (
-                          <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/weeks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: client.clientId, dateRange: selectedWeek.dateRange, focus: '', coachMessage: '', status: 'published', workouts: [{ day, type: 'run', trainingType: '', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] }) }); if (res.ok) { await fetchWeeks(client.clientId); enterEditMode(); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
+                          <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/workouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weekId: selectedWeek.weekId, day, type: 'run', trainingType: '', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', sortOrder: 99 }) }); if (res.ok) { await fetchWeeks(client.clientId); enterEditMode(); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                             Add workout to {day}
                           </button>
                         )}
+                      </div>
+                    )}
                       </div>
                     );
                   })}
@@ -1832,6 +1859,16 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDistanceUnit("mi"); saveAdminNotifPrefs(notifications, undefined, "mi"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                     <button onClick={() => { setAdminDistanceUnit("km"); saveAdminNotifPrefs(notifications, undefined, "km"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                  </div>
+                </div>
+
+                {/* Default Week View Preference */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Default Week View</h3>
+                  <p className="text-gray-500 text-xs mb-4">Choose whether day blocks start expanded or collapsed when viewing a published week.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setAdminDefaultExpanded(true); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, true); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
+                    <button onClick={() => { setAdminDefaultExpanded(false); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, false); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
                   </div>
                 </div>
 

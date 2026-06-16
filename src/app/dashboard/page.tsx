@@ -177,6 +177,7 @@ export default function DashboardPage() {
 
   const saveDefaultExpanded = async (expanded: boolean) => {
     setDefaultExpanded(expanded);
+    setExpandedDays({}); // Reset explicit overrides so new default takes effect
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
@@ -334,13 +335,13 @@ export default function DashboardPage() {
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
   const currentWeek = getWeekPlan(weekOffset);
-  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
+  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
   // Convert all programmed miles to client's preferred unit before summing
   const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
   const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
-  const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk');
+  const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]);
 
   const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []).filter(w => w.type !== "rest") : allWorkouts.filter(w => w.type !== "rest");
   const statsMarked = statsWorkouts.filter(w => w.completed);
