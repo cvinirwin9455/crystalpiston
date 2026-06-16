@@ -13,6 +13,8 @@ export default function DashboardPage() {
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [defaultExpanded, setDefaultExpanded] = useState(true);
 
   // Fetch unread message count
   useEffect(() => {
@@ -131,6 +133,7 @@ export default function DashboardPage() {
           setNotifPlanPublished(data.planPublished);
           setNotifMessages(data.messages);
           if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
+          if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
         console.error('Failed to fetch notification prefs:', err);
@@ -169,6 +172,20 @@ export default function DashboardPage() {
       });
     } catch (err) {
       console.error('Failed to save distance unit:', err);
+    }
+  };
+
+  const saveDefaultExpanded = async (expanded: boolean) => {
+    setDefaultExpanded(expanded);
+    setExpandedDays({}); // Reset explicit overrides so new default takes effect
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ defaultExpanded: expanded }),
+      });
+    } catch (err) {
+      console.error('Failed to save default expanded:', err);
     }
   };
 
@@ -323,15 +340,17 @@ export default function DashboardPage() {
   };
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
+  const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
+  const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
 
   const currentWeek = getWeekPlan(weekOffset);
-  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
+  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
   // Convert all programmed miles to client's preferred unit before summing
   const weeklyTotal = currentWeek ? currentWeek.workouts.reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
   const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
-  const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk');
+  const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]);
 
   const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []).filter(w => w.type !== "rest") : allWorkouts.filter(w => w.type !== "rest");
   const statsMarked = statsWorkouts.filter(w => w.completed);
@@ -610,8 +629,8 @@ export default function DashboardPage() {
               </div>
             )}
             {weekOffset !== 0 && (
-              <div className="text-center">
-                <button onClick={() => setWeekOffset(0)} className="text-accent text-xs hover:underline">← Go to current week</button>
+              <div className={weekOffset < 0 ? "text-right" : "text-left"}>
+                <button onClick={() => setWeekOffset(0)} className="text-accent text-xs hover:underline">{weekOffset < 0 ? "Go to current week →" : "← Go to current week"}</button>
               </div>
             )}
 
@@ -643,9 +662,10 @@ export default function DashboardPage() {
                   <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-5 gap-3">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-500 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Workouts Marked</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Programmed Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).length}</p><p className="text-gray-500 text-xs">Your Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
               </div>
@@ -661,14 +681,47 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Workout Cards - Grouped by Day */}
-            <div className="space-y-4">
+            {/* Workout Cards - Grouped by Day (Collapsible) */}
+            <div className="space-y-3">
+              {/* Expand/Collapse All */}
+              <div className="flex justify-end mb-2">
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+              </div>
+
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
                 const dayWorkouts = currentWeek.workouts.filter(w => w.day === day);
                 const dayClientWorkouts = (currentWeek.clientWorkouts || []).filter(cw => cw.day === day);
                 if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
+                const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
+                const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+                const isExpanded = expandedDays[day] ?? defaultExpanded;
+                // Calculate date for this day
+                const dayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
+                const weekStart = getMondayForOffset(weekOffset);
+                const dayDate = new Date(weekStart);
+                dayDate.setDate(weekStart.getDate() + dayIndex);
+                const dayDateStr = dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
                 return (
-                  <div key={day}>
+                  <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
+                    {/* Day Header - always visible */}
+                    <button onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
+                      <div>
+                        <span className="text-white font-heading uppercase text-sm">{day}</span>
+                        <span className="text-gray-500 text-xs ml-2">{dayDateStr}</span>
+                        {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                        <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </button>
+
+                    {/* Day Content - only when expanded */}
+                    {isExpanded && (
+                      <div className="p-4 space-y-3">
                     {/* Crystal's programmed workouts for this day */}
                     {dayWorkouts.map((workout) => (
                 <div key={workout.id} className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
@@ -886,19 +939,33 @@ export default function DashboardPage() {
 
                     {/* Client-Added Workouts for this day */}
                     {dayClientWorkouts.map(cw => (
-                      <div key={cw.id} className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 mt-2">
+                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${completedClientWorkouts[cw.id] ? 'bg-green-500 border-green-500' : 'border-cyan-500'}`}>
+                              {completedClientWorkouts[cw.id] ? <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Added Workout</span>
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                               </div>
                               {cw.notes && <p className="text-gray-400 text-sm">{cw.notes}</p>}
+                              {/* Complete/Incomplete buttons */}
+                              {weekOffset === 0 && !completedClientWorkouts[cw.id] && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: true }))} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Done</button>
+                                  <input type="text" value={clientWorkoutNotes[cw.id] || ''} onChange={(e) => setClientWorkoutNotes(prev => ({ ...prev, [cw.id]: e.target.value }))} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-cyan-500" placeholder="Comment (optional)" />
+                                </div>
+                              )}
+                              {completedClientWorkouts[cw.id] && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className="text-green-400 text-xs font-medium">Completed</span>
+                                  {clientWorkoutNotes[cw.id] && <span className="text-gray-400 text-xs">— {clientWorkoutNotes[cw.id]}</span>}
+                                  <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false }))} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -979,6 +1046,8 @@ export default function DashboardPage() {
                         Add your own workout
                       </button>
                     ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1125,6 +1194,16 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   <button onClick={() => saveDistanceUnit("mi")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                   <button onClick={() => saveDistanceUnit("km")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                </div>
+              </div>
+
+              {/* Default Week View */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Default Week View</p>
+                <p className="text-gray-500 text-xs mb-3">Choose whether day blocks are expanded or collapsed by default.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => saveDefaultExpanded(true)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
+                  <button onClick={() => saveDefaultExpanded(false)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
                 </div>
               </div>
 
