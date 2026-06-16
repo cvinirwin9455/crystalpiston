@@ -1248,9 +1248,10 @@ export default function AdminPage() {
                   <button onClick={() => setAdminStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${adminStatsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-5 gap-3">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? displayMilesCompleted.toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? displayMilesProgrammed.toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Workouts Marked</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Programmed Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(selectedWeek?.clientWorkouts || []).length}</p><p className="text-gray-500 text-xs">Client Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
               </div>
