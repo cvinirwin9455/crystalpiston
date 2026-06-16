@@ -333,6 +333,8 @@ export default function DashboardPage() {
   };
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
+  const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
+  const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
 
   const currentWeek = getWeekPlan(weekOffset);
   const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
@@ -408,8 +410,6 @@ export default function DashboardPage() {
   const [addWorkoutForm, setAddWorkoutForm] = useState({ type: "run", trainingType: "", miles: "", notes: "" });
   const [savingClientWorkout, setSavingClientWorkout] = useState(false);
   const [deletingClientWorkout, setDeletingClientWorkout] = useState<string | null>(null);
-  const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
-  const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
 
   const handleAddClientWorkout = async (day: string) => {
     if (!currentWeek) return;
