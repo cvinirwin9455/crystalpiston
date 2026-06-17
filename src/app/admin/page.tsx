@@ -524,7 +524,11 @@ export default function AdminPage() {
 
   const selectedClientWeeks = selectedClientData?.weeks || [];
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
-  const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft");
+  const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft").sort((a, b) => {
+    const dateA = new Date(a.dateRange.split(' - ')[0] + ', ' + new Date().getFullYear());
+    const dateB = new Date(b.dateRange.split(' - ')[0] + ', ' + new Date().getFullYear());
+    return dateA.getTime() - dateB.getTime();
+  });
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
@@ -1996,7 +2000,14 @@ export default function AdminPage() {
 
             {/* Action Items */}
             {(() => {
-              const allDrafts = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "draft").map(w => ({ client: c, week: w })));
+              const allDrafts = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "draft").map(w => ({ client: c, week: w }))).sort((a, b) => {
+                // Sort by date first
+                const dateA = new Date(a.week.dateRange.split(' - ')[0] + ', ' + new Date().getFullYear());
+                const dateB = new Date(b.week.dateRange.split(' - ')[0] + ', ' + new Date().getFullYear());
+                if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
+                // Then alphabetically by client first name
+                return a.client.name.localeCompare(b.client.name);
+              });
               const unpaidClients = clients.filter(c => c.status === "active" && c.owed - c.paid > 0);
               return (
                 <>
