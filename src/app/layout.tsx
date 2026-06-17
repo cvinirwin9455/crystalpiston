@@ -25,7 +25,33 @@ export const metadata: Metadata = {
     "5K training",
     "Missouri running coach",
     "performance coaching",
+    "Southwest Missouri running",
+    "half marathon training",
+    "marathon coach",
+    "couch to 5K",
+    "trail running coach",
+    "running accountability",
   ],
+  openGraph: {
+    title: "Pistol Performance Coaching | Crystal - Running Coach",
+    description: "From 5K to 100 miles. Whether you're getting off the couch or breaking through a plateau, Crystal helps you set goals and crush them.",
+    url: "https://www.crystalpistolperformance.com",
+    siteName: "Pistol Performance Coaching",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pistol Performance Coaching | Crystal - Running Coach",
+    description: "From 5K to 100 miles. Crystal helps you set goals and crush them. Southwest Missouri running coach.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: "https://www.crystalpistolperformance.com",
+  },
 };
 
 export default function RootLayout({
@@ -36,6 +62,28 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "LocalBusiness",
+              "name": "Pistol Performance Coaching",
+              "description": "Running coach serving Southwest Missouri. From 5K to 100 miles — personalized training plans, group runs, and accountability coaching.",
+              "url": "https://www.crystalpistolperformance.com",
+              "areaServed": {
+                "@type": "GeoCircle",
+                "geoMidpoint": { "@type": "GeoCoordinates", "latitude": 36.7, "longitude": -93.4 },
+                "geoRadius": "80000"
+              },
+              "address": { "@type": "PostalAddress", "addressRegion": "MO", "addressCountry": "US" },
+              "priceRange": "$$",
+              "serviceType": ["Running Coach", "Trail Running Coach", "Marathon Training", "Ultra Marathon Training", "5K Training"],
+              "founder": { "@type": "Person", "name": "Crystal" },
+              "sameAs": []
+            }),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

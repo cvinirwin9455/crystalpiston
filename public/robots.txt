@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /login
+Disallow: /set-password
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /auth/
+
+Sitemap: https://www.crystalpistolperformance.com/sitemap.xml
