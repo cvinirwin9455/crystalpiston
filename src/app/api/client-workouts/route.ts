@@ -127,3 +127,33 @@ export async function DELETE(request: Request) {
 
   return NextResponse.json({ success: true })
 }
+
+
+// PATCH /api/client-workouts - Mark a client-added workout as complete/incomplete
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json()
+  const { id, completed, notes } = body
+
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  }
+
+  const updates: Record<string, any> = {}
+  if (completed !== undefined) updates.completed = completed
+  if (notes !== undefined) updates.completed_notes = notes
+
+  // RLS ensures only the owner can update
+  const { error } = await supabase
+    .from('client_workouts')
+    .update(updates)
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
+}

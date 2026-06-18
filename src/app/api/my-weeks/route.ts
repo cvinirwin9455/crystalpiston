@@ -117,6 +117,8 @@ export async function GET() {
         notes: cw.notes,
         createdAt: cw.created_at,
         isClientAdded: true,
+        completed: cw.completed || false,
+        completedNotes: cw.completed_notes || null,
       })),
       workouts: weekWorkouts.map(wo => {
         const log = logsByWorkoutId.get(wo.id)

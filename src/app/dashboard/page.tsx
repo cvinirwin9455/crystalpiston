@@ -5,7 +5,7 @@ import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
-type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; };
+type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 
 export default function DashboardPage() {
@@ -271,6 +271,8 @@ export default function DashboardPage() {
               notes: cw.notes,
               createdAt: cw.createdAt,
               isClientAdded: true as const,
+              completed: cw.completed || false,
+              completedNotes: cw.completedNotes || cw.completed_notes || null,
             })),
             workouts: (w.workouts || []).map((wo: any) => ({
               id: wo.id,
@@ -292,6 +294,18 @@ export default function DashboardPage() {
             })),
           }));
           setWeeks(mapped);
+
+          // Initialize completedClientWorkouts from loaded data
+          const completedMap: Record<string, boolean> = {};
+          const notesMap: Record<string, string> = {};
+          for (const w of mapped) {
+            for (const cw of w.clientWorkouts || []) {
+              if (cw.completed) completedMap[cw.id] = true;
+              if (cw.completedNotes) notesMap[cw.id] = cw.completedNotes;
+            }
+          }
+          setCompletedClientWorkouts(prev => ({ ...prev, ...completedMap }));
+          setClientWorkoutNotes(prev => ({ ...prev, ...notesMap }));
           
           // Calculate navigation bounds based on published plans
           const today = new Date();
@@ -957,7 +971,7 @@ export default function DashboardPage() {
                               {/* Complete/Incomplete buttons */}
                               {weekOffset === 0 && !completedClientWorkouts[cw.id] && (
                                 <div className="mt-2 flex items-center gap-2">
-                                  <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: true }))} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Done</button>
+                                  <button onClick={async () => { setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: true })); const notes = clientWorkoutNotes[cw.id] || ''; await fetch('/api/client-workouts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cw.id, completed: true, notes }) }); }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Done</button>
                                   <input type="text" value={clientWorkoutNotes[cw.id] || ''} onChange={(e) => setClientWorkoutNotes(prev => ({ ...prev, [cw.id]: e.target.value }))} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Comment (optional)" />
                                 </div>
                               )}
@@ -965,7 +979,7 @@ export default function DashboardPage() {
                                 <div className="mt-2 flex items-center gap-2">
                                   <span className="text-green-400 text-xs font-medium">Completed</span>
                                   {clientWorkoutNotes[cw.id] && <span className="text-gray-400 text-xs">— {clientWorkoutNotes[cw.id]}</span>}
-                                  <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false }))} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>
+                                  <button onClick={async () => { setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false })); await fetch('/api/client-workouts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cw.id, completed: false, notes: '' }) }); }} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>
                                 </div>
                               )}
                             </div>
