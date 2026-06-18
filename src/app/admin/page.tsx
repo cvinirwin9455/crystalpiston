@@ -1321,7 +1321,7 @@ export default function AdminPage() {
 
                 {/* Week Navigation */}
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                  <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} aria-label="Previous week" disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
                     {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
@@ -1329,7 +1329,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
                     {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-400 text-xs italic">Past week (locked)</span>}
-                    <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+                    <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} aria-label="Next week" disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
 
@@ -1373,7 +1373,7 @@ export default function AdminPage() {
                     const adminDayDateStr = adminDayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                     return (
                       <div key={day} className="border border-white/10 rounded-xl overflow-hidden">
-                        <button onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
+                        <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
                             <span className="text-gray-500 text-xs ml-2">{adminDayDateStr}</span>
@@ -1381,7 +1381,7 @@ export default function AdminPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
-                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </div>
                         </button>
                         {isAdminDayExpanded && (

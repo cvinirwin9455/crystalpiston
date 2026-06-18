@@ -586,6 +586,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-primary">
+      {/* Skip to main content */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm">Skip to main content</a>
       {/* Header */}
       <header className="bg-secondary/50 border-b border-white/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -598,10 +600,10 @@ export default function DashboardPage() {
       </header>
 
       {/* Tabs */}
-      <div className="border-b border-white/10 bg-secondary/30">
-        <div className="max-w-7xl mx-auto px-6 flex gap-1">
+      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/30">
+        <div className="max-w-7xl mx-auto px-6 flex gap-1" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadCount}</span>
@@ -609,9 +611,9 @@ export default function DashboardPage() {
             </button>
           ))}
         </div>
-      </div>
+      </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main id="main-content" className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {/* TRAINING TAB (merged with dashboard stats) */}
         {activeTab === "training" && (
           <>
@@ -636,12 +638,12 @@ export default function DashboardPage() {
 
             {/* Week Navigation */}
             <div className="flex items-center justify-between">
-              <button onClick={() => setWeekOffset(weekOffset - 1)} disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+              <button onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week" disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
               <div className="text-center">
                 <h2 className="font-heading text-2xl uppercase text-white">{getWeekLabel(weekOffset)}</h2>
                 {currentWeek && <p className="text-gray-400 text-sm">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotalConverted.toFixed(2)} {distUnitShort}</span></p>}
               </div>
-              <button onClick={() => setWeekOffset(weekOffset + 1)} disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+              <button onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week" disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             {/* No plan for this week */}
@@ -707,7 +709,7 @@ export default function DashboardPage() {
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
                     {/* Day Header - always visible */}
-                    <button onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
+                    <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                       <div>
                         <span className="text-white font-heading uppercase text-sm">{day}</span>
                         <span className="text-gray-500 text-xs ml-2">{dayDateStr}</span>
@@ -715,7 +717,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </div>
                     </button>
 
@@ -1219,6 +1221,8 @@ export default function DashboardPage() {
                       <p className="text-gray-500 text-xs mt-0.5">Get notified when Crystal publishes your weekly training plan</p>
                     </div>
                     <button
+                      role="switch"
+                      aria-checked={notifPlanPublished}
                       onClick={() => { const newVal = !notifPlanPublished; setNotifPlanPublished(newVal); saveNotifPrefs(newVal, notifMessages); }}
                       className={`w-11 h-6 rounded-full relative transition-colors ${notifPlanPublished ? "bg-green-500" : "bg-gray-600"}`}
                     >
