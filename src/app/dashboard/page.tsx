@@ -1283,6 +1283,16 @@ export default function DashboardPage() {
               <summary className="font-heading text-sm uppercase text-gray-400 cursor-pointer hover:text-white">What&apos;s New</summary>
               <div className="mt-4 space-y-4">
                 <div>
+                  <p className="text-white text-sm font-medium mb-2">June 18, 2026</p>
+                  <ul className="space-y-1 text-gray-300 text-xs">
+                    <li>• Your added workouts now properly save when you mark them Done</li>
+                    <li>• Text is brighter and easier to read everywhere</li>
+                    <li>• Keyboard navigation improved with visible focus indicators</li>
+                    <li>• Stats section looks better on mobile</li>
+                    <li>• Distance preference (Miles/KM) now saves correctly after logout</li>
+                  </ul>
+                </div>
+                <div>
                   <p className="text-white text-sm font-medium mb-2">June 16, 2026</p>
                   <ul className="space-y-1 text-gray-400 text-xs">
                     <li>• Day blocks are now collapsible — tap any day to expand/collapse</li>

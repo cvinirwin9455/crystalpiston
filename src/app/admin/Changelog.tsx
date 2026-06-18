@@ -4,6 +4,20 @@ import { useState } from "react";
 
 const updates = [
   {
+    date: "June 18, 2026",
+    items: [
+      { area: "All", text: "Text is now brighter and easier to read across the whole app" },
+      { area: "All", text: "Keyboard users now see visible focus rings when tabbing through inputs" },
+      { area: "All", text: "Stats section now adjusts nicely on smaller screens (mobile-friendly)" },
+      { area: "All", text: "Screen reader support improved throughout the app" },
+      { area: "Client", text: "Your added workouts now save when you mark them Done (persists after logout)" },
+      { area: "Admin", text: "Crystal can no longer accidentally edit workouts that clients have already completed" },
+      { area: "Admin", text: "Drafts are now sorted by date (earliest first) then by client name" },
+      { area: "Admin", text: "Editing published workouts now saves correctly" },
+      { area: "All", text: "Distance preference (Miles/KM) and default week view now save properly" },
+    ],
+  },
+  {
     date: "June 16, 2026",
     items: [
       { area: "All", text: "Day blocks are now collapsible — click any day to expand/collapse it" },
