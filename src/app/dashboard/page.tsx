@@ -650,7 +650,7 @@ export default function DashboardPage() {
             {!currentWeek && (
               <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
                 <p className="text-gray-400">No training plan published for this week.</p>
-                {weekOffset === 0 && <p className="text-gray-500 text-sm mt-1">Check back soon or message Crystal.</p>}
+                {weekOffset === 0 && <p className="text-gray-300 text-sm mt-1">Check back soon or message Crystal.</p>}
               </div>
             )}
 
@@ -665,11 +665,11 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-500 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Programmed Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).length}</p><p className="text-gray-500 text-xs">Your Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-300 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).length}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
               </div>
             </div>
 
@@ -712,11 +712,11 @@ export default function DashboardPage() {
                     <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                       <div>
                         <span className="text-white font-heading uppercase text-sm">{day}</span>
-                        <span className="text-gray-500 text-xs ml-2">{dayDateStr}</span>
+                        <span className="text-gray-300 text-xs ml-2">{dayDateStr}</span>
                         {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                        <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
                         <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </div>
                     </button>
@@ -739,7 +739,7 @@ export default function DashboardPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="text-white font-heading uppercase text-sm">{workout.day}</span>
-                            <span className="text-gray-500 text-xs">{workout.date}</span>
+                            <span className="text-gray-300 text-xs">{workout.date}</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                           </div>
@@ -747,12 +747,12 @@ export default function DashboardPage() {
                           <p className="text-gray-400 text-sm">{workout.description}</p>
                           {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} {getWorkoutUnit(workout.id) === "km" ? "km" : "miles"} programmed</p>}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
-                          {workout.location && <p className="text-gray-500 text-xs mt-0.5">{workout.location}</p>}
+                          {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p><p className="text-gray-500 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
+                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p><p className="text-gray-300 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
                       </div>
                     </div>
                     {/* Log toggle */}
@@ -789,11 +789,11 @@ export default function DashboardPage() {
                     {(workout.status === "complete" || workout.status === "partial") && workout.log && (
                       <div className="mt-3 ml-9 pl-4 border-l-2 border-green-500/30">
                         <div className="flex flex-wrap gap-3 text-xs">
-                          {workout.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
-                          {workout.log.actualMiles && <span><span className="text-gray-500">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles)).toFixed(2)}</span></span>}
-                          {workout.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{workout.log.actualPace}</span></span>}
-                          {workout.log.duration && <span><span className="text-gray-500">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
-                          {workout.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
+                          {workout.log.rpe && <span><span className="text-gray-300">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
+                          {workout.log.actualMiles && <span><span className="text-gray-300">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles)).toFixed(2)}</span></span>}
+                          {workout.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{workout.log.actualPace}</span></span>}
+                          {workout.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
+                          {workout.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                         </div>
                         {workout.log.notes && <p className="text-gray-400 text-xs mt-1">{workout.log.notes}</p>}
@@ -971,7 +971,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            {cw.miles && <div className="text-right"><p className="font-heading text-xl text-white">{convertDist(cw.miles)}</p><p className="text-gray-500 text-xs">{distUnitShort}</p></div>}
+                            {cw.miles && <div className="text-right"><p className="font-heading text-xl text-white">{convertDist(cw.miles)}</p><p className="text-gray-300 text-xs">{distUnitShort}</p></div>}
                             <button onClick={() => handleDeleteClientWorkout(cw.id)} disabled={deletingClientWorkout === cw.id} className="text-gray-600 hover:text-red-400 text-xs transition-colors">{deletingClientWorkout === cw.id ? "..." : "✕"}</button>
                           </div>
                         </div>
@@ -1067,7 +1067,7 @@ export default function DashboardPage() {
             <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-bold">C</span></div>
-                <div><p className="text-white text-sm font-medium">Crystal</p><p className="text-gray-500 text-xs">Coach</p></div>
+                <div><p className="text-white text-sm font-medium">Crystal</p><p className="text-gray-300 text-xs">Coach</p></div>
               </div>
             </div>
 
@@ -1170,7 +1170,7 @@ export default function DashboardPage() {
                           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">{plan.status}</span>
                         </div>
                       </div>
-                      <p className="text-gray-500 text-xs mb-2">
+                      <p className="text-gray-300 text-xs mb-2">
                         {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(plan.planEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                       <div className="flex items-center justify-between text-xs">
@@ -1192,7 +1192,7 @@ export default function DashboardPage() {
               {/* Distance Unit */}
               <div className="mb-6">
                 <p className="text-white text-sm font-medium mb-1">Distance Unit</p>
-                <p className="text-gray-500 text-xs mb-3">Choose how distances are displayed across your dashboard.</p>
+                <p className="text-gray-300 text-xs mb-3">Choose how distances are displayed across your dashboard.</p>
                 <div className="flex gap-2">
                   <button onClick={() => saveDistanceUnit("mi")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                   <button onClick={() => saveDistanceUnit("km")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
@@ -1202,7 +1202,7 @@ export default function DashboardPage() {
               {/* Default Week View */}
               <div className="mb-6">
                 <p className="text-white text-sm font-medium mb-1">Default Week View</p>
-                <p className="text-gray-500 text-xs mb-3">Choose whether day blocks are expanded or collapsed by default.</p>
+                <p className="text-gray-300 text-xs mb-3">Choose whether day blocks are expanded or collapsed by default.</p>
                 <div className="flex gap-2">
                   <button onClick={() => saveDefaultExpanded(true)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
                   <button onClick={() => saveDefaultExpanded(false)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
@@ -1210,7 +1210,7 @@ export default function DashboardPage() {
               </div>
 
               <hr className="border-white/10 mb-6" />
-              <p className="text-gray-500 text-xs mb-6">Choose how you want to be notified about updates from Crystal.</p>
+              <p className="text-gray-300 text-xs mb-6">Choose how you want to be notified about updates from Crystal.</p>
 
               <div className="space-y-5">
                 {/* New Training Plan Published */}
@@ -1218,7 +1218,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white text-sm font-medium">New Training Plan Published</p>
-                      <p className="text-gray-500 text-xs mt-0.5">Get notified when Crystal publishes your weekly training plan</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get notified when Crystal publishes your weekly training plan</p>
                     </div>
                     <button
                       role="switch"
@@ -1241,7 +1241,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-white text-sm font-medium">Messages from Crystal</p>
-                      <p className="text-gray-500 text-xs mt-0.5">How you receive message notifications</p>
+                      <p className="text-gray-300 text-xs mt-0.5">How you receive message notifications</p>
                     </div>
                   </div>
                   <div className="flex gap-2">

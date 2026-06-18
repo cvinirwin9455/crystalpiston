@@ -1164,7 +1164,7 @@ export default function AdminPage() {
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
-                  <p className="text-gray-500 text-xs truncate">
+                  <p className="text-gray-300 text-xs truncate">
                     {client.inviteStatus !== "accepted" 
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                       : client.goal 
@@ -1239,7 +1239,7 @@ export default function AdminPage() {
                   }
                 </p>
               </div>
-              {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-500 text-xs">Drafts</p></div>}
+              {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-300 text-xs">Drafts</p></div>}
             </div>
 
             {/* Stats Card (mirrors client dashboard layout) */}
@@ -1253,11 +1253,11 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? displayMilesCompleted.toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? displayMilesProgrammed.toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Programmed Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(selectedWeek?.clientWorkouts || []).length}</p><p className="text-gray-500 text-xs">Client Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-500 text-xs">Avg Effort</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-500 text-xs">Completion</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? displayMilesCompleted.toFixed(2) : "—"}<span className="text-gray-300 text-sm">/{displayMilesProgrammed > 0 ? displayMilesProgrammed.toFixed(2) : "—"}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(selectedWeek?.clientWorkouts || []).length}</p><p className="text-gray-300 text-xs">Client Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-gold">{displayAvgRpe}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
               </div>
             </div>
 
@@ -1376,11 +1376,11 @@ export default function AdminPage() {
                         <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
-                            <span className="text-gray-500 text-xs ml-2">{adminDayDateStr}</span>
+                            <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
                             {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${convertDist(dayMiles).toFixed(1)} ${distUnitShort}` : ''}</span>}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-500 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                            <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
                             <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </div>
                         </button>
@@ -1405,16 +1405,16 @@ export default function AdminPage() {
                               <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
                             </div>
-                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(w.miles, w.distanceUnit)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
+                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(w.miles, w.distanceUnit)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                           </div>
                           {w.log && (
                             <div className="mt-3 ml-7 pl-4 border-l-2 border-accent/30">
                               <div className="flex flex-wrap gap-3 text-xs">
-                                {w.log.rpe && <span><span className="text-gray-500">Effort:</span> <span className="text-white">{w.log.rpe}/10</span></span>}
-                                {w.log.actualMiles && <span><span className="text-gray-500">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(w.log.actualMiles))}</span></span>}
-                                {w.log.actualPace && <span><span className="text-gray-500">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
-                                {w.log.duration && <span><span className="text-gray-500">Duration:</span> <span className="text-white">{w.log.duration}</span></span>}
-                                {w.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
+                                {w.log.rpe && <span><span className="text-gray-300">Effort:</span> <span className="text-white">{w.log.rpe}/10</span></span>}
+                                {w.log.actualMiles && <span><span className="text-gray-300">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(w.log.actualMiles))}</span></span>}
+                                {w.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
+                                {w.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{w.log.duration}</span></span>}
+                                {w.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
                                 {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                               </div>
                               {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
@@ -1505,7 +1505,7 @@ export default function AdminPage() {
                                 </div>
                                 {cw.notes && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
                               </div>
-                              {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
+                              {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
                           </div>
                         ))}
@@ -1549,7 +1549,7 @@ export default function AdminPage() {
                     <div className="grid grid-cols-7 gap-1">
                       {week.workouts.map((w) => (
                         <div key={w.id} className="bg-primary/50 rounded p-2 text-center">
-                          <p className="text-gray-500 text-xs">{w.day.slice(0,3)}</p>
+                          <p className="text-gray-300 text-xs">{w.day.slice(0,3)}</p>
                           <p className="text-white text-xs font-medium truncate">{w.title || getTypeLabel(w.type)}</p>
                           {w.miles && <p className="text-accent text-xs">{convertDist(w.miles, w.distanceUnit)}{distUnitShort}</p>}
                         </div>
@@ -1590,7 +1590,7 @@ export default function AdminPage() {
                 </div>
                 <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
-                <p className="text-gray-500 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
+                <p className="text-gray-300 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
                 {/* Load from Week Template */}
                 {weekTemplates.length > 0 && (
                   <div className="bg-secondary/30 border border-white/10 rounded-lg p-3 flex items-center gap-3 flex-wrap">
@@ -1613,12 +1613,12 @@ export default function AdminPage() {
                           <span className="text-white text-sm">{pickerMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
                           <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                         </div>
-                        <div className="grid grid-cols-7 gap-1 mb-1">{["M","T","W","T","F","S","S"].map((d,i) => <div key={i} className="text-center text-gray-500 text-xs py-1">{d}</div>)}</div>
+                        <div className="grid grid-cols-7 gap-1 mb-1">{["M","T","W","T","F","S","S"].map((d,i) => <div key={i} className="text-center text-gray-300 text-xs py-1">{d}</div>)}</div>
                         {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); return (
                           <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors ${isSelected ? "bg-accent/20" : "hover:bg-white/5"}`}>
                             {week.map((day, di) => <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : "text-white") : "text-gray-600"}`}>{day.getDate()}</div>)}
                           </button>); })}
-                        <p className="text-gray-500 text-xs mt-2 text-center">Click a row to select Mon-Sun</p>
+                        <p className="text-gray-300 text-xs mt-2 text-center">Click a row to select Mon-Sun</p>
                       </div>
                     )}
                   </div>
@@ -1710,7 +1710,7 @@ export default function AdminPage() {
                               <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-32 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Template name" />
                               <input type="text" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-24 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Category" />
                               <button type="button" onClick={() => handleSaveDayTemplate(i)} disabled={!templateName.trim() || savingTemplate} className="text-green-400 text-xs hover:text-green-300 disabled:opacity-50">{savingTemplate ? "..." : "Save"}</button>
-                              <button type="button" onClick={() => { setShowSaveDayTemplate(null); setTemplateName(""); setTemplateCategory(""); }} className="text-gray-500 text-xs hover:text-white">Cancel</button>
+                              <button type="button" onClick={() => { setShowSaveDayTemplate(null); setTemplateName(""); setTemplateCategory(""); }} className="text-gray-300 text-xs hover:text-white">Cancel</button>
                             </div>
                           ) : (
                             <button type="button" onClick={() => { setShowSaveDayTemplate(i); setTemplateName(day.workouts[0]?.title || `${day.day} ${day.workouts[0]?.trainingType || day.workouts[0]?.type}`); }} className="text-gray-500 hover:text-gold text-xs flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Save as Template</button>
@@ -1749,7 +1749,7 @@ export default function AdminPage() {
                 <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><span className="text-white text-xs font-bold">{selectedClientData.name.charAt(0)}</span></div>
-                    <div><p className="text-white text-sm font-medium">{selectedClientData.name}</p><p className="text-gray-500 text-xs">{selectedClientData.goal || "No active plan"}</p></div>
+                    <div><p className="text-white text-sm font-medium">{selectedClientData.name}</p><p className="text-gray-300 text-xs">{selectedClientData.goal || "No active plan"}</p></div>
                   </div>
                 </div>
 
@@ -1836,7 +1836,7 @@ export default function AdminPage() {
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-green-400">&#10003;</span><p className="text-white text-sm font-medium">Client completes a workout</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Get an email each time any client completes a workout with their effort, miles, pace, and notes</p>
+                    <p className="text-gray-300 text-xs mb-3">Get an email each time any client completes a workout with their effort, miles, pace, and notes</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("workoutCompleted", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "immediate" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
                       <button onClick={() => updateNotifSetting("workoutCompleted", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutCompleted === "off" ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
@@ -1845,7 +1845,7 @@ export default function AdminPage() {
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-red-400">&#10007;</span><p className="text-white text-sm font-medium">Client skips a workout</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Get an email each time any client skips a workout with their reason</p>
+                    <p className="text-gray-300 text-xs mb-3">Get an email each time any client skips a workout with their reason</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("workoutSkipped", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "immediate" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
                       <button onClick={() => updateNotifSetting("workoutSkipped", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutSkipped === "off" ? "bg-red-500/20 border border-red-500/40 text-red-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
@@ -1854,7 +1854,7 @@ export default function AdminPage() {
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-yellow-400">&#189;</span><p className="text-white text-sm font-medium">Client partially completes a workout</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Get an email each time any client partially completes a workout with what they did and why they stopped</p>
+                    <p className="text-gray-300 text-xs mb-3">Get an email each time any client partially completes a workout with what they did and why they stopped</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("workoutPartial", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "immediate" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
                       <button onClick={() => updateNotifSetting("workoutPartial", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "off" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
@@ -1867,7 +1867,7 @@ export default function AdminPage() {
 
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1"><span className="text-accent">&#9993;</span><p className="text-white text-sm font-medium">Client sends you a message</p></div>
-                    <p className="text-gray-500 text-xs mb-3">Get an email each time a client sends you a message</p>
+                    <p className="text-gray-300 text-xs mb-3">Get an email each time a client sends you a message</p>
                     <div className="flex gap-2">
                       <button onClick={() => updateNotifSetting("clientMessage", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
                       <button onClick={() => updateNotifSetting("clientMessage", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).clientMessage === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
@@ -1878,7 +1878,7 @@ export default function AdminPage() {
                 {/* Distance Unit Preference */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Distance Unit</h3>
-                  <p className="text-gray-500 text-xs mb-4">Choose how distances are displayed across your dashboard when viewing clients.</p>
+                  <p className="text-gray-300 text-xs mb-4">Choose how distances are displayed across your dashboard when viewing clients.</p>
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDistanceUnit("mi"); saveAdminNotifPrefs(notifications, undefined, "mi"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                     <button onClick={() => { setAdminDistanceUnit("km"); saveAdminNotifPrefs(notifications, undefined, "km"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
@@ -1888,7 +1888,7 @@ export default function AdminPage() {
                 {/* Default Week View Preference */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Default Week View</h3>
-                  <p className="text-gray-500 text-xs mb-4">Choose whether day blocks start expanded or collapsed when viewing a published week.</p>
+                  <p className="text-gray-300 text-xs mb-4">Choose whether day blocks start expanded or collapsed when viewing a published week.</p>
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDefaultExpanded(true); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, true); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
                     <button onClick={() => { setAdminDefaultExpanded(false); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, false); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
@@ -1898,7 +1898,7 @@ export default function AdminPage() {
                 {/* Email Destination */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Send Notifications To</h3>
-                  <p className="text-gray-500 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
+                  <p className="text-gray-300 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
                   <div className="flex gap-3">
                     <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
                     <button onClick={() => { saveAdminNotifPrefs(notifications, notifEmail); setNotifEmailSaved(true); setTimeout(() => setNotifEmailSaved(false), 3000); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
@@ -1921,7 +1921,7 @@ export default function AdminPage() {
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gold mb-4">Week Templates ({weekTemplates.length})</h3>
                   {weekTemplates.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No week templates saved yet. Build a week plan for a client and click &ldquo;Save as Template&rdquo; to create one.</p>
+                    <p className="text-gray-300 text-sm">No week templates saved yet. Build a week plan for a client and click &ldquo;Save as Template&rdquo; to create one.</p>
                   ) : (
                     <div className="space-y-3">
                       {weekTemplates.map((t) => (
@@ -1929,7 +1929,7 @@ export default function AdminPage() {
                           <div className="flex items-center justify-between mb-3">
                             <div>
                               <h4 className="text-white font-medium">{t.name}</h4>
-                              <p className="text-gray-500 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{t.data.days?.filter((d: any) => d.type === 'run').length || 0} runs, {t.data.days?.filter((d: any) => d.type === 'cross').length || 0} cross, {t.data.days?.filter((d: any) => d.type === 'rest').length || 0} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
+                              <p className="text-gray-300 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{t.data.days?.filter((d: any) => d.type === 'run').length || 0} runs, {t.data.days?.filter((d: any) => d.type === 'cross').length || 0} cross, {t.data.days?.filter((d: any) => d.type === 'rest').length || 0} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
                             </div>
                             <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
                           </div>
@@ -1937,7 +1937,7 @@ export default function AdminPage() {
                           <div className="grid grid-cols-7 gap-1">
                             {(t.data.days || []).map((d: any, i: number) => (
                               <div key={i} className={`rounded p-2 text-center ${d.type === 'run' ? 'bg-accent/10' : d.type === 'cross' ? 'bg-gold/10' : 'bg-green-500/10'}`}>
-                                <p className="text-gray-500 text-xs">{d.day?.slice(0, 3)}</p>
+                                <p className="text-gray-300 text-xs">{d.day?.slice(0, 3)}</p>
                                 <p className="text-white text-xs font-medium truncate">{d.title || d.trainingType || (d.type === 'rest' ? 'Rest' : d.type === 'cross' ? 'Cross' : 'Run')}</p>
                                 {d.miles && <p className="text-accent text-xs">{convertDist(Number(d.miles))}{distUnitShort}</p>}
                               </div>
@@ -1958,7 +1958,7 @@ export default function AdminPage() {
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gold mb-4">Day Templates ({dayTemplates.length})</h3>
                   {dayTemplates.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No day templates saved yet. When creating a week, click &ldquo;Save Day as Template&rdquo; on any workout to save it.</p>
+                    <p className="text-gray-300 text-sm">No day templates saved yet. When creating a week, click &ldquo;Save Day as Template&rdquo; on any workout to save it.</p>
                   ) : (
                     <div className="grid md:grid-cols-2 gap-3">
                       {dayTemplates.map((t) => (
@@ -2020,7 +2020,7 @@ export default function AdminPage() {
                           <div key={i} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
                             <div className="flex items-center gap-3">
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
-                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-500 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
@@ -2063,7 +2063,7 @@ export default function AdminPage() {
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{c.name.charAt(0)}</div>
                               <p className="text-white text-sm">{c.name}</p>
                             </div>
-                            <div className="text-right"><p className="text-white text-sm font-medium">${(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-500 text-xs">${c.paid}/${c.owed} paid</p></div>
+                            <div className="text-right"><p className="text-white text-sm font-medium">${(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-300 text-xs">${c.paid}/${c.owed} paid</p></div>
                           </button>
                         ))}
                       </div>
