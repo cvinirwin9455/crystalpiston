@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [defaultExpanded, setDefaultExpanded] = useState(true);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Fetch unread message count
   useEffect(() => {
@@ -606,8 +607,11 @@ export default function DashboardPage() {
       <header className="bg-secondary/50 border-b border-white/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={70} height={70} />
-            <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
+            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
+            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {profilePhoto ? <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" /> : <span className="text-accent font-bold text-sm">{loggedInName ? loggedInName.charAt(0) : '?'}</span>}
+            </div>
+            <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-300 text-sm">Pistol Performance Coaching</p></div>
           </div>
           <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
         </div>
@@ -1202,6 +1206,26 @@ export default function DashboardPage() {
             {/* Account Preferences */}
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
               <h2 className="font-heading text-xl uppercase text-accent mb-2">Account Preferences</h2>
+
+              {/* Profile Photo */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Profile Photo</p>
+                <p className="text-gray-300 text-xs mb-3">Upload a photo that Crystal and you will see across the app.</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-accent/30">
+                    {profilePhoto ? <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" /> : <span className="text-accent font-bold text-xl">{loggedInName ? loggedInName.charAt(0) : '?'}</span>}
+                  </div>
+                  <div>
+                    <label className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs cursor-pointer transition-colors">
+                      Upload Photo
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const url = URL.createObjectURL(file); setProfilePhoto(url); } }} />
+                    </label>
+                    {profilePhoto && <button onClick={() => setProfilePhoto(null)} className="text-gray-400 hover:text-red-400 text-xs ml-3">Remove</button>}
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-white/10 mb-6" />
 
               {/* Distance Unit */}
               <div className="mb-6">

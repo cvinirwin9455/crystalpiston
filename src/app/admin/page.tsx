@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
+  const [adminProfilePhoto, setAdminProfilePhoto] = useState<string | null>(null);
 
   // Fetch admin notification preferences
   useEffect(() => {
@@ -1143,7 +1144,9 @@ export default function AdminPage() {
       <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
-            <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full" />
+            <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/30">
+              {adminProfilePhoto ? <img src={adminProfilePhoto} alt="Crystal" className="w-full h-full object-cover" /> : <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full" />}
+            </div>
             <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
           </div>
           <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent mb-2" />
@@ -1826,6 +1829,25 @@ export default function AdminPage() {
                 </div>
 
                 <p className="text-gray-400 text-sm">Choose how often you want to be notified for each type of activity. Changes save automatically.</p>
+
+                {/* Profile Photo */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-300 mb-2">Profile Photo</h3>
+                  <p className="text-gray-300 text-xs mb-4">Upload your photo — clients will see it next to your messages and comments.</p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/30">
+                      {adminProfilePhoto ? <img src={adminProfilePhoto} alt="Crystal" className="w-full h-full object-cover" /> : <Image src="/IMG_5861.PNG" alt="Logo" width={64} height={64} className="rounded-full" />}
+                    </div>
+                    <div>
+                      <label className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs cursor-pointer transition-colors">
+                        Upload Photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const url = URL.createObjectURL(file); setAdminProfilePhoto(url); } }} />
+                      </label>
+                      {adminProfilePhoto && <button onClick={() => setAdminProfilePhoto(null)} className="text-gray-400 hover:text-red-400 text-xs ml-3">Remove</button>}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-primary/30 border border-white/5 rounded-lg p-3 mb-2">
                   <p className="text-gray-400 text-xs"><strong className="text-white">Immediately</strong> — You get an individual email each time any client triggers this event.</p>
                   <p className="text-gray-400 text-xs mt-1"><strong className="text-white">Off</strong> — No emails. You&apos;ll only see this activity when you log in to the dashboard.</p>
