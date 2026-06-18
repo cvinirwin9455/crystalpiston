@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     try {
       const { data: clientWorkouts } = await adminClient
         .from('client_workouts')
-        .select('id, week_id, day, type, training_type, miles, notes, created_at')
+        .select('id, week_id, day, type, training_type, miles, notes, created_at, completed, completed_notes')
         .in('week_id', weekIds)
         .order('created_at', { ascending: true })
       
