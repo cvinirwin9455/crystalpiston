@@ -662,7 +662,7 @@ export default function DashboardPage() {
                   <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-500 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-500 text-xs">Programmed Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).length}</p><p className="text-gray-500 text-xs">Your Workouts</p></div>
@@ -808,7 +808,7 @@ export default function DashboardPage() {
                       <div className="mt-3 ml-9 bg-secondary/50 border border-white/10 rounded-xl p-4">
                         <p className="text-sm font-medium mb-3 text-red-400">Why did you skip this workout?</p>
                         <div className="mb-3">
-                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder="e.g. Sick, injury, schedule conflict, too tired..." />
+                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="e.g. Sick, injury, schedule conflict, too tired..." />
                         </div>
                         <div className="flex gap-3">
                           <button onClick={() => markSkipped(workout.id)} disabled={!skipReason || savingLog} className={`text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors ${!skipReason || savingLog ? "bg-gray-600 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"}`}>{savingLog ? "Saving..." : "Mark as Skipped"}</button>
@@ -827,7 +827,7 @@ export default function DashboardPage() {
                           <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Rest Day Notes</h4>
                           <div className="mb-4">
                             <label className="text-gray-400 text-xs block mb-1">Anything to share with Crystal about today? (optional)</label>
-                            <textarea value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} placeholder="e.g. Feeling good and recovered, went for a light walk, legs still sore from yesterday..." />
+                            <textarea value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="e.g. Feeling good and recovered, went for a light walk, legs still sore from yesterday..." />
                           </div>
                           <div className="flex items-center justify-between pt-2 border-t border-white/10">
                             <button onClick={() => { setExpandedWorkout(null); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
@@ -852,31 +852,31 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
-                          <p className="text-gray-600 text-xs mb-2">1 = easy, 10 = all-out</p>
+                          <p className="text-gray-400 text-xs mb-2">1 = easy, 10 = all-out</p>
                           <div className="flex items-center gap-2"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
-                          <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Barely felt it</span><span className="text-gray-600 text-xs">All-out</span></div>
+                          <div className="flex justify-between mt-0.5"><span className="text-gray-400 text-xs">Barely felt it</span><span className="text-gray-400 text-xs">All-out</span></div>
                         </div>
                         <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
-                          <p className="text-gray-600 text-xs mb-2">1 = terrible, 10 = great</p>
+                          <p className="text-gray-400 text-xs mb-2">1 = terrible, 10 = great</p>
                           <div className="flex items-center gap-2"><input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.sleep || ""} onChange={(e) => updateWorkoutLog(workout.id, "sleep", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{(workout.log as Record<string, string> | undefined)?.sleep || "—"}</span></div>
-                          <div className="flex justify-between mt-0.5"><span className="text-gray-600 text-xs">Terrible</span><span className="text-gray-600 text-xs">Great</span></div>
+                          <div className="flex justify-between mt-0.5"><span className="text-gray-400 text-xs">Terrible</span><span className="text-gray-400 text-xs">Great</span></div>
                         </div>
                       </div>
 
                       {/* Run/Walk: Miles, Pace, Stress */}
                       {(workout.type === "run" || workout.type === "walk") && (
                       <div className="grid md:grid-cols-3 gap-4 mb-4">
-                        <div><label className="text-gray-400 text-xs block mb-1">Actual {distUnitLabel}</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateWorkoutLog(workout.id, "actualMiles", v); }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 7.20" /></div>
-                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. 8:45/mi" /></div>
-                        <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Actual {distUnitLabel}</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateWorkoutLog(workout.id, "actualMiles", v); }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 7.20" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 8:45/mi" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Travel, work, etc." /></div>
                       </div>
                       )}
                       {/* Other types: Stress only */}
                       {workout.type !== "run" && workout.type !== "walk" && workout.type !== "rest" && (
                       <div className="mb-4">
                         <label className="text-gray-400 text-xs block mb-1">Stress Factors</label>
-                        <input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Travel, work, etc." />
+                        <input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Travel, work, etc." />
                       </div>
                       )}
 
@@ -884,12 +884,12 @@ export default function DashboardPage() {
                       {skipType === "partial" && (
                         <div className="mb-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
                           <label className="text-yellow-400 text-xs block mb-1">What couldn&apos;t you complete and why?</label>
-                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-500 resize-none" rows={2} placeholder="e.g. Did 4 miles instead of 7 — knee started hurting at mile 4" />
+                          <textarea value={skipReason} onChange={(e) => setSkipReason(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none" rows={2} placeholder="e.g. Did 4 miles instead of 7 — knee started hurting at mile 4" />
                         </div>
                       )}
 
                       {/* Notes (all non-rest types) */}
-                      <div className="mb-4"><label className="text-gray-400 text-xs block mb-1">Notes</label><input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="How did it feel? Anything notable?" /></div>
+                      <div className="mb-4"><label className="text-gray-400 text-xs block mb-1">Notes</label><input type="text" value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="How did it feel? Anything notable?" /></div>
 
                       {/* Period tracking - female clients only */}
                       {clientGender === "female" && (
@@ -921,7 +921,7 @@ export default function DashboardPage() {
                             <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
                               <div className="flex items-center gap-2 mb-0.5">
                                 <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
-                                <span className="text-gray-600 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                <span className="text-gray-400 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                               </div>
                               <p className="text-gray-300 text-xs">{c.message}</p>
                             </div>
@@ -929,7 +929,7 @@ export default function DashboardPage() {
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
+                        <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
                         <button onClick={() => handleSendWorkoutComment(workout.id)} disabled={sendingComment === workout.id || !commentInput[workout.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === workout.id ? '...' : 'Send'}</button>
                       </div>
                     </div>
@@ -956,7 +956,7 @@ export default function DashboardPage() {
                               {weekOffset === 0 && !completedClientWorkouts[cw.id] && (
                                 <div className="mt-2 flex items-center gap-2">
                                   <button onClick={() => setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: true }))} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Done</button>
-                                  <input type="text" value={clientWorkoutNotes[cw.id] || ''} onChange={(e) => setClientWorkoutNotes(prev => ({ ...prev, [cw.id]: e.target.value }))} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-cyan-500" placeholder="Comment (optional)" />
+                                  <input type="text" value={clientWorkoutNotes[cw.id] || ''} onChange={(e) => setClientWorkoutNotes(prev => ({ ...prev, [cw.id]: e.target.value }))} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Comment (optional)" />
                                 </div>
                               )}
                               {completedClientWorkouts[cw.id] && (
@@ -984,7 +984,7 @@ export default function DashboardPage() {
                         <div className="space-y-3">
                           <div>
                             <label className="text-gray-400 text-xs block mb-1">Type</label>
-                            <select value={addWorkoutForm.type} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, type: e.target.value, trainingType: "", miles: "" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
+                            <select value={addWorkoutForm.type} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, type: e.target.value, trainingType: "", miles: "" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                               <option value="run">Run</option>
                               <option value="walk">Walk</option>
                               <option value="cross">Cross Training</option>
@@ -998,7 +998,7 @@ export default function DashboardPage() {
                             <>
                               <div>
                                 <label className="text-gray-400 text-xs block mb-1">Subtype *</label>
-                                <select value={addWorkoutForm.trainingType} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, trainingType: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
+                                <select value={addWorkoutForm.trainingType} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, trainingType: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                                   <option value="">Select type...</option>
                                   {addWorkoutForm.type === "run" && <>
                                     <option value="ClosePace">Close to Race Pace</option>
@@ -1026,13 +1026,13 @@ export default function DashboardPage() {
                               </div>
                               <div>
                                 <label className="text-gray-400 text-xs block mb-1">Distance ({distUnitShort}) *</label>
-                                <input type="text" value={addWorkoutForm.miles} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, miles: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500" placeholder={`e.g. 3.5`} />
+                                <input type="text" value={addWorkoutForm.miles} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, miles: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder={`e.g. 3.5`} />
                               </div>
                             </>
                           )}
                           <div>
                             <label className="text-gray-400 text-xs block mb-1">Notes</label>
-                            <textarea value={addWorkoutForm.notes} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, notes: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500 resize-none" rows={2} placeholder="What did you do?" />
+                            <textarea value={addWorkoutForm.notes} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, notes: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 resize-none" rows={2} placeholder="What did you do?" />
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => handleAddClientWorkout(day)} disabled={savingClientWorkout} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">{savingClientWorkout ? "Saving..." : "Save"}</button>
@@ -1095,7 +1095,7 @@ export default function DashboardPage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                  className="flex-1 bg-primary/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-accent resize-none max-h-32"
+                  className="flex-1 bg-primary/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none max-h-32"
                   rows={1}
                   placeholder="Type a message..."
                 />
@@ -1144,7 +1144,7 @@ export default function DashboardPage() {
                     {(clientInfo.owed - clientInfo.paid) > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">${(clientInfo.owed - clientInfo.paid).toFixed(2)}</span></div>}
                   </div>
                   <div className="w-full bg-primary/50 rounded-full h-2 mt-4"><div className={`h-2 rounded-full ${(clientInfo.owed - clientInfo.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${clientInfo.owed > 0 ? Math.min(100, (clientInfo.paid / clientInfo.owed) * 100) : 100}%` }} /></div>
-                  <p className="text-gray-600 text-xs mt-1 text-right">{clientInfo.owed > 0 ? Math.round((clientInfo.paid / clientInfo.owed) * 100) : 100}% paid</p>
+                  <p className="text-gray-400 text-xs mt-1 text-right">{clientInfo.owed > 0 ? Math.round((clientInfo.paid / clientInfo.owed) * 100) : 100}% paid</p>
                 </div>
               </>
             ) : (
@@ -1251,7 +1251,7 @@ export default function DashboardPage() {
                       Off
                     </button>
                   </div>
-                  <p className="text-gray-600 text-xs mt-2">
+                  <p className="text-gray-400 text-xs mt-2">
                     {notifMessages === "immediate" && "You'll receive an email each time Crystal sends you a message."}
                     {notifMessages === "daily" && "You'll receive one email per day summarising any messages from Crystal."}
                     {notifMessages === "off" && "You won't receive email notifications for messages. Check the app to read them."}

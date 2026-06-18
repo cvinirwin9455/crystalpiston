@@ -1146,7 +1146,7 @@ export default function AdminPage() {
             <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full" />
             <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
           </div>
-          <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-accent mb-2" />
+          <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent mb-2" />
           <div className="flex gap-1 mb-2">
             {[{ key: "active", label: "Active" }, { key: "archived", label: "Archived" }, { key: "all", label: "All" }].map((f) => (
               <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-2 py-1 rounded text-xs transition-colors flex-1 ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
@@ -1215,12 +1215,12 @@ export default function AdminPage() {
             <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
             <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
             <div className="grid md:grid-cols-3 gap-4 mb-4">
-              <div><label className="text-gray-400 text-xs block mb-1">Full Name</label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="Sarah Miller" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Email</label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="client@email.com" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Gender</label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Full Name</label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Email</label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Gender</label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
             </div>
             <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
-            {createError && <p className="text-red-400 text-xs mt-2">{createError}</p>}
+            {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
           </div>
         )}
 
@@ -1252,7 +1252,7 @@ export default function AdminPage() {
                   <button onClick={() => setAdminStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${adminStatsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{displayMilesProgrammed > 0 ? displayMilesCompleted.toFixed(2) : "—"}<span className="text-gray-500 text-sm">/{displayMilesProgrammed > 0 ? displayMilesProgrammed.toFixed(2) : "—"}</span></p><p className="text-gray-500 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{displayMarked.length}/{displayWorkouts.length}</p><p className="text-gray-500 text-xs">Programmed Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(selectedWeek?.clientWorkouts || []).length}</p><p className="text-gray-500 text-xs">Client Workouts</p></div>
@@ -1328,7 +1328,7 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
-                    {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-600 text-xs italic">Past week (locked)</span>}
+                    {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-400 text-xs italic">Past week (locked)</span>}
                     <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
@@ -1337,7 +1337,7 @@ export default function AdminPage() {
                 {!selectedWeek && (
                   <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
                     <p className="text-gray-500">No published plan for this week.</p>
-                    <p className="text-gray-600 text-xs mt-1">Create a week plan or navigate to a week that has one.</p>
+                    <p className="text-gray-400 text-xs mt-1">Create a week plan or navigate to a week that has one.</p>
                   </div>
                 )}
 
@@ -1348,7 +1348,7 @@ export default function AdminPage() {
                 {/* Coach Message */}
                 <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
                   <p className="text-gold text-xs font-heading uppercase mb-1">Weekly Message</p>
-                  {editingWeek ? <textarea value={editedCoachMessage} onChange={(e) => setEditedCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" rows={2} /> : <p className="text-gray-300 text-sm">{selectedWeek?.coachMessage || <span className="text-gray-600 italic">No message</span>}</p>}
+                  {editingWeek ? <textarea value={editedCoachMessage} onChange={(e) => setEditedCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} /> : <p className="text-gray-300 text-sm">{selectedWeek?.coachMessage || <span className="text-gray-600 italic">No message</span>}</p>}
                 </div>
 
                 {/* Workouts */}
@@ -1425,7 +1425,7 @@ export default function AdminPage() {
                             </div>
                           )}
                           {editingWeek && w.completed && (
-                            <p className="text-gray-600 text-xs mt-2 italic">This workout has been completed and cannot be edited.</p>
+                            <p className="text-gray-400 text-xs mt-2 italic">This workout has been completed and cannot be edited.</p>
                           )}
                           {/* Workout Comments Thread */}
                           {w.completed && (
@@ -1434,13 +1434,13 @@ export default function AdminPage() {
                                 <div key={c.id} className={`mb-2 ${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
                                   <div className="flex items-center gap-2 mb-0.5">
                                     <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.userName}</span>
-                                    <span className="text-gray-600 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    <span className="text-gray-400 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                                   </div>
                                   <p className="text-gray-300 text-xs">{c.message}</p>
                                 </div>
                               ))}
                               <div className="flex gap-2 mt-2">
-                                <input type="text" value={commentInput[w.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [w.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(w.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Add a comment on this workout..." />
+                                <input type="text" value={commentInput[w.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [w.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(w.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Add a comment on this workout..." />
                                 <button onClick={() => handleSendWorkoutComment(w.id)} disabled={sendingComment === w.id || !commentInput[w.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === w.id ? '...' : 'Send'}</button>
                               </div>
                             </div>
@@ -1451,40 +1451,40 @@ export default function AdminPage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-3">
                             <span className="text-white font-heading text-sm uppercase w-24">{w.day}</span>
-                            <select value={editedWorkouts[w.id]?.type || w.type} onChange={(e) => { updateEditedWorkout(w.id, 'type', e.target.value); if (e.target.value === 'rest') { updateEditedWorkout(w.id, 'trainingType', 'Rest'); updateEditedWorkout(w.id, 'miles', ''); } else if (editedWorkouts[w.id]?.trainingType === 'Rest') { updateEditedWorkout(w.id, 'trainingType', ''); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                            <select value={editedWorkouts[w.id]?.type || w.type} onChange={(e) => { updateEditedWorkout(w.id, 'type', e.target.value); if (e.target.value === 'rest') { updateEditedWorkout(w.id, 'trainingType', 'Rest'); updateEditedWorkout(w.id, 'miles', ''); } else if (editedWorkouts[w.id]?.trainingType === 'Rest') { updateEditedWorkout(w.id, 'trainingType', ''); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
                               <option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
                             </select>
                             {(editedWorkouts[w.id]?.type || w.type) === "run" && (
                               <>
-                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
                                   <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
                                 </select>
-                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button></div>
+                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button></div>
                               </>
                             )}
                             {(editedWorkouts[w.id]?.type || w.type) === "walk" && (
                               <>
-                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
                                   <option value="" disabled>Walk Type *</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
                                 </select>
-                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button></div>
+                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button></div>
                               </>
                             )}
                           </div>
                           {(editedWorkouts[w.id]?.type || w.type) !== "rest" && (
                             <div className="grid md:grid-cols-3 gap-2">
-                              <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" />
-                              <input type="text" value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" />
-                              <input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" />
+                              <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" />
+                              <input type="text" value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" />
+                              <input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Pace target" />
                             </div>
                           )}
                           {((editedWorkouts[w.id]?.type || w.type) === "run" || (editedWorkouts[w.id]?.type || w.type) === "walk") && (
                             <div className="grid md:grid-cols-2 gap-2">
-                              <input type="text" value={editedWorkouts[w.id]?.location || ''} onChange={(e) => updateEditedWorkout(w.id, 'location', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" />
-                              <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" />
+                              <input type="text" value={editedWorkouts[w.id]?.location || ''} onChange={(e) => updateEditedWorkout(w.id, 'location', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" />
+                              <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" />
                             </div>
                           )}
-                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
+                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
                         </div>
                       )}
                     </div>
@@ -1622,11 +1622,11 @@ export default function AdminPage() {
                       </div>
                     )}
                   </div>
-                  <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={weekPlan.focus} onChange={(e) => setWeekPlan({ ...weekPlan, focus: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
+                  <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={weekPlan.focus} onChange={(e) => setWeekPlan({ ...weekPlan, focus: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
                 </div>
                 {/* Week date validation warning */}
                 {weekDateWarning && (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-3">
+                  <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-3">
                     <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                     <p className="text-red-400 text-xs">{weekDateWarning}</p>
                   </div>
@@ -1639,51 +1639,51 @@ export default function AdminPage() {
                     <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-white font-heading text-sm uppercase">{day.day}</span>
-                        <span className="text-gray-600 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
+                        <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
                       </div>
                       {/* Workouts for this day */}
                       {day.workouts.map((wo, wi) => (
                         <div key={wi} className={`${wi > 0 ? "mt-3 pt-3 border-t border-white/5" : ""}`}>
                           <div className="flex items-center gap-3">
-                            {day.workouts.length > 1 && <span className="text-gray-600 text-xs w-4">{wi + 1}.</span>}
-                            <select value={wo.type || ""} onChange={(e) => { updateDayPlan(i, wi, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, wi, "trainingType", "Rest"); updateDayPlan(i, wi, "title", ""); updateDayPlan(i, wi, "miles", ""); } else { updateDayPlan(i, wi, "trainingType", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent">
+                            {day.workouts.length > 1 && <span className="text-gray-400 text-xs w-4">{wi + 1}.</span>}
+                            <select value={wo.type || ""} onChange={(e) => { updateDayPlan(i, wi, "type", e.target.value); if (e.target.value === "rest") { updateDayPlan(i, wi, "trainingType", "Rest"); updateDayPlan(i, wi, "title", ""); updateDayPlan(i, wi, "miles", ""); } else { updateDayPlan(i, wi, "trainingType", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
                               <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
                             </select>
                             {wo.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}
                             {wo.type === "run" && (
                               <>
-                                <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
+                                <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
                                   <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
                                 </select>
                                 <div className="flex items-center gap-1">
-                                  <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
+                                  <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
                                   <button type="button" onClick={() => updateDayPlan(i, wi, "distanceUnit", wo.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
                                 </div>
                               </>
                             )}
                             {wo.type === "walk" && (
                               <>
-                                <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
+                                <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
                                   <option value="" disabled>Walk Type *</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
                                 </select>
                                 <div className="flex items-center gap-1">
-                                  <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
+                                  <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
                                   <button type="button" onClick={() => updateDayPlan(i, wi, "distanceUnit", wo.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
                                 </div>
                               </>
                             )}
                             {wo.type === "stretching" && (
-                              <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
+                              <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
                                 <option value="" disabled>Type *</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
                               </select>
                             )}
                             {day.workouts.length > 1 && <button type="button" onClick={() => removeWorkoutFromDay(i, wi)} className="text-red-400 hover:text-red-300 text-xs ml-auto">Remove</button>}
                           </div>
-                          {(wo.type === "run" || wo.type === "walk") && (<div className="grid md:grid-cols-3 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" /><input type="text" value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Description" /><input type="text" value={wo.paceTarget} onChange={(e) => updateDayPlan(i, wi, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Pace target" /></div>)}
-                          {(wo.type === "run" || wo.type === "walk") && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes" /></div>)}
-                          {wo.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Title" /><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Location" /></div><textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
-                          {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
-                          {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Coach notes (optional)" /></div>}
+                          {(wo.type === "run" || wo.type === "walk") && (<div className="grid md:grid-cols-3 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" /><input type="text" value={wo.paceTarget} onChange={(e) => updateDayPlan(i, wi, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Pace target" /></div>)}
+                          {(wo.type === "run" || wo.type === "walk") && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
+                          {wo.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /></div><textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
+                          {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
+                          {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div>}
                         </div>
                       ))}
                       {/* Add another workout + template actions */}
@@ -1707,8 +1707,8 @@ export default function AdminPage() {
                         {day.workouts[0]?.type !== "rest" && day.workouts[0]?.title && (
                           showSaveDayTemplate === i ? (
                             <div className="flex items-center gap-2">
-                              <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-32 focus:outline-none focus:border-accent" placeholder="Template name" />
-                              <input type="text" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-24 focus:outline-none focus:border-accent" placeholder="Category" />
+                              <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-32 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Template name" />
+                              <input type="text" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs w-24 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Category" />
                               <button type="button" onClick={() => handleSaveDayTemplate(i)} disabled={!templateName.trim() || savingTemplate} className="text-green-400 text-xs hover:text-green-300 disabled:opacity-50">{savingTemplate ? "..." : "Save"}</button>
                               <button type="button" onClick={() => { setShowSaveDayTemplate(null); setTemplateName(""); setTemplateCategory(""); }} className="text-gray-500 text-xs hover:text-white">Cancel</button>
                             </div>
@@ -1779,7 +1779,7 @@ export default function AdminPage() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendAdminMessage(); } }}
-                      className="flex-1 bg-primary/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-accent resize-none max-h-32"
+                      className="flex-1 bg-primary/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none max-h-32"
                       rows={1}
                       placeholder={`Message ${selectedClientData.name.split(" ")[0]}...`}
                     />
@@ -1900,10 +1900,10 @@ export default function AdminPage() {
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Send Notifications To</h3>
                   <p className="text-gray-500 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
                   <div className="flex gap-3">
-                    <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
+                    <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
                     <button onClick={() => { saveAdminNotifPrefs(notifications, notifEmail); setNotifEmailSaved(true); setTimeout(() => setNotifEmailSaved(false), 3000); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
                   </div>
-                  <p className="text-gray-600 text-xs mt-2">Separate multiple addresses with a comma.</p>
+                  <p className="text-gray-400 text-xs mt-2">Separate multiple addresses with a comma.</p>
                 </div>
               </>
             ) : showChangelog ? (
