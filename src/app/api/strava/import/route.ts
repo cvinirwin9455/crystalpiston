@@ -9,6 +9,8 @@ import {
   secondsToDuration,
   STRAVA_API_BASE,
 } from '@/lib/strava'
+import { findBestMatch } from '@/lib/strava-matching'
+import type { MatchCandidate } from '@/lib/strava-matching'
 import type { StravaActivity } from '@/lib/strava'
 
 // POST /api/strava/import - Import historical Strava activities
@@ -150,7 +152,57 @@ export async function POST(request: Request) {
       }
     }
 
-    // Insert strava_activities record
+    // Insert strava_activities record with smart matching
+    // Find candidates for matching on this day
+    let suggestedMatchId: string | null = null
+    let matchStatus = 'pending' // Will prompt user
+
+    if (weekId) {
+      const { data: programmedWorkouts } = await adminClient
+        .from('workouts')
+        .select('id, day, type, training_type, title, miles')
+        .eq('week_id', weekId)
+
+      const workoutIds = (programmedWorkouts || []).map(w => w.id)
+      let completedIds: string[] = []
+      if (workoutIds.length > 0) {
+        const { data: logs } = await adminClient
+          .from('workout_logs')
+          .select('workout_id')
+          .in('workout_id', workoutIds)
+        completedIds = (logs || []).map(l => l.workout_id)
+      }
+
+      // Check already matched strava activities
+      const { data: existingMatches } = await adminClient
+        .from('strava_activities')
+        .select('matched_workout_id')
+        .eq('user_id', user.id)
+        .eq('week_id', weekId)
+        .not('matched_workout_id', 'is', null)
+      const alreadyMatchedIds = (existingMatches || []).map(m => m.matched_workout_id).filter(Boolean)
+
+      const candidates: MatchCandidate[] = (programmedWorkouts || [])
+        .filter(w => w.type !== 'rest')
+        .filter(w => !alreadyMatchedIds.includes(w.id))
+        .map(w => ({
+          id: w.id,
+          type: 'programmed' as const,
+          day: w.day,
+          workoutType: w.type,
+          trainingType: w.training_type || null,
+          miles: w.miles ? parseFloat(w.miles) : null,
+          title: w.title || null,
+          completed: completedIds.includes(w.id),
+        }))
+
+      const matchResult = findBestMatch(workoutType, miles, duration, dayOfWeek, trainingType, candidates)
+      if (matchResult.candidateId && matchResult.confidence >= 50) {
+        suggestedMatchId = matchResult.candidateId
+        matchStatus = 'suggested'
+      }
+    }
+
     const { data: newActivity, error: insertError } = await adminClient
       .from('strava_activities')
       .insert({
@@ -168,7 +220,8 @@ export async function POST(request: Request) {
         moving_time_seconds: activity.moving_time,
         distance_meters: activity.distance,
         start_date: activity.start_date,
-        match_status: 'standalone', // Historical imports default to standalone
+        match_status: matchStatus,
+        matched_workout_id: suggestedMatchId,
       })
       .select('id')
       .single()

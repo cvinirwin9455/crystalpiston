@@ -10,6 +10,8 @@ import {
   secondsToDuration,
   getVerifyToken,
 } from '@/lib/strava'
+import { findBestMatch } from '@/lib/strava-matching'
+import type { MatchCandidate } from '@/lib/strava-matching'
 
 // POST /api/strava/activities - Process a Strava activity (called from webhook handler)
 export async function POST(request: Request) {
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     const dayOfWeek = days[activityDate.getDay()]
 
-    // Find the current published week for this client
+    // Find the published week for this client
     const { data: client } = await adminClient
       .from('clients')
       .select('id')
@@ -85,6 +87,9 @@ export async function POST(request: Request) {
       .single()
 
     let weekId: string | null = null
+    let suggestedMatchId: string | null = null
+    let suggestedMatchType: string | null = null
+    let matchConfidence: number = 0
 
     if (client) {
       // Find the week that contains this activity date
@@ -95,7 +100,6 @@ export async function POST(request: Request) {
         .eq('status', 'published')
 
       if (weeks) {
-        // Parse date ranges and find matching week
         const activityMonday = getMonday(activityDate)
         for (const week of weeks) {
           const weekStartStr = week.date_range.split(' - ')[0]
@@ -107,9 +111,99 @@ export async function POST(request: Request) {
           }
         }
       }
+
+      // Smart matching: find programmed workouts and client workouts for this week/day
+      if (weekId) {
+        // Get programmed workouts for this week
+        const { data: programmedWorkouts } = await adminClient
+          .from('workouts')
+          .select('id, day, type, training_type, title, miles')
+          .eq('week_id', weekId)
+
+        // Get existing workout logs to know which are already completed
+        const workoutIds = (programmedWorkouts || []).map(w => w.id)
+        let completedIds: string[] = []
+        if (workoutIds.length > 0) {
+          const { data: logs } = await adminClient
+            .from('workout_logs')
+            .select('workout_id')
+            .in('workout_id', workoutIds)
+          completedIds = (logs || []).map(l => l.workout_id)
+        }
+
+        // Get client-added workouts (non-strava) that aren't completed
+        const { data: clientWorkouts } = await adminClient
+          .from('client_workouts')
+          .select('id, day, type, training_type, miles, notes')
+          .eq('week_id', weekId)
+          .eq('user_id', connection.user_id)
+          .is('source', null)
+
+        // Also check source = 'manual'
+        const { data: clientWorkoutsManual } = await adminClient
+          .from('client_workouts')
+          .select('id, day, type, training_type, miles, notes')
+          .eq('week_id', weekId)
+          .eq('user_id', connection.user_id)
+          .eq('source', 'manual')
+
+        // Check for strava activities already matched to workouts in this week
+        const { data: existingMatches } = await adminClient
+          .from('strava_activities')
+          .select('matched_workout_id')
+          .eq('user_id', connection.user_id)
+          .eq('week_id', weekId)
+          .not('matched_workout_id', 'is', null)
+        const alreadyMatchedIds = (existingMatches || []).map(m => m.matched_workout_id).filter(Boolean)
+
+        // Build candidate list
+        const candidates: MatchCandidate[] = [
+          ...(programmedWorkouts || [])
+            .filter(w => w.type !== 'rest')
+            .filter(w => !alreadyMatchedIds.includes(w.id))
+            .map(w => ({
+              id: w.id,
+              type: 'programmed' as const,
+              day: w.day,
+              workoutType: w.type,
+              trainingType: w.training_type || null,
+              miles: w.miles ? parseFloat(w.miles) : null,
+              title: w.title || null,
+              completed: completedIds.includes(w.id),
+            })),
+          ...([...(clientWorkouts || []), ...(clientWorkoutsManual || [])])
+            .filter(w => !alreadyMatchedIds.includes(w.id))
+            .map(w => ({
+              id: w.id,
+              type: 'client' as const,
+              day: w.day,
+              workoutType: w.type,
+              trainingType: w.training_type || null,
+              miles: w.miles ? parseFloat(w.miles) : null,
+              title: w.notes || null,
+              completed: false,
+            })),
+        ]
+
+        // Find best match
+        const matchResult = findBestMatch(
+          workoutType,
+          miles,
+          duration,
+          dayOfWeek,
+          trainingType,
+          candidates
+        )
+
+        if (matchResult.candidateId && matchResult.confidence >= 50) {
+          suggestedMatchId = matchResult.candidateId
+          suggestedMatchType = matchResult.candidateType
+          matchConfidence = matchResult.confidence
+        }
+      }
     }
 
-    // Upsert the strava activity record
+    // Store the strava activity with suggested match
     const activityData = {
       user_id: connection.user_id,
       strava_activity_id: activityId,
@@ -125,17 +219,16 @@ export async function POST(request: Request) {
       moving_time_seconds: activity.moving_time,
       distance_meters: activity.distance,
       start_date: activity.start_date,
-      match_status: 'pending',
+      match_status: suggestedMatchId ? 'suggested' : 'pending',
+      matched_workout_id: suggestedMatchId,
     }
 
     if (existing) {
-      // Update existing activity
       await adminClient
         .from('strava_activities')
         .update(activityData)
         .eq('id', existing.id)
     } else {
-      // Insert new activity
       const { data: newActivity, error: insertError } = await adminClient
         .from('strava_activities')
         .insert(activityData)
@@ -147,7 +240,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: insertError.message }, { status: 500 })
       }
 
-      // Also create a client_workouts entry so it shows up on the dashboard immediately
+      // Create a client_workouts entry so it shows on dashboard (with pending match info)
       if (weekId && newActivity) {
         await adminClient
           .from('client_workouts')
@@ -168,9 +261,9 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log(`Processed Strava activity ${activityId} for user ${connection.user_id}: ${activity.name} (${workoutType}, ${miles} mi, ${duration})`)
+    console.log(`Processed Strava activity ${activityId} for user ${connection.user_id}: ${activity.name} (${workoutType}, ${miles} mi, ${duration}) — match: ${suggestedMatchId ? `suggested (${matchConfidence}%)` : 'none'}`)
 
-    return NextResponse.json({ success: true, activityId, type: workoutType, miles, duration })
+    return NextResponse.json({ success: true, activityId, type: workoutType, miles, duration, suggestedMatch: suggestedMatchId, matchConfidence })
   } catch (err: any) {
     console.error('Failed to process Strava activity:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
@@ -210,17 +303,18 @@ export async function GET(request: Request) {
   return NextResponse.json(data || [])
 }
 
-// PATCH /api/strava/activities - Update match status (client matches to a programmed workout)
+// PATCH /api/strava/activities - Confirm or reject a match
 export async function PATCH(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { stravaActivityId, matchStatus, matchedWorkoutId } = body
+  const { stravaActivityId, action, matchedWorkoutId, matchedWorkoutType } = body
+  // action: 'confirm' | 'reject' | 'add_standalone' | 'dismiss'
 
-  if (!stravaActivityId || !matchStatus) {
-    return NextResponse.json({ error: 'stravaActivityId and matchStatus are required' }, { status: 400 })
+  if (!stravaActivityId || !action) {
+    return NextResponse.json({ error: 'stravaActivityId and action are required' }, { status: 400 })
   }
 
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -230,39 +324,43 @@ export async function PATCH(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // Update the strava activity match status
-  const updateData: any = { match_status: matchStatus }
-  if (matchedWorkoutId) {
-    updateData.matched_workout_id = matchedWorkoutId
-  }
-
-  const { error } = await adminClient
+  // Get the strava activity
+  const { data: stravaAct } = await adminClient
     .from('strava_activities')
-    .update(updateData)
+    .select('*')
     .eq('id', stravaActivityId)
     .eq('user_id', user.id)
+    .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!stravaAct) {
+    return NextResponse.json({ error: 'Strava activity not found' }, { status: 404 })
+  }
 
-  // If matched to a programmed workout, auto-create a workout log
-  if (matchStatus === 'matched' && matchedWorkoutId) {
-    // Get the strava activity data
-    const { data: stravaAct } = await adminClient
+  if (action === 'confirm') {
+    // User confirmed the suggested match
+    const workoutId = matchedWorkoutId || stravaAct.matched_workout_id
+    const workoutType = matchedWorkoutType || 'programmed'
+
+    if (!workoutId) {
+      return NextResponse.json({ error: 'No workout to match to' }, { status: 400 })
+    }
+
+    // Update strava activity status
+    await adminClient
       .from('strava_activities')
-      .select('*')
+      .update({ match_status: 'matched', matched_workout_id: workoutId })
       .eq('id', stravaActivityId)
-      .single()
 
-    if (stravaAct) {
-      // Create/upsert a workout log for the matched programmed workout
+    if (workoutType === 'programmed') {
+      // Create/upsert a workout log for the programmed workout
       const { data: existingLog } = await adminClient
         .from('workout_logs')
         .select('id')
-        .eq('workout_id', matchedWorkoutId)
+        .eq('workout_id', workoutId)
         .single()
 
       const logData = {
-        workout_id: matchedWorkoutId,
+        workout_id: workoutId,
         status: 'complete',
         actual_miles: stravaAct.miles,
         actual_pace: stravaAct.average_pace,
@@ -271,26 +369,58 @@ export async function PATCH(request: Request) {
       }
 
       if (existingLog) {
-        await adminClient
-          .from('workout_logs')
-          .update(logData)
-          .eq('id', existingLog.id)
+        await adminClient.from('workout_logs').update(logData).eq('id', existingLog.id)
       } else {
-        await adminClient
-          .from('workout_logs')
-          .insert(logData)
+        await adminClient.from('workout_logs').insert(logData)
       }
-
-      // Also remove the client_workouts entry since it's now matched to a programmed workout
-      await adminClient
-        .from('client_workouts')
-        .delete()
-        .eq('strava_activity_id', stravaActivityId)
-        .eq('user_id', user.id)
     }
+
+    // Remove the standalone client_workouts entry (it's now matched)
+    await adminClient
+      .from('client_workouts')
+      .delete()
+      .eq('strava_activity_id', stravaActivityId)
+      .eq('user_id', user.id)
+
+    return NextResponse.json({ success: true, action: 'matched' })
+
+  } else if (action === 'reject') {
+    // User rejected the suggested match — keep as pending, clear suggestion
+    await adminClient
+      .from('strava_activities')
+      .update({ match_status: 'pending', matched_workout_id: null })
+      .eq('id', stravaActivityId)
+
+    return NextResponse.json({ success: true, action: 'rejected' })
+
+  } else if (action === 'add_standalone') {
+    // User wants to keep it as a separate workout
+    await adminClient
+      .from('strava_activities')
+      .update({ match_status: 'standalone', matched_workout_id: null })
+      .eq('id', stravaActivityId)
+
+    return NextResponse.json({ success: true, action: 'standalone' })
+
+  } else if (action === 'dismiss') {
+    // User doesn't want to import this activity at all
+    // Remove the client_workouts entry
+    await adminClient
+      .from('client_workouts')
+      .delete()
+      .eq('strava_activity_id', stravaActivityId)
+      .eq('user_id', user.id)
+
+    // Mark as dismissed
+    await adminClient
+      .from('strava_activities')
+      .update({ match_status: 'dismissed' })
+      .eq('id', stravaActivityId)
+
+    return NextResponse.json({ success: true, action: 'dismissed' })
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 }
 
 // Helper: get Monday of a given date

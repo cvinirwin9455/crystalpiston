@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; };
-type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
+type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
@@ -525,21 +525,38 @@ export default function DashboardPage() {
   const [deletingClientWorkout, setDeletingClientWorkout] = useState<string | null>(null);
 
   // Strava match state
-  const [stravaMatchDecisions, setStravaMatchDecisions] = useState<Record<string, 'matched' | 'standalone'>>({});
+  const [stravaMatchDecisions, setStravaMatchDecisions] = useState<Record<string, 'matched' | 'standalone' | 'dismissed'>>({});
 
-  const handleStravaMatch = async (stravaActivityId: string, workoutId: string, clientWorkoutId: string) => {
+  const handleStravaMatch = async (stravaActivityId: string, workoutId: string, workoutType: string) => {
     try {
       const res = await fetch('/api/strava/activities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stravaActivityId, matchStatus: 'matched', matchedWorkoutId: workoutId }),
+        body: JSON.stringify({ stravaActivityId, action: 'confirm', matchedWorkoutId: workoutId, matchedWorkoutType: workoutType }),
       });
       if (res.ok) {
         setStravaMatchDecisions(prev => ({ ...prev, [stravaActivityId]: 'matched' }));
-        window.location.reload();
+        // Reload to show the updated state
+        setTimeout(() => window.location.reload(), 500);
       }
     } catch (err) {
-      console.error('Failed to match Strava activity:', err);
+      console.error('Failed to confirm Strava match:', err);
+    }
+  };
+
+  const handleStravaReject = async (stravaActivityId: string) => {
+    try {
+      const res = await fetch('/api/strava/activities', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stravaActivityId, action: 'reject' }),
+      });
+      if (res.ok) {
+        // Clear the suggestion — the card will now show "add as separate or dismiss" options
+        setStravaMatchDecisions(prev => ({ ...prev, [stravaActivityId]: 'standalone' }));
+      }
+    } catch (err) {
+      console.error('Failed to reject Strava match:', err);
     }
   };
 
@@ -548,13 +565,28 @@ export default function DashboardPage() {
       const res = await fetch('/api/strava/activities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stravaActivityId, matchStatus: 'standalone' }),
+        body: JSON.stringify({ stravaActivityId, action: 'add_standalone' }),
       });
       if (res.ok) {
         setStravaMatchDecisions(prev => ({ ...prev, [stravaActivityId]: 'standalone' }));
       }
     } catch (err) {
-      console.error('Failed to update Strava match status:', err);
+      console.error('Failed to keep Strava activity standalone:', err);
+    }
+  };
+
+  const handleStravaDismiss = async (stravaActivityId: string) => {
+    try {
+      const res = await fetch('/api/strava/activities', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stravaActivityId, action: 'dismiss' }),
+      });
+      if (res.ok) {
+        setStravaMatchDecisions(prev => ({ ...prev, [stravaActivityId]: 'dismissed' }));
+      }
+    } catch (err) {
+      console.error('Failed to dismiss Strava activity:', err);
     }
   };
 
@@ -882,6 +914,7 @@ export default function DashboardPage() {
                             <span className="text-gray-300 text-xs">{workout.date}</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
+                            {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>Synced</span>}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
@@ -1100,9 +1133,67 @@ export default function DashboardPage() {
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                               </div>
-                              {cw.notes && <p className="text-gray-400 text-sm">{cw.notes}</p>}
-                              {/* Complete/Incomplete buttons */}
-                              {weekOffset === 0 && !completedClientWorkouts[cw.id] && (
+                              {cw.notes && !cw.activityName && <p className="text-gray-400 text-sm">{cw.notes}</p>}
+                              {/* Strava activity details */}
+                              {cw.source === 'strava' && cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
+                              {cw.source === 'strava' && (cw.averagePace || cw.duration) && (
+                                <div className="flex items-center gap-3 mt-0.5">
+                                  {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
+                                  {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                                </div>
+                              )}
+
+                              {/* Strava Match Suggestion */}
+                              {cw.source === 'strava' && cw.stravaActivityId && !stravaMatchDecisions[cw.stravaActivityId] && (() => {
+                                // Find if there's a suggested match for this strava activity
+                                const suggestion = (currentWeek as any)?.stravaActivities?.find((sa: any) => sa.id === cw.stravaActivityId && sa.matchStatus === 'suggested');
+                                const suggestedWorkout = suggestion ? (currentWeek?.workouts || []).find(w => w.id === suggestion.suggestedMatchId) : null;
+
+                                if (suggestedWorkout) {
+                                  return (
+                                    <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                                      <p className="text-orange-400 text-xs font-medium mb-2">We think this matches your programmed workout:</p>
+                                      <div className="bg-primary/30 rounded-lg p-2 mb-2">
+                                        <p className="text-white text-sm font-medium">{suggestedWorkout.title || getTypeLabel(suggestedWorkout.type)}</p>
+                                        <p className="text-gray-400 text-xs">{suggestedWorkout.miles ? `${convertDist(suggestedWorkout.miles, getWorkoutUnit(suggestedWorkout.id), suggestedWorkout.distanceUnit)} ${getWorkoutUnit(suggestedWorkout.id) === "km" ? "km" : "mi"} programmed` : getTypeLabel(suggestedWorkout.type)}{suggestedWorkout.trainingType ? ` • ${getTrainingTypeLabel(suggestedWorkout.trainingType)}` : ''}</p>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        <button onClick={() => handleStravaMatch(cw.stravaActivityId!, suggestedWorkout.id, 'programmed')} className="text-xs bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg transition-colors">Yes, this is it</button>
+                                        <button onClick={() => handleStravaReject(cw.stravaActivityId!)} className="text-xs border border-gray-500/30 text-gray-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">No, wrong match</button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                // No suggestion — show options to match manually, keep standalone, or dismiss
+                                return (
+                                  <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                                    <p className="text-orange-400 text-xs font-medium mb-2">What would you like to do with this activity?</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {/* Show programmed workouts for this day that aren't completed */}
+                                      {(currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest').map(w => (
+                                        <button key={w.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed')} className="text-xs bg-orange-600 hover:bg-orange-700 text-white py-1.5 px-3 rounded-lg transition-colors">
+                                          Match: {w.title || getTypeLabel(w.type)}{w.miles ? ` (${convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} ${distUnitShort})` : ''}
+                                        </button>
+                                      ))}
+                                      <button onClick={() => handleStravaKeepStandalone(cw.stravaActivityId!)} className="text-xs border border-cyan-500/30 text-cyan-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Keep as extra workout</button>
+                                      <button onClick={() => handleStravaDismiss(cw.stravaActivityId!)} className="text-xs border border-red-500/30 text-red-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Don't import</button>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Strava decided: standalone */}
+                              {cw.source === 'strava' && cw.stravaActivityId && stravaMatchDecisions[cw.stravaActivityId] === 'standalone' && (
+                                <p className="text-green-400 text-xs mt-2 font-medium">Added as extra workout</p>
+                              )}
+                              {/* Strava decided: dismissed — hide the card */}
+                              {cw.source === 'strava' && cw.stravaActivityId && stravaMatchDecisions[cw.stravaActivityId] === 'dismissed' && (
+                                <p className="text-gray-500 text-xs mt-2 italic">Dismissed — will disappear on refresh</p>
+                              )}
+
+                              {/* Complete/Incomplete buttons (non-Strava workouts only) */}
+                              {cw.source !== 'strava' && weekOffset === 0 && !completedClientWorkouts[cw.id] && (
                                 <div className="mt-2 flex items-center gap-2">
                                   <button onClick={async () => { setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: true })); const notes = clientWorkoutNotes[cw.id] || ''; await fetch('/api/client-workouts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cw.id, completed: true, notes }) }); }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Done</button>
                                   <input type="text" value={clientWorkoutNotes[cw.id] || ''} onChange={(e) => setClientWorkoutNotes(prev => ({ ...prev, [cw.id]: e.target.value }))} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Comment (optional)" />

@@ -68,6 +68,27 @@ export async function GET() {
     logsByWorkoutId.set(log.workout_id, log)
   }
 
+  // Fetch strava activities matched to workouts in these weeks
+  let stravaMatchedWorkoutIds = new Set<string>()
+  let stravaActivitiesByWeek = new Map<string, any[]>()
+  if (weekIds.length > 0) {
+    const { data: stravaActivities } = await adminClient
+      .from('strava_activities')
+      .select('id, week_id, day, type, miles, duration, average_pace, activity_name, match_status, matched_workout_id')
+      .eq('user_id', user.id)
+      .in('week_id', weekIds)
+    
+    for (const sa of stravaActivities || []) {
+      if (sa.match_status === 'matched' && sa.matched_workout_id) {
+        stravaMatchedWorkoutIds.add(sa.matched_workout_id)
+      }
+      if (!stravaActivitiesByWeek.has(sa.week_id)) {
+        stravaActivitiesByWeek.set(sa.week_id, [])
+      }
+      stravaActivitiesByWeek.get(sa.week_id)!.push(sa)
+    }
+  }
+
   const workoutsByWeekId = new Map<string, any[]>()
   for (const wo of workouts || []) {
     if (!workoutsByWeekId.has(wo.week_id)) {
@@ -108,6 +129,19 @@ export async function GET() {
       dateRange: w.date_range,
       focus: w.focus || '',
       coachMessage: w.coach_message || '',
+      stravaActivities: (stravaActivitiesByWeek.get(w.id) || [])
+        .filter(sa => sa.match_status === 'suggested' || sa.match_status === 'pending')
+        .map(sa => ({
+          id: sa.id,
+          day: sa.day,
+          type: sa.type,
+          miles: sa.miles,
+          duration: sa.duration,
+          averagePace: sa.average_pace,
+          activityName: sa.activity_name,
+          matchStatus: sa.match_status,
+          suggestedMatchId: sa.matched_workout_id,
+        })),
       clientWorkouts: weekClientWorkouts.map(cw => ({
         id: cw.id,
         day: cw.day,
@@ -140,6 +174,7 @@ export async function GET() {
           location: wo.location || '',
           coachNotes: wo.coach_notes || '',
           completed: !!log,
+          stravaSynced: stravaMatchedWorkoutIds.has(wo.id),
           status: log?.status || null,
           skipReason: log?.skip_reason || null,
           log: log ? {
