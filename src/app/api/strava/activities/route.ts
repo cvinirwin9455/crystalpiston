@@ -310,7 +310,7 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { stravaActivityId, action, matchedWorkoutId, matchedWorkoutType } = body
+  const { stravaActivityId, action, matchedWorkoutId, matchedWorkoutType, logData } = body
   // action: 'confirm' | 'reject' | 'add_standalone' | 'dismiss'
 
   if (!stravaActivityId || !action) {
@@ -359,19 +359,21 @@ export async function PATCH(request: Request) {
         .eq('workout_id', workoutId)
         .single()
 
-      const logData = {
+      const logDataToSave = {
         workout_id: workoutId,
         status: 'complete',
         actual_miles: stravaAct.miles,
         actual_pace: stravaAct.average_pace,
         duration: stravaAct.duration,
-        notes: `Synced from Strava: ${stravaAct.activity_name}`,
+        notes: logData?.notes || `Synced from Strava: ${stravaAct.activity_name}`,
+        rpe: logData?.rpe ? parseInt(logData.rpe) : null,
+        sleep: logData?.sleep ? parseInt(logData.sleep) : null,
       }
 
       if (existingLog) {
-        await adminClient.from('workout_logs').update(logData).eq('id', existingLog.id)
+        await adminClient.from('workout_logs').update(logDataToSave).eq('id', existingLog.id)
       } else {
-        await adminClient.from('workout_logs').insert(logData)
+        await adminClient.from('workout_logs').insert(logDataToSave)
       }
     }
 

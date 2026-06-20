@@ -526,22 +526,40 @@ export default function DashboardPage() {
 
   // Strava match state
   const [stravaMatchDecisions, setStravaMatchDecisions] = useState<Record<string, 'matched' | 'standalone' | 'dismissed'>>({});
+  const [stravaMatchLog, setStravaMatchLog] = useState<{ stravaActivityId: string; workoutId: string; workoutType: string; rpe: string; sleep: string; notes: string } | null>(null);
 
-  const handleStravaMatch = async (stravaActivityId: string, workoutId: string, workoutType: string) => {
+  const openStravaMatchLog = (stravaActivityId: string, workoutId: string, workoutType: string) => {
+    setStravaMatchLog({ stravaActivityId, workoutId, workoutType, rpe: '', sleep: '', notes: '' });
+  };
+
+  const handleStravaMatchConfirm = async () => {
+    if (!stravaMatchLog) return;
+    const { stravaActivityId, workoutId, workoutType, rpe, sleep, notes } = stravaMatchLog;
     try {
       const res = await fetch('/api/strava/activities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stravaActivityId, action: 'confirm', matchedWorkoutId: workoutId, matchedWorkoutType: workoutType }),
+        body: JSON.stringify({
+          stravaActivityId,
+          action: 'confirm',
+          matchedWorkoutId: workoutId,
+          matchedWorkoutType: workoutType,
+          logData: { rpe: rpe || null, sleep: sleep || null, notes: notes || null },
+        }),
       });
       if (res.ok) {
         setStravaMatchDecisions(prev => ({ ...prev, [stravaActivityId]: 'matched' }));
-        // Reload to show the updated state
+        setStravaMatchLog(null);
         setTimeout(() => window.location.reload(), 500);
       }
     } catch (err) {
       console.error('Failed to confirm Strava match:', err);
     }
+  };
+
+  const handleStravaMatch = async (stravaActivityId: string, workoutId: string, workoutType: string) => {
+    // Open the log form instead of immediately confirming
+    openStravaMatchLog(stravaActivityId, workoutId, workoutType);
   };
 
   const handleStravaReject = async (stravaActivityId: string) => {
@@ -1189,6 +1207,43 @@ export default function DashboardPage() {
                               {/* Strava decided: dismissed — hide the card */}
                               {cw.source === 'strava' && cw.stravaActivityId && stravaMatchDecisions[cw.stravaActivityId] === 'dismissed' && (
                                 <p className="text-gray-500 text-xs mt-2 italic">Dismissed — will disappear on refresh</p>
+                              )}
+
+                              {/* Strava Match Log Form — appears when user clicks "Yes, this is it" or a match button */}
+                              {cw.source === 'strava' && cw.stravaActivityId && stravaMatchLog?.stravaActivityId === cw.stravaActivityId && (
+                                <div className="mt-3 bg-green-500/5 border border-green-500/20 rounded-lg p-4">
+                                  <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Complete Your Log</h4>
+                                  <p className="text-gray-400 text-xs mb-4">Strava data (miles, pace, duration) will be saved automatically. Add your effort and notes below.</p>
+                                  
+                                  <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
+                                      <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
+                                      <p className="text-gray-600 text-xs mb-2">1 = easy, 10 = all-out</p>
+                                      <div className="flex items-center gap-2">
+                                        <input type="range" min="1" max="10" value={stravaMatchLog.rpe || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, rpe: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                        <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.rpe || '—'}</span>
+                                      </div>
+                                    </div>
+                                    <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
+                                      <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
+                                      <p className="text-gray-600 text-xs mb-2">1 = terrible, 10 = great</p>
+                                      <div className="flex items-center gap-2">
+                                        <input type="range" min="1" max="10" value={stravaMatchLog.sleep || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, sleep: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                        <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.sleep || '—'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="mb-4">
+                                    <label className="text-gray-400 text-xs block mb-1">Notes</label>
+                                    <input type="text" value={stravaMatchLog.notes} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, notes: e.target.value } : null)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500" placeholder="How did it feel? Anything notable?" />
+                                  </div>
+
+                                  <div className="flex items-center gap-3">
+                                    <button onClick={handleStravaMatchConfirm} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition-colors">Complete & Save</button>
+                                    <button onClick={() => setStravaMatchLog(null)} className="text-gray-400 hover:text-white text-xs">Cancel</button>
+                                  </div>
+                                </div>
                               )}
 
                               {/* Complete/Incomplete buttons (non-Strava workouts only) */}
