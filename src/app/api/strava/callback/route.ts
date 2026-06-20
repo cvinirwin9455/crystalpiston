@@ -48,6 +48,13 @@ export async function GET(request: Request) {
     )
 
     // Upsert the connection (in case they reconnect)
+    // First, remove any existing connection for this strava athlete (handles account switching)
+    await adminClient
+      .from('strava_connections')
+      .delete()
+      .eq('strava_athlete_id', tokenData.athlete.id)
+      .neq('user_id', user.id)
+
     const { error: upsertError } = await adminClient
       .from('strava_connections')
       .upsert({

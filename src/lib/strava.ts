@@ -23,7 +23,7 @@ export function getStravaAuthUrl(redirectUri: string, state: string): string {
     client_id: getClientId(),
     redirect_uri: redirectUri,
     response_type: 'code',
-    approval_prompt: 'auto',
+    approval_prompt: 'force',
     scope: 'read,activity:read_all',
     state,
   })
