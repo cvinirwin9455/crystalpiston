@@ -349,6 +349,17 @@ export default function DashboardPage() {
             dateRange: w.dateRange,
             focus: w.focus || '',
             coachMessage: w.coachMessage || '',
+            stravaActivities: (w.stravaActivities || []).map((sa: any) => ({
+              id: sa.id,
+              day: sa.day,
+              type: sa.type,
+              miles: sa.miles,
+              duration: sa.duration,
+              averagePace: sa.averagePace,
+              activityName: sa.activityName,
+              matchStatus: sa.matchStatus,
+              suggestedMatchId: sa.suggestedMatchId || null,
+            })),
             clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({
               id: cw.id,
               day: cw.day,
@@ -1170,9 +1181,13 @@ export default function DashboardPage() {
                                   return (
                                     <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
                                       <p className="text-orange-400 text-xs font-medium mb-2">We think this matches your programmed workout:</p>
-                                      <div className="bg-primary/30 rounded-lg p-2 mb-2">
-                                        <p className="text-white text-sm font-medium">{suggestedWorkout.title || getTypeLabel(suggestedWorkout.type)}</p>
-                                        <p className="text-gray-400 text-xs">{suggestedWorkout.miles ? `${convertDist(suggestedWorkout.miles, getWorkoutUnit(suggestedWorkout.id), suggestedWorkout.distanceUnit)} ${getWorkoutUnit(suggestedWorkout.id) === "km" ? "km" : "mi"} programmed` : getTypeLabel(suggestedWorkout.type)}{suggestedWorkout.trainingType ? ` • ${getTrainingTypeLabel(suggestedWorkout.trainingType)}` : ''}</p>
+                                      <div className="bg-primary/30 rounded-lg p-2.5 mb-2">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(suggestedWorkout.type)}`}>{getTypeLabel(suggestedWorkout.type)}</span>
+                                          {suggestedWorkout.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(suggestedWorkout.trainingType)}`}>{getTrainingTypeLabel(suggestedWorkout.trainingType)}</span>}
+                                          {suggestedWorkout.miles && <span className="text-white text-xs font-bold ml-auto">{convertDist(suggestedWorkout.miles, getWorkoutUnit(suggestedWorkout.id), suggestedWorkout.distanceUnit)} {getWorkoutUnit(suggestedWorkout.id) === "km" ? "km" : "mi"}</span>}
+                                        </div>
+                                        {suggestedWorkout.title && <p className="text-gray-300 text-xs">{suggestedWorkout.title}</p>}
                                       </div>
                                       <div className="flex flex-wrap gap-2">
                                         <button onClick={() => handleStravaMatch(cw.stravaActivityId!, suggestedWorkout.id, 'programmed')} className="text-xs bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg transition-colors">Yes, this is it</button>
@@ -1185,16 +1200,33 @@ export default function DashboardPage() {
                                 // No suggestion — show options to match manually, keep standalone, or dismiss
                                 return (
                                   <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
-                                    <p className="text-orange-400 text-xs font-medium mb-2">What would you like to do with this activity?</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {/* Show programmed workouts for this day that aren't completed */}
-                                      {(currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest').map(w => (
-                                        <button key={w.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed')} className="text-xs bg-orange-600 hover:bg-orange-700 text-white py-1.5 px-3 rounded-lg transition-colors">
-                                          Match: {w.title || getTypeLabel(w.type)}{w.miles ? ` (${convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} ${distUnitShort})` : ''}
+                                    <p className="text-orange-400 text-xs font-medium mb-2">Which programmed workout is this?</p>
+                                    <div className="space-y-2 mb-2">
+                                      {/* Show programmed workouts for this day that aren't completed as mini cards */}
+                                      {(currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest').map((w, idx) => (
+                                        <button key={w.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed')} className="w-full text-left bg-primary/40 hover:bg-primary/60 border border-orange-500/30 hover:border-orange-400/50 rounded-lg p-2.5 transition-colors group">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-orange-400 text-xs font-bold bg-orange-500/20 rounded-full w-5 h-5 flex items-center justify-center">{idx + 1}</span>
+                                              <div>
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
+                                                  {w.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
+                                                </div>
+                                                {w.title && <p className="text-gray-300 text-xs mt-0.5">{w.title}</p>}
+                                              </div>
+                                            </div>
+                                            <div className="text-right">
+                                              {w.miles ? <span className="text-white text-sm font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
+                                              <p className="text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Match this</p>
+                                            </div>
+                                          </div>
                                         </button>
                                       ))}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">
                                       <button onClick={() => handleStravaKeepStandalone(cw.stravaActivityId!)} className="text-xs border border-cyan-500/30 text-cyan-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Keep as extra workout</button>
-                                      <button onClick={() => handleStravaDismiss(cw.stravaActivityId!)} className="text-xs border border-red-500/30 text-red-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Don't import</button>
+                                      <button onClick={() => handleStravaDismiss(cw.stravaActivityId!)} className="text-xs border border-red-500/30 text-red-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Don&apos;t import</button>
                                     </div>
                                   </div>
                                 );
