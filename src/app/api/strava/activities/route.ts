@@ -263,6 +263,64 @@ export async function POST(request: Request) {
 
     console.log(`Processed Strava activity ${activityId} for user ${connection.user_id}: ${activity.name} (${workoutType}, ${miles} mi, ${duration}) — match: ${suggestedMatchId ? `suggested (${matchConfidence}%)` : 'none'}`)
 
+    // Send email notification to the client about the imported activity
+    try {
+      const { data: clientUser } = await adminClient
+        .from('users')
+        .select('name, email')
+        .eq('id', connection.user_id)
+        .single()
+
+      if (clientUser?.email) {
+        // Determine match status and get matched workout title
+        let emailMatchStatus: 'programmed' | 'client' | 'none' = 'none'
+        let matchedWorkoutTitle: string | null = null
+
+        if (suggestedMatchId && suggestedMatchType === 'programmed') {
+          emailMatchStatus = 'programmed'
+          const { data: matchedWorkout } = await adminClient
+            .from('workouts')
+            .select('title, type, training_type')
+            .eq('id', suggestedMatchId)
+            .single()
+          if (matchedWorkout) {
+            matchedWorkoutTitle = matchedWorkout.title || `${matchedWorkout.type}${matchedWorkout.training_type ? ' — ' + matchedWorkout.training_type : ''}`
+          }
+        } else if (suggestedMatchId && suggestedMatchType === 'client') {
+          emailMatchStatus = 'client'
+          const { data: matchedCw } = await adminClient
+            .from('client_workouts')
+            .select('notes, type, training_type')
+            .eq('id', suggestedMatchId)
+            .single()
+          if (matchedCw) {
+            matchedWorkoutTitle = matchedCw.notes || `${matchedCw.type}${matchedCw.training_type ? ' — ' + matchedCw.training_type : ''}`
+          }
+        }
+
+        const { sendEmail, buildStravaImportEmail } = await import('@/lib/email')
+        const url = new URL(request.url)
+        const siteUrl = `https://${url.host}`
+
+        const { subject, html } = buildStravaImportEmail(
+          clientUser.name || 'there',
+          activity.name,
+          workoutType,
+          miles,
+          duration,
+          pace,
+          emailMatchStatus,
+          matchedWorkoutTitle,
+          dayOfWeek,
+          siteUrl
+        )
+
+        await sendEmail({ to: clientUser.email, subject, html })
+      }
+    } catch (emailErr) {
+      console.error('Failed to send Strava import email to client:', emailErr)
+    }
+
     return NextResponse.json({ success: true, activityId, type: workoutType, miles, duration, suggestedMatch: suggestedMatchId, matchConfidence })
   } catch (err: any) {
     console.error('Failed to process Strava activity:', err)

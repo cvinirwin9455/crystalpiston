@@ -166,3 +166,72 @@ export function buildWorkoutCommentEmail(
 
   return { subject, html }
 }
+
+
+
+export function buildStravaImportEmail(
+  clientName: string,
+  activityName: string,
+  activityType: string,
+  miles: number | null,
+  duration: string | null,
+  pace: string | null,
+  matchStatus: 'programmed' | 'client' | 'none',
+  matchedWorkoutTitle: string | null,
+  day: string,
+  siteUrl: string
+): { subject: string; html: string } {
+  const firstName = clientName.split(' ')[0]
+
+  let statusBadge = ''
+  let statusMessage = ''
+
+  if (matchStatus === 'programmed') {
+    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #f9731622; color: #f97316; border: 1px solid #f9731644;">Possible Match Found</div>`
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">We think this matches your <strong style="color: #ffffff;">programmed workout</strong> from Crystal${matchedWorkoutTitle ? `: <strong style="color: #d4a853;">${matchedWorkoutTitle}</strong>` : ''}.</p>
+    <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Log in to confirm the match so your training log stays accurate.</p>`
+  } else if (matchStatus === 'client') {
+    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #06b6d422; color: #06b6d4; border: 1px solid #06b6d444;">Possible Match Found</div>`
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">We think this matches a <strong style="color: #ffffff;">workout you created</strong>${matchedWorkoutTitle ? `: <strong style="color: #06b6d4;">${matchedWorkoutTitle}</strong>` : ''}.</p>
+    <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Log in to confirm the match so your training log stays accurate.</p>`
+  } else {
+    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #6b728022; color: #9ca3af; border: 1px solid #6b728044;">No Match Found</div>`
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">This activity didn&rsquo;t match any of your programmed or client-created workouts. Log in to decide what to do with it &mdash; you can link it to a workout, keep it as an extra, or dismiss it.</p>`
+  }
+
+  const details = [
+    miles ? `${miles} mi` : null,
+    pace || null,
+    duration || null,
+  ].filter(Boolean).join(' &bull; ')
+
+  const subject = matchStatus !== 'none'
+    ? `Strava synced: ${activityName} — possible match found`
+    : `Strava synced: ${activityName} — action needed`
+
+  const html = `
+    <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hey ${firstName}!</h2>
+    <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">A new Strava activity was synced to your account:</p>
+    
+    <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(249,115,22,0.08); border-left: 3px solid #f97316; border-radius: 4px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span style="color: #f97316; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">${day} &bull; ${activityType}</span>
+      </div>
+      <p style="margin: 0 0 4px; color: #ffffff; font-size: 16px; font-weight: 600;">${activityName}</p>
+      ${details ? `<p style="margin: 0; color: #b0b0b0; font-size: 13px;">${details}</p>` : ''}
+    </div>
+
+    ${statusBadge}
+    ${statusMessage}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center">
+          <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">Review in Dashboard</a>
+        </td>
+      </tr>
+    </table>
+  `
+
+  return { subject, html }
+}
