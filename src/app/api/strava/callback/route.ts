@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const scope = url.searchParams.get('scope')
 
   // Base redirect URL (client dashboard account tab)
-  const baseRedirect = `${url.protocol}//${url.host}/dashboard?tab=account`
+  const baseRedirect = `https://${url.host}/dashboard?tab=account`
 
   // Handle denial
   if (error === 'access_denied') {

@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url)
-  const redirectUri = `${url.protocol}//${url.host}/api/strava/callback`
+  // Always use https for the redirect URI (Vercel proxies may report http internally)
+  const redirectUri = `https://${url.host}/api/strava/callback`
 
   // Use user ID as state parameter to verify on callback
   const state = user.id
