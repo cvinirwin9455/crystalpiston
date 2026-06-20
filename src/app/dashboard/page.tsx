@@ -111,6 +111,11 @@ export default function DashboardPage() {
   const [stravaConnection, setStravaConnection] = useState<{ connected: boolean; athleteName?: string; athleteProfile?: string } | null>(null);
   const [disconnectingStrava, setDisconnectingStrava] = useState(false);
   const [stravaError, setStravaError] = useState("");
+  const [showStravaImport, setShowStravaImport] = useState(false);
+  const [stravaImportFrom, setStravaImportFrom] = useState("");
+  const [stravaImportTo, setStravaImportTo] = useState(new Date().toISOString().split('T')[0]);
+  const [stravaImporting, setStravaImporting] = useState(false);
+  const [stravaImportResult, setStravaImportResult] = useState<{ imported: number; skipped: number; message: string } | null>(null);
 
   // Fetch Strava connection status
   useEffect(() => {
@@ -154,6 +159,38 @@ export default function DashboardPage() {
       console.error('Failed to disconnect Strava:', err);
     } finally {
       setDisconnectingStrava(false);
+    }
+  };
+
+  const handleStravaImport = async () => {
+    if (!stravaImportFrom) return;
+    setStravaImporting(true);
+    setStravaImportResult(null);
+    try {
+      const res = await fetch('/api/strava/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          afterDate: stravaImportFrom,
+          beforeDate: stravaImportTo || undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStravaImportResult(data);
+        if (data.imported > 0) {
+          // Reload the page after a short delay to show the imported workouts
+          setTimeout(() => window.location.reload(), 2000);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setStravaImportResult({ imported: 0, skipped: 0, message: err.error || 'Import failed. Please try again.' });
+      }
+    } catch (err) {
+      console.error('Failed to import Strava activities:', err);
+      setStravaImportResult({ imported: 0, skipped: 0, message: 'Network error. Please try again.' });
+    } finally {
+      setStravaImporting(false);
     }
   };
 
@@ -1320,6 +1357,40 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <p className="text-gray-500 text-xs mb-4">Your Strava activities will automatically sync to your training log.</p>
+
+                  {/* Import History Section */}
+                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4 mb-4">
+                    <p className="text-white text-sm font-medium mb-1">Import Past Activities</p>
+                    <p className="text-gray-500 text-xs mb-3">Pull in activities from Strava that happened before you connected.</p>
+                    {!showStravaImport ? (
+                      <button onClick={() => setShowStravaImport(true)} className="text-orange-400 text-xs hover:underline">Import history...</button>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-gray-400 text-xs block mb-1">From</label>
+                            <input type="date" value={stravaImportFrom} onChange={(e) => setStravaImportFrom(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 [color-scheme:dark]" />
+                          </div>
+                          <div>
+                            <label className="text-gray-400 text-xs block mb-1">To</label>
+                            <input type="date" value={stravaImportTo} onChange={(e) => setStravaImportTo(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 [color-scheme:dark]" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={handleStravaImport} disabled={stravaImporting || !stravaImportFrom} className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50 transition-colors">
+                            {stravaImporting ? 'Importing...' : 'Import Activities'}
+                          </button>
+                          <button onClick={() => setShowStravaImport(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                        </div>
+                        {stravaImportResult && (
+                          <div className={`rounded-lg p-3 text-xs ${stravaImportResult.imported > 0 ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'}`}>
+                            {stravaImportResult.message}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <button onClick={handleDisconnectStrava} disabled={disconnectingStrava} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 py-2 px-4 rounded-lg text-xs transition-colors disabled:opacity-50">
                     {disconnectingStrava ? 'Disconnecting...' : 'Disconnect Strava'}
                   </button>
