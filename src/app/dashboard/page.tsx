@@ -925,9 +925,19 @@ export default function DashboardPage() {
                     {/* Day Content - only when expanded */}
                     {isExpanded && (
                       <div className="p-4 space-y-3">
-                    {/* Crystal's programmed workouts for this day */}
-                    {dayWorkouts.map((workout) => (
-                <div key={workout.id} className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
+                    {/* Crystal's programmed workouts for this day — with Strava suggestions attached */}
+                    {dayWorkouts.map((workout) => {
+                      // Find Strava imports that suggest matching to THIS workout
+                      const suggestedStravaForWorkout = dayClientWorkouts.filter(cw => {
+                        if (cw.source !== 'strava' || !cw.stravaActivityId) return false;
+                        if (stravaMatchDecisions[cw.stravaActivityId]) return false;
+                        const suggestion = (currentWeek as any)?.stravaActivities?.find((sa: any) => sa.id === cw.stravaActivityId && sa.matchStatus === 'suggested');
+                        return suggestion && suggestion.suggestedMatchId === workout.id;
+                      });
+                      
+                      return (
+                <div key={workout.id}>
+                <div className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
                   <div className="p-5">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
@@ -1138,22 +1148,110 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-              ))}
+              
+              {/* Attached Strava Suggestion — visually coupled below the programmed workout */}
+              {suggestedStravaForWorkout.map(cw => (
+                <div key={cw.id} className="relative ml-6 mt-0">
+                  {/* Dotted connector line */}
+                  <div className="absolute left-3 -top-3 w-0 h-3 border-l-2 border-dashed border-orange-400/50"></div>
+                  <div className="border-2 border-dashed border-orange-400/40 rounded-xl p-4 bg-orange-500/5 opacity-90">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="w-6 h-6 rounded-full bg-orange-500/20 border-2 border-dashed border-orange-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="w-3 h-3 text-orange-400" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-dashed border-orange-400/50">Strava Import — Possible Match</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
+                            {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                          </div>
+                          {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
+                          {(cw.averagePace || cw.duration) && (
+                            <div className="flex items-center gap-3 mt-0.5">
+                              {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
+                              {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                            </div>
+                          )}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button onClick={() => handleStravaMatch(cw.stravaActivityId!, workout.id, 'programmed')} className="text-xs bg-green-600 hover:bg-green-700 text-white py-1.5 px-4 rounded-lg transition-colors font-medium flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              Yes, this is the same workout
+                            </button>
+                            <button onClick={() => handleStravaReject(cw.stravaActivityId!)} className="text-xs border border-gray-500/30 text-gray-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Not a match</button>
+                          </div>
 
-                    {/* Client-Added Workouts for this day */}
-                    {dayClientWorkouts.map(cw => (
-                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
+                          {/* Strava Match Log Form */}
+                          {stravaMatchLog?.stravaActivityId === cw.stravaActivityId && (
+                            <div className="mt-3 bg-green-500/5 border border-green-500/20 rounded-lg p-4">
+                              <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Complete Your Log</h4>
+                              <p className="text-gray-400 text-xs mb-4">Strava data (miles, pace, duration) will be saved automatically. Add your effort and notes below.</p>
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
+                                  <p className="text-gray-600 text-xs mb-2">1 = easy, 10 = all-out</p>
+                                  <div className="flex items-center gap-2">
+                                    <input type="range" min="1" max="10" value={stravaMatchLog.rpe || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, rpe: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                    <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.rpe || '—'}</span>
+                                  </div>
+                                </div>
+                                <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
+                                  <p className="text-gray-600 text-xs mb-2">1 = terrible, 10 = great</p>
+                                  <div className="flex items-center gap-2">
+                                    <input type="range" min="1" max="10" value={stravaMatchLog.sleep || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, sleep: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                    <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.sleep || '—'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mb-4">
+                                <label className="text-gray-400 text-xs block mb-1">Notes</label>
+                                <input type="text" value={stravaMatchLog.notes} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, notes: e.target.value } : null)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500" placeholder="How did it feel? Anything notable?" />
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button onClick={handleStravaMatchConfirm} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition-colors">Complete & Save</button>
+                                <button onClick={() => setStravaMatchLog(null)} className="text-gray-400 hover:text-white text-xs">Cancel</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {cw.miles && <div className="text-right ml-3"><p className="font-heading text-xl text-orange-400">{convertDist(cw.miles)}</p><p className="text-gray-400 text-xs">{distUnitShort}</p></div>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              </div>
+              );
+              })}
+
+                    {/* Client-Added Workouts for this day (non-Strava + unmatched Strava) */}
+                    {dayClientWorkouts.filter(cw => {
+                      // Show non-Strava workouts always
+                      if (cw.source !== 'strava') return true;
+                      // Don't show Strava imports that have a suggested match (they're shown above, attached to the programmed workout)
+                      if (!cw.stravaActivityId) return true;
+                      if (stravaMatchDecisions[cw.stravaActivityId]) return true; // already decided
+                      const suggestion = (currentWeek as any)?.stravaActivities?.find((sa: any) => sa.id === cw.stravaActivityId && sa.matchStatus === 'suggested');
+                      if (suggestion && suggestion.suggestedMatchId) {
+                        // Check if the suggested workout is in this day's workouts
+                        const matchTarget = dayWorkouts.find(w => w.id === suggestion.suggestedMatchId);
+                        if (matchTarget) return false; // rendered attached to the programmed workout above
+                      }
+                      return true;
+                    }).map(cw => (
+                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] && !stravaMatchDecisions[cw.stravaActivityId || ''] ? 'border-2 border-dashed border-orange-400/30 bg-orange-500/5' : completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${completedClientWorkouts[cw.id] ? 'bg-green-500 border-green-500' : 'border-cyan-500'}`}>
-                              {completedClientWorkouts[cw.id] ? <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>}
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] ? 'bg-orange-500/20 border-dashed border-orange-400' : completedClientWorkouts[cw.id] ? 'bg-green-500 border-green-500' : 'border-cyan-500'}`}>
+                              {completedClientWorkouts[cw.id] ? <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : cw.source === 'strava' ? <svg className="w-3 h-3 text-orange-400" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg> : <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 {cw.source === 'strava' ? (
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-dashed border-orange-400/50 flex items-center gap-1">
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                    Strava
+                                    Strava — No Match Found
                                   </span>
                                 ) : (
                                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Added Workout</span>
@@ -1171,60 +1269,45 @@ export default function DashboardPage() {
                                 </div>
                               )}
 
-                              {/* Strava Match Suggestion */}
+                              {/* Strava Match Options — for unmatched imports */}
                               {cw.source === 'strava' && cw.stravaActivityId && !stravaMatchDecisions[cw.stravaActivityId] && (() => {
-                                // Find if there's a suggested match for this strava activity
+                                // Check if this had a suggested match (it shouldn't be here if it does, but fallback)
                                 const suggestion = (currentWeek as any)?.stravaActivities?.find((sa: any) => sa.id === cw.stravaActivityId && sa.matchStatus === 'suggested');
                                 const suggestedWorkout = suggestion ? (currentWeek?.workouts || []).find(w => w.id === suggestion.suggestedMatchId) : null;
 
-                                if (suggestedWorkout) {
-                                  return (
-                                    <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
-                                      <p className="text-orange-400 text-xs font-medium mb-2">We think this matches your programmed workout:</p>
-                                      <div className="bg-primary/30 rounded-lg p-2.5 mb-2">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(suggestedWorkout.type)}`}>{getTypeLabel(suggestedWorkout.type)}</span>
-                                          {suggestedWorkout.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(suggestedWorkout.trainingType)}`}>{getTrainingTypeLabel(suggestedWorkout.trainingType)}</span>}
-                                          {suggestedWorkout.miles && <span className="text-white text-xs font-bold ml-auto">{convertDist(suggestedWorkout.miles, getWorkoutUnit(suggestedWorkout.id), suggestedWorkout.distanceUnit)} {getWorkoutUnit(suggestedWorkout.id) === "km" ? "km" : "mi"}</span>}
-                                        </div>
-                                        {suggestedWorkout.title && <p className="text-gray-300 text-xs">{suggestedWorkout.title}</p>}
-                                      </div>
-                                      <div className="flex flex-wrap gap-2">
-                                        <button onClick={() => handleStravaMatch(cw.stravaActivityId!, suggestedWorkout.id, 'programmed')} className="text-xs bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg transition-colors">Yes, this is it</button>
-                                        <button onClick={() => handleStravaReject(cw.stravaActivityId!)} className="text-xs border border-gray-500/30 text-gray-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">No, wrong match</button>
-                                      </div>
-                                    </div>
-                                  );
-                                }
+                                // If it has a suggestion and that workout exists in this day, skip (handled above)
+                                if (suggestedWorkout && dayWorkouts.find(w => w.id === suggestedWorkout.id)) return null;
 
-                                // No suggestion — show options to match manually, keep standalone, or dismiss
+                                // Show unmatched options — this Strava activity doesn't match any programmed workout
+                                const availableWorkouts = (currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest');
                                 return (
-                                  <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
-                                    <p className="text-orange-400 text-xs font-medium mb-2">Which programmed workout is this?</p>
-                                    <div className="space-y-2 mb-2">
-                                      {/* Show programmed workouts for this day that aren't completed as mini cards */}
-                                      {(currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest').map((w, idx) => (
-                                        <button key={w.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed')} className="w-full text-left bg-primary/40 hover:bg-primary/60 border border-orange-500/30 hover:border-orange-400/50 rounded-lg p-2.5 transition-colors group">
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-orange-400 text-xs font-bold bg-orange-500/20 rounded-full w-5 h-5 flex items-center justify-center">{idx + 1}</span>
-                                              <div>
+                                  <div className="mt-3 bg-primary/30 border border-orange-400/20 rounded-lg p-3">
+                                    <p className="text-gray-400 text-xs mb-2">
+                                      <span className="text-orange-400 font-medium">No automatic match found.</span> {availableWorkouts.length > 0 ? 'You can manually link it to a programmed workout or keep it separate:' : 'Keep it as an extra workout or dismiss it:'}
+                                    </p>
+                                    {availableWorkouts.length > 0 && (
+                                      <div className="space-y-1.5 mb-2">
+                                        {availableWorkouts.map((w, idx) => (
+                                          <button key={w.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed')} className="w-full text-left bg-primary/40 hover:bg-primary/60 border border-orange-500/20 hover:border-orange-400/50 rounded-lg p-2 transition-colors group">
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-orange-400 text-xs font-bold bg-orange-500/20 rounded-full w-5 h-5 flex items-center justify-center">{idx + 1}</span>
                                                 <div className="flex items-center gap-1.5">
                                                   <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
                                                   {w.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
+                                                  {w.title && <span className="text-gray-300 text-xs ml-1">{w.title}</span>}
                                                 </div>
-                                                {w.title && <p className="text-gray-300 text-xs mt-0.5">{w.title}</p>}
+                                              </div>
+                                              <div className="text-right flex items-center gap-2">
+                                                {w.miles ? <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
+                                                <span className="text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
                                               </div>
                                             </div>
-                                            <div className="text-right">
-                                              {w.miles ? <span className="text-white text-sm font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
-                                              <p className="text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Match this</p>
-                                            </div>
-                                          </div>
-                                        </button>
-                                      ))}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="flex flex-wrap gap-2 pt-1.5 border-t border-white/5">
                                       <button onClick={() => handleStravaKeepStandalone(cw.stravaActivityId!)} className="text-xs border border-cyan-500/30 text-cyan-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Keep as extra workout</button>
                                       <button onClick={() => handleStravaDismiss(cw.stravaActivityId!)} className="text-xs border border-red-500/30 text-red-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">Don&apos;t import</button>
                                     </div>

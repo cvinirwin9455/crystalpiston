@@ -9,6 +9,9 @@ const updates = [
       { area: "All", text: "New logo now shows as the browser tab icon (favicon) — looks more professional" },
       { area: "All", text: "Apple devices and Android home screen bookmarks now use the new logo" },
       { area: "All", text: "Web app manifest added for better mobile experience when saving to home screen" },
+      { area: "Client", text: "Strava imports now visually attach to the programmed workout they match — connected by a dotted line" },
+      { area: "Client", text: "Unmatched Strava imports clearly show 'No Match Found' with dashed border styling" },
+      { area: "Client", text: "No more guessing which workout is which — Strava imports appear right below the workout they belong to" },
     ],
   },
   {
