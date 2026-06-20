@@ -531,8 +531,8 @@ export default function AdminPage() {
   });
   const allClientWorkouts = publishedWeeks.flatMap((w) => w.workouts);
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
-  const totalMilesCompleted = allClientWorkouts.filter(w => w.log).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
-  const totalMilesProgrammed = allClientWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+  const totalMilesCompleted = allClientWorkouts.filter(w => w.log && (w.type === 'run' || w.type === 'walk')).reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0);
+  const totalMilesProgrammed = allClientWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles || 0), 0);
   const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -848,8 +848,8 @@ export default function AdminPage() {
   const displayMarked = displayWorkouts.filter((w) => w.completed);
   const displayComplete = displayWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
   const displayPartial = displayWorkouts.filter(w => w.status === "partial");
-  const displayMilesCompleted = displayComplete.reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || w.miles || 0, w.distanceUnit), 0) + displayPartial.reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, w.distanceUnit), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
-  const displayMilesProgrammed = displayWorkouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0);
+  const displayMilesCompleted = displayComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || w.miles || 0, w.distanceUnit), 0) + displayPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, w.distanceUnit), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
+  const displayMilesProgrammed = displayWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0);
   const displayAvgRpe = (() => { const withRpe = displayMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
   const displayCompletion = displayWorkouts.length > 0 ? Math.round(((displayComplete.length * 1 + displayPartial.length * 0.5) / displayWorkouts.length) * 100) : 0;
 
