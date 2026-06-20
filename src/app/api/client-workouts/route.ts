@@ -155,5 +155,105 @@ export async function PATCH(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Send email notification to Crystal when a client marks a workout complete
+  if (completed === true) {
+    try {
+      await notifyCrystalClientWorkout(user.id, id, request)
+    } catch (notifErr) {
+      console.error('Failed to send client workout notification:', notifErr)
+    }
+  }
+
   return NextResponse.json({ success: true })
+}
+
+// Helper: notify Crystal when a client completes a client-added workout
+async function notifyCrystalClientWorkout(userId: string, workoutId: string, request: Request) {
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Get the admin user
+  const { data: adminUsers } = await adminClient
+    .from('users')
+    .select('id, email')
+    .eq('role', 'admin')
+    .limit(1)
+  const adminUser = adminUsers?.[0]
+  if (!adminUser) return
+
+  // Check admin's notification preferences
+  const { data: adminPrefs } = await adminClient
+    .from('notification_preferences')
+    .select('workout_completed, notification_emails')
+    .eq('user_id', adminUser.id)
+    .maybeSingle()
+
+  const pref = adminPrefs?.workout_completed || 'immediate'
+  if (pref !== 'immediate') return
+
+  // Get notification emails
+  let notifEmails: string[] = []
+  if (adminPrefs?.notification_emails) {
+    notifEmails = adminPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+  }
+  if (notifEmails.length === 0 && adminUser.email) {
+    notifEmails = [adminUser.email]
+  }
+  if (notifEmails.length === 0) return
+
+  // Get client name
+  const { data: clientUser } = await adminClient
+    .from('users')
+    .select('name')
+    .eq('id', userId)
+    .single()
+  const clientName = clientUser?.name || 'A client'
+
+  // Get the workout details
+  const { data: workout } = await adminClient
+    .from('client_workouts')
+    .select('day, type, training_type, miles, notes, source, activity_name')
+    .eq('id', workoutId)
+    .single()
+
+  if (!workout) return
+
+  const isStrava = workout.source === 'strava'
+  const workoutTitle = workout.activity_name || workout.notes || `${workout.type} workout`
+  const workoutDay = workout.day || ''
+  const workoutMiles = workout.miles ? `${workout.miles} mi` : ''
+
+  const { sendEmail } = await import('@/lib/email')
+  const url = new URL(request.url)
+  const siteUrl = `${url.protocol}//${url.host}`
+
+  const subject = `${clientName} completed: ${workoutTitle}${isStrava ? ' (Strava)' : ''}`
+  const statusColor = '#22c55e'
+  const details = [
+    workoutMiles,
+    isStrava ? 'Synced from Strava' : 'Client-added workout',
+  ].filter(Boolean).join(' &bull; ')
+
+  const emailHtml = `
+    <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">${clientName} — ${workoutDay}</h2>
+    <div style="margin: 0 0 8px; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: ${statusColor}22; color: ${statusColor}; border: 1px solid ${statusColor}44;">Completed</div>
+    ${isStrava ? '<div style="margin: 0 0 8px 8px; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #f9731622; color: #f97316; border: 1px solid #f9731644;">Strava Sync</div>' : ''}
+    <p style="margin: 12px 0 4px; font-size: 15px; color: #ffffff; font-weight: 600;">${workoutTitle}${workoutMiles ? ' — ' + workoutMiles : ''}</p>
+    ${details ? `<p style="margin: 8px 0 24px; font-size: 13px; color: #b0b0b0; line-height: 1.5;">${details}</p>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center">
+          <a href="${siteUrl}/admin" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View in Dashboard</a>
+        </td>
+      </tr>
+    </table>
+  `
+
+  for (const email of notifEmails) {
+    sendEmail({ to: email, subject, html: emailHtml }).catch(console.error)
+  }
 }

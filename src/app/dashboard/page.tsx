@@ -944,7 +944,6 @@ export default function DashboardPage() {
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                               I Did This
                             </button>
-                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("partial"); }} className="border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">Partially Done</button>
                             <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">I Skipped This</button>
                           </>
                         )}
