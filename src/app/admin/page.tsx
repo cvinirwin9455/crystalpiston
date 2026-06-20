@@ -7,7 +7,7 @@ import Changelog from "./Changelog";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
-type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; };
+type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; weeks: WeekData[]; messages: CoachMessage[]; };
@@ -692,6 +692,10 @@ export default function AdminPage() {
             notes: cw.notes,
             createdAt: cw.createdAt,
             isClientAdded: true as const,
+            source: cw.source || 'manual',
+            duration: cw.duration || null,
+            averagePace: cw.averagePace || null,
+            activityName: cw.activityName || null,
           })),
           workouts: (w.workouts || []).map((wo: any) => ({
             id: wo.id,
@@ -1417,7 +1421,7 @@ export default function AdminPage() {
                                 {w.log.stress && <span><span className="text-gray-500">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
                                 {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                               </div>
-                              {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
+                              {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes.startsWith('Synced from Strava:') ? <span className="inline-flex items-center gap-1"><svg className="w-3 h-3 text-orange-400 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg><span className="text-orange-400">{w.log.notes}</span></span> : w.log.notes}</p>}
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {w.log.sleep}/10</span>}
                               </div>
@@ -1491,24 +1495,45 @@ export default function AdminPage() {
                   ))}
 
                         {/* Client-Added Workouts for this day */}
-                        {dayClientWorkouts.map(cw => (
-                          <div key={cw.id} className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4">
+                        {dayClientWorkouts.map(cw => {
+                          const isStrava = cw.source === 'strava';
+                          return (
+                          <div key={cw.id} className={`${isStrava ? 'bg-orange-500/5 border border-orange-500/20' : 'bg-cyan-500/5 border border-cyan-500/20'} rounded-xl p-4`}>
                             <div className="flex items-center gap-4">
-                              <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                              <div className={`w-6 h-6 rounded-full ${isStrava ? 'bg-orange-500 border-2 border-orange-500' : 'bg-cyan-500 border-2 border-cyan-500'} flex items-center justify-center flex-shrink-0`}>
+                                {isStrava ? (
+                                  <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+                                ) : (
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                  {isStrava ? (
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
+                                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+                                      Strava Sync
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                  )}
                                   <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                   {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                                 </div>
-                                {cw.notes && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                                {isStrava && cw.activityName && <p className="text-white text-sm font-medium mt-0.5">{cw.activityName}</p>}
+                                {isStrava && (cw.averagePace || cw.duration) && (
+                                  <div className="flex items-center gap-3 mt-0.5">
+                                    {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
+                                    {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                                  </div>
+                                )}
+                                {cw.notes && !isStrava && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
                               </div>
                               {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-500 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         {/* Add workout to day button (edit mode) */}
                         {editingWeek && (
                           <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/workouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weekId: selectedWeek.weekId, day, type: 'run', trainingType: '', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', sortOrder: 99 }) }); if (res.ok) { setEditingWeek(false); setEditedWorkouts({}); await fetchWeeks(client.clientId); setTimeout(() => enterEditMode(), 100); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
