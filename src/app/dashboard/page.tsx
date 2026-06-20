@@ -967,8 +967,8 @@ export default function DashboardPage() {
                         {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p><p className="text-gray-300 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
                       </div>
                     </div>
-                    {/* Log toggle */}
-                    {((!workout.completed && weekOffset === 0) || (workout.type === "rest" && weekOffset === 0)) && expandedWorkout !== workout.id && showSkipDialog !== workout.id && (
+                    {/* Log toggle — hidden when a Strava suggestion is pending for this workout */}
+                    {((!workout.completed && weekOffset === 0) || (workout.type === "rest" && weekOffset === 0)) && expandedWorkout !== workout.id && showSkipDialog !== workout.id && suggestedStravaForWorkout.length === 0 && (
                       <div className="mt-3 ml-9 flex items-center gap-2 flex-wrap">
                         {workout.type === "rest" ? (
                           /* Rest day: optional comment only (no completion needed) */
