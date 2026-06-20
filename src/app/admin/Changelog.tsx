@@ -4,6 +4,14 @@ import { useState } from "react";
 
 const updates = [
   {
+    date: "June 20, 2026",
+    items: [
+      { area: "All", text: "New logo now shows as the browser tab icon (favicon) — looks more professional" },
+      { area: "All", text: "Apple devices and Android home screen bookmarks now use the new logo" },
+      { area: "All", text: "Web app manifest added for better mobile experience when saving to home screen" },
+    ],
+  },
+  {
     date: "June 18, 2026",
     items: [
       { area: "All", text: "Text is now brighter and easier to read across the whole app" },
