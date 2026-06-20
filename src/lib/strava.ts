@@ -1,16 +1,26 @@
 // Strava API utility functions
 
-const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID!
-const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET!
 const STRAVA_VERIFY_TOKEN = process.env.STRAVA_VERIFY_TOKEN || 'pistolperformance_strava_webhook'
 
 export const STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize'
 export const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
 export const STRAVA_API_BASE = 'https://www.strava.com/api/v3'
 
+function getClientId(): string {
+  const id = process.env.STRAVA_CLIENT_ID
+  if (!id) throw new Error('STRAVA_CLIENT_ID environment variable is not set')
+  return id
+}
+
+function getClientSecret(): string {
+  const secret = process.env.STRAVA_CLIENT_SECRET
+  if (!secret) throw new Error('STRAVA_CLIENT_SECRET environment variable is not set')
+  return secret
+}
+
 export function getStravaAuthUrl(redirectUri: string, state: string): string {
   const params = new URLSearchParams({
-    client_id: STRAVA_CLIENT_ID,
+    client_id: getClientId(),
     redirect_uri: redirectUri,
     response_type: 'code',
     approval_prompt: 'auto',
@@ -25,8 +35,8 @@ export async function exchangeCodeForToken(code: string): Promise<StravaTokenRes
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: STRAVA_CLIENT_ID,
-      client_secret: STRAVA_CLIENT_SECRET,
+      client_id: getClientId(),
+      client_secret: getClientSecret(),
       code,
       grant_type: 'authorization_code',
     }),
@@ -45,8 +55,8 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: STRAVA_CLIENT_ID,
-      client_secret: STRAVA_CLIENT_SECRET,
+      client_id: getClientId(),
+      client_secret: getClientSecret(),
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
     }),

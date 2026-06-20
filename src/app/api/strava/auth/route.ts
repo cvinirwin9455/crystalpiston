@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server'
 
 // GET /api/strava/auth - Redirect user to Strava OAuth
 export async function GET(request: Request) {
+  // Verify env vars are set before redirecting
+  if (!process.env.STRAVA_CLIENT_ID) {
+    return NextResponse.json({ error: 'STRAVA_CLIENT_ID environment variable is not configured' }, { status: 500 })
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
