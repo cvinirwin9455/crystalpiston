@@ -359,6 +359,7 @@ export default function DashboardPage() {
               activityName: sa.activityName,
               matchStatus: sa.matchStatus,
               suggestedMatchId: sa.suggestedMatchId || null,
+              suggestedClientMatchId: sa.suggestedClientMatchId || null,
             })),
             clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({
               id: cw.id,
@@ -1309,18 +1310,42 @@ export default function DashboardPage() {
                                 // Check if this had a suggested match (it shouldn't be here if it does, but fallback)
                                 const suggestion = (currentWeek as any)?.stravaActivities?.find((sa: any) => sa.id === cw.stravaActivityId && sa.matchStatus === 'suggested');
                                 const suggestedWorkout = suggestion ? (currentWeek?.workouts || []).find(w => w.id === suggestion.suggestedMatchId) : null;
+                                const suggestedClientWorkout = suggestion?.suggestedClientMatchId ? (currentWeek?.clientWorkouts || []).find(cwk => cwk.id === suggestion.suggestedClientMatchId) : null;
 
-                                // If it has a suggestion and that workout exists in this day, skip (handled above)
+                                // If it has a programmed suggestion and that workout exists in this day, skip (handled in attached card above)
                                 if (suggestedWorkout && dayWorkouts.find(w => w.id === suggestedWorkout.id)) return null;
 
-                                // Show unmatched options — this Strava activity doesn't match any programmed workout
+                                // If it has a client-created workout suggestion, show it as a suggested match
+                                if (suggestedClientWorkout) {
+                                  return (
+                                    <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                                      <p className="text-orange-400 text-xs font-medium mb-2">We think this matches a workout you created:</p>
+                                      <div className="bg-primary/30 rounded-lg p-2.5 mb-2">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Your Workout</span>
+                                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(suggestedClientWorkout.type)}`}>{getTypeLabel(suggestedClientWorkout.type)}</span>
+                                          {suggestedClientWorkout.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(suggestedClientWorkout.trainingType)}`}>{getTrainingTypeLabel(suggestedClientWorkout.trainingType)}</span>}
+                                          {suggestedClientWorkout.miles && <span className="text-white text-xs font-bold ml-auto">{convertDist(suggestedClientWorkout.miles, getWorkoutUnit(suggestedClientWorkout.id), 'mi')} {getWorkoutUnit(suggestedClientWorkout.id) === "km" ? "km" : "mi"}</span>}
+                                        </div>
+                                        {suggestedClientWorkout.notes && <p className="text-gray-300 text-xs">{suggestedClientWorkout.notes}</p>}
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        <button onClick={() => handleStravaMatch(cw.stravaActivityId!, suggestedClientWorkout.id, 'client')} className="text-xs bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg transition-colors">Yes, this is it</button>
+                                        <button onClick={() => handleStravaReject(cw.stravaActivityId!)} className="text-xs border border-gray-500/30 text-gray-400 hover:text-white py-1.5 px-3 rounded-lg transition-colors">No, wrong match</button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                // Show unmatched options — this Strava activity doesn't match any workout
                                 const availableWorkouts = (currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest');
+                                const availableClientWorkouts = (currentWeek?.clientWorkouts || []).filter(cwk => cwk.day === cw.day && cwk.source !== 'strava' && !completedClientWorkouts[cwk.id]);
                                 return (
                                   <div className="mt-3 bg-primary/30 border border-orange-400/20 rounded-lg p-3">
                                     <p className="text-gray-400 text-xs mb-2">
-                                      <span className="text-orange-400 font-medium">No automatic match found.</span> {availableWorkouts.length > 0 ? 'You can manually link it to a programmed workout or keep it separate:' : 'Keep it as an extra workout or dismiss it:'}
+                                      <span className="text-orange-400 font-medium">No automatic match found.</span> {(availableWorkouts.length > 0 || availableClientWorkouts.length > 0) ? 'You can manually link it to a workout or keep it separate:' : 'Keep it as an extra workout or dismiss it:'}
                                     </p>
-                                    {availableWorkouts.length > 0 && (
+                                    {(availableWorkouts.length > 0 || availableClientWorkouts.length > 0) && (
                                       <div className="space-y-1.5 mb-2">
                                         {availableWorkouts.map((w, idx) => (
                                           <button key={w.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed')} className="w-full text-left bg-primary/40 hover:bg-primary/60 border border-orange-500/20 hover:border-orange-400/50 rounded-lg p-2 transition-colors group">
@@ -1336,6 +1361,24 @@ export default function DashboardPage() {
                                               <div className="text-right flex items-center gap-2">
                                                 {w.miles ? <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
                                                 <span className="text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
+                                              </div>
+                                            </div>
+                                          </button>
+                                        ))}
+                                        {availableClientWorkouts.map((cwk, idx) => (
+                                          <button key={cwk.id} onClick={() => handleStravaMatch(cw.stravaActivityId!, cwk.id, 'client')} className="w-full text-left bg-primary/40 hover:bg-primary/60 border border-cyan-500/20 hover:border-cyan-400/50 rounded-lg p-2 transition-colors group">
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-cyan-400 text-xs font-bold bg-cyan-500/20 rounded-full w-5 h-5 flex items-center justify-center">{availableWorkouts.length + idx + 1}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Your Workout</span>
+                                                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(cwk.type)}`}>{getTypeLabel(cwk.type)}</span>
+                                                  {cwk.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(cwk.trainingType)}`}>{getTrainingTypeLabel(cwk.trainingType)}</span>}
+                                                </div>
+                                              </div>
+                                              <div className="text-right flex items-center gap-2">
+                                                {cwk.miles ? <span className="text-white text-xs font-bold">{convertDist(cwk.miles, getWorkoutUnit(cwk.id), 'mi')} {distUnitShort}</span> : null}
+                                                <span className="text-cyan-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
                                               </div>
                                             </div>
                                           </button>

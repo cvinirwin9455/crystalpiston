@@ -222,6 +222,7 @@ export async function POST(request: Request) {
       match_status: suggestedMatchId ? 'suggested' : 'pending',
       // Only set matched_workout_id for programmed workouts (FK references workouts table)
       matched_workout_id: (suggestedMatchId && suggestedMatchType === 'programmed') ? suggestedMatchId : null,
+      matched_client_workout_id: (suggestedMatchId && suggestedMatchType === 'client') ? suggestedMatchId : null,
     }
 
     if (existing) {

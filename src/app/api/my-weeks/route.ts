@@ -74,7 +74,7 @@ export async function GET() {
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
-      .select('id, week_id, day, type, miles, duration, average_pace, activity_name, match_status, matched_workout_id')
+      .select('id, week_id, day, type, miles, duration, average_pace, activity_name, match_status, matched_workout_id, matched_client_workout_id')
       .eq('user_id', user.id)
       .in('week_id', weekIds)
     
@@ -141,6 +141,7 @@ export async function GET() {
           activityName: sa.activity_name,
           matchStatus: sa.match_status,
           suggestedMatchId: sa.matched_workout_id,
+          suggestedClientMatchId: sa.matched_client_workout_id || null,
         })),
       clientWorkouts: weekClientWorkouts.map(cw => ({
         id: cw.id,
