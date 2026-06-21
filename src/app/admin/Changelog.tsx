@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-21T21:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-21T22:00:00Z";
 
 const updates = [
   {
     date: "June 21, 2026",
     items: [
+      { area: "Client", text: "New notification toggles: Strava Activity Synced + Workout Comments (on by default, can turn off)" },
       { area: "Admin", text: "Crystal now sees all Strava data on client workouts: activity name, miles, pace, duration, heart rate" },
       { area: "Admin", text: "Client-created and Strava workouts show completed status with green badge" },
       { area: "Admin", text: "Heart rate (avg + max) now shows on programmed workout logs too" },
