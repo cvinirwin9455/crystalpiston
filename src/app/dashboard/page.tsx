@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
-type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; };
+type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
-type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; };
+type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
 
 export default function DashboardPage() {
@@ -377,6 +377,8 @@ export default function DashboardPage() {
               duration: cw.duration || null,
               averagePace: cw.averagePace || null,
               activityName: cw.activityName || null,
+              avgHeartrate: cw.avgHeartrate || null,
+              maxHeartrate: cw.maxHeartrate || null,
             })),
             workouts: (w.workouts || []).map((wo: any) => ({
               id: wo.id,
@@ -1053,6 +1055,8 @@ export default function DashboardPage() {
                           {workout.log.actualMiles && <span><span className="text-gray-300">{getWorkoutUnit(workout.id) === "km" ? "KM" : "Miles"}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</span></span>}
                           {workout.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{getWorkoutUnit(workout.id) === "km" && workout.log.actualPace.includes("/mi") ? convertPaceToKm(workout.log.actualPace) : getWorkoutUnit(workout.id) === "mi" && workout.log.actualPace.includes("/km") ? convertPaceToMi(workout.log.actualPace) : workout.log.actualPace}</span></span>}
                           {workout.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
+                          {workout.log.avgHeartrate && <span><span className="text-gray-300">Avg HR:</span> <span className="text-red-400">{workout.log.avgHeartrate} bpm</span></span>}
+                          {workout.log.maxHeartrate && <span><span className="text-gray-300">Max HR:</span> <span className="text-red-400">{workout.log.maxHeartrate} bpm</span></span>}
                           {workout.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                         </div>
@@ -1214,10 +1218,12 @@ export default function DashboardPage() {
                             {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                           </div>
                           {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
-                          {(cw.averagePace || cw.duration) && (
-                            <div className="flex items-center gap-3 mt-0.5">
+                          {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
+                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                               {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
                               {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                              {cw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{cw.avgHeartrate} bpm</span></span>}
+                              {cw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{cw.maxHeartrate} bpm</span></span>}
                             </div>
                           )}
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -1313,10 +1319,12 @@ export default function DashboardPage() {
                               {cw.notes && !cw.activityName && <p className="text-gray-400 text-sm">{cw.notes}</p>}
                               {/* Strava/synced activity details */}
                               {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
-                              {(cw.averagePace || cw.duration) && (
-                                <div className="flex items-center gap-3 mt-0.5">
+                              {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
+                                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                                   {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
                                   {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                                  {cw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{cw.avgHeartrate} bpm</span></span>}
+                                  {cw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{cw.maxHeartrate} bpm</span></span>}
                                 </div>
                               )}
 
@@ -1504,10 +1512,12 @@ export default function DashboardPage() {
                                       {scw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(scw.trainingType)}`}>{getTrainingTypeLabel(scw.trainingType)}</span>}
                                     </div>
                                     {scw.activityName && <p className="text-white text-sm font-medium">{scw.activityName}</p>}
-                                    {(scw.averagePace || scw.duration) && (
-                                      <div className="flex items-center gap-3 mt-0.5">
+                                    {(scw.averagePace || scw.duration || scw.avgHeartrate) && (
+                                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                                         {scw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{scw.duration}</span></span>}
                                         {scw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{scw.averagePace}</span></span>}
+                                        {scw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{scw.avgHeartrate} bpm</span></span>}
+                                        {scw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{scw.maxHeartrate} bpm</span></span>}
                                       </div>
                                     )}
                                     <div className="mt-3 flex flex-wrap gap-2">

@@ -57,7 +57,7 @@ export async function GET() {
   if (workoutIds.length > 0) {
     const { data: logsData } = await adminClient
       .from('workout_logs')
-      .select('id, workout_id, status, skip_reason, rpe, actual_miles, actual_pace, stress, notes, on_period, duration, energy, motivation, sleep, strength, recovery, mood, hunger')
+      .select('id, workout_id, status, skip_reason, rpe, actual_miles, actual_pace, stress, notes, on_period, duration, energy, motivation, sleep, strength, recovery, mood, hunger, avg_heartrate, max_heartrate')
       .in('workout_id', workoutIds)
     logs = logsData || []
   }
@@ -103,7 +103,7 @@ export async function GET() {
     try {
       const { data: clientWorkouts } = await adminClient
         .from('client_workouts')
-        .select('id, week_id, day, type, training_type, miles, notes, created_at, completed, completed_notes, source, strava_activity_id, duration, average_pace, activity_name')
+        .select('id, week_id, day, type, training_type, miles, notes, created_at, completed, completed_notes, source, strava_activity_id, duration, average_pace, activity_name, avg_heartrate, max_heartrate')
         .in('week_id', weekIds)
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
@@ -159,6 +159,8 @@ export async function GET() {
         duration: cw.duration || null,
         averagePace: cw.average_pace || null,
         activityName: cw.activity_name || null,
+        avgHeartrate: cw.avg_heartrate || null,
+        maxHeartrate: cw.max_heartrate || null,
       })),
       workouts: weekWorkouts.map(wo => {
         const log = logsByWorkoutId.get(wo.id)
@@ -193,6 +195,8 @@ export async function GET() {
             actualPace: log.actual_pace || '',
             onPeriod: log.on_period ? 'yes' : 'no',
             duration: log.duration || '',
+            avgHeartrate: log.avg_heartrate || null,
+            maxHeartrate: log.max_heartrate || null,
           } : undefined,
         }
       }),

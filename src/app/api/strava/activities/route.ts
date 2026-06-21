@@ -219,6 +219,8 @@ export async function POST(request: Request) {
       moving_time_seconds: activity.moving_time,
       distance_meters: activity.distance,
       start_date: activity.start_date,
+      avg_heartrate: activity.average_heartrate || null,
+      max_heartrate: activity.max_heartrate || null,
       match_status: suggestedMatchId ? 'suggested' : 'pending',
       // Only set matched_workout_id for programmed workouts (FK references workouts table)
       matched_workout_id: (suggestedMatchId && suggestedMatchType === 'programmed') ? suggestedMatchId : null,
@@ -259,6 +261,8 @@ export async function POST(request: Request) {
             duration,
             average_pace: pace,
             activity_name: activity.name,
+            avg_heartrate: activity.average_heartrate || null,
+            max_heartrate: activity.max_heartrate || null,
           })
       }
     }
@@ -432,6 +436,8 @@ export async function PATCH(request: Request) {
         notes: logData?.notes || `Synced from Strava: ${stravaAct.activity_name}`,
         rpe: logData?.rpe ? parseInt(logData.rpe) : null,
         sleep: logData?.sleep ? parseInt(logData.sleep) : null,
+        avg_heartrate: stravaAct.avg_heartrate || null,
+        max_heartrate: stravaAct.max_heartrate || null,
       }
 
       if (existingLog) {
@@ -458,6 +464,8 @@ export async function PATCH(request: Request) {
           duration: stravaAct.duration || undefined,
           average_pace: stravaAct.average_pace || undefined,
           activity_name: stravaAct.activity_name || undefined,
+          avg_heartrate: stravaAct.avg_heartrate || null,
+          max_heartrate: stravaAct.max_heartrate || null,
         })
         .eq('id', workoutId)
 
