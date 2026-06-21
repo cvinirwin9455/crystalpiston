@@ -2,9 +2,6 @@ import { getVerifyToken } from '@/lib/strava'
 import { NextResponse } from 'next/server'
 import type { StravaWebhookEvent } from '@/lib/strava'
 
-// Use edge runtime for fastest possible response (Strava requires < 2 sec)
-export const runtime = 'edge'
-
 // GET /api/strava/webhook - Webhook subscription verification (Strava sends this to verify your endpoint)
 export async function GET(request: Request) {
   const url = new URL(request.url)
