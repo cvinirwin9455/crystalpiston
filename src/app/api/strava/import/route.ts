@@ -197,6 +197,8 @@ export async function POST(request: Request) {
               duration,
               average_pace: pace,
               activity_name: activity.name,
+              avg_heartrate: activity.average_heartrate || null,
+              max_heartrate: activity.max_heartrate || null,
             })
 
           // Run matching for this activity
