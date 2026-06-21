@@ -52,6 +52,14 @@ export async function POST(request: Request) {
   const after = Math.floor(new Date(afterDate).getTime() / 1000)
   const before = beforeDate ? Math.floor(new Date(beforeDate).getTime() / 1000) : Math.floor(Date.now() / 1000)
 
+  // Debug: log the conversion
+  console.log('Strava import date conversion:', { afterDate, beforeDate, after, before, afterISO: new Date(after * 1000).toISOString(), beforeISO: new Date(before * 1000).toISOString() })
+
+  // Validate timestamps are reasonable
+  if (isNaN(after) || after < 0) {
+    return NextResponse.json({ error: `Invalid afterDate: ${afterDate}` }, { status: 400 })
+  }
+
   // Fetch activities from Strava (paginated, max 200 per page)
   let allActivities: StravaActivity[] = []
   let page = 1
@@ -64,6 +72,8 @@ export async function POST(request: Request) {
       page: page.toString(),
       per_page: perPage.toString(),
     })
+
+    console.log('Strava fetch URL:', `${STRAVA_API_BASE}/athlete/activities?${params}`)
 
     const res = await fetch(`${STRAVA_API_BASE}/athlete/activities?${params}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -87,7 +97,7 @@ export async function POST(request: Request) {
   }
 
   if (allActivities.length === 0) {
-    return NextResponse.json({ imported: 0, skipped: 0, message: `No activities found in the selected date range (${afterDate} to ${beforeDate || 'now'})` })
+    return NextResponse.json({ imported: 0, skipped: 0, message: `No activities found (after=${after} before=${before})` })
   }
 
   // Get client record
