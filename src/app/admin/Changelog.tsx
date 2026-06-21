@@ -1,8 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// Last time the changelog was updated — used for "new updates" badge
+export const CHANGELOG_LAST_UPDATED = "2026-06-21T19:00:00Z";
 
 const updates = [
+  {
+    date: "June 21, 2026",
+    items: [
+      { area: "Client", text: "Strava imports now match to your own client-created workouts (not just Crystal's programmed ones)" },
+      { area: "Client", text: "Client-created workout matches show the same dotted-line visual as programmed workout matches" },
+      { area: "Client", text: "Done button hides when Strava has a pending match for your workout — reappears if you reject the match" },
+      { area: "Client", text: "Heart rate data (avg + max) now shows on all Strava-imported workouts" },
+      { area: "Admin", text: "Heart rate data visible on Crystal's side for Strava-synced workouts" },
+      { area: "Client", text: "Strava 'Keep as extra workout' now actually saves — won't ask again after page reload" },
+      { area: "Client", text: "Extra Strava workouts now count in 'Your Workouts' stats (completed + total)" },
+      { area: "Client", text: "After matching a Strava import to your workout, miles/pace/duration/HR now show on the card" },
+      { area: "Client", text: "Right-side number on workout card now shows actual miles (green) after completion, with programmed miles crossed out below" },
+      { area: "Client", text: "MI/KM toggle on a workout now also converts logged data (actual miles, pace)" },
+      { area: "Client", text: "MI/KM toggle added to client-created workouts and Strava imports with distance" },
+      { area: "All", text: "Stats miles now correctly convert between MI/KM when workouts are programmed in different units" },
+      { area: "Client", text: "RPE and Sleep sliders now stack vertically on mobile — full width, much easier to use on phones" },
+      { area: "Client", text: "Email sent to client when Strava syncs a new activity — tells them match status and asks to log in" },
+      { area: "All", text: "Strava webhook now registered and pushing real-time activity updates" },
+      { area: "All", text: "Strava activities imported before Crystal publishes a week now auto-link when the week goes live" },
+      { area: "Admin", text: "Removed confusing 0/0 stat from the client sidebar" },
+    ],
+  },
   {
     date: "June 20, 2026",
     items: [
@@ -12,6 +37,11 @@ const updates = [
       { area: "Client", text: "Strava imports now visually attach to the programmed workout they match — connected by a dotted line" },
       { area: "Client", text: "Unmatched Strava imports clearly show 'No Match Found' with dashed border styling" },
       { area: "Client", text: "No more guessing which workout is which — Strava imports appear right below the workout they belong to" },
+      { area: "Client", text: "'I Did This' and 'I Skipped This' buttons hide when a Strava match is pending" },
+      { area: "All", text: "Strava reconnection now works after revoking access in Strava settings" },
+      { area: "All", text: "Stats miles/KM now only counts Run + Walk activities (not cycling, cross training, etc.)" },
+      { area: "Client", text: "Strava match confirmation now requires RPE, Sleep, and Notes before completing" },
+      { area: "All", text: "Crystal gets emailed when a client completes a workout via Strava or manually" },
     ],
   },
   {
@@ -52,149 +82,75 @@ const updates = [
   {
     date: "June 15, 2026",
     items: [
-      { area: "Marketing", text: "Added Tracie B.'s client story to the homepage testimonials" },
       { area: "Client", text: "Clients can now add their own workouts (runs, walks, cross training, strength, etc.) under each day" },
-      { area: "Client", text: "Client-added workouts show with a cyan 'Client Added' badge grouped with that day's programmed workout" },
+      { area: "Client", text: "Client-added workouts show with a cyan 'Your Added Workout' badge" },
       { area: "Client", text: "Run/walk client workouts count toward weekly total miles/km" },
-      { area: "Client", text: "Rest days no longer require completion — just an optional comment button" },
-      { area: "Client", text: "Rest days don't count in the completed/total workout stats" },
-      { area: "Client", text: "Workout log simplified: RPE + Sleep side by side at top, then Miles, Pace, Stress, Notes" },
-      { area: "Client", text: "Run/Walk log requires: RPE, Sleep, Actual Miles/KM, Pace, Stress, Notes" },
-      { area: "Client", text: "Other workout types (cross, cycling, stretching, strength) only need: RPE, Sleep, Stress, Notes" },
-      { area: "Client", text: "Actual Miles/KM field now validates numbers only (up to 2 decimal places)" },
-      { area: "Client", text: "Actual Miles/KM label and display respects the client's distance unit preference" },
-      { area: "Client", text: "Partially completed workouts now show the logged data (miles, pace, etc.) on the day block" },
-      { area: "Client", text: "Stats renamed: 'Completed' is now 'Workouts Marked'" },
-      { area: "Client", text: "Completion % now weighted: Done = 100%, Partial = 50%, Skipped = 0%" },
-      { area: "Client", text: "Skipped workouts no longer count toward actual miles in stats" },
-      { area: "Client", text: "Stats show actual/programmed miles side by side (e.g. 5.20/8.00 KM)" },
-      { area: "Client", text: "Walk subtypes now only show Walk Recovery and Walk Power (not all run types)" },
+      { area: "Client", text: "Rest days simplified — just an optional comment button (no completion needed)" },
+      { area: "Client", text: "Workout log simplified: RPE + Sleep at top, then Miles, Pace, Stress, Notes" },
       { area: "Client", text: "Crystal can comment on completed workouts — client sees it and can reply" },
       { area: "Client", text: "Comments show at the bottom of each workout card as a threaded conversation" },
       { area: "Client", text: "Email notification sent when Crystal comments on a workout" },
       { area: "Admin", text: "Crystal can see client-added workouts grouped with the same day's programmed workout" },
-      { area: "Admin", text: "Crystal cannot edit/delete client-added workouts (read-only)" },
       { area: "Admin", text: "Crystal can comment on any completed workout — client gets an email notification" },
-      { area: "Admin", text: "Crystal gets an email when a client replies to a workout comment" },
-      { area: "Admin", text: "MI/KM toggle in edit mode now works per-workout (same as Create Week)" },
+      { area: "Admin", text: "MI/KM toggle in edit mode now works per-workout" },
       { area: "Admin", text: "Distance unit is now saved per workout — Crystal can mix MI and KM in the same week" },
-      { area: "Admin", text: "All distances on Crystal's side convert correctly based on her preference" },
-      { area: "Admin", text: "Distance input in Create Week and Edit mode validates numbers only (up to 2 decimals)" },
-      { area: "Admin", text: "Walk type in edit mode now shows subtypes (Walk Power, Walk Recovery) + miles + pace" },
-      { area: "Admin", text: "Cancel button added to edit mode" },
-      { area: "Admin", text: "Stats renamed: 'Completed' is now 'Workouts Marked'" },
-      { area: "Admin", text: "Completion % now weighted: Done = 100%, Partial = 50%, Skipped = 0%" },
       { area: "Admin", text: "Crystal can navigate forward to all programmed weeks (not limited to one week out)" },
       { area: "Admin", text: "Gaps between published weeks show 'No published plan for this week'" },
     ],
   },
   {
-    date: "June 15, 2026",
-    items: [
-      { area: "Client", text: "Clients can now add their own workouts — runs, strength, stretching, etc. — under each day" },
-      { area: "Client", text: "Client-added workouts show with a cyan 'Client Added' badge so they're easy to spot" },
-      { area: "Client", text: "Run/walk client workouts count toward the weekly total miles/km" },
-      { area: "Client", text: "Clients can delete their own added workouts (only current week)" },
-      { area: "Admin", text: "Crystal can see client-added workouts grouped with the same day's programmed workout" },
-      { area: "Admin", text: "Client-added run/walk miles are included in Crystal's stats view" },
-      { area: "Admin", text: "Crystal cannot edit/delete client-added workouts (read-only)" },
-      { area: "Admin", text: "Stats card now shows This Week / Current Plan / All Time toggle with Avg Effort and Completion %" },
-      { area: "Admin", text: "Total miles/km now visible on week headers, draft cards, and Drafts Ready to Publish" },
-      { area: "All", text: "Distance conversion now exact to 2 decimal places (e.g. 5 mi = 8.05 km)" },
-    ],
-  },
-  {
     date: "June 14, 2026",
     items: [
-      { area: "Admin", text: "Distance unit preference added — Crystal can switch between Miles and Kilometers in Account Preferences and all client views update automatically" },
-      { area: "Admin", text: "Client stats (Done, Distance, Dollars) now default to showing the current plan instead of all time" },
-      { area: "Admin", text: "Toggle added to switch between 'Current Plan' and 'All Time' stats when viewing a client" },
-      { area: "Client", text: "Distance unit preference added — clients can set their default to Miles or KM in Account Preferences" },
-      { area: "Client", text: "Per-workout toggle lets clients quickly switch between miles and km on any individual workout" },
-      { area: "Client", text: "Renamed 'Notification Preferences' to 'Account Preferences' to match the admin side" },
+      { area: "Admin", text: "Distance unit preference added — switch between Miles and Kilometers in Account Preferences" },
+      { area: "Client", text: "Distance unit preference added — set default to Miles or KM in Account Preferences" },
+      { area: "Client", text: "Per-workout toggle lets you quickly switch between miles and km on any workout" },
       { area: "Admin", text: "Added Progressive and Trail as new run types" },
-      { area: "Admin", text: "Crystal and Curtis can now both see all client messages regardless of who sent them" },
-      { area: "Admin", text: "Fixed an issue where Crystal couldn't see updates when Curtis was also logged in" },
-      { area: "Admin", text: "Notification settings now only show options that are fully working (Immediately or Off)" },
-      { area: "Admin", text: "Workout completion, skip, and partial emails now send correctly to Crystal" },
-      { area: "Admin", text: "Crystal's name shows in the sidebar so she knows who is logged in" },
-      { area: "Admin", text: "Logo made bigger and easier to see across the entire site" },
-      { area: "Client", text: "Clients can now see their name at the top of the dashboard so they know they're logged in" },
-      { area: "Marketing", text: "Crystal's face is now always visible in the hero background photo at any screen width" },
+      { area: "Admin", text: "Crystal and Curtis can now both see all client messages" },
+      { area: "Admin", text: "Workout completion, skip, and partial emails now send correctly" },
+      { area: "Client", text: "Your name now shows at the top of the dashboard" },
       { area: "Marketing", text: "Vercel Analytics added to track website visitors" },
     ],
   },
   {
     date: "June 13, 2026",
     items: [
-      { area: "Admin", text: "New workout types added: Walk (Power/Recovery), Cycling, Stretching (Stretching/Foam Roll/Yoga)" },
-      { area: "Admin", text: "Run and Walk types now require a subtype and distance to be filled in before saving" },
-      { area: "Admin", text: "Cycling and Stretching simplified — only need to fill in workout details" },
-      { area: "Admin", text: "Fartlek added as a run type" },
-      { area: "Admin", text: "Crystal can now edit an active plan (goal, dates, cost) without completing it first" },
+      { area: "Admin", text: "New workout types: Walk (Power/Recovery), Cycling, Stretching (Stretching/Foam Roll/Yoga)" },
       { area: "Admin", text: "Notification emails now send when clients complete, skip, or partially complete workouts" },
-      { area: "Admin", text: "Notification emails send when a client messages Crystal" },
-      { area: "Admin", text: "Notification settings wired up to database — preferences save and persist" },
-      { area: "Admin", text: "Send Notifications To field now saves email addresses to the database" },
       { area: "Admin", text: "Invite status now correctly shows 'pending' until a client actually signs in" },
-      { area: "Admin", text: "Resend Invite works for clients who already exist in the system" },
-      { area: "Admin", text: "When Crystal updates a client's email, it now also updates their login email" },
-      { area: "Admin", text: "Create Client form simplified — only Name, Email, Gender. Plan details added separately" },
-      { area: "Admin", text: "Sidebar shows invite status, active goal, or 'No active plan' under each client's name" },
-      { area: "Admin", text: "Removed the Delete Client button (only Archive is available now)" },
-      { area: "Client", text: "Period tracking only shows for female clients (hidden for males)" },
-      { area: "Client", text: "Programmed miles now clearly visible on each workout card" },
-      { area: "Client", text: "Notification preferences added to client Account tab (plan published + message frequency)" },
-      { area: "Client", text: "Notification preferences save to database and persist" },
+      { area: "Admin", text: "Create Client form simplified — only Name, Email, Gender" },
+      { area: "Client", text: "Period tracking only shows for female clients" },
+      { area: "Client", text: "Notification preferences added to Account tab" },
       { area: "Marketing", text: "Added Karlee H. testimonial to the homepage" },
     ],
   },
   {
     date: "June 12, 2026",
     items: [
-      { area: "Admin", text: "Training Templates system built — save and reuse entire weeks or individual days" },
-      { area: "Admin", text: "Templates tab added to sidebar for viewing and deleting saved templates" },
-      { area: "Admin", text: "Load from Template button at top of Create Week form" },
-      { area: "Admin", text: "Load Day Template and Save Day as Template on each individual day" },
+      { area: "Admin", text: "Training Templates system — save and reuse entire weeks or individual days" },
       { area: "Admin", text: "Multiple workouts per day — '+ Add another workout' now works" },
-      { area: "Admin", text: "Week date validation shows immediately when selecting a week (not after filling out the form)" },
-      { area: "Admin", text: "Can't create a week without an active plan — shows explanation and link to Account tab" },
-      { area: "Admin", text: "Week dates must fall within the active plan dates" },
-      { area: "Admin", text: "Can't create a duplicate week for the same date range" },
-      { area: "Admin", text: "Cancel button added to Create Week form" },
-      { area: "Admin", text: "Required field indicators added (date range, subtypes, distance)" },
-      { area: "Admin", text: "Save as Template scrolls into view when clicked" },
-      { area: "Admin", text: "Removed 'Done' tag from completed workouts (the circle icon is enough)" },
-      { area: "Admin", text: "Removed templates from the dashboard overview (moved to Templates tab)" },
-      { area: "Admin", text: "Plan completion now requires a reason if there's an outstanding balance" },
-      { area: "Admin", text: "Can't create a new plan while one is active — must complete the current one first" },
-      { area: "Admin", text: "Completed plans show goal, balance due, and completion notes in history" },
-      { area: "Admin", text: "Financial data now comes from Plans (not the old legacy fields)" },
-      { area: "Client", text: "Rest days simplified — just a 'Mark Complete' button with optional notes" },
-      { area: "Client", text: "Partially Done now shows the same full metrics form as 'I Did This' plus a reason field" },
+      { area: "Admin", text: "Week date validation shows immediately when selecting a week" },
       { area: "Client", text: "Messages auto-scroll to newest message" },
       { area: "Client", text: "Unread message badge fixed — only marks read when Messages tab is opened" },
-      { area: "Client", text: "Message polling added — checks for new messages every 30 seconds" },
     ],
   },
   {
     date: "June 11, 2026",
     items: [
       { area: "Admin", text: "Edit Week 'Save Changes' button now actually saves workout edits" },
-      { area: "Admin", text: "Draft Edit button loads the draft into the Create Week form for editing" },
-      { area: "Admin", text: "Draft Delete button now works" },
-      { area: "Admin", text: "Payment history now persists in the database (individual payments saved, not just totals)" },
-      { area: "Admin", text: "Messages auto-scroll to newest message" },
-      { area: "Admin", text: "Year no longer hardcoded — works correctly in any year" },
-      { area: "Admin", text: "Calendar week picker starts on current month" },
+      { area: "Admin", text: "Payment history now persists in the database" },
       { area: "All", text: "Password reset flow fixed — now redirects to correct page" },
-      { area: "All", text: "Invite flow code deployed (inline script catches auth tokens and redirects)" },
+      { area: "All", text: "Invite flow deployed for new clients" },
     ],
   },
 ];
 
 export default function Changelog() {
   const [expandedDate, setExpandedDate] = useState<string | null>(updates[0]?.date || null);
+
+  // Mark changelog as seen in localStorage
+  useEffect(() => {
+    localStorage.setItem("changelog_last_seen", CHANGELOG_LAST_UPDATED);
+  }, []);
 
   const getAreaBadge = (area: string) => {
     switch (area) {
@@ -210,12 +166,13 @@ export default function Changelog() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-2xl uppercase text-white">What&apos;s New</h2>
+        <span className="text-gray-500 text-xs">Last updated: {new Date(CHANGELOG_LAST_UPDATED).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
       </div>
       <p className="text-gray-400 text-sm">Updates and improvements to the platform.</p>
 
       <div className="space-y-3">
-        {updates.map((update) => (
-          <div key={update.date} className="bg-secondary/50 border border-white/10 rounded-xl overflow-hidden">
+        {updates.map((update, updateIdx) => (
+          <div key={updateIdx} className="bg-secondary/50 border border-white/10 rounded-xl overflow-hidden">
             <button
               onClick={() => setExpandedDate(expandedDate === update.date ? null : update.date)}
               className="w-full text-left px-5 py-4 flex items-center justify-between"

@@ -117,6 +117,15 @@ export default function DashboardPage() {
   const [stravaImporting, setStravaImporting] = useState(false);
   const [stravaImportResult, setStravaImportResult] = useState<{ imported: number; skipped: number; message: string } | null>(null);
 
+  // New updates badge
+  const [showNewBadge, setShowNewBadge] = useState(false);
+  useEffect(() => {
+    const lastSeen = localStorage.getItem("changelog_last_seen_client");
+    if (!lastSeen || lastSeen < "2026-06-21T19:00:00Z") {
+      setShowNewBadge(true);
+    }
+  }, []);
+
   // Fetch Strava connection status
   useEffect(() => {
     const fetchStravaConnection = async () => {
@@ -1928,15 +1937,44 @@ export default function DashboardPage() {
             </div>
 
             {/* What's New */}
-            <details className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-              <summary className="font-heading text-sm uppercase text-gray-400 cursor-pointer hover:text-white">What&apos;s New</summary>
+            <details className="bg-secondary/50 border border-white/10 rounded-2xl p-6" onToggle={() => { localStorage.setItem("changelog_last_seen_client", "2026-06-21T19:00:00Z"); setShowNewBadge(false); }}>
+              <summary className="font-heading text-sm uppercase text-gray-400 cursor-pointer hover:text-white flex items-center gap-2">
+                What&apos;s New
+                {showNewBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">NEW</span>}
+              </summary>
               <div className="mt-4 space-y-4">
                 <div>
-                  <p className="text-white text-sm font-medium mb-2">June 18, 2026</p>
+                  <p className="text-white text-sm font-medium mb-2">June 21, 2026</p>
                   <ul className="space-y-1 text-gray-300 text-xs">
-                    <li>• Your added workouts now properly save when you mark them Done</li>
+                    <li>• Strava now matches to your own created workouts (not just Crystal&apos;s programmed ones)</li>
+                    <li>• Client-created matches show the same dotted-line visual as programmed matches</li>
+                    <li>• Heart rate data (avg + max) now shows on all Strava-imported workouts</li>
+                    <li>• &apos;Keep as extra workout&apos; now saves properly — won&apos;t ask again after reload</li>
+                    <li>• Extra Strava workouts count in your &apos;Your Workouts&apos; stats</li>
+                    <li>• After matching Strava to your workout, miles/pace/duration/HR show on the card</li>
+                    <li>• Actual miles now show in green on the right after completing (programmed crossed out below)</li>
+                    <li>• MI/KM toggle now converts your logged data too (actual miles + pace)</li>
+                    <li>• RPE and Sleep sliders stack vertically on mobile — much easier to use</li>
+                    <li>• You get an email when Strava syncs a new activity to your account</li>
+                    <li>• Stats miles correctly convert when workouts are programmed in different units</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-medium mb-2">June 20, 2026</p>
+                  <ul className="space-y-1 text-gray-300 text-xs">
+                    <li>• New logo as browser tab icon — looks more professional</li>
+                    <li>• Strava imports now visually attach below the workout they match (dotted connector line)</li>
+                    <li>• Unmatched imports clearly show &apos;No Match Found&apos; with dashed border</li>
+                    <li>• &apos;I Did This&apos; / &apos;I Skipped This&apos; buttons hide when Strava match is pending</li>
+                    <li>• Strava match confirmation now requires RPE, Sleep, and Notes</li>
+                    <li>• Stats miles/KM only counts Run + Walk (not cycling, cross training)</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-medium mb-2">June 18, 2026</p>
+                  <ul className="space-y-1 text-gray-400 text-xs">
                     <li>• Text is brighter and easier to read everywhere</li>
-                    <li>• Keyboard navigation improved with visible focus indicators</li>
+                    <li>• Your added workouts now properly save when you mark them Done</li>
                     <li>• Stats section looks better on mobile</li>
                     <li>• Distance preference (Miles/KM) now saves correctly after logout</li>
                   </ul>
@@ -1945,22 +1983,15 @@ export default function DashboardPage() {
                   <p className="text-white text-sm font-medium mb-2">June 16, 2026</p>
                   <ul className="space-y-1 text-gray-400 text-xs">
                     <li>• Day blocks are now collapsible — tap any day to expand/collapse</li>
-                    <li>• Expand All / Collapse All buttons at the top of your week</li>
-                    <li>• Set your default view (Expanded or Collapsed) in preferences above</li>
-                    <li>• Each day now shows the full date (e.g., 16 June 2026)</li>
                     <li>• Your added workouts now show as planned until you mark them Done</li>
-                    <li>• Stats updated: see your programmed workouts and your own added workouts separately</li>
+                    <li>• Stats: see programmed workouts and your own workouts separately</li>
                   </ul>
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium mb-2">June 15, 2026</p>
                   <ul className="space-y-1 text-gray-400 text-xs">
-                    <li>• You can now add your own workouts under each day</li>
-                    <li>• Crystal can comment on your completed workouts (you get an email)</li>
-                    <li>• You can reply to Crystal&apos;s comments on any workout</li>
-                    <li>• Rest days no longer require completion — just optional comments</li>
-                    <li>• Workout log simplified: RPE, Sleep, Miles, Pace, Stress, Notes</li>
-                    <li>• Distance preference (Miles/KM) now works correctly everywhere</li>
+                    <li>• Add your own workouts under each day</li>
+                    <li>• Crystal can comment on completed workouts — you get an email</li>
                     <li>• Per-workout mi/km toggle to quickly check conversions</li>
                   </ul>
                 </div>
