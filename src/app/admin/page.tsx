@@ -5,9 +5,9 @@ import Image from "next/image";
 import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
 
-type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; };
+type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; log?: WorkoutLog; };
-type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; };
+type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; weeks: WeekData[]; messages: CoachMessage[]; };
@@ -705,6 +705,10 @@ export default function AdminPage() {
             duration: cw.duration || null,
             averagePace: cw.averagePace || null,
             activityName: cw.activityName || null,
+            avgHeartrate: cw.avgHeartrate || null,
+            maxHeartrate: cw.maxHeartrate || null,
+            completed: cw.completed || false,
+            completedNotes: cw.completedNotes || null,
           })),
           workouts: (w.workouts || []).map((wo: any) => ({
             id: wo.id,
@@ -1425,6 +1429,8 @@ export default function AdminPage() {
                                 {w.log.actualMiles && <span><span className="text-gray-300">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(w.log.actualMiles))}</span></span>}
                                 {w.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
                                 {w.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{w.log.duration}</span></span>}
+                                {w.log.avgHeartrate && <span><span className="text-gray-300">Avg HR:</span> <span className="text-red-400">{w.log.avgHeartrate} bpm</span></span>}
+                                {w.log.maxHeartrate && <span><span className="text-gray-300">Max HR:</span> <span className="text-red-400">{w.log.maxHeartrate} bpm</span></span>}
                                 {w.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
                                 {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                               </div>
@@ -1503,27 +1509,39 @@ export default function AdminPage() {
 
                         {/* Client-Added Workouts for this day */}
                         {dayClientWorkouts.map(cw => (
-                          <div key={cw.id} className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-6 h-6 rounded-full bg-cyan-500 border-2 border-cyan-500 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                          <div key={cw.id} className={`${cw.source === 'strava' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-cyan-500/5 border-cyan-500/20'} border rounded-xl p-4`}>
+                            <div className="flex items-start gap-4">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${cw.completed ? 'bg-green-500 border-2 border-green-500' : cw.source === 'strava' ? 'bg-orange-500/20 border-2 border-orange-400' : 'bg-cyan-500 border-2 border-cyan-500'}`}>
+                                {cw.completed ? <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : cw.source === 'strava' ? <svg className="w-3 h-3 text-orange-400" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg> : <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {cw.source === 'strava' ? (
                                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
                                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                      Strava Sync
+                                      Strava
                                     </span>
                                   ) : (
                                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
                                   )}
                                   <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                   {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                                  {cw.completed && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Completed</span>}
                                 </div>
-                                {cw.notes && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                                {cw.activityName && <p className="text-white text-sm font-medium mt-1">{cw.activityName}</p>}
+                                {cw.notes && !cw.activityName && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                                {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
+                                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                    {cw.miles && <span className="text-gray-400 text-xs">Miles: <span className="text-white">{convertDist(cw.miles)} {distUnitShort}</span></span>}
+                                    {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
+                                    {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                                    {cw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{cw.avgHeartrate} bpm</span></span>}
+                                    {cw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{cw.maxHeartrate} bpm</span></span>}
+                                  </div>
+                                )}
+                                {cw.completedNotes && <p className="text-gray-400 text-xs mt-1 italic">{cw.completedNotes}</p>}
                               </div>
-                              {cw.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
+                              {cw.miles && !cw.averagePace && !cw.duration && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
                           </div>
                         ))}

@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   if (workoutIds.length > 0) {
     const { data: logsData } = await adminClient
       .from('workout_logs')
-      .select('id, workout_id, status, skip_reason, rpe, actual_miles, actual_pace, stress, notes, on_period, duration, energy, motivation, sleep, strength, recovery, mood, hunger')
+      .select('id, workout_id, status, skip_reason, rpe, actual_miles, actual_pace, stress, notes, on_period, duration, energy, motivation, sleep, strength, recovery, mood, hunger, avg_heartrate, max_heartrate')
       .in('workout_id', workoutIds)
     logs = logsData || []
   }
@@ -121,6 +121,8 @@ export async function GET(request: Request) {
         activityName: cw.activity_name || null,
         avgHeartrate: cw.avg_heartrate || null,
         maxHeartrate: cw.max_heartrate || null,
+        completed: cw.completed || false,
+        completedNotes: cw.completed_notes || null,
       })),
       workouts: weekWorkouts.map(wo => {
         const log = logsByWorkoutId.get(wo.id)
@@ -155,6 +157,8 @@ export async function GET(request: Request) {
             actualPace: log.actual_pace || '',
             onPeriod: log.on_period ? 'yes' : 'no',
             duration: log.duration || '',
+            avgHeartrate: log.avg_heartrate || null,
+            maxHeartrate: log.max_heartrate || null,
           } : undefined,
         }
       }),
