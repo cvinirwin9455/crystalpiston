@@ -44,8 +44,11 @@ export async function updateSession(request: NextRequest) {
   const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password', '/set-password', '/auth/callback']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/'))
 
+  // API routes that must be publicly accessible (webhooks, etc.)
+  const isPublicApi = pathname.startsWith('/api/strava/webhook')
+
   // If not logged in and trying to access protected route, redirect to login
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicRoute && !isPublicApi) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
