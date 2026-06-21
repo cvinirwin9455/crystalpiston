@@ -219,8 +219,8 @@ export async function POST(request: Request) {
       moving_time_seconds: activity.moving_time,
       distance_meters: activity.distance,
       start_date: activity.start_date,
-      avg_heartrate: activity.average_heartrate || null,
-      max_heartrate: activity.max_heartrate || null,
+      avg_heartrate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
+      max_heartrate: activity.max_heartrate ? Math.round(activity.max_heartrate) : null,
       match_status: suggestedMatchId ? 'suggested' : 'pending',
       // Only set matched_workout_id for programmed workouts (FK references workouts table)
       matched_workout_id: (suggestedMatchId && suggestedMatchType === 'programmed') ? suggestedMatchId : null,
@@ -261,8 +261,8 @@ export async function POST(request: Request) {
             duration,
             average_pace: pace,
             activity_name: activity.name,
-            avg_heartrate: activity.average_heartrate || null,
-            max_heartrate: activity.max_heartrate || null,
+            avg_heartrate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
+            max_heartrate: activity.max_heartrate ? Math.round(activity.max_heartrate) : null,
           })
       }
     }
