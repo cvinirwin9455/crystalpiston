@@ -220,7 +220,8 @@ export async function POST(request: Request) {
       distance_meters: activity.distance,
       start_date: activity.start_date,
       match_status: suggestedMatchId ? 'suggested' : 'pending',
-      matched_workout_id: suggestedMatchId,
+      // Only set matched_workout_id for programmed workouts (FK references workouts table)
+      matched_workout_id: (suggestedMatchId && suggestedMatchType === 'programmed') ? suggestedMatchId : null,
     }
 
     if (existing) {

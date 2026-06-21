@@ -280,6 +280,7 @@ export async function POST(request: Request) {
     // Insert strava_activities record with smart matching
     // Find candidates for matching on this day
     let suggestedMatchId: string | null = null
+    let suggestedMatchType: string | null = null
     let matchStatus = 'pending' // Will prompt user
 
     if (weekId) {
@@ -347,6 +348,7 @@ export async function POST(request: Request) {
       const matchResult = findBestMatch(workoutType, miles, duration, dayOfWeek, trainingType, candidates)
       if (matchResult.candidateId && matchResult.confidence >= 50) {
         suggestedMatchId = matchResult.candidateId
+        suggestedMatchType = matchResult.candidateType
         matchStatus = 'suggested'
       }
     }
@@ -369,7 +371,8 @@ export async function POST(request: Request) {
         distance_meters: activity.distance,
         start_date: activity.start_date,
         match_status: matchStatus,
-        matched_workout_id: suggestedMatchId,
+        // Only set matched_workout_id for programmed workouts (FK references workouts table)
+        matched_workout_id: (suggestedMatchId && suggestedMatchType === 'programmed') ? suggestedMatchId : null,
       })
       .select('id')
       .single()
