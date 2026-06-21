@@ -125,6 +125,12 @@ export default function DashboardPage() {
 
   const clientUpdates = [
     { date: "June 21, 2026", items: [
+      "Header now sticks to the top when you scroll — always accessible",
+      "Bell icon in header shows new updates with a red dot badge",
+      "Click the bell to see what's new — only shows updates you haven't read",
+      "Click off to mark as read — badge disappears",
+      "'View all updates' opens a full-screen history of every change",
+      "Logout is now an icon (door with arrow) in the header",
       "Strava now matches to your own created workouts (not just Crystal's)",
       "Heart rate (avg + max) shows on all Strava-imported workouts",
       "After matching Strava, miles/pace/duration/HR show on the card",

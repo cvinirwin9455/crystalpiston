@@ -3,12 +3,18 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-21T19:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-21T20:00:00Z";
 
 const updates = [
   {
     date: "June 21, 2026",
     items: [
+      { area: "Client", text: "Header now sticks to the top when scrolling — always accessible" },
+      { area: "Client", text: "Bell icon in header shows new updates with a red dot badge" },
+      { area: "Client", text: "Click the bell to see what's new — only shows unread updates" },
+      { area: "Client", text: "Click off dropdown to mark updates as read" },
+      { area: "Client", text: "'View all updates' opens a full-screen history" },
+      { area: "Client", text: "Logout is now an icon in the header (cleaner look)" },
       { area: "Client", text: "Strava imports now match to your own client-created workouts (not just Crystal's programmed ones)" },
       { area: "Client", text: "Client-created workout matches show the same dotted-line visual as programmed workout matches" },
       { area: "Client", text: "Done button hides when Strava has a pending match for your workout — reappears if you reject the match" },
