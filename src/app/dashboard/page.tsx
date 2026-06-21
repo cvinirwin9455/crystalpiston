@@ -174,7 +174,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
-    if (!lastSeen || lastSeen < "2026-06-21T19:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-21T20:00:00Z") {
       setShowNewBadge(true);
     }
   }, []);
