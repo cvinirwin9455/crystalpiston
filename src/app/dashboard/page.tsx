@@ -903,9 +903,15 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                       {(() => {
+                        // Compare update dates against the last time the user opened the bell
+                        // lastSeenUpdates is an ISO string like "2026-06-20T15:00:00.000Z"
+                        // We consider an update "unread" if its date is on or after the day the badge timestamp was bumped
+                        const lastSeenDate = lastSeenUpdates ? lastSeenUpdates.split('T')[0] : '';
                         const unreadUpdates = clientUpdates.filter(u => {
-                          const updateDate = new Date(u.date).toISOString();
-                          return updateDate > lastSeenUpdates;
+                          // Parse "June 21, 2026" to comparable format
+                          const parsed = new Date(u.date);
+                          const updateDateStr = parsed.toISOString().split('T')[0]; // "2026-06-21"
+                          return updateDateStr > lastSeenDate;
                         });
                         if (unreadUpdates.length === 0) {
                           return <p className="text-gray-400 text-xs text-center py-4">You&apos;re all caught up!</p>;
