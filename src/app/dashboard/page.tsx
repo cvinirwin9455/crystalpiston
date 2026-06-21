@@ -496,7 +496,10 @@ export default function DashboardPage() {
   const statsPartial = statsWorkouts.filter(w => w.status === "partial");
   const statsSkipped = statsWorkouts.filter(w => w.status === "skipped");
   const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
-  const statsMiles = statsComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || w.miles || 0, clientDistanceUnit, w.distanceUnit || 'mi'), 0) + statsPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, clientDistanceUnit, w.distanceUnit || 'mi'), 0) + clientMilesForStats;
+  const statsMiles = statsComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => {
+    if (w.log?.actualMiles) return s + convertDist(Number(w.log.actualMiles), clientDistanceUnit, 'mi');
+    return s + convertDist(w.miles || 0, clientDistanceUnit, w.distanceUnit || 'mi');
+  }, 0) + statsPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, clientDistanceUnit, 'mi'), 0) + clientMilesForStats;
   const statsProgrammedMiles = statsWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(w.miles || 0, clientDistanceUnit, w.distanceUnit || 'mi'), 0);
   const statsWeightedCompletion = statsWorkouts.length > 0 ? Math.round(((statsComplete.length * 1 + statsPartial.length * 0.5) / statsWorkouts.length) * 100) : 0;
   const statsAvgRpe = () => { const withRpe = statsMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
