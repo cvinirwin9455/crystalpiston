@@ -117,10 +117,57 @@ export default function DashboardPage() {
   const [stravaImporting, setStravaImporting] = useState(false);
   const [stravaImportResult, setStravaImportResult] = useState<{ imported: number; skipped: number; message: string } | null>(null);
 
-  // New updates badge
+  // New updates badge & dropdown
   const [showNewBadge, setShowNewBadge] = useState(false);
+  const [showUpdatesDropdown, setShowUpdatesDropdown] = useState(false);
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
+  const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
+
+  const clientUpdates = [
+    { date: "June 21, 2026", items: [
+      "Strava now matches to your own created workouts (not just Crystal's)",
+      "Heart rate (avg + max) shows on all Strava-imported workouts",
+      "After matching Strava, miles/pace/duration/HR show on the card",
+      "Actual miles now show in green on the right after completing a workout",
+      "MI/KM toggle now converts your logged data too (actual miles + pace)",
+      "RPE and Sleep sliders stack vertically on mobile — easier to use",
+      "Email sent when Strava syncs a new activity to your account",
+      "'Keep as extra workout' now saves properly after page reload",
+    ]},
+    { date: "June 20, 2026", items: [
+      "New logo as browser tab icon",
+      "Strava imports attach below the workout they match (dotted connector line)",
+      "Unmatched imports clearly show 'No Match Found'",
+      "'I Did This' / 'I Skipped This' hide when Strava match is pending",
+      "Strava match confirmation now requires RPE, Sleep, and Notes",
+      "Stats only counts Run + Walk miles (not cycling, cross training)",
+    ]},
+    { date: "June 18, 2026", items: [
+      "Text is brighter and easier to read everywhere",
+      "Your added workouts now save when you mark them Done",
+      "Stats section looks better on mobile",
+      "Distance preference (Miles/KM) saves correctly after logout",
+    ]},
+    { date: "June 16, 2026", items: [
+      "Day blocks are now collapsible — tap any day to expand/collapse",
+      "Your added workouts show as planned until you mark them Done",
+      "Stats: see programmed workouts and your own workouts separately",
+    ]},
+    { date: "June 15, 2026", items: [
+      "Add your own workouts under each day",
+      "Crystal can comment on your completed workouts (you get an email)",
+      "Per-workout mi/km toggle to quickly check conversions",
+      "Rest days simplified — just an optional comment button",
+    ]},
+    { date: "June 14, 2026", items: [
+      "Distance unit preference — set default to Miles or KM",
+      "Your name now shows at the top of the dashboard",
+    ]},
+  ];
+
   useEffect(() => {
-    const lastSeen = localStorage.getItem("changelog_last_seen_client");
+    const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
+    setLastSeenUpdates(lastSeen);
     if (!lastSeen || lastSeen < "2026-06-21T19:00:00Z") {
       setShowNewBadge(true);
     }
@@ -833,10 +880,49 @@ export default function DashboardPage() {
             <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => setActiveTab("account")} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-              {showNewBadge && <span className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">!</span>}
-            </button>
+            <div className="relative">
+              <button onClick={() => { setShowUpdatesDropdown(!showUpdatesDropdown); }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                {showNewBadge && <span className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">!</span>}
+              </button>
+
+              {/* Updates Dropdown */}
+              {showUpdatesDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); }} />
+                  <div className="absolute right-0 top-8 w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                      <h3 className="text-white text-sm font-heading uppercase">What&apos;s New</h3>
+                      {showNewBadge && <span className="text-accent text-[10px] font-bold">New updates!</span>}
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                      {(() => {
+                        const unreadUpdates = clientUpdates.filter(u => {
+                          const updateDate = new Date(u.date).toISOString();
+                          return updateDate > lastSeenUpdates;
+                        });
+                        if (unreadUpdates.length === 0) {
+                          return <p className="text-gray-400 text-xs text-center py-4">You&apos;re all caught up!</p>;
+                        }
+                        return unreadUpdates.map((update, idx) => (
+                          <div key={idx}>
+                            <p className="text-accent text-xs font-bold mb-1.5">{update.date}</p>
+                            <ul className="space-y-1">
+                              {update.items.map((item, i) => (
+                                <li key={i} className="text-gray-300 text-xs flex gap-2"><span className="text-accent mt-0.5">•</span><span>{item}</span></li>
+                              ))}
+                            </ul>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                    <div className="px-4 py-2.5 border-t border-white/10">
+                      <button onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); setShowAllUpdates(true); }} className="text-accent hover:text-white text-xs font-medium transition-colors w-full text-center">View all updates</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <a href="/auth/signout" className="text-gray-400 hover:text-accent transition-colors" title="Logout">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </a>
@@ -1944,70 +2030,35 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* What's New */}
-            <details className="bg-secondary/50 border border-white/10 rounded-2xl p-6" onToggle={() => { localStorage.setItem("changelog_last_seen_client", "2026-06-21T19:00:00Z"); setShowNewBadge(false); }}>
-              <summary className="font-heading text-sm uppercase text-gray-400 cursor-pointer hover:text-white flex items-center gap-2">
-                What&apos;s New
-                {showNewBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">NEW</span>}
-              </summary>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <p className="text-white text-sm font-medium mb-2">June 21, 2026</p>
-                  <ul className="space-y-1 text-gray-300 text-xs">
-                    <li>• Strava now matches to your own created workouts (not just Crystal&apos;s programmed ones)</li>
-                    <li>• Client-created matches show the same dotted-line visual as programmed matches</li>
-                    <li>• Heart rate data (avg + max) now shows on all Strava-imported workouts</li>
-                    <li>• &apos;Keep as extra workout&apos; now saves properly — won&apos;t ask again after reload</li>
-                    <li>• Extra Strava workouts count in your &apos;Your Workouts&apos; stats</li>
-                    <li>• After matching Strava to your workout, miles/pace/duration/HR show on the card</li>
-                    <li>• Actual miles now show in green on the right after completing (programmed crossed out below)</li>
-                    <li>• MI/KM toggle now converts your logged data too (actual miles + pace)</li>
-                    <li>• RPE and Sleep sliders stack vertically on mobile — much easier to use</li>
-                    <li>• You get an email when Strava syncs a new activity to your account</li>
-                    <li>• Stats miles correctly convert when workouts are programmed in different units</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium mb-2">June 20, 2026</p>
-                  <ul className="space-y-1 text-gray-300 text-xs">
-                    <li>• New logo as browser tab icon — looks more professional</li>
-                    <li>• Strava imports now visually attach below the workout they match (dotted connector line)</li>
-                    <li>• Unmatched imports clearly show &apos;No Match Found&apos; with dashed border</li>
-                    <li>• &apos;I Did This&apos; / &apos;I Skipped This&apos; buttons hide when Strava match is pending</li>
-                    <li>• Strava match confirmation now requires RPE, Sleep, and Notes</li>
-                    <li>• Stats miles/KM only counts Run + Walk (not cycling, cross training)</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium mb-2">June 18, 2026</p>
-                  <ul className="space-y-1 text-gray-400 text-xs">
-                    <li>• Text is brighter and easier to read everywhere</li>
-                    <li>• Your added workouts now properly save when you mark them Done</li>
-                    <li>• Stats section looks better on mobile</li>
-                    <li>• Distance preference (Miles/KM) now saves correctly after logout</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium mb-2">June 16, 2026</p>
-                  <ul className="space-y-1 text-gray-400 text-xs">
-                    <li>• Day blocks are now collapsible — tap any day to expand/collapse</li>
-                    <li>• Your added workouts now show as planned until you mark them Done</li>
-                    <li>• Stats: see programmed workouts and your own workouts separately</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium mb-2">June 15, 2026</p>
-                  <ul className="space-y-1 text-gray-400 text-xs">
-                    <li>• Add your own workouts under each day</li>
-                    <li>• Crystal can comment on completed workouts — you get an email</li>
-                    <li>• Per-workout mi/km toggle to quickly check conversions</li>
-                  </ul>
-                </div>
-              </div>
-            </details>
           </div>
         )}
       </main>
+
+      {/* All Updates Overlay */}
+      {showAllUpdates && (
+        <div className="fixed inset-0 z-50 bg-primary/95 backdrop-blur-sm overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-6 py-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-heading text-2xl uppercase text-white">All Updates</h2>
+              <button onClick={() => setShowAllUpdates(false)} className="text-gray-400 hover:text-white transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="space-y-6">
+              {clientUpdates.map((update, idx) => (
+                <div key={idx} className="bg-secondary/50 border border-white/10 rounded-xl p-5">
+                  <p className="text-accent text-sm font-heading uppercase mb-3">{update.date}</p>
+                  <ul className="space-y-2">
+                    {update.items.map((item, i) => (
+                      <li key={i} className="text-gray-300 text-sm flex gap-2.5"><span className="text-accent mt-0.5 flex-shrink-0">•</span><span>{item}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
