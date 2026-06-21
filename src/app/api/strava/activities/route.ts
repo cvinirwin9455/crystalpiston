@@ -271,6 +271,16 @@ export async function POST(request: Request) {
 
     // Send email notification to the client about the imported activity
     try {
+      // Check if client has Strava sync notifications enabled
+      const { data: clientNotifPrefs } = await adminClient
+        .from('notification_preferences')
+        .select('strava_synced')
+        .eq('user_id', connection.user_id)
+        .single()
+
+      const shouldSendStravaEmail = clientNotifPrefs?.strava_synced ?? true
+
+      if (shouldSendStravaEmail) {
       const { data: clientUser } = await adminClient
         .from('users')
         .select('name, email')
@@ -322,6 +332,7 @@ export async function POST(request: Request) {
         )
 
         await sendEmail({ to: clientUser.email, subject, html })
+      }
       }
     } catch (emailErr) {
       console.error('Failed to send Strava import email to client:', emailErr)

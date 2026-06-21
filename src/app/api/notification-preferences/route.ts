@@ -38,6 +38,8 @@ export async function GET() {
   return NextResponse.json({
     planPublished: prefs?.plan_published ?? true,
     messages: prefs?.messages || 'immediate',
+    stravaSynced: prefs?.strava_synced ?? true,
+    workoutComments: prefs?.workout_comments_client ?? true,
     theme: prefs?.theme || 'dark',
     distanceUnit: prefs?.distance_unit || 'mi',
     defaultExpanded: prefs?.default_expanded ?? true,
@@ -59,6 +61,11 @@ export async function PUT(request: Request) {
   // Client fields
   if (planPublished !== undefined) updates.plan_published = planPublished
   if (messages !== undefined) updates.messages = messages
+  
+  // Client notification toggles
+  const { stravaSynced, workoutComments: workoutCommentsClient } = body
+  if (stravaSynced !== undefined) updates.strava_synced = stravaSynced
+  if (workoutCommentsClient !== undefined) updates.workout_comments_client = workoutCommentsClient
   
   // Admin fields
   if (workoutCompleted !== undefined) updates.workout_completed = workoutCompleted

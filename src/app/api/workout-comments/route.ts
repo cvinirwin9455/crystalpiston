@@ -149,11 +149,11 @@ export async function POST(request: Request) {
             // Check client notification preferences
             const { data: notifPrefs } = await adminClient
               .from('notification_preferences')
-              .select('messages')
+              .select('workout_comments_client')
               .eq('user_id', client.user_id)
               .single()
 
-            if (notifPrefs?.messages !== 'off') {
+            if (notifPrefs?.workout_comments_client !== false) {
               recipientEmail = clientUser?.email || null
               recipientName = clientUser?.name || 'there'
             }

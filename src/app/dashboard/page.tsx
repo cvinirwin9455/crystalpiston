@@ -101,6 +101,8 @@ export default function DashboardPage() {
   const [clientGender, setClientGender] = useState<string | null>(null);
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
+  const [notifStravaSynced, setNotifStravaSynced] = useState(true);
+  const [notifWorkoutComments, setNotifWorkoutComments] = useState(true);
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
@@ -281,6 +283,8 @@ export default function DashboardPage() {
           const data = await res.json();
           setNotifPlanPublished(data.planPublished);
           setNotifMessages(data.messages);
+          if (data.stravaSynced !== undefined) setNotifStravaSynced(data.stravaSynced);
+          if (data.workoutComments !== undefined) setNotifWorkoutComments(data.workoutComments);
           if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
           if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
         }
@@ -1983,7 +1987,7 @@ export default function DashboardPage() {
               </div>
 
               <hr className="border-white/10 mb-6" />
-              <p className="text-gray-300 text-xs mb-6">Choose how you want to be notified about updates from Crystal.</p>
+              <p className="text-gray-300 text-xs mb-6">Choose which emails you receive from Pistol Performance.</p>
 
               <div className="space-y-5">
                 {/* New Training Plan Published */}
@@ -2033,6 +2037,42 @@ export default function DashboardPage() {
                     {notifMessages === "daily" && "You'll receive one email per day summarising any messages from Crystal."}
                     {notifMessages === "off" && "You won't receive email notifications for messages. Check the app to read them."}
                   </p>
+                </div>
+
+                {/* Strava Activity Synced */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-sm font-medium">Strava Activity Synced</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get emailed when a Strava activity syncs and needs your attention</p>
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked={notifStravaSynced}
+                      onClick={() => { const newVal = !notifStravaSynced; setNotifStravaSynced(newVal); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stravaSynced: newVal }) }); }}
+                      className={`w-11 h-6 rounded-full relative transition-colors ${notifStravaSynced ? "bg-green-500" : "bg-gray-600"}`}
+                    >
+                      <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform" style={{ transform: notifStravaSynced ? "translateX(22px)" : "translateX(2px)" }} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Workout Comments */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-sm font-medium">Workout Comments</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get emailed when Crystal comments on one of your workouts</p>
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked={notifWorkoutComments}
+                      onClick={() => { const newVal = !notifWorkoutComments; setNotifWorkoutComments(newVal); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workoutComments: newVal }) }); }}
+                      className={`w-11 h-6 rounded-full relative transition-colors ${notifWorkoutComments ? "bg-green-500" : "bg-gray-600"}`}
+                    >
+                      <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform" style={{ transform: notifWorkoutComments ? "translateX(22px)" : "translateX(2px)" }} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
