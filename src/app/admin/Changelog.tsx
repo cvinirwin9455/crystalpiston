@@ -3,12 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-21T20:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-21T21:00:00Z";
 
 const updates = [
   {
     date: "June 21, 2026",
     items: [
+      { area: "Admin", text: "Crystal now sees all Strava data on client workouts: activity name, miles, pace, duration, heart rate" },
+      { area: "Admin", text: "Client-created and Strava workouts show completed status with green badge" },
+      { area: "Admin", text: "Heart rate (avg + max) now shows on programmed workout logs too" },
+      { area: "Admin", text: "Strava workouts have orange border, client-created have cyan border" },
       { area: "Client", text: "Header now sticks to the top when scrolling — always accessible" },
       { area: "Client", text: "Bell icon in header shows new updates with a red dot badge" },
       { area: "Client", text: "Click the bell to see what's new — only shows unread updates" },
