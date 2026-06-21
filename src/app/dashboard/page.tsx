@@ -825,19 +825,27 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-primary">
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm">Skip to main content</a>
-      {/* Header */}
-      <header className="bg-secondary/50 border-b border-white/10 px-6 py-4">
+      {/* Header — sticky */}
+      <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={70} height={70} />
-            <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-sm">Pistol Performance Coaching</p></div>
+          <div className="flex items-center gap-3">
+            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
+            <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
-          <a href="/auth/signout" className="text-gray-400 hover:text-accent text-sm transition-colors">Logout</a>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setActiveTab("account")} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+              {showNewBadge && <span className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">!</span>}
+            </button>
+            <a href="/auth/signout" className="text-gray-400 hover:text-accent transition-colors" title="Logout">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            </a>
+          </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/30">
+      {/* Tabs — sticky below header */}
+      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[65px] z-30">
         <div className="max-w-7xl mx-auto px-6 flex gap-1" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
             <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
