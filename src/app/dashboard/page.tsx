@@ -893,7 +893,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(2)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).length}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => cw.source !== 'strava' && completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).filter(cw => cw.source !== 'strava').length}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
               </div>
