@@ -1062,18 +1062,16 @@ export default function DashboardPage() {
                       <h4 className="font-heading text-sm uppercase text-accent mb-4">{skipType === "partial" ? "What Did You Do?" : "Your Workout Log"}</h4>
 
                       {/* RPE + Sleep — side by side at top */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                         <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
-                          <p className="text-gray-400 text-xs mb-2">1 = easy, 10 = all-out</p>
-                          <div className="flex items-center gap-2"><input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{workout.log?.rpe || "—"}</span></div>
-                          <div className="flex justify-between mt-0.5"><span className="text-gray-400 text-xs">Barely felt it</span><span className="text-gray-400 text-xs">All-out</span></div>
+                          <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div><span className="text-white text-xl font-bold">{workout.log?.rpe || "—"}</span></div>
+                          <input type="range" min="1" max="10" value={workout.log?.rpe || ""} onChange={(e) => updateWorkoutLog(workout.id, "rpe", e.target.value)} className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                          <div className="flex justify-between mt-1"><span className="text-gray-500 text-[10px]">Easy</span><span className="text-gray-500 text-[10px]">All-out</span></div>
                         </div>
                         <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
-                          <p className="text-gray-400 text-xs mb-2">1 = terrible, 10 = great</p>
-                          <div className="flex items-center gap-2"><input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.sleep || ""} onChange={(e) => updateWorkoutLog(workout.id, "sleep", e.target.value)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" /><span className="text-white text-lg font-bold w-6 text-center">{(workout.log as Record<string, string> | undefined)?.sleep || "—"}</span></div>
-                          <div className="flex justify-between mt-0.5"><span className="text-gray-400 text-xs">Terrible</span><span className="text-gray-400 text-xs">Great</span></div>
+                          <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div><span className="text-white text-xl font-bold">{(workout.log as Record<string, string> | undefined)?.sleep || "—"}</span></div>
+                          <input type="range" min="1" max="10" value={(workout.log as Record<string, string> | undefined)?.sleep || ""} onChange={(e) => updateWorkoutLog(workout.id, "sleep", e.target.value)} className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                          <div className="flex justify-between mt-1"><span className="text-gray-500 text-[10px]">Terrible</span><span className="text-gray-500 text-[10px]">Great</span></div>
                         </div>
                       </div>
 
@@ -1186,22 +1184,16 @@ export default function DashboardPage() {
                             <div className="mt-3 bg-green-500/5 border border-green-500/20 rounded-lg p-4">
                               <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Complete Your Log</h4>
                               <p className="text-gray-400 text-xs mb-4">Strava data (miles, pace, duration) will be saved automatically. Add your effort and notes below.</p>
-                              <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                 <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                                  <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
-                                  <p className="text-gray-600 text-xs mb-2">1 = easy, 10 = all-out</p>
-                                  <div className="flex items-center gap-2">
-                                    <input type="range" min="1" max="10" value={stravaMatchLog.rpe || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, rpe: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
-                                    <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.rpe || '—'}</span>
-                                  </div>
+                                  <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div><span className="text-white text-xl font-bold">{stravaMatchLog.rpe || '—'}</span></div>
+                                  <input type="range" min="1" max="10" value={stravaMatchLog.rpe || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, rpe: e.target.value } : null)} className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                  <div className="flex justify-between mt-1"><span className="text-gray-500 text-[10px]">Easy</span><span className="text-gray-500 text-[10px]">All-out</span></div>
                                 </div>
                                 <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                                  <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
-                                  <p className="text-gray-600 text-xs mb-2">1 = terrible, 10 = great</p>
-                                  <div className="flex items-center gap-2">
-                                    <input type="range" min="1" max="10" value={stravaMatchLog.sleep || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, sleep: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
-                                    <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.sleep || '—'}</span>
-                                  </div>
+                                  <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div><span className="text-white text-xl font-bold">{stravaMatchLog.sleep || '—'}</span></div>
+                                  <input type="range" min="1" max="10" value={stravaMatchLog.sleep || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, sleep: e.target.value } : null)} className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                  <div className="flex justify-between mt-1"><span className="text-gray-500 text-[10px]">Terrible</span><span className="text-gray-500 text-[10px]">Great</span></div>
                                 </div>
                               </div>
                               <div className="mb-4">
@@ -1330,22 +1322,16 @@ export default function DashboardPage() {
                                   <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Complete Your Log</h4>
                                   <p className="text-gray-400 text-xs mb-4">Strava data (miles, pace, duration) will be saved automatically. Add your effort and notes below.</p>
                                   
-                                  <div className="grid grid-cols-2 gap-3 mb-3">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                     <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                                      <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div>
-                                      <p className="text-gray-600 text-xs mb-2">1 = easy, 10 = all-out</p>
-                                      <div className="flex items-center gap-2">
-                                        <input type="range" min="1" max="10" value={stravaMatchLog.rpe || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, rpe: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
-                                        <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.rpe || '—'}</span>
-                                      </div>
+                                      <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="text-sm">💪</span><label className="text-gray-300 text-xs font-medium">Effort (RPE)</label></div><span className="text-white text-xl font-bold">{stravaMatchLog.rpe || '—'}</span></div>
+                                      <input type="range" min="1" max="10" value={stravaMatchLog.rpe || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, rpe: e.target.value } : null)} className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                      <div className="flex justify-between mt-1"><span className="text-gray-500 text-[10px]">Easy</span><span className="text-gray-500 text-[10px]">All-out</span></div>
                                     </div>
                                     <div className="bg-primary/50 border border-white/5 rounded-lg p-3">
-                                      <div className="flex items-center gap-2 mb-0.5"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div>
-                                      <p className="text-gray-600 text-xs mb-2">1 = terrible, 10 = great</p>
-                                      <div className="flex items-center gap-2">
-                                        <input type="range" min="1" max="10" value={stravaMatchLog.sleep || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, sleep: e.target.value } : null)} className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
-                                        <span className="text-white text-lg font-bold w-6 text-center">{stravaMatchLog.sleep || '—'}</span>
-                                      </div>
+                                      <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="text-sm">😴</span><label className="text-gray-300 text-xs font-medium">Sleep Quality</label></div><span className="text-white text-xl font-bold">{stravaMatchLog.sleep || '—'}</span></div>
+                                      <input type="range" min="1" max="10" value={stravaMatchLog.sleep || ''} onChange={(e) => setStravaMatchLog(prev => prev ? { ...prev, sleep: e.target.value } : null)} className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-accent" />
+                                      <div className="flex justify-between mt-1"><span className="text-gray-500 text-[10px]">Terrible</span><span className="text-gray-500 text-[10px]">Great</span></div>
                                     </div>
                                   </div>
 
