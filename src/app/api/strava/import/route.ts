@@ -223,19 +223,42 @@ export async function POST(request: Request) {
             .not('matched_workout_id', 'is', null)
           const matchAlreadyIds = (matchExisting || []).map((m: any) => m.matched_workout_id).filter(Boolean)
 
-          const matchCandidates: MatchCandidate[] = (programmedForMatch || [])
-            .filter((w: any) => w.type !== 'rest')
-            .filter((w: any) => !matchAlreadyIds.includes(w.id))
-            .map((w: any) => ({
-              id: w.id,
-              type: 'programmed' as const,
-              day: w.day,
-              workoutType: w.type,
-              trainingType: w.training_type || null,
-              miles: w.miles ? parseFloat(w.miles) : null,
-              title: w.title || null,
-              completed: matchCompletedIds.includes(w.id),
-            }))
+          // Get client-created workouts for matching
+          const { data: clientCreatedForMatch } = await adminClient
+            .from('client_workouts')
+            .select('id, day, type, training_type, miles, notes, completed')
+            .eq('week_id', targetWeekId)
+            .eq('user_id', user.id)
+            .neq('source', 'strava')
+
+          const matchCandidates: MatchCandidate[] = [
+            ...(programmedForMatch || [])
+              .filter((w: any) => w.type !== 'rest')
+              .filter((w: any) => !matchAlreadyIds.includes(w.id))
+              .map((w: any) => ({
+                id: w.id,
+                type: 'programmed' as const,
+                day: w.day,
+                workoutType: w.type,
+                trainingType: w.training_type || null,
+                miles: w.miles ? parseFloat(w.miles) : null,
+                title: w.title || null,
+                completed: matchCompletedIds.includes(w.id),
+              })),
+            ...(clientCreatedForMatch || [])
+              .filter((w: any) => !matchAlreadyIds.includes(w.id))
+              .filter((w: any) => !w.completed)
+              .map((w: any) => ({
+                id: w.id,
+                type: 'client' as const,
+                day: w.day,
+                workoutType: w.type,
+                trainingType: w.training_type || null,
+                miles: w.miles ? parseFloat(w.miles) : null,
+                title: w.notes || null,
+                completed: false,
+              })),
+          ]
 
           const reMatchResult = findBestMatch(workoutType, miles, duration, dayOfWeek, trainingType, matchCandidates)
           if (reMatchResult.candidateId && reMatchResult.confidence >= 50) {
@@ -284,19 +307,42 @@ export async function POST(request: Request) {
         .not('matched_workout_id', 'is', null)
       const alreadyMatchedIds = (existingMatches || []).map(m => m.matched_workout_id).filter(Boolean)
 
-      const candidates: MatchCandidate[] = (programmedWorkouts || [])
-        .filter(w => w.type !== 'rest')
-        .filter(w => !alreadyMatchedIds.includes(w.id))
-        .map(w => ({
-          id: w.id,
-          type: 'programmed' as const,
-          day: w.day,
-          workoutType: w.type,
-          trainingType: w.training_type || null,
-          miles: w.miles ? parseFloat(w.miles) : null,
-          title: w.title || null,
-          completed: completedIds.includes(w.id),
-        }))
+      // Get client-created workouts (non-strava, not completed) for this week
+      const { data: clientCreatedWorkouts } = await adminClient
+        .from('client_workouts')
+        .select('id, day, type, training_type, miles, notes, completed')
+        .eq('week_id', weekId)
+        .eq('user_id', user.id)
+        .neq('source', 'strava')
+
+      const candidates: MatchCandidate[] = [
+        ...(programmedWorkouts || [])
+          .filter(w => w.type !== 'rest')
+          .filter(w => !alreadyMatchedIds.includes(w.id))
+          .map(w => ({
+            id: w.id,
+            type: 'programmed' as const,
+            day: w.day,
+            workoutType: w.type,
+            trainingType: w.training_type || null,
+            miles: w.miles ? parseFloat(w.miles) : null,
+            title: w.title || null,
+            completed: completedIds.includes(w.id),
+          })),
+        ...(clientCreatedWorkouts || [])
+          .filter(w => !alreadyMatchedIds.includes(w.id))
+          .filter(w => !w.completed)
+          .map(w => ({
+            id: w.id,
+            type: 'client' as const,
+            day: w.day,
+            workoutType: w.type,
+            trainingType: w.training_type || null,
+            miles: w.miles ? parseFloat(w.miles) : null,
+            title: w.notes || null,
+            completed: false,
+          })),
+      ]
 
       const matchResult = findBestMatch(workoutType, miles, duration, dayOfWeek, trainingType, candidates)
       if (matchResult.candidateId && matchResult.confidence >= 50) {

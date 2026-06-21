@@ -1243,7 +1243,11 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
-                      {cw.miles && <div className="text-right ml-3"><p className="font-heading text-xl text-orange-400">{convertDist(cw.miles)}</p><p className="text-gray-400 text-xs">{distUnitShort}</p></div>}
+                      {cw.miles && <div className="text-right ml-3">
+                        <p className="font-heading text-xl text-orange-400">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p>
+                        <p className="text-gray-400 text-xs">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</p>
+                        <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [cw.id]: getWorkoutUnit(cw.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-orange-400 text-xs mt-0.5 transition-colors">{getWorkoutUnit(cw.id) === "km" ? "→ mi" : "→ km"}</button>
+                      </div>}
                     </div>
                   </div>
                 </div>
@@ -1403,7 +1407,11 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            {cw.miles && <div className="text-right"><p className="font-heading text-xl text-white">{convertDist(cw.miles)}</p><p className="text-gray-300 text-xs">{distUnitShort}</p></div>}
+                            {cw.miles && <div className="text-right">
+                              <p className="font-heading text-xl text-white">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p>
+                              <p className="text-gray-300 text-xs">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</p>
+                              <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [cw.id]: getWorkoutUnit(cw.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(cw.id) === "km" ? "→ mi" : "→ km"}</button>
+                            </div>}
                             <button onClick={() => handleDeleteClientWorkout(cw.id)} disabled={deletingClientWorkout === cw.id} className="text-gray-600 hover:text-red-400 text-xs transition-colors">{deletingClientWorkout === cw.id ? "..." : "✕"}</button>
                           </div>
                         </div>
