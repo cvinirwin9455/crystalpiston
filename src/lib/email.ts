@@ -196,7 +196,7 @@ export function buildStravaImportEmail(
     <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Log in to confirm the match so your training log stays accurate.</p>`
   } else {
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #6b728022; color: #9ca3af; border: 1px solid #6b728044;">No Match Found</div>`
-    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">This activity didn&rsquo;t match any of your programmed or client-created workouts. Log in to decide what to do with it &mdash; you can link it to a workout, keep it as an extra, or dismiss it.</p>`
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">This activity didn&rsquo;t match any of your programmed or your own workouts created. Log in to decide what to do with it &mdash; you can link it to a workout, keep it as an extra, or dismiss it.</p>`
   }
 
   const details = [
