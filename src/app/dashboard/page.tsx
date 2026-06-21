@@ -475,8 +475,8 @@ export default function DashboardPage() {
   const statsPartial = statsWorkouts.filter(w => w.status === "partial");
   const statsSkipped = statsWorkouts.filter(w => w.status === "skipped");
   const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
-  const statsMiles = statsComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (Number(w.log?.actualMiles) || w.miles || 0), 0) + statsPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (Number(w.log?.actualMiles) || 0), 0) + clientMilesForStats;
-  const statsProgrammedMiles = statsWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles || 0), 0);
+  const statsMiles = statsComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || w.miles || 0, clientDistanceUnit, w.distanceUnit || 'mi'), 0) + statsPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, clientDistanceUnit, w.distanceUnit || 'mi'), 0) + clientMilesForStats;
+  const statsProgrammedMiles = statsWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(w.miles || 0, clientDistanceUnit, w.distanceUnit || 'mi'), 0);
   const statsWeightedCompletion = statsWorkouts.length > 0 ? Math.round(((statsComplete.length * 1 + statsPartial.length * 0.5) / statsWorkouts.length) * 100) : 0;
   const statsAvgRpe = () => { const withRpe = statsMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); };
 
@@ -866,7 +866,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{convertDist(statsMiles).toFixed(2)}<span className="text-gray-300 text-sm">/{convertDist(statsProgrammedMiles).toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(2)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).length}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
