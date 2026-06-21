@@ -248,6 +248,17 @@ export async function POST(request: Request) {
         .single()
 
       if (client) {
+        // Re-link orphaned Strava activities that were imported before this week was published
+        try {
+          const { relinkOrphanedStravaActivities } = await import('@/lib/strava-relink')
+          const relinkResult = await relinkOrphanedStravaActivities(adminClient, client.user_id, week.id, dateRange)
+          if (relinkResult.linked > 0) {
+            console.log(`Re-linked ${relinkResult.linked} orphaned Strava activities to new week ${week.id} (${relinkResult.matched} matched)`)
+          }
+        } catch (relinkErr) {
+          console.error('Failed to re-link orphaned Strava activities:', relinkErr)
+        }
+
         // Check notification preferences
         const { data: notifPrefs } = await adminClient
           .from('notification_preferences')

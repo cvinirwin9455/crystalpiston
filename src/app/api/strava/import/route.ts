@@ -117,12 +117,75 @@ export async function POST(request: Request) {
     // Check if already imported
     const { data: existing } = await adminClient
       .from('strava_activities')
-      .select('id')
+      .select('id, week_id')
       .eq('strava_activity_id', activity.id)
       .single()
 
     if (existing) {
-      skipped++
+      // If it exists but has no week_id, try to link it now
+      if (!existing.week_id && weekId) {
+        await adminClient
+          .from('strava_activities')
+          .update({ week_id: weekId })
+          .eq('id', existing.id)
+
+        // Also update the client_workouts entry
+        await adminClient
+          .from('client_workouts')
+          .update({ week_id: weekId })
+          .eq('strava_activity_id', existing.id)
+          .eq('user_id', user.id)
+
+        // Run matching for this newly linked activity
+        const { data: programmedForMatch } = await adminClient
+          .from('workouts')
+          .select('id, day, type, training_type, title, miles')
+          .eq('week_id', weekId)
+
+        const matchWorkoutIds = (programmedForMatch || []).map((w: any) => w.id)
+        let matchCompletedIds: string[] = []
+        if (matchWorkoutIds.length > 0) {
+          const { data: matchLogs } = await adminClient
+            .from('workout_logs')
+            .select('workout_id')
+            .in('workout_id', matchWorkoutIds)
+          matchCompletedIds = (matchLogs || []).map((l: any) => l.workout_id)
+        }
+
+        const { data: matchExisting } = await adminClient
+          .from('strava_activities')
+          .select('matched_workout_id')
+          .eq('user_id', user.id)
+          .eq('week_id', weekId)
+          .not('matched_workout_id', 'is', null)
+        const matchAlreadyIds = (matchExisting || []).map((m: any) => m.matched_workout_id).filter(Boolean)
+
+        const matchCandidates: MatchCandidate[] = (programmedForMatch || [])
+          .filter((w: any) => w.type !== 'rest')
+          .filter((w: any) => !matchAlreadyIds.includes(w.id))
+          .map((w: any) => ({
+            id: w.id,
+            type: 'programmed' as const,
+            day: w.day,
+            workoutType: w.type,
+            trainingType: w.training_type || null,
+            miles: w.miles ? parseFloat(w.miles) : null,
+            title: w.title || null,
+            completed: matchCompletedIds.includes(w.id),
+          }))
+
+        const reMatchResult = findBestMatch(workoutType, miles, duration, dayOfWeek, trainingType, matchCandidates)
+        if (reMatchResult.candidateId && reMatchResult.confidence >= 50) {
+          await adminClient
+            .from('strava_activities')
+            .update({ match_status: 'suggested', matched_workout_id: reMatchResult.candidateId })
+            .eq('id', existing.id)
+        }
+
+        imported++ // Count as re-linked
+      } else {
+        skipped++
+      }
       continue
     }
 
