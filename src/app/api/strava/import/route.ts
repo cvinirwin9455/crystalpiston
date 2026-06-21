@@ -114,6 +114,32 @@ export async function POST(request: Request) {
   let skipped = 0
 
   for (const activity of allActivities) {
+    // Map activity data first (needed for both new and re-link paths)
+    const workoutType = mapStravaTypeToWorkoutType(activity.type)
+    const trainingType = mapStravaTypeToTrainingType(activity.type, activity.workout_type || null)
+    const miles = metersToMiles(activity.distance)
+    const pace = secondsToMilePace(activity.moving_time, activity.distance)
+    const duration = secondsToDuration(activity.moving_time)
+
+    // Determine day of week
+    const activityDate = new Date(activity.start_date_local)
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const dayOfWeek = days[activityDate.getDay()]
+
+    // Find matching week
+    let weekId: string | null = null
+    const activityMonday = getMonday(activityDate)
+
+    for (const week of weeks) {
+      const weekStartStr = week.date_range.split(' - ')[0]
+      const weekStart = new Date(weekStartStr + ', ' + activityDate.getFullYear())
+      const diffDays = Math.abs(Math.round((weekStart.getTime() - activityMonday.getTime()) / (1000 * 60 * 60 * 24)))
+      if (diffDays <= 1) {
+        weekId = week.id
+        break
+      }
+    }
+
     // Check if already imported
     const { data: existing } = await adminClient
       .from('strava_activities')
@@ -188,33 +214,6 @@ export async function POST(request: Request) {
       }
       continue
     }
-
-    // Map activity data
-    const workoutType = mapStravaTypeToWorkoutType(activity.type)
-    const trainingType = mapStravaTypeToTrainingType(activity.type, activity.workout_type || null)
-    const miles = metersToMiles(activity.distance)
-    const pace = secondsToMilePace(activity.moving_time, activity.distance)
-    const duration = secondsToDuration(activity.moving_time)
-
-    // Determine day of week
-    const activityDate = new Date(activity.start_date_local)
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    const dayOfWeek = days[activityDate.getDay()]
-
-    // Find matching week
-    let weekId: string | null = null
-    const activityMonday = getMonday(activityDate)
-
-    for (const week of weeks) {
-      const weekStartStr = week.date_range.split(' - ')[0]
-      const weekStart = new Date(weekStartStr + ', ' + activityDate.getFullYear())
-      const diffDays = Math.abs(Math.round((weekStart.getTime() - activityMonday.getTime()) / (1000 * 60 * 60 * 24)))
-      if (diffDays <= 1) {
-        weekId = week.id
-        break
-      }
-    }
-
     // Insert strava_activities record with smart matching
     // Find candidates for matching on this day
     let suggestedMatchId: string | null = null
