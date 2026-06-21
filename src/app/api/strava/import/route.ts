@@ -71,8 +71,8 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      console.error('Strava activities fetch failed:', err)
-      return NextResponse.json({ error: 'Failed to fetch activities from Strava' }, { status: 500 })
+      console.error('Strava activities fetch failed:', res.status, err)
+      return NextResponse.json({ error: `Failed to fetch activities from Strava (${res.status}): ${JSON.stringify(err)}` }, { status: 500 })
     }
 
     const activities: StravaActivity[] = await res.json()
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   }
 
   if (allActivities.length === 0) {
-    return NextResponse.json({ imported: 0, message: 'No activities found in the selected date range' })
+    return NextResponse.json({ imported: 0, skipped: 0, message: `No activities found in the selected date range (${afterDate} to ${beforeDate || 'now'})` })
   }
 
   // Get client record
