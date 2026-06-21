@@ -1160,8 +1160,6 @@ export default function AdminPage() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {filteredClients.map((client) => {
-            const allWk = client.weeks.filter(w => w.status === "published").flatMap(w => w.workouts);
-            const doneWk = allWk.filter(w => w.completed);
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentPlan"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
@@ -1181,7 +1179,6 @@ export default function AdminPage() {
                   {unreadByClient[client.id] > 0 && (
                     <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
                   )}
-                  <p className="text-gray-400 text-xs">{doneWk.length}/{allWk.length}</p>
                 </div>
               </button>
             );
