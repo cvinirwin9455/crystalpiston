@@ -2,6 +2,9 @@ import { getVerifyToken } from '@/lib/strava'
 import { NextResponse } from 'next/server'
 import type { StravaWebhookEvent } from '@/lib/strava'
 
+// Use edge runtime for fastest possible response (Strava requires < 2 sec)
+export const runtime = 'edge'
+
 // GET /api/strava/webhook - Webhook subscription verification (Strava sends this to verify your endpoint)
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -9,26 +12,28 @@ export async function GET(request: Request) {
   const token = url.searchParams.get('hub.verify_token')
   const challenge = url.searchParams.get('hub.challenge')
 
-  console.log('Strava webhook GET:', { mode, token, challenge, expectedToken: getVerifyToken() })
-
+  // If Strava is verifying the webhook subscription
   if (mode === 'subscribe' && token === getVerifyToken() && challenge) {
-    // Strava expects a JSON response with the challenge
-    console.log('Strava webhook verified successfully')
     return new Response(JSON.stringify({ 'hub.challenge': challenge }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  // If no params, just return 200 so Strava can at least reach the endpoint
-  if (!mode && !token && !challenge) {
-    return new Response(JSON.stringify({ status: 'webhook endpoint active' }), {
+  // For any other GET request (including Strava's initial reachability check)
+  // Always return 200 with the challenge if provided, even without mode/token
+  if (challenge) {
+    return new Response(JSON.stringify({ 'hub.challenge': challenge }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  return NextResponse.json({ error: 'Verification failed' }, { status: 403 })
+  // Plain GET — return 200 so Strava knows the endpoint is reachable
+  return new Response(JSON.stringify({ status: 'ok' }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 // POST /api/strava/webhook - Receive webhook events from Strava
