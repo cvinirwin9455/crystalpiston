@@ -893,7 +893,20 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(2)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(currentWeek?.clientWorkouts || []).filter(cw => cw.source !== 'strava' && completedClientWorkouts[cw.id]).length}/{(currentWeek?.clientWorkouts || []).filter(cw => cw.source !== 'strava').length}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
+                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(() => {
+                  const cws = (currentWeek?.clientWorkouts || []);
+                  // Count: client-created + Strava standalone (decided or already persisted as standalone)
+                  const yourWorkouts = cws.filter(cw => {
+                    if (cw.source !== 'strava') return true;
+                    // Strava import that was kept as standalone (just decided)
+                    if (cw.stravaActivityId && stravaMatchDecisions[cw.stravaActivityId] === 'standalone') return true;
+                    // Strava import already persisted as standalone (not in pending/suggested list anymore)
+                    if (cw.source === 'strava' && cw.stravaActivityId && !(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId)) return true;
+                    return false;
+                  });
+                  const completedYours = yourWorkouts.filter(cw => cw.source === 'strava' || completedClientWorkouts[cw.id]);
+                  return `${completedYours.length}/${yourWorkouts.length}`;
+                })()}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
               </div>
@@ -1298,9 +1311,9 @@ export default function DashboardPage() {
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
                               </div>
                               {cw.notes && !cw.activityName && <p className="text-gray-400 text-sm">{cw.notes}</p>}
-                              {/* Strava activity details */}
-                              {cw.source === 'strava' && cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
-                              {cw.source === 'strava' && (cw.averagePace || cw.duration) && (
+                              {/* Strava/synced activity details */}
+                              {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
+                              {(cw.averagePace || cw.duration) && (
                                 <div className="flex items-center gap-3 mt-0.5">
                                   {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
                                   {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}

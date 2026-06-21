@@ -408,7 +408,11 @@ export async function PATCH(request: Request) {
     // Update strava activity status
     await adminClient
       .from('strava_activities')
-      .update({ match_status: 'matched', matched_workout_id: workoutId })
+      .update({ 
+        match_status: 'matched', 
+        matched_workout_id: workoutType === 'programmed' ? workoutId : null,
+        matched_client_workout_id: workoutType === 'client' ? workoutId : null,
+      })
       .eq('id', stravaActivityId)
 
     if (workoutType === 'programmed') {
@@ -435,14 +439,35 @@ export async function PATCH(request: Request) {
       } else {
         await adminClient.from('workout_logs').insert(logDataToSave)
       }
-    }
 
-    // Remove the standalone client_workouts entry (it's now matched)
-    await adminClient
-      .from('client_workouts')
-      .delete()
-      .eq('strava_activity_id', stravaActivityId)
-      .eq('user_id', user.id)
+      // Remove the standalone client_workouts entry (it's now matched to programmed)
+      await adminClient
+        .from('client_workouts')
+        .delete()
+        .eq('strava_activity_id', stravaActivityId)
+        .eq('user_id', user.id)
+
+    } else if (workoutType === 'client') {
+      // Update the client-created workout with Strava data and mark completed
+      await adminClient
+        .from('client_workouts')
+        .update({
+          completed: true,
+          completed_notes: logData?.notes || `Synced from Strava: ${stravaAct.activity_name}`,
+          miles: stravaAct.miles || undefined,
+          duration: stravaAct.duration || undefined,
+          average_pace: stravaAct.average_pace || undefined,
+          activity_name: stravaAct.activity_name || undefined,
+        })
+        .eq('id', workoutId)
+
+      // Remove the Strava client_workouts entry (merged into original)
+      await adminClient
+        .from('client_workouts')
+        .delete()
+        .eq('strava_activity_id', stravaActivityId)
+        .eq('user_id', user.id)
+    }
 
     // Notify Crystal about the Strava-synced completion
     try {
@@ -463,11 +488,21 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true, action: 'rejected' })
 
   } else if (action === 'add_standalone') {
-    // User wants to keep it as a separate workout
+    // User wants to keep it as a separate workout — mark it as completed since it happened on Strava
     await adminClient
       .from('strava_activities')
       .update({ match_status: 'standalone', matched_workout_id: null })
       .eq('id', stravaActivityId)
+
+    // Mark the client_workouts entry as completed with Strava data
+    await adminClient
+      .from('client_workouts')
+      .update({
+        completed: true,
+        completed_notes: `Kept as extra from Strava: ${stravaAct.activity_name}`,
+      })
+      .eq('strava_activity_id', stravaActivityId)
+      .eq('user_id', user.id)
 
     return NextResponse.json({ success: true, action: 'standalone' })
 
