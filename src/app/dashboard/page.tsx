@@ -895,7 +895,7 @@ export default function DashboardPage() {
               {/* Updates Dropdown */}
               {showUpdatesDropdown && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); }} />
+                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-21T21:00:00Z"); setLastSeenUpdates("2026-06-21T21:00:00Z"); }} />
                   <div className="absolute right-0 top-8 w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                     <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                       <h3 className="text-white text-sm font-heading uppercase">What&apos;s New</h3>
@@ -903,33 +903,28 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                       {(() => {
-                        // Compare update dates against the last time the user opened the bell
-                        // lastSeenUpdates is an ISO string like "2026-06-20T15:00:00.000Z"
-                        // We consider an update "unread" if its date is on or after the day the badge timestamp was bumped
-                        const lastSeenDate = lastSeenUpdates ? lastSeenUpdates.split('T')[0] : '';
-                        const unreadUpdates = clientUpdates.filter(u => {
-                          // Parse "June 21, 2026" to comparable format
-                          const parsed = new Date(u.date);
-                          const updateDateStr = parsed.toISOString().split('T')[0]; // "2026-06-21"
-                          return updateDateStr > lastSeenDate;
-                        });
-                        if (unreadUpdates.length === 0) {
+                        // Show updates that are newer than what the user last saw
+                        // lastSeenUpdates stores the CHANGELOG timestamp they last acknowledged
+                        const hasNewUpdates = showNewBadge;
+                        if (!hasNewUpdates) {
                           return <p className="text-gray-400 text-xs text-center py-4">You&apos;re all caught up!</p>;
                         }
-                        return unreadUpdates.map((update, idx) => (
-                          <div key={idx}>
-                            <p className="text-accent text-xs font-bold mb-1.5">{update.date}</p>
+                        // Show the most recent date's updates as "new"
+                        const latestUpdate = clientUpdates[0];
+                        return (
+                          <div>
+                            <p className="text-accent text-xs font-bold mb-1.5">{latestUpdate.date}</p>
                             <ul className="space-y-1">
-                              {update.items.map((item, i) => (
+                              {latestUpdate.items.map((item, i) => (
                                 <li key={i} className="text-gray-300 text-xs flex gap-2"><span className="text-accent mt-0.5">•</span><span>{item}</span></li>
                               ))}
                             </ul>
                           </div>
-                        ));
+                        );
                       })()}
                     </div>
                     <div className="px-4 py-2.5 border-t border-white/10">
-                      <button onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); setShowAllUpdates(true); }} className="text-accent hover:text-white text-xs font-medium transition-colors w-full text-center">View all updates</button>
+                      <button onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-21T21:00:00Z"); setLastSeenUpdates("2026-06-21T21:00:00Z"); setShowAllUpdates(true); }} className="text-accent hover:text-white text-xs font-medium transition-colors w-full text-center">View all updates</button>
                     </div>
                   </div>
                 </>
