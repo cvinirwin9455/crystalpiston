@@ -457,6 +457,27 @@ export default function DashboardPage() {
   };
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
+
+  // Pace conversion helpers (e.g. "9:04/mi" → "5:38/km")
+  const convertPaceToKm = (pace: string): string => {
+    const match = pace.match(/^(\d+):(\d+)\/mi$/);
+    if (!match) return pace;
+    const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
+    const kmSeconds = Math.round(totalSeconds / 1.60934);
+    const mins = Math.floor(kmSeconds / 60);
+    const secs = kmSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}/km`;
+  };
+  const convertPaceToMi = (pace: string): string => {
+    const match = pace.match(/^(\d+):(\d+)\/km$/);
+    if (!match) return pace;
+    const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
+    const miSeconds = Math.round(totalSeconds * 1.60934);
+    const mins = Math.floor(miSeconds / 60);
+    const secs = miSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}/mi`;
+  };
+
   const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
   const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
 
@@ -964,7 +985,18 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div><p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p><p className="text-gray-300 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p><button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button></div>}
+                        {workout.miles && <div>
+                          {workout.completed && workout.log?.actualMiles ? (
+                            <>
+                              <p className="font-heading text-xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</p>
+                              <p className="text-gray-500 text-xs line-through">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p>
+                            </>
+                          ) : (
+                            <p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p>
+                          )}
+                          <p className="text-gray-300 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p>
+                          <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button>
+                        </div>}
                       </div>
                     </div>
                     {/* Log toggle — hidden when a Strava suggestion is pending for this workout */}
@@ -1001,8 +1033,8 @@ export default function DashboardPage() {
                       <div className="mt-3 ml-9 pl-4 border-l-2 border-green-500/30">
                         <div className="flex flex-wrap gap-3 text-xs">
                           {workout.log.rpe && <span><span className="text-gray-300">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
-                          {workout.log.actualMiles && <span><span className="text-gray-300">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles)).toFixed(2)}</span></span>}
-                          {workout.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{workout.log.actualPace}</span></span>}
+                          {workout.log.actualMiles && <span><span className="text-gray-300">{getWorkoutUnit(workout.id) === "km" ? "KM" : "Miles"}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</span></span>}
+                          {workout.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{getWorkoutUnit(workout.id) === "km" && workout.log.actualPace.includes("/mi") ? convertPaceToKm(workout.log.actualPace) : getWorkoutUnit(workout.id) === "mi" && workout.log.actualPace.includes("/km") ? convertPaceToMi(workout.log.actualPace) : workout.log.actualPace}</span></span>}
                           {workout.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
                           {workout.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
@@ -1232,7 +1264,7 @@ export default function DashboardPage() {
                       }
                       return true;
                     }).map(cw => (
-                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] && !stravaMatchDecisions[cw.stravaActivityId || ''] ? 'border-2 border-dashed border-orange-400/30 bg-orange-500/5' : completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
+                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] && !stravaMatchDecisions[cw.stravaActivityId || ''] && (currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'border-2 border-dashed border-orange-400/30 bg-orange-500/5' : completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] ? 'bg-orange-500/20 border-dashed border-orange-400' : completedClientWorkouts[cw.id] ? 'bg-green-500 border-green-500' : 'border-cyan-500'}`}>
@@ -1241,9 +1273,9 @@ export default function DashboardPage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 {cw.source === 'strava' ? (
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-dashed border-orange-400/50 flex items-center gap-1">
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'bg-orange-500/20 text-orange-400 border border-dashed border-orange-400/50' : 'bg-orange-500/20 text-orange-400'}`}>
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                    Strava — No Match Found
+                                    {(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'Strava — No Match Found' : 'Strava'}
                                   </span>
                                 ) : (
                                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Added Workout</span>
@@ -1263,6 +1295,10 @@ export default function DashboardPage() {
 
                               {/* Strava Match Options — for unmatched imports */}
                               {cw.source === 'strava' && cw.stravaActivityId && !stravaMatchDecisions[cw.stravaActivityId] && (() => {
+                                // If this strava activity is not in the pending/suggested list, it's already been decided (standalone/matched)
+                                const isStillPending = (currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId);
+                                if (!isStillPending) return null;
+
                                 // Check if this had a suggested match (it shouldn't be here if it does, but fallback)
                                 const suggestion = (currentWeek as any)?.stravaActivities?.find((sa: any) => sa.id === cw.stravaActivityId && sa.matchStatus === 'suggested');
                                 const suggestedWorkout = suggestion ? (currentWeek?.workouts || []).find(w => w.id === suggestion.suggestedMatchId) : null;
