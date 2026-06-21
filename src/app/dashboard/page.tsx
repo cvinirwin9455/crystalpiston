@@ -1277,7 +1277,8 @@ export default function DashboardPage() {
                       }
                       return true;
                     }).map(cw => (
-                      <div key={cw.id} className={`border rounded-2xl p-4 mt-2 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] && !stravaMatchDecisions[cw.stravaActivityId || ''] && (currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'border-2 border-dashed border-orange-400/30 bg-orange-500/5' : completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
+                      <div key={cw.id}>
+                      <div className={`border rounded-2xl p-4 mt-2 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] && !stravaMatchDecisions[cw.stravaActivityId || ''] && (currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'border-2 border-dashed border-orange-400/30 bg-orange-500/5' : completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] ? 'bg-orange-500/20 border-dashed border-orange-400' : completedClientWorkouts[cw.id] ? 'bg-green-500 border-green-500' : 'border-cyan-500'}`}>
@@ -1539,6 +1540,7 @@ export default function DashboardPage() {
                           </div>
                         ));
                       })()}
+                    </div>
                     ))}
 
                     {/* Add Workout Button for this day (current week only) */}
