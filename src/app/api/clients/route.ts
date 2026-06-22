@@ -53,7 +53,7 @@ export async function GET() {
 
   const { data: clientRecords } = await adminClient
     .from('clients')
-    .select('id, user_id, goal, start_date, plan_end, owed, paid')
+    .select('id, user_id, goal, start_date, plan_end, owed, paid, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
 
   // Build a lookup map: user_id -> client record
   const clientMap = new Map<string, any>()
@@ -133,6 +133,15 @@ export async function GET() {
       paid,
       inviteStatus,
       createdAt: u.created_at,
+      experienceLevel: clientRecord?.experience_level || null,
+      currentMileage: clientRecord?.current_mileage || null,
+      targetDistance: clientRecord?.target_distance || null,
+      raceDate: clientRecord?.race_date || null,
+      easyPace: clientRecord?.easy_pace || null,
+      goalPace: clientRecord?.goal_pace || null,
+      daysPerWeek: clientRecord?.days_per_week || null,
+      age: clientRecord?.age || null,
+      injuryNotes: clientRecord?.injury_notes || null,
     })
   }
 
@@ -160,7 +169,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email, gender, goal, startDate, planEnd, owed } = body
+  const { name, email, gender, goal, startDate, planEnd, owed, experienceLevel, currentMileage, targetDistance, raceDate, easyPace, goalPace, daysPerWeek, age, injuryNotes } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -200,6 +209,15 @@ export async function POST(request: Request) {
       plan_end: planEnd || null,
       owed: 0,
       paid: 0,
+      experience_level: experienceLevel || null,
+      current_mileage: currentMileage ? parseFloat(currentMileage) : null,
+      target_distance: targetDistance || null,
+      race_date: raceDate || null,
+      easy_pace: easyPace || null,
+      goal_pace: goalPace || null,
+      days_per_week: daysPerWeek ? parseInt(daysPerWeek) : null,
+      age: age ? parseInt(age) : null,
+      injury_notes: injuryNotes || null,
     })
     .select('id')
     .single()

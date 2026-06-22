@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // 1. Get client profile (name, gender, goal)
     const { data: clientRecord } = await adminClient
       .from('clients')
-      .select('id, user_id, goal')
+      .select('id, user_id, goal, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
       .eq('id', clientId)
       .single()
 
@@ -280,6 +280,13 @@ COACHING RULES:
 - Consider client-added workouts (extra training they do) in total volume calculations
 - If pace information is given by Crystal, USE those paces in paceTarget fields
 - If Crystal mentions specific workouts or structure, follow her guidance closely
+- If the client's easy pace is specified in their profile, use it for easy/recovery runs
+- If the client's goal race pace is specified, derive tempo/threshold/race pace workouts from it
+- Respect the client's available days per week — never schedule more run days than they have available
+- If current weekly mileage is specified, use it as the baseline for volume
+- If target race distance and race date are given, structure training for that event timeline
+- If injury notes are present, actively avoid aggravating those issues in workout selection
+- Age affects recovery needs — older athletes (40+) may need more recovery time between hard efforts
 
 AVAILABLE WORKOUT TYPES (use ONLY these exact values):
 - "run" with subtypes: Easy, LongRun, Tempo, Threshold, Intervals, Fartlek, Hills, SpeedRoad, SpeedTrack, Progressive, Recovery, RacePace, ClosePace, TimeTrial, Trail, Treadmill
@@ -323,7 +330,16 @@ ${coachNotes ? `\n=== CRYSTAL'S INSTRUCTIONS (HIGHEST PRIORITY — shape the ent
 CLIENT PROFILE:
 - Name: ${clientUser?.name || 'Unknown'}
 - Gender: ${clientUser?.gender || 'not specified'}
-- Overall Goal: ${activePlan?.goal || clientRecord.goal || 'Not specified'}
+- Age: ${clientRecord.age || 'not specified'}
+- Experience Level: ${clientRecord.experience_level || 'not specified'}
+- Current Weekly Mileage: ${clientRecord.current_mileage ? clientRecord.current_mileage + ' miles/week' : 'not specified'}
+- Available Days Per Week: ${clientRecord.days_per_week || 'not specified'}
+- Target Race Distance: ${clientRecord.target_distance || 'not specified'}
+- Race Date: ${clientRecord.race_date || 'not specified'}
+- Easy Pace: ${clientRecord.easy_pace || 'not specified'}
+- Goal Race Pace: ${clientRecord.goal_pace || 'not specified'}
+- Injuries/Notes: ${clientRecord.injury_notes || 'none reported'}
+- Overall Plan Goal: ${activePlan?.goal || clientRecord.goal || 'Not specified'}
 - Plan Period: ${activePlan ? `${activePlan.start_date} to ${activePlan.end_date}` : 'No active plan dates'}
 - Currently Week ${weeksIntoTraining} of ${totalPlanWeeks} in their plan
 ${dateRange ? `- Week being planned: ${dateRange}` : ''}
