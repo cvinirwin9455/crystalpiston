@@ -1987,11 +1987,18 @@ export default function AdminPage() {
                           <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                         </div>
                         <div className="grid grid-cols-7 gap-1 mb-1">{["M","T","W","T","F","S","S"].map((d,i) => <div key={i} className="text-center text-gray-300 text-xs py-1">{d}</div>)}</div>
-                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); return (
-                          <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors ${isSelected ? "bg-accent/20" : "hover:bg-white/5"}`}>
+                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const sunday = week[6]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); const weekDateRange = `${formatDate(monday)} - ${formatDate(sunday)}`; const clientData = clients.find(c => c.id === selectedClient); const existingWeek = clientData?.weeks.find(w => w.dateRange === weekDateRange); const weekStatus = existingWeek?.status || null; return (
+                          <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors relative ${isSelected ? "bg-accent/20" : weekStatus ? "bg-white/3" : "hover:bg-white/5"}`}>
                             {week.map((day, di) => <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : "text-white") : "text-gray-600"}`}>{day.getDate()}</div>)}
+                            {weekStatus === "published" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-400" title="Published" />}
+                            {weekStatus === "draft" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-yellow-400" title="Draft" />}
                           </button>); })}
-                        <p className="text-gray-300 text-xs mt-2 text-center">Click a row to select Mon-Sun</p>
+                        <div className="flex items-center gap-3 mt-2 justify-center">
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>Published</span>
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>Draft</span>
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-transparent border border-gray-500 inline-block"></span>Empty</span>
+                        </div>
+                        <p className="text-gray-300 text-xs mt-1 text-center">Click a row to select Mon-Sun</p>
                       </div>
                     )}
                   </div>
