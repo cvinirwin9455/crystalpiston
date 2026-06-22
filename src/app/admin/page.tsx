@@ -1666,12 +1666,7 @@ export default function AdminPage() {
             {/* TRAINING & LOGS */}
             {clientTab === "plan" && (
               <div className="space-y-6">
-                {/* Current week badge */}
-                {adminWeekOffset === 0 && (
-                  <div className="text-center">
-                    <span className="inline-block bg-accent/10 border border-accent/30 rounded-lg py-1.5 px-4 text-accent font-heading text-xs uppercase">Current Week</span>
-                  </div>
-                )}
+                {/* Go to current week link (only when not on current week) */}
                 {adminWeekOffset !== 0 && (
                   <div className={adminWeekOffset < 0 ? "text-right" : "text-left"}>
                     <button onClick={() => setAdminWeekOffset(0)} className="text-accent text-xs hover:underline">{adminWeekOffset < 0 ? "Go to current week →" : "← Go to current week"}</button>
@@ -1682,6 +1677,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} aria-label="Previous week" disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
+                    {adminWeekOffset === 0 && <span className="inline-block bg-accent/10 border border-accent/30 rounded py-0.5 px-3 text-accent font-heading text-xs uppercase mb-1">Current Week</span>}
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
                     {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
                   </div>
