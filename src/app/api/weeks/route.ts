@@ -71,6 +71,22 @@ export async function GET(request: Request) {
     workoutsByWeekId.get(wo.week_id)!.push(wo)
   }
 
+  // Fetch strava activities matched to workouts in these weeks
+  let stravaMatchedWorkoutIds = new Set<string>()
+  if (weekIds.length > 0) {
+    const { data: stravaActivities } = await adminClient
+      .from('strava_activities')
+      .select('id, matched_workout_id, match_status')
+      .in('week_id', weekIds)
+      .eq('match_status', 'matched')
+
+    for (const sa of stravaActivities || []) {
+      if (sa.matched_workout_id) {
+        stravaMatchedWorkoutIds.add(sa.matched_workout_id)
+      }
+    }
+  }
+
   // Fetch client-added workouts for these weeks (admin uses service role to bypass RLS)
   let clientWorkoutsByWeekId = new Map<string, any[]>()
   if (weekIds.length > 0) {
@@ -140,6 +156,7 @@ export async function GET(request: Request) {
           coachNotes: wo.coach_notes,
           sortOrder: wo.sort_order,
           completed: !!log,
+          stravaSynced: stravaMatchedWorkoutIds.has(wo.id),
           status: log?.status || null,
           skipReason: log?.skip_reason || null,
           log: log ? {
