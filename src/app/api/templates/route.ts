@@ -96,6 +96,58 @@ export async function POST(request: Request) {
   return NextResponse.json({ success: true, template })
 }
 
+// PATCH /api/templates - Update an existing template
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const { templateId, name, type, category, data } = body
+
+  if (!templateId) {
+    return NextResponse.json({ error: 'templateId is required' }, { status: 400 })
+  }
+
+  if (!name || !type || !data) {
+    return NextResponse.json({ error: 'name, type, and data are required' }, { status: 400 })
+  }
+
+  if (type !== 'week' && type !== 'day') {
+    return NextResponse.json({ error: 'type must be "week" or "day"' }, { status: 400 })
+  }
+
+  const adminClient = await getAdminClient()
+
+  const { data: template, error } = await adminClient
+    .from('templates')
+    .update({
+      name,
+      type,
+      category: category || null,
+      data,
+    })
+    .eq('id', templateId)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, template })
+}
+
 // DELETE /api/templates - Delete a template by id (passed in body)
 export async function DELETE(request: Request) {
   const supabase = await createClient()
