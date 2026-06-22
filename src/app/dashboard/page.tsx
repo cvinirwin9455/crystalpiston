@@ -888,7 +888,11 @@ export default function DashboardPage() {
       <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
+            {stravaConnection?.connected && stravaConnection.athleteProfile ? (
+              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
+            )}
             <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
           <div className="flex items-center gap-4">

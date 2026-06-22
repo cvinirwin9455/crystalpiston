@@ -10,7 +10,7 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; weeks: WeekData[]; messages: CoachMessage[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -394,6 +394,7 @@ export default function AdminPage() {
           paid: c.paid || 0,
           status: c.status === 'inactive' ? 'archived' : 'active',
           inviteStatus: c.inviteStatus || 'accepted',
+          stravaProfileUrl: c.stravaProfileUrl || null,
           weeks: [],
           messages: [],
         }));
@@ -1176,7 +1177,9 @@ export default function AdminPage() {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>
+                  {client.stravaProfileUrl ? <img src={client.stravaProfileUrl} alt={client.name} className="w-full h-full object-cover" /> : client.name.charAt(0)}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
                   <p className="text-gray-300 text-xs truncate">
@@ -1243,7 +1246,9 @@ export default function AdminPage() {
           <div className="p-6 space-y-6">
             {/* Client Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
+              <div className="flex items-center gap-3">
+                {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover" />}
+                <div>
                 <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
                 <p className="text-sm">
                   {selectedClientData.inviteStatus !== "accepted"
@@ -1253,6 +1258,7 @@ export default function AdminPage() {
                       : <span className="text-yellow-400">No active plan</span>
                   }
                 </p>
+              </div>
               </div>
               {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-300 text-xs">Drafts</p></div>}
             </div>

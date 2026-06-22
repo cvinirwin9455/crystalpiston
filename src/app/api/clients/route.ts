@@ -72,6 +72,16 @@ export async function GET() {
     activePlanByClientId.set(plan.client_id, plan)
   }
 
+  // Fetch Strava connections for profile pictures
+  const { data: stravaConnections } = await adminClient
+    .from('strava_connections')
+    .select('user_id, athlete_profile')
+
+  const stravaProfileByUserId = new Map<string, string>()
+  for (const sc of stravaConnections || []) {
+    if (sc.athlete_profile) stravaProfileByUserId.set(sc.user_id, sc.athlete_profile)
+  }
+
   // Build response, auto-create missing client records
   const formatted = []
   for (const u of clientUsers || []) {
@@ -115,6 +125,7 @@ export async function GET() {
       gender: u.gender,
       status: u.status,
       avatarUrl: u.avatar_url,
+      stravaProfileUrl: stravaProfileByUserId.get(u.id) || null,
       goal: activePlan?.goal || clientRecord?.goal || '',
       startDate: activePlan?.start_date || clientRecord?.start_date || '',
       planEnd: activePlan?.end_date || clientRecord?.plan_end || '',
