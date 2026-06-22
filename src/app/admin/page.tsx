@@ -230,6 +230,24 @@ export default function AdminPage() {
   const [editDayTemplateName, setEditDayTemplateName] = useState("");
   const [editDayTemplateCategory, setEditDayTemplateCategory] = useState("");
   const [editDayTemplateData, setEditDayTemplateData] = useState<any>({});
+  const [creatingWeekTemplate, setCreatingWeekTemplate] = useState(false);
+  const [creatingDayTemplate, setCreatingDayTemplate] = useState(false);
+  const [newWeekTemplateName, setNewWeekTemplateName] = useState("");
+  const [newWeekTemplateCategory, setNewWeekTemplateCategory] = useState("");
+  const [newWeekTemplateFocus, setNewWeekTemplateFocus] = useState("");
+  const [newWeekTemplateCoachMessage, setNewWeekTemplateCoachMessage] = useState("");
+  const [newWeekTemplateDays, setNewWeekTemplateDays] = useState([
+    { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+  ]);
+  const [newDayTemplateName, setNewDayTemplateName] = useState("");
+  const [newDayTemplateCategory, setNewDayTemplateCategory] = useState("");
+  const [newDayTemplateData, setNewDayTemplateData] = useState<any>({ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" });
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -251,8 +269,8 @@ export default function AdminPage() {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const weekTemplates = templates.filter(t => t.type === 'week');
-  const dayTemplates = templates.filter(t => t.type === 'day');
+  const weekTemplates = templates.filter(t => t.type === 'week').sort((a, b) => a.name.localeCompare(b.name));
+  const dayTemplates = templates.filter(t => t.type === 'day').sort((a, b) => a.name.localeCompare(b.name));
 
   // Save week as template
   const saveTemplateRef = useRef<HTMLDivElement>(null);
@@ -444,6 +462,78 @@ export default function AdminPage() {
       console.error('Failed to update day template:', err);
     } finally {
       setSavingTemplateEdit(false);
+    }
+  };
+
+  // Create a new week template from scratch
+  const handleCreateWeekTemplate = async () => {
+    if (!newWeekTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newWeekTemplateName.trim(),
+          type: 'week',
+          category: newWeekTemplateCategory.trim() || null,
+          data: {
+            focus: newWeekTemplateFocus,
+            coachMessage: newWeekTemplateCoachMessage,
+            days: newWeekTemplateDays,
+          },
+        }),
+      });
+      if (res.ok) {
+        setCreatingWeekTemplate(false);
+        setNewWeekTemplateName("");
+        setNewWeekTemplateCategory("");
+        setNewWeekTemplateFocus("");
+        setNewWeekTemplateCoachMessage("");
+        setNewWeekTemplateDays([
+          { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+        ]);
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to create week template:', err);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Create a new day template from scratch
+  const handleCreateDayTemplate = async () => {
+    if (!newDayTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newDayTemplateName.trim(),
+          type: 'day',
+          category: newDayTemplateCategory.trim() || null,
+          data: newDayTemplateData,
+        }),
+      });
+      if (res.ok) {
+        setCreatingDayTemplate(false);
+        setNewDayTemplateName("");
+        setNewDayTemplateCategory("");
+        setNewDayTemplateData({ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" });
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to create day template:', err);
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -2054,7 +2144,66 @@ export default function AdminPage() {
 
                 {/* Week Templates */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gold mb-4">Week Templates ({weekTemplates.length})</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-heading text-sm uppercase text-gold">Week Templates ({weekTemplates.length})</h3>
+                    <button onClick={() => { setCreatingWeekTemplate(!creatingWeekTemplate); setCreatingDayTemplate(false); }} className="bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingWeekTemplate ? "Cancel" : "+ Create Week Template"}</button>
+                  </div>
+                  {/* Create Week Template Form */}
+                  {creatingWeekTemplate && (
+                    <div className="bg-primary/30 border border-gold/20 rounded-xl p-4 mb-4 space-y-4">
+                      <div className="grid md:grid-cols-3 gap-3">
+                        <div><label className="text-gray-400 text-xs block mb-1">Template Name *</label><input type="text" value={newWeekTemplateName} onChange={(e) => setNewWeekTemplateName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 5K Base Week 3" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Category</label><input type="text" value={newWeekTemplateCategory} onChange={(e) => setNewWeekTemplateCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Base Building" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={newWeekTemplateFocus} onChange={(e) => setNewWeekTemplateFocus(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
+                      </div>
+                      <div><label className="text-gold text-xs font-heading uppercase block mb-1">Coach Message</label><textarea value={newWeekTemplateCoachMessage} onChange={(e) => setNewWeekTemplateCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-gold/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold resize-none" rows={2} placeholder="Message shown to client when this template is used..." /></div>
+                      {/* Day-by-day */}
+                      <div className="space-y-2">
+                        {newWeekTemplateDays.map((day, i) => (
+                          <div key={day.day} className={`bg-primary/50 border border-white/5 rounded-xl p-3 ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-white font-heading text-xs uppercase w-20">{day.day}</span>
+                              {day.workouts.map((wo, wi) => (
+                                <div key={wi} className="flex items-center gap-2 flex-1 flex-wrap">
+                                  <select value={wo.type || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], type: e.target.value }; if (e.target.value === 'rest') { nw[wi] = { ...nw[wi], trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '' }; } else { nw[wi] = { ...nw[wi], trainingType: '', title: '', miles: '', description: '', paceTarget: '' }; } nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                                  </select>
+                                  {wo.type === "run" && (
+                                    <>
+                                      <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                        <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                      </select>
+                                      <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                                      <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                                    </>
+                                  )}
+                                  {wo.type === "walk" && (
+                                    <>
+                                      <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                        <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
+                                      </select>
+                                      <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                                      <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                                    </>
+                                  )}
+                                  {wo.type === "stretching" && (
+                                    <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                      <option value="" disabled>Type</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
+                                    </select>
+                                  )}
+                                  {wo.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={handleCreateWeekTemplate} disabled={!newWeekTemplateName.trim() || savingTemplate} className="bg-gold hover:bg-yellow-600 text-primary font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingTemplate ? "Saving..." : "Save Template"}</button>
+                        <button onClick={() => setCreatingWeekTemplate(false)} className="text-gray-400 text-sm">Cancel</button>
+                      </div>
+                    </div>
+                  )}
                   {weekTemplates.length === 0 ? (
                     <p className="text-gray-300 text-sm">No week templates saved yet. Build a week plan for a client and click &ldquo;Save as Template&rdquo; to create one.</p>
                   ) : (
@@ -2169,7 +2318,64 @@ export default function AdminPage() {
 
                 {/* Day Templates */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gold mb-4">Day Templates ({dayTemplates.length})</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-heading text-sm uppercase text-gold">Day Templates ({dayTemplates.length})</h3>
+                    <button onClick={() => { setCreatingDayTemplate(!creatingDayTemplate); setCreatingWeekTemplate(false); }} className="bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingDayTemplate ? "Cancel" : "+ Create Day Template"}</button>
+                  </div>
+                  {/* Create Day Template Form */}
+                  {creatingDayTemplate && (
+                    <div className="bg-primary/30 border border-gold/20 rounded-xl p-4 mb-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="text-gray-400 text-xs block mb-1">Template Name *</label><input type="text" value={newDayTemplateName} onChange={(e) => setNewDayTemplateName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Easy 4 Miler" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Category</label><input type="text" value={newDayTemplateCategory} onChange={(e) => setNewDayTemplateCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Easy Days" /></div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select value={newDayTemplateData.type || ""} onChange={(e) => { const newType = e.target.value; setNewDayTemplateData((prev: any) => ({ ...prev, type: newType, trainingType: newType === 'rest' ? 'Rest' : '', title: '', miles: '', description: '', paceTarget: '' })); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                          <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                        </select>
+                        {newDayTemplateData.type === "run" && (
+                          <>
+                            <select value={newDayTemplateData.trainingType || ""} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                              <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                            </select>
+                            <input type="text" value={newDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setNewDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                          </>
+                        )}
+                        {newDayTemplateData.type === "walk" && (
+                          <>
+                            <select value={newDayTemplateData.trainingType || ""} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                              <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
+                            </select>
+                            <input type="text" value={newDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setNewDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                          </>
+                        )}
+                        {newDayTemplateData.type === "stretching" && (
+                          <select value={newDayTemplateData.trainingType || ""} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                            <option value="" disabled>Type</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
+                          </select>
+                        )}
+                      </div>
+                      {(newDayTemplateData.type === "run" || newDayTemplateData.type === "walk") && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" value={newDayTemplateData.title || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, title: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                          <input type="text" value={newDayTemplateData.paceTarget || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, paceTarget: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Pace target" />
+                          <input type="text" value={newDayTemplateData.description || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, description: e.target.value }))} className="col-span-2 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Description" />
+                          <input type="text" value={newDayTemplateData.location || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, location: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Location" />
+                          <input type="text" value={newDayTemplateData.coachNotes || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, coachNotes: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Coach notes" />
+                        </div>
+                      )}
+                      {(newDayTemplateData.type === "cross" || newDayTemplateData.type === "cycling" || newDayTemplateData.type === "stretching") && (
+                        <div className="space-y-2">
+                          <input type="text" value={newDayTemplateData.title || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, title: e.target.value }))} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                          <textarea value={newDayTemplateData.description || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, description: e.target.value }))} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent resize-none" rows={2} placeholder="Description" />
+                        </div>
+                      )}
+                      <div className="flex gap-3">
+                        <button onClick={handleCreateDayTemplate} disabled={!newDayTemplateName.trim() || savingTemplate} className="bg-gold hover:bg-yellow-600 text-primary font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingTemplate ? "Saving..." : "Save Template"}</button>
+                        <button onClick={() => setCreatingDayTemplate(false)} className="text-gray-400 text-sm">Cancel</button>
+                      </div>
+                    </div>
+                  )}
                   {dayTemplates.length === 0 ? (
                     <p className="text-gray-300 text-sm">No day templates saved yet. When creating a week, click &ldquo;Save Day as Template&rdquo; on any workout to save it.</p>
                   ) : (
