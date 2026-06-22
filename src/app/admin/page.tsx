@@ -356,6 +356,125 @@ export default function AdminPage() {
     }
   };
 
+  // Template editor state (Create / Edit)
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [tplEditorName, setTplEditorName] = useState("");
+  const [tplEditorCategory, setTplEditorCategory] = useState("");
+  const [tplEditorType, setTplEditorType] = useState<"week" | "day">("week");
+  const [tplEditorSaving, setTplEditorSaving] = useState(false);
+  const [tplEditorDays, setTplEditorDays] = useState<{ day: string; type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }[]>([
+    { day: "Monday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Tuesday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Wednesday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Thursday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Friday", type: "cross", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Saturday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Sunday", type: "rest", trainingType: "Rest", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+  ]);
+  const [tplEditorFocus, setTplEditorFocus] = useState("");
+  const [tplEditorCoachMessage, setTplEditorCoachMessage] = useState("");
+  const [tplEditorDayData, setTplEditorDayData] = useState<{ type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>({ type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" });
+
+  const defaultTplDays = () => [
+    { day: "Monday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Tuesday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Wednesday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Thursday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Friday", type: "cross", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Saturday", type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+    { day: "Sunday", type: "rest", trainingType: "Rest", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" },
+  ];
+
+  const openCreateTemplate = () => {
+    setEditingTemplateId(null);
+    setTplEditorName("");
+    setTplEditorCategory("");
+    setTplEditorType("week");
+    setTplEditorDays(defaultTplDays());
+    setTplEditorFocus("");
+    setTplEditorCoachMessage("");
+    setTplEditorDayData({ type: "run", trainingType: "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" });
+    setShowTemplateEditor(true);
+  };
+
+  const openEditTemplate = (template: Template) => {
+    setEditingTemplateId(template.id);
+    setTplEditorName(template.name);
+    setTplEditorCategory(template.category || "");
+    setTplEditorType(template.type);
+    if (template.type === "week") {
+      const days = (template.data.days || []).map((d: any) => {
+        // Handle both old format (with workouts array) and flat format
+        if (d.workouts && d.workouts.length > 0) {
+          const wo = d.workouts[0];
+          return { day: d.day, type: wo.type || "rest", trainingType: wo.trainingType || "", miles: wo.miles || "", title: wo.title || "", description: wo.description || "", paceTarget: wo.paceTarget || "", location: wo.location || "", coachNotes: wo.coachNotes || "" };
+        }
+        return { day: d.day || "", type: d.type || "rest", trainingType: d.trainingType || "", miles: d.miles || "", title: d.title || "", description: d.description || "", paceTarget: d.paceTarget || "", location: d.location || "", coachNotes: d.coachNotes || "" };
+      });
+      setTplEditorDays(days.length === 7 ? days : defaultTplDays());
+      setTplEditorFocus(template.data.focus || "");
+      setTplEditorCoachMessage(template.data.coachMessage || "");
+    } else {
+      setTplEditorDayData({
+        type: template.data.type || "run",
+        trainingType: template.data.trainingType || "",
+        miles: template.data.miles || "",
+        title: template.data.title || "",
+        description: template.data.description || "",
+        paceTarget: template.data.paceTarget || "",
+        location: template.data.location || "",
+        coachNotes: template.data.coachNotes || "",
+      });
+    }
+    setShowTemplateEditor(true);
+  };
+
+  const updateTplDay = (index: number, field: string, value: string) => {
+    setTplEditorDays(prev => prev.map((d, i) => i === index ? { ...d, [field]: value } : d));
+  };
+
+  const handleSaveTemplateEditor = async () => {
+    if (!tplEditorName.trim()) return;
+    setTplEditorSaving(true);
+    try {
+      const payload: any = {
+        name: tplEditorName.trim(),
+        type: tplEditorType,
+        category: tplEditorCategory.trim() || null,
+        data: tplEditorType === "week"
+          ? { focus: tplEditorFocus, coachMessage: tplEditorCoachMessage, days: tplEditorDays }
+          : tplEditorDayData,
+      };
+      if (editingTemplateId) {
+        payload.templateId = editingTemplateId;
+        const res = await fetch('/api/templates', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          setShowTemplateEditor(false);
+          fetchTemplates();
+        }
+      } else {
+        const res = await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          setShowTemplateEditor(false);
+          fetchTemplates();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save template:', err);
+    } finally {
+      setTplEditorSaving(false);
+    }
+  };
+
   // Fetch unread message counts
   useEffect(() => {
     const fetchUnread = async () => {
@@ -1960,6 +2079,26 @@ export default function AdminPage() {
 
                 <p className="text-gray-400 text-sm">Save and reuse workout plans. Load templates when creating a week for any client.</p>
 
+                {/* Create New Template Button */}
+                {!showTemplateEditor && (
+                  <button onClick={openCreateTemplate} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg text-sm">+ Create Template</button>
+                )}
+
+                {/* Template Editor Form */}
+                {showTemplateEditor && (
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                    <h3 className="font-heading text-sm uppercase text-gold mb-4">{editingTemplateId ? "Edit Template" : "Create New Template"}</h3>
+                    <div className="grid md:grid-cols-2 gap-3 mb-4">
+                      <div><label className="text-gray-400 text-xs block mb-1">Template Name *</label><input type="text" value={tplEditorName} onChange={(e) => setTplEditorName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 5K Base Week 3" /></div>
+                      <div><label className="text-gray-400 text-xs block mb-1">Category (optional)</label><input type="text" value={tplEditorCategory} onChange={(e) => setTplEditorCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Base Building, Race Prep" /></div>
+                    </div>
+                    {!editingTemplateId && (<div className="mb-4"><label className="text-gray-400 text-xs block mb-2">Template Type</label><div className="flex gap-2"><button type="button" onClick={() => setTplEditorType("week")} className={`py-2 px-4 rounded-lg text-sm font-medium transition-colors ${tplEditorType === "week" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Week</button><button type="button" onClick={() => setTplEditorType("day")} className={`py-2 px-4 rounded-lg text-sm font-medium transition-colors ${tplEditorType === "day" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Day</button></div></div>)}
+                    {tplEditorType === "week" && (<div className="space-y-3"><div className="grid md:grid-cols-2 gap-3 mb-3"><div><label className="text-gray-400 text-xs block mb-1">Focus</label><input type="text" value={tplEditorFocus} onChange={(e) => setTplEditorFocus(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Speed development" /></div><div><label className="text-gray-400 text-xs block mb-1">Coach Message</label><input type="text" value={tplEditorCoachMessage} onChange={(e) => setTplEditorCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Message shown to client" /></div></div>{tplEditorDays.map((day, i) => (<div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-3 ${day.type === "rest" ? "opacity-70" : ""}`}><div className="flex items-center gap-3 flex-wrap"><span className="text-white font-heading text-xs uppercase w-12">{day.day.slice(0, 3)}</span><select value={day.type} onChange={(e) => { const nt = e.target.value; updateTplDay(i, "type", nt); if (nt === "rest") { updateTplDay(i, "trainingType", "Rest"); } else { updateTplDay(i, "trainingType", ""); } updateTplDay(i, "title", ""); updateTplDay(i, "miles", ""); updateTplDay(i, "description", ""); updateTplDay(i, "paceTarget", ""); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option></select>{day.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}{day.type === "run" && (<><select value={day.trainingType} onChange={(e) => updateTplDay(i, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!day.trainingType ? "border-accent/50" : "border-white/10"}`}><option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option></select><input type="text" value={day.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateTplDay(i, "miles", v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="mi" /><input type="text" value={day.paceTarget} onChange={(e) => updateTplDay(i, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Pace" /></>)}{day.type === "walk" && (<><select value={day.trainingType} onChange={(e) => updateTplDay(i, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!day.trainingType ? "border-accent/50" : "border-white/10"}`}><option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option></select><input type="text" value={day.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateTplDay(i, "miles", v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="mi" /><input type="text" value={day.paceTarget} onChange={(e) => updateTplDay(i, "paceTarget", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Pace" /></>)}{(day.type === "cross" || day.type === "cycling" || day.type === "stretching") && (<><input type="text" value={day.title} onChange={(e) => updateTplDay(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={day.description} onChange={(e) => updateTplDay(i, "description", e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" /></>)}</div>{(day.type === "run" || day.type === "walk") && (<div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 ml-12"><input type="text" value={day.title} onChange={(e) => updateTplDay(i, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={day.description} onChange={(e) => updateTplDay(i, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" /><input type="text" value={day.location} onChange={(e) => updateTplDay(i, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /><input type="text" value={day.coachNotes} onChange={(e) => updateTplDay(i, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}</div>))}</div>)}
+                    {tplEditorType === "day" && (<div className="space-y-3"><div className="flex items-center gap-3 flex-wrap"><select value={tplEditorDayData.type} onChange={(e) => { const nt = e.target.value; setTplEditorDayData({ type: nt, trainingType: nt === "rest" ? "Rest" : "", miles: "", title: "", description: "", paceTarget: "", location: "", coachNotes: "" }); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option></select>{tplEditorDayData.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}{tplEditorDayData.type === "run" && (<><select value={tplEditorDayData.trainingType} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, trainingType: e.target.value })} className={`bg-primary/50 border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!tplEditorDayData.trainingType ? "border-accent/50" : "border-white/10"}`}><option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option></select><input type="text" value={tplEditorDayData.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setTplEditorDayData({ ...tplEditorDayData, miles: v }); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="mi" /></>)}{tplEditorDayData.type === "walk" && (<><select value={tplEditorDayData.trainingType} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, trainingType: e.target.value })} className={`bg-primary/50 border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!tplEditorDayData.trainingType ? "border-accent/50" : "border-white/10"}`}><option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option></select><input type="text" value={tplEditorDayData.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setTplEditorDayData({ ...tplEditorDayData, miles: v }); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="mi" /></>)}</div>{(tplEditorDayData.type === "run" || tplEditorDayData.type === "walk") && (<div className="grid md:grid-cols-3 gap-2"><input type="text" value={tplEditorDayData.title} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, title: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={tplEditorDayData.description} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, description: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" /><input type="text" value={tplEditorDayData.paceTarget} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, paceTarget: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Pace target" /></div>)}{(tplEditorDayData.type === "cross" || tplEditorDayData.type === "cycling" || tplEditorDayData.type === "stretching") && (<div className="grid md:grid-cols-2 gap-2"><input type="text" value={tplEditorDayData.title} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, title: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={tplEditorDayData.description} onChange={(e) => setTplEditorDayData({ ...tplEditorDayData, description: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" /></div>)}</div>)}
+                    <div className="flex gap-3 mt-5"><button onClick={handleSaveTemplateEditor} disabled={!tplEditorName.trim() || tplEditorSaving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{tplEditorSaving ? "Saving..." : editingTemplateId ? "Update Template" : "Save Template"}</button><button onClick={() => setShowTemplateEditor(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
+                  </div>
+                )}
+
                 {/* Week Templates */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gold mb-4">Week Templates ({weekTemplates.length})</h3>
@@ -1974,7 +2113,10 @@ export default function AdminPage() {
                               <h4 className="text-white font-medium">{t.name}</h4>
                               <p className="text-gray-300 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{t.data.days?.filter((d: any) => d.type === 'run').length || 0} runs, {t.data.days?.filter((d: any) => d.type === 'cross').length || 0} cross, {t.data.days?.filter((d: any) => d.type === 'rest').length || 0} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
                             </div>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => openEditTemplate(t)} className="text-gray-500 hover:text-accent text-xs transition-colors border border-white/10 px-3 py-1 rounded">Edit</button>
+                              <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
+                            </div>
                           </div>
                           {/* Preview grid */}
                           <div className="grid grid-cols-7 gap-1">
@@ -2008,7 +2150,10 @@ export default function AdminPage() {
                         <div key={t.id} className={`border rounded-xl p-4 ${t.data.type === 'run' ? 'border-accent/20 bg-accent/5' : t.data.type === 'cross' ? 'border-gold/20 bg-gold/5' : 'border-green-500/20 bg-green-500/5'}`}>
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="text-white text-sm font-medium">{t.name}</h4>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => openEditTemplate(t)} className="text-gray-500 hover:text-accent text-xs transition-colors">Edit</button>
+                              <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
+                            </div>
                           </div>
                           <div className="space-y-1 text-xs">
                             {t.category && <p className="text-gold">{t.category}</p>}
