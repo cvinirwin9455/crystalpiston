@@ -1182,7 +1182,7 @@ export default function DashboardPage() {
                           {workout.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
                         </div>
-                        {workout.log.notes && <p className="text-gray-400 text-xs mt-1">{workout.log.notes}</p>}
+                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1">{workout.log.notes}</p>}
                         {workout.log.sleep && (
                           <div className="flex flex-wrap gap-2 mt-2">
                             <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {workout.log.sleep}/10</span>
@@ -1430,10 +1430,16 @@ export default function DashboardPage() {
                                 {cw.source === 'strava' ? (
                                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'bg-orange-500/20 text-orange-400 border border-dashed border-orange-400/50' : 'bg-orange-500/20 text-orange-400'}`}>
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                    {(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'Strava — No Match Found' : 'Strava'}
+                                    {(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'Strava — No Match Found' : (cw.activityName || 'Strava')}
                                   </span>
                                 ) : (
                                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Added Workout</span>
+                                )}
+                                {cw.source !== 'strava' && completedClientWorkouts[cw.id] && clientWorkoutNotes[cw.id]?.startsWith('Synced from Strava:') && (
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
+                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+                                    {cw.activityName || clientWorkoutNotes[cw.id]?.replace('Synced from Strava: ', '') || 'Synced'}
+                                  </span>
                                 )}
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
@@ -1592,7 +1598,7 @@ export default function DashboardPage() {
                               {completedClientWorkouts[cw.id] && (
                                 <div className="mt-2 flex items-center gap-2">
                                   <span className="text-green-400 text-xs font-medium">Completed</span>
-                                  {clientWorkoutNotes[cw.id] && <span className="text-gray-400 text-xs">— {clientWorkoutNotes[cw.id]}</span>}
+                                  {clientWorkoutNotes[cw.id] && !clientWorkoutNotes[cw.id].startsWith('Synced from Strava:') && !clientWorkoutNotes[cw.id].startsWith('Kept as extra from Strava:') && <span className="text-gray-400 text-xs">— {clientWorkoutNotes[cw.id]}</span>}
                                   <button onClick={async () => { setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false })); await fetch('/api/client-workouts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cw.id, completed: false, notes: '' }) }); }} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>
                                 </div>
                               )}
