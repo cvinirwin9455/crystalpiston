@@ -1235,6 +1235,23 @@ export default function AdminPage() {
         setWeekDateWarning("");
         // Refresh weeks
         fetchWeeks(client.clientId);
+        if (publishStatus === "published") {
+          // Navigate to the published week's offset so it's immediately visible
+          const publishedDateStr = weekPlan.dateRange.split(' - ')[0];
+          const publishedMonday = new Date(publishedDateStr + ', ' + new Date().getFullYear());
+          publishedMonday.setHours(0, 0, 0, 0);
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          const thisMonday = new Date(today);
+          thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          thisMonday.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((publishedMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
+          const targetOffset = Math.round(diffDays / 7);
+          setAdminWeekOffset(targetOffset);
+          // Expand bounds if needed
+          setAdminMinOffset(prev => Math.min(prev, targetOffset));
+          setAdminMaxOffset(prev => Math.max(prev, targetOffset));
+        }
         setClientTab(publishStatus === "draft" ? "drafts" : "plan");
       }
     } catch (err) {
