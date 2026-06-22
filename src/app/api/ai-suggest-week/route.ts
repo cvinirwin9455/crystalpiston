@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, dateRange } = body
+  const { clientId, dateRange, coachNotes } = body
 
   if (!clientId) {
     return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
@@ -347,6 +347,7 @@ Based on all this data, suggest the next week's training plan. Consider:
 6. Extra workouts they're adding on their own (factor into total volume)
 7. Heart rate data from Strava if available
 ${clientUser?.gender === 'female' ? '8. Menstrual cycle considerations if reported' : ''}
+${coachNotes ? `\nCOACH'S ADDITIONAL NOTES (IMPORTANT - prioritize these instructions):\n${coachNotes}` : ''}
 
 Respond with ONLY the JSON object, no markdown formatting or code blocks.`
 

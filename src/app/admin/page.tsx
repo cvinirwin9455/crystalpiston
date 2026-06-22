@@ -153,6 +153,7 @@ export default function AdminPage() {
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiReasoning, setAiReasoning] = useState("");
   const [aiError, setAiError] = useState("");
+  const [aiCoachNotes, setAiCoachNotes] = useState("");
   const selectWeek = (monday: Date) => {
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
@@ -388,6 +389,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           clientId: client.clientId,
           dateRange: weekPlan.dateRange || null,
+          coachNotes: aiCoachNotes || null,
         }),
       });
 
@@ -1931,7 +1933,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
                       onClick={handleAiSuggest}
-                      disabled={aiSuggesting || !selectedClient}
+                      disabled={aiSuggesting || !selectedClient || !weekPlan.dateRange}
                       className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
                     >
                       {aiSuggesting ? (
@@ -1946,8 +1948,21 @@ export default function AdminPage() {
                         </>
                       )}
                     </button>
-                    <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>
+                    {!weekPlan.dateRange && <span className="text-purple-300/60 text-xs">Select a week date range first</span>}
+                    {weekPlan.dateRange && <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>}
                   </div>
+                  {weekPlan.dateRange && (
+                    <div className="mt-2">
+                      <label className="text-purple-300 text-xs block mb-1">Anything you want AI to consider? (optional)</label>
+                      <textarea
+                        value={aiCoachNotes}
+                        onChange={(e) => setAiCoachNotes(e.target.value)}
+                        className="w-full bg-primary/50 border border-purple-500/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none placeholder-gray-500"
+                        rows={2}
+                        placeholder="e.g. She's feeling burnt out, keep it light this week... or Focus on speed work, race is in 3 weeks... or She mentioned knee pain on Tuesday runs..."
+                      />
+                    </div>
+                  )}
                   {aiError && (
                     <div className="mt-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
                       <p className="text-red-400 text-xs">{aiError}</p>
