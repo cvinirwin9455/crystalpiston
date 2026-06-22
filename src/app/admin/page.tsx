@@ -154,6 +154,24 @@ export default function AdminPage() {
   const [aiReasoning, setAiReasoning] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiCoachNotes, setAiCoachNotes] = useState("");
+  const [aiCredits, setAiCredits] = useState<{ used: number; total: number } | null>(null);
+
+  // Fetch AI credit balance
+  useEffect(() => {
+    const fetchAiCredits = async () => {
+      try {
+        const res = await fetch('/api/ai-credits');
+        if (res.ok) {
+          const data = await res.json();
+          // Handle various response formats from the API
+          const used = data.used ?? data.credits_used ?? data.usage ?? 0;
+          const total = data.total ?? data.credits_total ?? data.limit ?? 5.00;
+          setAiCredits({ used: parseFloat(used) || 0, total: parseFloat(total) || 5.00 });
+        }
+      } catch {}
+    };
+    fetchAiCredits();
+  }, [aiSuggesting]);
   const selectWeek = (monday: Date) => {
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
@@ -1967,6 +1985,11 @@ export default function AdminPage() {
                     </button>
                     {!weekPlan.dateRange && <span className="text-purple-300/60 text-xs">Select a week date range first</span>}
                     {weekPlan.dateRange && <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>}
+                    {aiCredits && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                        ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)} used
+                      </span>
+                    )}
                   </div>
                   {weekPlan.dateRange && (
                     <div className="mt-2">
