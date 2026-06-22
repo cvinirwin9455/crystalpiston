@@ -150,6 +150,9 @@ export default function AdminPage() {
   const formatDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const getWeeksInMonth = (month: Date) => { const weeks: Date[][] = []; const firstDay = new Date(month.getFullYear(), month.getMonth(), 1); const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0); let current = getMonday(firstDay); while (current <= lastDay || weeks.length < 5) { const week: Date[] = []; for (let i = 0; i < 7; i++) { week.push(new Date(current)); current.setDate(current.getDate() + 1); } weeks.push(week); if (current > lastDay && weeks.length >= 4) break; } return weeks; };
   const [weekDateWarning, setWeekDateWarning] = useState("");
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState("");
+  const [aiError, setAiError] = useState("");
   const selectWeek = (monday: Date) => {
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
@@ -367,6 +370,72 @@ export default function AdminPage() {
     }
     setWeekPlan({ ...weekPlan, days: updated });
     setShowLoadDayTemplate(null);
+  };
+
+  // AI Suggest Week Plan
+  const handleAiSuggest = async () => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client || !client.clientId) return;
+
+    setAiSuggesting(true);
+    setAiReasoning("");
+    setAiError("");
+
+    try {
+      const res = await fetch('/api/ai-suggest-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: client.clientId,
+          dateRange: weekPlan.dateRange || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        setAiError(errData.error || 'Failed to generate suggestion');
+        return;
+      }
+
+      const data = await res.json();
+      const suggestion = data.suggestion;
+
+      // Map AI suggestion into the weekPlan state format
+      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const mappedDays = dayNames.map(dayName => {
+        const aiDay = suggestion.days.find((d: any) => d.day === dayName);
+        if (!aiDay || !aiDay.workouts || aiDay.workouts.length === 0) {
+          return { day: dayName, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] };
+        }
+        return {
+          day: dayName,
+          workouts: aiDay.workouts.map((w: any) => ({
+            type: w.type || 'rest',
+            trainingType: w.trainingType || (w.type === 'rest' ? 'Rest' : ''),
+            title: w.title || '',
+            miles: w.miles?.toString() || '',
+            description: w.description || '',
+            paceTarget: w.paceTarget || '',
+            location: w.location || '',
+            coachNotes: w.coachNotes || '',
+            distanceUnit: w.distanceUnit || 'mi',
+          })),
+        };
+      });
+
+      setWeekPlan({
+        ...weekPlan,
+        focus: suggestion.focus || weekPlan.focus,
+        coachMessage: suggestion.coachMessage || weekPlan.coachMessage,
+        days: mappedDays,
+      });
+
+      setAiReasoning(suggestion.reasoning || '');
+    } catch (err: any) {
+      setAiError(err.message || 'Failed to connect to AI service');
+    } finally {
+      setAiSuggesting(false);
+    }
   };
 
   // Delete template
@@ -1857,6 +1926,40 @@ export default function AdminPage() {
                     ))}
                   </div>
                 )}
+                {/* AI Suggest Week Plan */}
+                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={handleAiSuggest}
+                      disabled={aiSuggesting || !selectedClient}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                    >
+                      {aiSuggesting ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          Analyzing Client History...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                          AI Suggest Week
+                        </>
+                      )}
+                    </button>
+                    <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>
+                  </div>
+                  {aiError && (
+                    <div className="mt-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
+                      <p className="text-red-400 text-xs">{aiError}</p>
+                    </div>
+                  )}
+                  {aiReasoning && (
+                    <div className="mt-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
+                      <p className="text-purple-300 text-xs font-heading uppercase mb-1">AI Reasoning (only you see this):</p>
+                      <p className="text-gray-300 text-xs leading-relaxed">{aiReasoning}</p>
+                    </div>
+                  )}
+                </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="relative">
                     <label className="text-gray-400 text-xs block mb-1">Week Date Range <span className="text-accent">*</span></label>
