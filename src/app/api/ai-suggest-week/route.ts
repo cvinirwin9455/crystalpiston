@@ -38,13 +38,26 @@ export async function POST(request: Request) {
     // 1. Get client profile (name, gender, goal)
     const { data: clientRecord } = await adminClient
       .from('clients')
-      .select('id, user_id, goal, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+      .select('id, user_id, goal')
       .eq('id', clientId)
       .single()
 
     if (!clientRecord) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
+
+    // Try to get training profile fields (columns may not exist yet)
+    let trainingProfile: any = {}
+    try {
+      const { data } = await adminClient
+        .from('clients')
+        .select('experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+        .eq('id', clientId)
+        .single()
+      trainingProfile = data || {}
+    } catch {}
+    // Merge training profile into client record for prompt usage
+    Object.assign(clientRecord, trainingProfile)
 
     const { data: clientUser } = await adminClient
       .from('users')
