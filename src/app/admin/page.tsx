@@ -1607,6 +1607,7 @@ export default function AdminPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-medium text-sm">{w.day}</span>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Programmed</span>
                                 <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                 {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{w.stravaActivityName || 'Synced'}</span>}
@@ -1617,22 +1618,20 @@ export default function AdminPage() {
                             {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(w.miles, w.distanceUnit)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                           </div>
                           {w.log && (
-                            <div className="mt-3 ml-7 pl-4 border-l-2 border-accent/30">
-                              <div className="flex flex-wrap gap-3 text-xs">
-                                {w.log.rpe && <span><span className="text-gray-300">Effort:</span> <span className="text-white">{w.log.rpe}/10</span></span>}
-                                {w.log.actualMiles && <span><span className="text-gray-300">{distUnitLabel}:</span> <span className="text-white">{convertDist(Number(w.log.actualMiles))}</span></span>}
-                                {w.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{w.log.actualPace}</span></span>}
-                                {w.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{w.log.duration}</span></span>}
-                                {w.log.avgHeartrate && <span><span className="text-gray-300">Avg HR:</span> <span className="text-red-400">{w.log.avgHeartrate} bpm</span></span>}
-                                {w.log.maxHeartrate && <span><span className="text-gray-300">Max HR:</span> <span className="text-red-400">{w.log.maxHeartrate} bpm</span></span>}
-                                {w.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{w.log.stress}</span></span>}
-                                {w.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
+                            <div className="mt-2 ml-10">
+                              <div className="flex flex-wrap gap-1.5">
+                                {w.log.rpe && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">RPE</span> <span className="text-white font-medium">{w.log.rpe}/10</span></span>}
+                                {w.log.actualMiles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{distUnitShort}</span> <span className="text-white font-medium">{convertDist(Number(w.log.actualMiles))}</span></span>}
+                                {w.log.actualPace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{w.log.actualPace}</span></span>}
+                                {w.log.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{w.log.duration}</span></span>}
+                                {w.log.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{w.log.avgHeartrate}</span></span>}
+                                {w.log.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{w.log.maxHeartrate}</span></span>}
+                                {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Sleep</span> <span className="text-white font-medium">{w.log.sleep}/10</span></span>}
+                                {w.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{w.log.stress}</span></span>}
+                                {w.log.onPeriod === "yes" && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
                               </div>
-                              {w.log.notes && <p className="text-gray-400 text-xs mt-1">{w.log.notes}</p>}
-                              <div className="flex flex-wrap gap-2 mt-2">
-                                {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {w.log.sleep}/10</span>}
-                              </div>
-                              {w.skipReason && <p className="text-yellow-400 text-xs mt-2"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
+                              {w.log.notes && !w.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{w.log.notes}</p>}
+                              {w.skipReason && <p className="text-yellow-400 text-xs mt-1.5"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
                             </div>
                           )}
                           {editingWeek && w.completed && (
@@ -1711,29 +1710,25 @@ export default function AdminPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {cw.source === 'strava' ? (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
-                                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                      Strava
-                                    </span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Extra</span>
                                   ) : (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client Added</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Client</span>
                                   )}
                                   <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                   {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
-                                  {cw.completed && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Completed</span>}
+                                  {cw.source === 'strava' && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{cw.activityName || 'Strava'}</span>}
                                 </div>
                                 {cw.activityName && <p className="text-white text-sm font-medium mt-1">{cw.activityName}</p>}
-                                {cw.notes && !cw.activityName && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
-                                {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
-                                  <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                    {cw.miles && <span className="text-gray-400 text-xs">Miles: <span className="text-white">{convertDist(cw.miles)} {distUnitShort}</span></span>}
-                                    {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
-                                    {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
-                                    {cw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{cw.avgHeartrate} bpm</span></span>}
-                                    {cw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{cw.maxHeartrate} bpm</span></span>}
+                                {cw.notes && !cw.activityName && !cw.notes.startsWith?.('Kept as extra') && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
+                                {(cw.averagePace || cw.duration || cw.avgHeartrate || cw.miles) && (
+                                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {cw.miles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{distUnitShort}</span> <span className="text-white font-medium">{convertDist(cw.miles)}</span></span>}
+                                    {cw.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{cw.duration}</span></span>}
+                                    {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{cw.averagePace}</span></span>}
+                                    {cw.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{cw.avgHeartrate}</span></span>}
+                                    {cw.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{cw.maxHeartrate}</span></span>}
                                   </div>
                                 )}
-                                {cw.completedNotes && <p className="text-gray-400 text-xs mt-1 italic">{cw.completedNotes}</p>}
                               </div>
                               {cw.miles && !cw.averagePace && !cw.duration && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>

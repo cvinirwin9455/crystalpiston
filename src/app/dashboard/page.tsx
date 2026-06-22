@@ -1176,18 +1176,18 @@ export default function DashboardPage() {
                     )}
                     {(workout.status === "complete" || workout.status === "partial") && workout.log && (
                       <div className="mt-3 ml-9">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {workout.log.rpe && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Effort</p><p className="text-white text-sm font-medium">{workout.log.rpe}/10</p></div>}
-                          {workout.log.actualMiles && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">{getWorkoutUnit(workout.id) === "km" ? "KM" : "Miles"}</p><p className="text-white text-sm font-medium">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</p></div>}
-                          {workout.log.actualPace && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Pace</p><p className="text-white text-sm font-medium">{getWorkoutUnit(workout.id) === "km" && workout.log.actualPace.includes("/mi") ? convertPaceToKm(workout.log.actualPace) : getWorkoutUnit(workout.id) === "mi" && workout.log.actualPace.includes("/km") ? convertPaceToMi(workout.log.actualPace) : workout.log.actualPace}</p></div>}
-                          {workout.log.duration && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Duration</p><p className="text-white text-sm font-medium">{workout.log.duration}</p></div>}
-                          {workout.log.avgHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Avg HR</p><p className="text-red-400 text-sm font-medium">{workout.log.avgHeartrate} bpm</p></div>}
-                          {workout.log.maxHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Max HR</p><p className="text-red-400 text-sm font-medium">{workout.log.maxHeartrate} bpm</p></div>}
-                          {workout.log.sleep && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Sleep</p><p className="text-white text-sm font-medium">{workout.log.sleep}/10</p></div>}
-                          {workout.log.stress && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Stress</p><p className="text-white text-sm font-medium">{workout.log.stress}</p></div>}
+                        <div className="flex flex-wrap gap-1.5">
+                          {workout.log.rpe && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">RPE</span> <span className="text-white font-medium">{workout.log.rpe}/10</span></span>}
+                          {workout.log.actualMiles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{getWorkoutUnit(workout.id) === "km" ? "km" : "mi"}</span> <span className="text-white font-medium">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</span></span>}
+                          {workout.log.actualPace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{getWorkoutUnit(workout.id) === "km" && workout.log.actualPace.includes("/mi") ? convertPaceToKm(workout.log.actualPace) : getWorkoutUnit(workout.id) === "mi" && workout.log.actualPace.includes("/km") ? convertPaceToMi(workout.log.actualPace) : workout.log.actualPace}</span></span>}
+                          {workout.log.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{workout.log.duration}</span></span>}
+                          {workout.log.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{workout.log.avgHeartrate}</span></span>}
+                          {workout.log.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{workout.log.maxHeartrate}</span></span>}
+                          {workout.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Sleep</span> <span className="text-white font-medium">{workout.log.sleep}/10</span></span>}
+                          {workout.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{workout.log.stress}</span></span>}
+                          {workout.log.onPeriod === "yes" && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
                         </div>
                         {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-2">{workout.log.notes}</p>}
-                        {workout.log.onPeriod === "yes" && <p className="text-pink-400 text-xs font-medium mt-2">On Period</p>}
                       </div>
                     )}
 
@@ -1445,12 +1445,12 @@ export default function DashboardPage() {
                               {/* Strava/synced activity details */}
                               {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
                               {(cw.averagePace || cw.duration || cw.avgHeartrate || cw.miles) && (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                                  {cw.miles && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">{getWorkoutUnit(cw.id) === "km" ? "KM" : "Miles"}</p><p className="text-white text-sm font-medium">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p></div>}
-                                  {cw.duration && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Duration</p><p className="text-white text-sm font-medium">{cw.duration}</p></div>}
-                                  {cw.averagePace && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Pace</p><p className="text-white text-sm font-medium">{cw.averagePace}</p></div>}
-                                  {cw.avgHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Avg HR</p><p className="text-red-400 text-sm font-medium">{cw.avgHeartrate} bpm</p></div>}
-                                  {cw.maxHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Max HR</p><p className="text-red-400 text-sm font-medium">{cw.maxHeartrate} bpm</p></div>}
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                  {cw.miles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</span> <span className="text-white font-medium">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</span></span>}
+                                  {cw.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{cw.duration}</span></span>}
+                                  {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{cw.averagePace}</span></span>}
+                                  {cw.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{cw.avgHeartrate}</span></span>}
+                                  {cw.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{cw.maxHeartrate}</span></span>}
                                 </div>
                               )}
 
