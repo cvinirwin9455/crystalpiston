@@ -1993,13 +1993,13 @@ export default function AdminPage() {
                   </div>
                   {weekPlan.dateRange && (
                     <div className="mt-2">
-                      <label className="text-purple-300 text-xs block mb-1">Anything you want AI to consider? (optional)</label>
+                      <label className="text-purple-300 text-xs block mb-1">Anything you want AI to consider? (optional but recommended)</label>
                       <textarea
                         value={aiCoachNotes}
                         onChange={(e) => setAiCoachNotes(e.target.value)}
                         className="w-full bg-primary/50 border border-purple-500/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none placeholder-gray-500"
-                        rows={2}
-                        placeholder="e.g. She's feeling burnt out, keep it light this week... or Focus on speed work, race is in 3 weeks... or She mentioned knee pain on Tuesday runs..."
+                        rows={3}
+                        placeholder={"The more you tell it, the better the plan. Examples:\n• Easy pace 10:30-11:00, tempo pace 9:00-9:15, long run pace 10:45\n• Focus on speed this week, race is Aug 15\n• He's been dealing with shin pain, avoid back-to-back run days\n• Currently running 20mpw, ready to bump to 22-23\n• Keep Tuesday and Thursday as hard days, easy the rest"}
                       />
                     </div>
                   )}

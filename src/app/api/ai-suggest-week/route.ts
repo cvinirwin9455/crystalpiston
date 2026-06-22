@@ -264,21 +264,24 @@ export async function POST(request: Request) {
     // Build the AI prompt
     const systemPrompt = `You are an expert running coach AI assistant helping a coach named Crystal create weekly training plans for her clients. You have deep knowledge of running periodization, training principles, and individualized programming.
 
-Your job is to suggest a 7-day training week (Monday through Sunday) based on the client's history, metrics, goals, and feedback.
+Your job is to suggest a 7-day training week (Monday through Sunday) based on the client's history, metrics, goals, and most importantly any specific instructions Crystal provides.
 
-IMPORTANT RULES:
+CRITICAL: If Crystal provides additional notes or instructions, those OVERRIDE all other considerations. She knows her client better than any data can show. Her notes should directly shape the workout types, paces, distances, and structure of the week.
+
+COACHING RULES:
 - Always respect the client's current fitness level based on actual performance data
 - Progress volume by no more than 10% per week unless recovery metrics suggest otherwise
 - If a client has been skipping workouts or reporting high stress/low recovery, reduce volume
 - Consider the client's gender for training considerations (e.g., cycle awareness for female athletes - if on_period is reported, suggest lighter intensity)
 - Factor in where they are in their overall training plan (build phase vs peak vs taper)
-- Use the same workout types and subtypes that Crystal uses in her system
 - Be conservative rather than aggressive - it's better to under-prescribe than over-prescribe
 - Include a mix of workout types appropriate for their goal
 - Always include at least 1 rest day per week
 - Consider client-added workouts (extra training they do) in total volume calculations
+- If pace information is given by Crystal, USE those paces in paceTarget fields
+- If Crystal mentions specific workouts or structure, follow her guidance closely
 
-AVAILABLE WORKOUT TYPES:
+AVAILABLE WORKOUT TYPES (use ONLY these exact values):
 - "run" with subtypes: Easy, LongRun, Tempo, Threshold, Intervals, Fartlek, Hills, SpeedRoad, SpeedTrack, Progressive, Recovery, RacePace, ClosePace, TimeTrial, Trail, Treadmill
 - "cross" (cross training - no subtype required)
 - "cycling" (no subtype required)
@@ -290,8 +293,8 @@ RESPONSE FORMAT:
 You must respond with a valid JSON object with this exact structure:
 {
   "focus": "Brief 3-5 word focus for the week",
-  "coachMessage": "A personalized motivational message for the client (1-2 sentences) that references their recent progress or the week's goals",
-  "reasoning": "Brief explanation of why you chose this plan (for Crystal to review, not shown to client)",
+  "coachMessage": "A personalized motivational message for the client (1-2 sentences) that references their recent progress or the week's goals. Write in Crystal's voice - supportive, direct, and encouraging.",
+  "reasoning": "2-3 sentence explanation of why you chose this plan, referencing specific data points or Crystal's notes that influenced your decisions. This is for Crystal to review.",
   "days": [
     {
       "day": "Monday",
@@ -301,7 +304,7 @@ You must respond with a valid JSON object with this exact structure:
           "trainingType": "Easy",
           "title": "Easy Shakeout",
           "miles": "3",
-          "description": "Easy conversational pace",
+          "description": "Easy conversational pace. Keep HR in Zone 2.",
           "paceTarget": "10:00-10:30/mi",
           "coachNotes": ""
         }
@@ -311,10 +314,12 @@ You must respond with a valid JSON object with this exact structure:
   ]
 }
 
-Each day MUST have at least one workout. Use "rest" type for rest days. The "miles" field should be a string number. Do not include "location" or "distanceUnit" fields - Crystal will set those herself.`
+Each day MUST have at least one workout. Use "rest" type for rest days. The "miles" field should be a string number. Do not include "location" or "distanceUnit" fields.
+
+IMPORTANT FOR DESCRIPTIONS: Be specific in the "description" field. Don't just say "Easy run" - include guidance like warm-up structure, pace feel, heart rate zone, interval breakdowns, etc. Make it useful for the client.`
 
     const userPrompt = `Generate a week plan for this client:
-
+${coachNotes ? `\n=== CRYSTAL'S INSTRUCTIONS (HIGHEST PRIORITY — shape the entire plan around these) ===\n${coachNotes}\n===\n` : ''}
 CLIENT PROFILE:
 - Name: ${clientUser?.name || 'Unknown'}
 - Gender: ${clientUser?.gender || 'not specified'}
@@ -347,7 +352,8 @@ Based on all this data, suggest the next week's training plan. Consider:
 6. Extra workouts they're adding on their own (factor into total volume)
 7. Heart rate data from Strava if available
 ${clientUser?.gender === 'female' ? '8. Menstrual cycle considerations if reported' : ''}
-${coachNotes ? `\nCOACH'S ADDITIONAL NOTES (IMPORTANT - prioritize these instructions):\n${coachNotes}` : ''}
+
+${!coachNotes && (!pastWeeks || pastWeeks.length === 0) ? `NOTE: This client has NO training history in the system. You must rely entirely on their goal, gender, and plan timeline to create an appropriate starting plan. Start conservatively - assume a beginner-to-intermediate level unless Crystal's notes indicate otherwise.` : ''}
 
 Respond with ONLY the JSON object, no markdown formatting or code blocks.`
 
@@ -388,8 +394,8 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.85,
+        max_tokens: 2500,
       }),
     })
 
