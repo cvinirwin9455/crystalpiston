@@ -73,16 +73,20 @@ export async function GET(request: Request) {
 
   // Fetch strava activities matched to workouts in these weeks
   let stravaMatchedWorkoutIds = new Set<string>()
+  let stravaActivityNameByWorkoutId = new Map<string, string>()
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
-      .select('id, matched_workout_id, match_status')
+      .select('id, matched_workout_id, match_status, activity_name')
       .in('week_id', weekIds)
       .eq('match_status', 'matched')
 
     for (const sa of stravaActivities || []) {
       if (sa.matched_workout_id) {
         stravaMatchedWorkoutIds.add(sa.matched_workout_id)
+        if (sa.activity_name) {
+          stravaActivityNameByWorkoutId.set(sa.matched_workout_id, sa.activity_name)
+        }
       }
     }
   }
@@ -157,6 +161,7 @@ export async function GET(request: Request) {
           sortOrder: wo.sort_order,
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id),
+          stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || null,
           status: log?.status || null,
           skipReason: log?.skip_reason || null,
           log: log ? {

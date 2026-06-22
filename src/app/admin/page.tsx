@@ -6,7 +6,7 @@ import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
@@ -624,6 +624,7 @@ export default function AdminPage() {
                   description: wo.description || '', paceTarget: wo.paceTarget || '',
                   location: wo.location || '', coachNotes: wo.coachNotes || '',
                   completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
+                  stravaActivityName: wo.stravaActivityName || null,
                   status: wo.status || undefined,
                   skipReason: wo.skipReason || undefined, log: wo.log || undefined,
                 })),
@@ -909,6 +910,7 @@ export default function AdminPage() {
             coachNotes: wo.coachNotes || '',
             completed: wo.completed || false,
             stravaSynced: wo.stravaSynced || false,
+            stravaActivityName: wo.stravaActivityName || null,
             status: wo.status || undefined,
             skipReason: wo.skipReason || undefined,
             log: wo.log || undefined,
@@ -1607,7 +1609,7 @@ export default function AdminPage() {
                                 <span className="text-white font-medium text-sm">{w.day}</span>
                                 <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
-                                {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>Synced</span>}
+                                {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{w.stravaActivityName || 'Synced'}</span>}
                               </div>
                               <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
