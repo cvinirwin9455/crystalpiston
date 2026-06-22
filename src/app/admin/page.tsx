@@ -32,7 +32,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-22T22:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-23T02:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -2003,6 +2003,11 @@ export default function AdminPage() {
                 )}
                 {/* AI Suggest Week Plan */}
                 <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-purple-300 text-xs font-heading uppercase">AI Week Planner</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold">BETA</span>
+                    <span className="text-gray-500 text-xs">— Suggestions may not be fully accurate. Always review before publishing.</span>
+                  </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
                       onClick={handleAiSuggest}

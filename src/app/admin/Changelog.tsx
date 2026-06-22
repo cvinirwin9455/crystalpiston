@@ -3,9 +3,24 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-22T22:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-23T02:00:00Z";
 
 const updates = [
+  {
+    date: "June 23, 2026",
+    items: [
+      { area: "Admin", text: "NEW: AI Week Planner (Beta) — on the Create Week tab, click 'AI Suggest Week' to get AI-generated training suggestions based on client history, metrics, goals, and feedback" },
+      { area: "Admin", text: "AI analyzes the client's past 6 weeks of workouts, completion rates, RPE, energy, sleep, stress, recovery, comments, Strava data, and more" },
+      { area: "Admin", text: "You can type custom notes/instructions for the AI before generating (e.g. 'keep it light this week' or 'focus on speed, race in 3 weeks')" },
+      { area: "Admin", text: "AI fills in all form fields — you can edit anything before saving. It's a starting point, not a final answer" },
+      { area: "Admin", text: "AI Reasoning box shows why it chose the plan (only visible to you, not the client)" },
+      { area: "Admin", text: "New client training profile fields: Age, Experience Level, Current MPW, Days/Week, Target Distance, Race Date, Easy Pace, Goal Pace, Injuries" },
+      { area: "Admin", text: "Training profile fields are available in both Create Client and Account tab (Edit) — all optional" },
+      { area: "Admin", text: "Week date picker now shows colored dots: green = published, yellow = draft, no dot = empty" },
+      { area: "Admin", text: "After publishing a week, the Training & Logs tab now automatically navigates to that week instead of showing 'No plan'" },
+      { area: "Admin", text: "'Current Week' badge moved inline with the date navigation — no longer takes up its own row" },
+    ],
+  },
   {
     date: "June 22, 2026",
     items: [
