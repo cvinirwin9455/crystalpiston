@@ -389,7 +389,6 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
         ],
         temperature: 0.7,
         max_tokens: 2000,
-        response_format: { type: 'json_object' },
       }),
     })
 
@@ -412,10 +411,20 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
 
     let suggestion
     try {
-      suggestion = JSON.parse(responseText)
+      // Strip markdown code blocks if AI wraps the JSON
+      let cleanedText = responseText.trim()
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.slice(7)
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.slice(3)
+      }
+      if (cleanedText.endsWith('```')) {
+        cleanedText = cleanedText.slice(0, -3)
+      }
+      suggestion = JSON.parse(cleanedText.trim())
     } catch (parseErr) {
       console.error('Failed to parse AI response:', responseText)
-      return NextResponse.json({ error: 'AI returned invalid JSON' }, { status: 500 })
+      return NextResponse.json({ error: 'AI returned invalid JSON. Please try again.' }, { status: 500 })
     }
 
     // Validate the structure
