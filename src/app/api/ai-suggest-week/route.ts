@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
 
 // POST /api/ai-suggest-week - Generate AI-suggested week plan for a client
 export async function POST(request: Request) {
@@ -351,23 +350,57 @@ ${clientUser?.gender === 'female' ? '8. Menstrual cycle considerations if report
 
 Respond with ONLY the JSON object, no markdown formatting or code blocks.`
 
-    // Call OpenAI
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+    // Call AI via Vercel AI Gateway (uses OpenAI-compatible API)
+    // Falls back to direct OpenAI if AI Gateway key is not set
+    const aiGatewayKey = process.env.AI_GATEWAY_API_KEY
+    const openaiKey = process.env.OPENAI_API_KEY
+
+    let baseUrl: string
+    let apiKey: string
+
+    if (aiGatewayKey) {
+      // Use Vercel AI Gateway (recommended - built into Vercel, $5 free/month)
+      baseUrl = 'https://gateway.vercel.ai/v1'
+      apiKey = aiGatewayKey
+    } else if (openaiKey) {
+      // Fallback to direct OpenAI API
+      baseUrl = 'https://api.openai.com/v1'
+      apiKey = openaiKey
+    } else {
+      return NextResponse.json({ 
+        error: 'AI not configured. Add AI_GATEWAY_API_KEY (from Vercel AI Gateway) or OPENAI_API_KEY to environment variables.' 
+      }, { status: 500 })
+    }
+
+    const aiResponse = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+      }),
     })
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    })
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text()
+      console.error('AI API error:', aiResponse.status, errText)
+      if (aiResponse.status === 401) {
+        return NextResponse.json({ error: 'AI API key is invalid. Check your AI_GATEWAY_API_KEY or OPENAI_API_KEY in Vercel environment variables.' }, { status: 500 })
+      }
+      return NextResponse.json({ error: 'AI service returned an error. Please try again.' }, { status: 500 })
+    }
 
-    const responseText = completion.choices[0]?.message?.content
+    const aiData = await aiResponse.json()
+    const responseText = aiData.choices?.[0]?.message?.content
     if (!responseText) {
       return NextResponse.json({ error: 'AI returned empty response' }, { status: 500 })
     }
@@ -402,11 +435,6 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
 
   } catch (err: any) {
     console.error('AI suggest week error:', err)
-
-    if (err?.code === 'invalid_api_key' || err?.message?.includes('API key')) {
-      return NextResponse.json({ error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to environment variables.' }, { status: 500 })
-    }
-
     return NextResponse.json({ error: err.message || 'Failed to generate AI suggestion' }, { status: 500 })
   }
 }
