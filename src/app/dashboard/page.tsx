@@ -462,6 +462,7 @@ export default function DashboardPage() {
               location: wo.location || '',
               coachNotes: wo.coachNotes || '',
               completed: wo.completed || false,
+              stravaSynced: wo.stravaSynced || false,
               status: wo.status || undefined,
               skipReason: wo.skipReason || undefined,
               log: wo.log || undefined,
