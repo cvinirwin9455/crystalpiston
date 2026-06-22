@@ -1113,13 +1113,13 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="text-white font-heading uppercase text-sm">{workout.day}</span>
                             <span className="text-gray-300 text-xs">{workout.date}</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Programmed</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
-                          {(workout.type === "run" || workout.type === "walk") && workout.miles && <p className="text-accent text-sm font-medium mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} {getWorkoutUnit(workout.id) === "km" ? "km" : "miles"} programmed</p>}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
                           {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
@@ -1129,13 +1129,17 @@ export default function DashboardPage() {
                         {workout.miles && <div>
                           {workout.completed && workout.log?.actualMiles ? (
                             <>
-                              <p className="font-heading text-xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</p>
-                              <p className="text-gray-500 text-xs line-through">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p>
+                              <p className="font-heading text-2xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</p>
+                              <p className="text-gray-500 text-[10px] uppercase">Actual</p>
+                              <p className="text-gray-500 text-xs mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} <span className="text-[10px]">target</span></p>
                             </>
                           ) : (
-                            <p className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p>
+                            <>
+                              <p className="font-heading text-2xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p>
+                              <p className="text-gray-400 text-[10px] uppercase">Target</p>
+                            </>
                           )}
-                          <p className="text-gray-300 text-xs">{getWorkoutUnit(workout.id) === "km" ? "km" : "miles"}</p>
+                          <p className="text-gray-400 text-xs mt-0.5">{getWorkoutUnit(workout.id) === "km" ? "km" : "mi"}</p>
                           <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button>
                         </div>}
                       </div>
@@ -1171,23 +1175,19 @@ export default function DashboardPage() {
                       <div className="mt-2 ml-9 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2"><p className="text-yellow-400 text-xs"><span className="font-medium">Partially completed:</span> {workout.skipReason}</p></div>
                     )}
                     {(workout.status === "complete" || workout.status === "partial") && workout.log && (
-                      <div className="mt-3 ml-9 pl-4 border-l-2 border-green-500/30">
-                        <div className="flex flex-wrap gap-3 text-xs">
-                          {workout.log.rpe && <span><span className="text-gray-300">Effort:</span> <span className="text-white">{workout.log.rpe}/10</span></span>}
-                          {workout.log.actualMiles && <span><span className="text-gray-300">{getWorkoutUnit(workout.id) === "km" ? "KM" : "Miles"}:</span> <span className="text-white">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</span></span>}
-                          {workout.log.actualPace && <span><span className="text-gray-300">Pace:</span> <span className="text-white">{getWorkoutUnit(workout.id) === "km" && workout.log.actualPace.includes("/mi") ? convertPaceToKm(workout.log.actualPace) : getWorkoutUnit(workout.id) === "mi" && workout.log.actualPace.includes("/km") ? convertPaceToMi(workout.log.actualPace) : workout.log.actualPace}</span></span>}
-                          {workout.log.duration && <span><span className="text-gray-300">Duration:</span> <span className="text-white">{workout.log.duration}</span></span>}
-                          {workout.log.avgHeartrate && <span><span className="text-gray-300">Avg HR:</span> <span className="text-red-400">{workout.log.avgHeartrate} bpm</span></span>}
-                          {workout.log.maxHeartrate && <span><span className="text-gray-300">Max HR:</span> <span className="text-red-400">{workout.log.maxHeartrate} bpm</span></span>}
-                          {workout.log.stress && <span><span className="text-gray-300">Stress:</span> <span className="text-white">{workout.log.stress}</span></span>}
-                          {workout.log.onPeriod === "yes" && <span className="text-pink-400 font-medium">On Period</span>}
+                      <div className="mt-3 ml-9">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {workout.log.rpe && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Effort</p><p className="text-white text-sm font-medium">{workout.log.rpe}/10</p></div>}
+                          {workout.log.actualMiles && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">{getWorkoutUnit(workout.id) === "km" ? "KM" : "Miles"}</p><p className="text-white text-sm font-medium">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</p></div>}
+                          {workout.log.actualPace && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Pace</p><p className="text-white text-sm font-medium">{getWorkoutUnit(workout.id) === "km" && workout.log.actualPace.includes("/mi") ? convertPaceToKm(workout.log.actualPace) : getWorkoutUnit(workout.id) === "mi" && workout.log.actualPace.includes("/km") ? convertPaceToMi(workout.log.actualPace) : workout.log.actualPace}</p></div>}
+                          {workout.log.duration && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Duration</p><p className="text-white text-sm font-medium">{workout.log.duration}</p></div>}
+                          {workout.log.avgHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Avg HR</p><p className="text-red-400 text-sm font-medium">{workout.log.avgHeartrate} bpm</p></div>}
+                          {workout.log.maxHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Max HR</p><p className="text-red-400 text-sm font-medium">{workout.log.maxHeartrate} bpm</p></div>}
+                          {workout.log.sleep && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Sleep</p><p className="text-white text-sm font-medium">{workout.log.sleep}/10</p></div>}
+                          {workout.log.stress && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Stress</p><p className="text-white text-sm font-medium">{workout.log.stress}</p></div>}
                         </div>
-                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1">{workout.log.notes}</p>}
-                        {workout.log.sleep && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            <span className="text-xs bg-primary/50 rounded px-2 py-0.5 text-gray-300">Sleep: {workout.log.sleep}/10</span>
-                          </div>
-                        )}
+                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-2">{workout.log.notes}</p>}
+                        {workout.log.onPeriod === "yes" && <p className="text-pink-400 text-xs font-medium mt-2">On Period</p>}
                       </div>
                     )}
 
@@ -1428,31 +1428,29 @@ export default function DashboardPage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 {cw.source === 'strava' ? (
-                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'bg-orange-500/20 text-orange-400 border border-dashed border-orange-400/50' : 'bg-orange-500/20 text-orange-400'}`}>
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                    {(currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'Strava — No Match Found' : (cw.activityName || 'Strava')}
-                                  </span>
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Extra</span>
                                 ) : (
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Added Workout</span>
-                                )}
-                                {cw.source !== 'strava' && completedClientWorkouts[cw.id] && clientWorkoutNotes[cw.id]?.startsWith('Synced from Strava:') && (
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
-                                    {cw.activityName || clientWorkoutNotes[cw.id]?.replace('Synced from Strava: ', '') || 'Synced'}
-                                  </span>
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Your Workout</span>
                                 )}
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(cw.type)}`}>{getTypeLabel(cw.type)}</span>
                                 {cw.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(cw.trainingType)}`}>{getTrainingTypeLabel(cw.trainingType)}</span>}
+                                {(cw.source === 'strava' || (cw.source !== 'strava' && completedClientWorkouts[cw.id] && clientWorkoutNotes[cw.id]?.startsWith('Synced from Strava:'))) && (
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1">
+                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+                                    {cw.activityName || (clientWorkoutNotes[cw.id]?.startsWith('Synced from Strava:') ? clientWorkoutNotes[cw.id].replace('Synced from Strava: ', '') : 'Synced')}
+                                  </span>
+                                )}
                               </div>
-                              {cw.notes && !cw.activityName && <p className="text-gray-400 text-sm">{cw.notes}</p>}
+                              {cw.notes && !cw.activityName && !cw.notes.startsWith('Kept as extra') && <p className="text-gray-400 text-sm">{cw.notes}</p>}
                               {/* Strava/synced activity details */}
                               {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
-                              {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
-                                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                                  {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
-                                  {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
-                                  {cw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{cw.avgHeartrate} bpm</span></span>}
-                                  {cw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{cw.maxHeartrate} bpm</span></span>}
+                              {(cw.averagePace || cw.duration || cw.avgHeartrate || cw.miles) && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                  {cw.miles && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">{getWorkoutUnit(cw.id) === "km" ? "KM" : "Miles"}</p><p className="text-white text-sm font-medium">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p></div>}
+                                  {cw.duration && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Duration</p><p className="text-white text-sm font-medium">{cw.duration}</p></div>}
+                                  {cw.averagePace && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Pace</p><p className="text-white text-sm font-medium">{cw.averagePace}</p></div>}
+                                  {cw.avgHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Avg HR</p><p className="text-red-400 text-sm font-medium">{cw.avgHeartrate} bpm</p></div>}
+                                  {cw.maxHeartrate && <div className="bg-primary/50 rounded-lg px-3 py-2"><p className="text-gray-400 text-[10px] uppercase">Max HR</p><p className="text-red-400 text-sm font-medium">{cw.maxHeartrate} bpm</p></div>}
                                 </div>
                               )}
 
@@ -1597,9 +1595,8 @@ export default function DashboardPage() {
                               )}
                               {completedClientWorkouts[cw.id] && (
                                 <div className="mt-2 flex items-center gap-2">
-                                  <span className="text-green-400 text-xs font-medium">Completed</span>
-                                  {clientWorkoutNotes[cw.id] && !clientWorkoutNotes[cw.id].startsWith('Synced from Strava:') && !clientWorkoutNotes[cw.id].startsWith('Kept as extra from Strava:') && <span className="text-gray-400 text-xs">— {clientWorkoutNotes[cw.id]}</span>}
-                                  <button onClick={async () => { setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false })); await fetch('/api/client-workouts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cw.id, completed: false, notes: '' }) }); }} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>
+                                  {clientWorkoutNotes[cw.id] && !clientWorkoutNotes[cw.id].startsWith('Synced from Strava:') && !clientWorkoutNotes[cw.id].startsWith('Kept as extra from Strava:') && <span className="text-gray-400 text-xs">{clientWorkoutNotes[cw.id]}</span>}
+                                  {cw.source !== 'strava' && <button onClick={async () => { setCompletedClientWorkouts(prev => ({ ...prev, [cw.id]: false })); await fetch('/api/client-workouts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cw.id, completed: false, notes: '' }) }); }} className="text-gray-600 hover:text-yellow-400 text-xs ml-auto">Undo</button>}
                                 </div>
                               )}
                             </div>
