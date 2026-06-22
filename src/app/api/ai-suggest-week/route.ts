@@ -396,10 +396,12 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
     if (!aiResponse.ok) {
       const errText = await aiResponse.text()
       console.error('AI API error:', aiResponse.status, errText)
-      if (aiResponse.status === 401) {
-        return NextResponse.json({ error: 'AI API key is invalid. Check your AI_GATEWAY_API_KEY or OPENAI_API_KEY in Vercel environment variables.' }, { status: 500 })
-      }
-      return NextResponse.json({ error: 'AI service returned an error. Please try again.' }, { status: 500 })
+      let errorDetail = `AI Gateway returned status ${aiResponse.status}`
+      try {
+        const errJson = JSON.parse(errText)
+        errorDetail = errJson.error?.message || errJson.error || errorDetail
+      } catch {}
+      return NextResponse.json({ error: errorDetail }, { status: 500 })
     }
 
     const aiData = await aiResponse.json()
