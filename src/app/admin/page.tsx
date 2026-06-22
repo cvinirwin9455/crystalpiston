@@ -341,6 +341,7 @@ export default function AdminPage() {
 
   // Delete template
   const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) return;
     try {
       const res = await fetch('/api/templates', {
         method: 'DELETE',
