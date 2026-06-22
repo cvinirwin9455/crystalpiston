@@ -827,7 +827,10 @@ export default function AdminPage() {
   // Fetch workout comments when viewed week changes
   useEffect(() => {
     if (!selectedWeek) return;
-    const completedIds = selectedWeek.workouts.filter(w => w.completed).map(w => w.id);
+    const completedIds = [
+      ...selectedWeek.workouts.filter(w => w.completed).map(w => w.id),
+      ...(selectedWeek.clientWorkouts || []).filter(cw => cw.completed).map(cw => cw.id),
+    ];
     if (completedIds.length === 0) return;
     const fetchComments = async () => {
       try {
@@ -1615,7 +1618,16 @@ export default function AdminPage() {
                               <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
                             </div>
-                            {w.miles && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(w.miles, w.distanceUnit)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
+                            {w.miles && <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                              {w.completed && w.log?.actualMiles ? (
+                                <>
+                                  <span className="text-green-400 font-heading text-lg">{convertDist(Number(w.log.actualMiles))}</span>
+                                  <span className="text-gray-500 text-xs">/ {convertDist(w.miles, w.distanceUnit)} {distUnitShort}</span>
+                                </>
+                              ) : (
+                                <span className="text-white font-heading text-lg">{convertDist(w.miles, w.distanceUnit)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>
+                              )}
+                            </div>}
                           </div>
                           {w.log && (
                             <div className="mt-2 ml-10">
@@ -1732,6 +1744,24 @@ export default function AdminPage() {
                               </div>
                               {cw.miles && !cw.averagePace && !cw.duration && <span className="text-white font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
+                            {/* Comments on client workouts */}
+                            {cw.completed && (
+                              <div className="mt-2 pt-2 border-t border-white/5">
+                                {(workoutComments[cw.id] || []).map(c => (
+                                  <div key={c.id} className={`mb-1.5 ${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.userName}</span>
+                                      <span className="text-gray-400 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    </div>
+                                    <p className="text-gray-300 text-xs">{c.message}</p>
+                                  </div>
+                                ))}
+                                <div className="flex gap-2 mt-1.5">
+                                  <input type="text" value={commentInput[cw.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [cw.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(cw.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Add a comment on this workout..." />
+                                  <button onClick={() => handleSendWorkoutComment(cw.id)} disabled={sendingComment === cw.id || !commentInput[cw.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === cw.id ? '...' : 'Send'}</button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                         {/* Add workout to day button (edit mode) */}

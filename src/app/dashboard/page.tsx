@@ -588,8 +588,11 @@ export default function DashboardPage() {
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
 
-  // Fetch workout comments for current week's completed workouts
-  const completedWorkoutIds = currentWeek ? currentWeek.workouts.filter(w => w.completed).map(w => w.id).join(',') : '';
+  // Fetch workout comments for current week's completed workouts (programmed + client)
+  const completedWorkoutIds = currentWeek ? [
+    ...currentWeek.workouts.filter(w => w.completed).map(w => w.id),
+    ...(currentWeek.clientWorkouts || []).filter(cw => completedClientWorkouts[cw.id]).map(cw => cw.id),
+  ].join(',') : '';
   useEffect(() => {
     if (!completedWorkoutIds) return;
     const fetchComments = async () => {
@@ -1126,21 +1129,16 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div>
+                        {workout.miles && <div className="flex items-baseline gap-2">
                           {workout.completed && workout.log?.actualMiles ? (
                             <>
-                              <p className="font-heading text-2xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</p>
-                              <p className="text-gray-500 text-[10px] uppercase">Actual</p>
-                              <p className="text-gray-500 text-xs mt-1">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} <span className="text-[10px]">target</span></p>
+                              <span className="font-heading text-xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</span>
+                              <span className="text-gray-500 text-xs">/ {convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} {getWorkoutUnit(workout.id)}</span>
                             </>
                           ) : (
-                            <>
-                              <p className="font-heading text-2xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)}</p>
-                              <p className="text-gray-400 text-[10px] uppercase">Target</p>
-                            </>
+                            <span className="font-heading text-xl text-white">{convertDist(workout.miles, getWorkoutUnit(workout.id), workout.distanceUnit)} <span className="text-gray-400 text-xs font-normal">{getWorkoutUnit(workout.id)}</span></span>
                           )}
-                          <p className="text-gray-400 text-xs mt-0.5">{getWorkoutUnit(workout.id) === "km" ? "km" : "mi"}</p>
-                          <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→ mi" : "→ km"}</button>
+                          <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [workout.id]: getWorkoutUnit(workout.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs transition-colors">{getWorkoutUnit(workout.id) === "km" ? "→mi" : "→km"}</button>
                         </div>}
                       </div>
                     </div>
@@ -1175,7 +1173,7 @@ export default function DashboardPage() {
                       <div className="mt-2 ml-9 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2"><p className="text-yellow-400 text-xs"><span className="font-medium">Partially completed:</span> {workout.skipReason}</p></div>
                     )}
                     {(workout.status === "complete" || workout.status === "partial") && workout.log && (
-                      <div className="mt-3 ml-9">
+                      <div className="mt-2 ml-9">
                         <div className="flex flex-wrap gap-1.5">
                           {workout.log.rpe && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">RPE</span> <span className="text-white font-medium">{workout.log.rpe}/10</span></span>}
                           {workout.log.actualMiles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{getWorkoutUnit(workout.id) === "km" ? "km" : "mi"}</span> <span className="text-white font-medium">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</span></span>}
@@ -1187,7 +1185,7 @@ export default function DashboardPage() {
                           {workout.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
                         </div>
-                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-2">{workout.log.notes}</p>}
+                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{workout.log.notes}</p>}
                       </div>
                     )}
 
@@ -1610,6 +1608,28 @@ export default function DashboardPage() {
                             <button onClick={() => handleDeleteClientWorkout(cw.id)} disabled={deletingClientWorkout === cw.id} className="text-gray-600 hover:text-red-400 text-xs transition-colors">{deletingClientWorkout === cw.id ? "..." : "✕"}</button>
                           </div>
                         </div>
+                        {/* Comments on client workouts */}
+                        {completedClientWorkouts[cw.id] && (
+                          <div className="mt-2 pt-2 border-t border-white/5">
+                            {(workoutComments[cw.id] || []).length > 0 && (
+                              <div className="space-y-1.5 mb-2">
+                                {(workoutComments[cw.id] || []).map(c => (
+                                  <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
+                                      <span className="text-gray-400 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    </div>
+                                    <p className="text-gray-300 text-xs">{c.message}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex gap-2">
+                              <input type="text" value={commentInput[cw.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [cw.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(cw.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
+                              <button onClick={() => handleSendWorkoutComment(cw.id)} disabled={sendingComment === cw.id || !commentInput[cw.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === cw.id ? '...' : 'Send'}</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Attached Strava suggestion for this client-created workout */}
