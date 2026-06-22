@@ -1175,7 +1175,7 @@ export default function AdminPage() {
           {filteredClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentPlan"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>{client.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{client.name}</p>
