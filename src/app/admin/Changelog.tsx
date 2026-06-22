@@ -3,9 +3,18 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-21T22:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-22T13:15:00Z";
 
 const updates = [
+  {
+    date: "June 22, 2026",
+    items: [
+      { area: "Admin", text: "Fixed week templates showing 'Run' for every day — now shows the correct workout type for each day" },
+      { area: "Admin", text: "Week and day templates now have an Edit button — edit name, category, workouts right on the card" },
+      { area: "Admin", text: "Template summary now correctly counts runs, cross training, walks, and rest days" },
+      { area: "Admin", text: "Editing a draft now scrolls smoothly to the edit form instead of jumping to the top" },
+    ],
+  },
   {
     date: "June 21, 2026",
     items: [
