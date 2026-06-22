@@ -132,3 +132,47 @@ export async function DELETE(request: Request) {
 
   return NextResponse.json({ success: true })
 }
+
+// PATCH /api/templates - Update a template by id
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const { templateId, name, category, data } = body
+
+  if (!templateId) {
+    return NextResponse.json({ error: 'templateId is required' }, { status: 400 })
+  }
+
+  const adminClient = await getAdminClient()
+
+  const updateFields: Record<string, any> = {}
+  if (name !== undefined) updateFields.name = name
+  if (category !== undefined) updateFields.category = category
+  if (data !== undefined) updateFields.data = data
+
+  const { data: template, error } = await adminClient
+    .from('templates')
+    .update(updateFields)
+    .eq('id', templateId)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, template })
+}

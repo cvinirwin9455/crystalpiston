@@ -219,6 +219,17 @@ export default function AdminPage() {
   const [showSaveWeekTemplate, setShowSaveWeekTemplate] = useState(false);
   const [showSaveDayTemplate, setShowSaveDayTemplate] = useState<number | null>(null);
   const [showLoadDayTemplate, setShowLoadDayTemplate] = useState<number | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editTemplateName, setEditTemplateName] = useState("");
+  const [editTemplateCategory, setEditTemplateCategory] = useState("");
+  const [editTemplateFocus, setEditTemplateFocus] = useState("");
+  const [editTemplateCoachMessage, setEditTemplateCoachMessage] = useState("");
+  const [editTemplateDays, setEditTemplateDays] = useState<any[]>([]);
+  const [savingTemplateEdit, setSavingTemplateEdit] = useState(false);
+  const [editingDayTemplateId, setEditingDayTemplateId] = useState<string | null>(null);
+  const [editDayTemplateName, setEditDayTemplateName] = useState("");
+  const [editDayTemplateCategory, setEditDayTemplateCategory] = useState("");
+  const [editDayTemplateData, setEditDayTemplateData] = useState<any>({});
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -245,6 +256,7 @@ export default function AdminPage() {
 
   // Save week as template
   const saveTemplateRef = useRef<HTMLDivElement>(null);
+  const createWeekRef = useRef<HTMLDivElement>(null);
   const handleSaveWeekTemplate = async () => {
     if (!templateName.trim()) return;
     setSavingTemplate(true);
@@ -353,6 +365,85 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Failed to delete template:', err);
+    }
+  };
+
+  // Start editing a week template inline
+  const startEditingTemplate = (template: Template) => {
+    setEditingTemplateId(template.id);
+    setEditTemplateName(template.name);
+    setEditTemplateCategory(template.category || '');
+    setEditTemplateFocus(template.data.focus || '');
+    setEditTemplateCoachMessage(template.data.coachMessage || '');
+    // Normalize days to new format
+    const days = (template.data.days || []).map((d: any) => {
+      if (d.workouts) return d;
+      return { day: d.day, workouts: [{ type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '', description: d.description || '', paceTarget: d.paceTarget || '', location: d.location || '', coachNotes: d.coachNotes || '', distanceUnit: d.distanceUnit || 'mi' }] };
+    });
+    setEditTemplateDays(days);
+  };
+
+  // Save edited week template
+  const handleSaveEditedTemplate = async () => {
+    if (!editingTemplateId || !editTemplateName.trim()) return;
+    setSavingTemplateEdit(true);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: editingTemplateId,
+          name: editTemplateName.trim(),
+          category: editTemplateCategory.trim() || null,
+          data: {
+            focus: editTemplateFocus,
+            coachMessage: editTemplateCoachMessage,
+            days: editTemplateDays,
+          },
+        }),
+      });
+      if (res.ok) {
+        setEditingTemplateId(null);
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to update template:', err);
+    } finally {
+      setSavingTemplateEdit(false);
+    }
+  };
+
+  // Start editing a day template inline
+  const startEditingDayTemplate = (template: Template) => {
+    setEditingDayTemplateId(template.id);
+    setEditDayTemplateName(template.name);
+    setEditDayTemplateCategory(template.category || '');
+    setEditDayTemplateData({ ...template.data });
+  };
+
+  // Save edited day template
+  const handleSaveEditedDayTemplate = async () => {
+    if (!editingDayTemplateId || !editDayTemplateName.trim()) return;
+    setSavingTemplateEdit(true);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: editingDayTemplateId,
+          name: editDayTemplateName.trim(),
+          category: editDayTemplateCategory.trim() || null,
+          data: editDayTemplateData,
+        }),
+      });
+      if (res.ok) {
+        setEditingDayTemplateId(null);
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to update day template:', err);
+    } finally {
+      setSavingTemplateEdit(false);
     }
   };
 
@@ -1131,6 +1222,7 @@ export default function AdminPage() {
       }),
     });
     setClientTab('create');
+    setTimeout(() => createWeekRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
   };
 
   // Delete a draft week
@@ -1631,7 +1723,7 @@ export default function AdminPage() {
                     <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
                   </div>
                 </div>
-                <h3 className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
+                <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
                 <p className="text-gray-300 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
                 {/* Load from Week Template */}
@@ -1967,21 +2059,40 @@ export default function AdminPage() {
                     <p className="text-gray-300 text-sm">No week templates saved yet. Build a week plan for a client and click &ldquo;Save as Template&rdquo; to create one.</p>
                   ) : (
                     <div className="space-y-3">
-                      {weekTemplates.map((t) => (
+                      {weekTemplates.map((t) => {
+                        // Normalize days: support both old flat format and new workouts-array format
+                        const normDays = (t.data.days || []).map((d: any) => {
+                          if (d.workouts && d.workouts.length > 0) {
+                            const wo = d.workouts[0];
+                            return { day: d.day, type: wo.type || 'rest', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles || '', workouts: d.workouts };
+                          }
+                          return { day: d.day, type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '' };
+                        });
+                        const runCount = normDays.filter((d: any) => d.type === 'run').length;
+                        const crossCount = normDays.filter((d: any) => d.type === 'cross').length;
+                        const restCount = normDays.filter((d: any) => d.type === 'rest').length;
+                        const walkCount = normDays.filter((d: any) => d.type === 'walk').length;
+                        const isEditing = editingTemplateId === t.id;
+                        return (
                         <div key={t.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
+                          {!isEditing ? (
+                            <>
                           <div className="flex items-center justify-between mb-3">
                             <div>
                               <h4 className="text-white font-medium">{t.name}</h4>
-                              <p className="text-gray-300 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{t.data.days?.filter((d: any) => d.type === 'run').length || 0} runs, {t.data.days?.filter((d: any) => d.type === 'cross').length || 0} cross, {t.data.days?.filter((d: any) => d.type === 'rest').length || 0} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
+                              <p className="text-gray-300 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{runCount} run{runCount !== 1 ? 's' : ''}{crossCount > 0 ? `, ${crossCount} cross` : ''}{walkCount > 0 ? `, ${walkCount} walk` : ''}, {restCount} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
                             </div>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => startEditingTemplate(t)} className="text-gray-500 hover:text-white text-xs transition-colors border border-white/10 px-3 py-1 rounded">Edit</button>
+                              <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
+                            </div>
                           </div>
                           {/* Preview grid */}
                           <div className="grid grid-cols-7 gap-1">
-                            {(t.data.days || []).map((d: any, i: number) => (
-                              <div key={i} className={`rounded p-2 text-center ${d.type === 'run' ? 'bg-accent/10' : d.type === 'cross' ? 'bg-gold/10' : 'bg-green-500/10'}`}>
+                            {normDays.map((d: any, i: number) => (
+                              <div key={i} className={`rounded p-2 text-center ${d.type === 'run' ? 'bg-accent/10' : d.type === 'cross' ? 'bg-gold/10' : d.type === 'walk' ? 'bg-blue-500/10' : d.type === 'cycling' ? 'bg-cyan-500/10' : d.type === 'stretching' ? 'bg-purple-500/10' : 'bg-green-500/10'}`}>
                                 <p className="text-gray-300 text-xs">{d.day?.slice(0, 3)}</p>
-                                <p className="text-white text-xs font-medium truncate">{d.title || d.trainingType || (d.type === 'rest' ? 'Rest' : d.type === 'cross' ? 'Cross' : 'Run')}</p>
+                                <p className="text-white text-xs font-medium truncate">{d.title || d.trainingType || getTypeLabel(d.type)}</p>
                                 {d.miles && <p className="text-accent text-xs">{convertDist(Number(d.miles))}{distUnitShort}</p>}
                               </div>
                             ))}
@@ -1991,8 +2102,67 @@ export default function AdminPage() {
                               <p className="text-gold text-xs">Coach message: {t.data.coachMessage}</p>
                             </div>
                           )}
+                            </>
+                          ) : (
+                            /* INLINE EDIT MODE for week template */
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-white font-heading text-sm uppercase">Editing: {t.name}</h4>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={handleSaveEditedTemplate} disabled={savingTemplateEdit} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs disabled:opacity-50">{savingTemplateEdit ? "Saving..." : "Save"}</button>
+                                  <button onClick={() => setEditingTemplateId(null)} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1.5 rounded-lg">Cancel</button>
+                                </div>
+                              </div>
+                              <div className="grid md:grid-cols-3 gap-3">
+                                <div><label className="text-gray-400 text-xs block mb-1">Template Name</label><input type="text" value={editTemplateName} onChange={(e) => setEditTemplateName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" /></div>
+                                <div><label className="text-gray-400 text-xs block mb-1">Category</label><input type="text" value={editTemplateCategory} onChange={(e) => setEditTemplateCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Base Building" /></div>
+                                <div><label className="text-gray-400 text-xs block mb-1">Week Focus</label><input type="text" value={editTemplateFocus} onChange={(e) => setEditTemplateFocus(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Speed & Long Run" /></div>
+                              </div>
+                              <div><label className="text-gold text-xs font-heading uppercase block mb-1">Coach Message</label><textarea value={editTemplateCoachMessage} onChange={(e) => setEditTemplateCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-gold/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold resize-none" rows={2} placeholder="Message shown to client..." /></div>
+                              {/* Day-by-day editing */}
+                              <div className="space-y-2">
+                                {editTemplateDays.map((day, i) => (
+                                  <div key={day.day} className={`bg-primary/50 border border-white/5 rounded-xl p-3 ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="text-white font-heading text-xs uppercase w-20">{day.day}</span>
+                                      {day.workouts.map((wo, wi) => (
+                                        <div key={wi} className="flex items-center gap-2 flex-1 flex-wrap">
+                                          <select value={wo.type || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], type: e.target.value }; if (e.target.value === 'rest') { nw[wi] = { ...nw[wi], trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '' }; } else { nw[wi] = { ...nw[wi], trainingType: '', title: '', miles: '', description: '', paceTarget: '' }; } nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                            <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                                          </select>
+                                          {wo.type === "run" && (
+                                            <>
+                                              <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                                <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                              </select>
+                                              <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                                            </>
+                                          )}
+                                          {wo.type === "walk" && (
+                                            <>
+                                              <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                                <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
+                                              </select>
+                                              <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                                            </>
+                                          )}
+                                          {wo.type === "stretching" && (
+                                            <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                              <option value="" disabled>Type</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
+                                            </select>
+                                          )}
+                                          {wo.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}
+                                          {(wo.type === "run" || wo.type === "walk") && <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      );})}
                     </div>
                   )}
                 </div>
@@ -2004,17 +2174,24 @@ export default function AdminPage() {
                     <p className="text-gray-300 text-sm">No day templates saved yet. When creating a week, click &ldquo;Save Day as Template&rdquo; on any workout to save it.</p>
                   ) : (
                     <div className="grid md:grid-cols-2 gap-3">
-                      {dayTemplates.map((t) => (
-                        <div key={t.id} className={`border rounded-xl p-4 ${t.data.type === 'run' ? 'border-accent/20 bg-accent/5' : t.data.type === 'cross' ? 'border-gold/20 bg-gold/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                      {dayTemplates.map((t) => {
+                        const isDayEditing = editingDayTemplateId === t.id;
+                        return (
+                        <div key={t.id} className={`border rounded-xl p-4 ${t.data.type === 'run' ? 'border-accent/20 bg-accent/5' : t.data.type === 'cross' ? 'border-gold/20 bg-gold/5' : t.data.type === 'walk' ? 'border-blue-500/20 bg-blue-500/5' : t.data.type === 'stretching' ? 'border-purple-500/20 bg-purple-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                          {!isDayEditing ? (
+                            <>
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="text-white text-sm font-medium">{t.name}</h4>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => startEditingDayTemplate(t)} className="text-gray-500 hover:text-white text-xs transition-colors">Edit</button>
+                              <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors">Delete</button>
+                            </div>
                           </div>
                           <div className="space-y-1 text-xs">
                             {t.category && <p className="text-gold">{t.category}</p>}
                             <p className="text-gray-400">
-                              <span className={`font-bold ${t.data.type === 'run' ? 'text-accent' : t.data.type === 'cross' ? 'text-gold' : 'text-green-400'}`}>{t.data.type === 'run' ? 'Run' : t.data.type === 'cross' ? 'Cross Training' : 'Rest'}</span>
-                              {t.data.trainingType && t.data.trainingType !== 'Rest' && <span> · {t.data.trainingType}</span>}
+                              <span className={`font-bold ${t.data.type === 'run' ? 'text-accent' : t.data.type === 'cross' ? 'text-gold' : t.data.type === 'walk' ? 'text-blue-400' : t.data.type === 'stretching' ? 'text-purple-400' : 'text-green-400'}`}>{getTypeLabel(t.data.type)}</span>
+                              {t.data.trainingType && t.data.trainingType !== 'Rest' && <span> · {getTrainingTypeLabel(t.data.trainingType)}</span>}
                               {t.data.miles && <span> · {convertDist(Number(t.data.miles))} {distUnitShort}</span>}
                             </p>
                             {t.data.title && <p className="text-white">{t.data.title}</p>}
@@ -2023,8 +2200,61 @@ export default function AdminPage() {
                             {t.data.location && <p className="text-gray-500">Location: {t.data.location}</p>}
                             {t.data.coachNotes && <p className="text-gold">Notes: {t.data.coachNotes}</p>}
                           </div>
+                            </>
+                          ) : (
+                            /* INLINE EDIT MODE for day template */
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-white text-xs font-heading uppercase">Edit Day Template</span>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={handleSaveEditedDayTemplate} disabled={savingTemplateEdit} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs disabled:opacity-50">{savingTemplateEdit ? "..." : "Save"}</button>
+                                  <button onClick={() => setEditingDayTemplateId(null)} className="text-gray-400 hover:text-white text-xs">Cancel</button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input type="text" value={editDayTemplateName} onChange={(e) => setEditDayTemplateName(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Name" />
+                                <input type="text" value={editDayTemplateCategory} onChange={(e) => setEditDayTemplateCategory(e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Category" />
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <select value={editDayTemplateData.type || ""} onChange={(e) => { const newType = e.target.value; setEditDayTemplateData((prev: any) => ({ ...prev, type: newType, trainingType: newType === 'rest' ? 'Rest' : '', title: '', miles: '', description: '', paceTarget: '' })); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                  <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                                </select>
+                                {editDayTemplateData.type === "run" && (
+                                  <>
+                                    <select value={editDayTemplateData.trainingType || ""} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                      <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                    </select>
+                                    <input type="text" value={editDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setEditDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                                  </>
+                                )}
+                                {editDayTemplateData.type === "walk" && (
+                                  <>
+                                    <select value={editDayTemplateData.trainingType || ""} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                      <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
+                                    </select>
+                                    <input type="text" value={editDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setEditDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
+                                  </>
+                                )}
+                              </div>
+                              {(editDayTemplateData.type === "run" || editDayTemplateData.type === "walk") && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input type="text" value={editDayTemplateData.title || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, title: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                                  <input type="text" value={editDayTemplateData.paceTarget || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, paceTarget: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Pace target" />
+                                  <input type="text" value={editDayTemplateData.description || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, description: e.target.value }))} className="col-span-2 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Description" />
+                                  <input type="text" value={editDayTemplateData.location || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, location: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Location" />
+                                  <input type="text" value={editDayTemplateData.coachNotes || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, coachNotes: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Coach notes" />
+                                </div>
+                              )}
+                              {(editDayTemplateData.type === "cross" || editDayTemplateData.type === "cycling" || editDayTemplateData.type === "stretching") && (
+                                <div className="space-y-2">
+                                  <input type="text" value={editDayTemplateData.title || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, title: e.target.value }))} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                                  <textarea value={editDayTemplateData.description || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, description: e.target.value }))} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent resize-none" rows={2} placeholder="Description" />
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      );})}
                     </div>
                   )}
                 </div>
