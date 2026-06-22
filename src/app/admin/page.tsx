@@ -163,10 +163,17 @@ export default function AdminPage() {
         const res = await fetch('/api/ai-credits');
         if (res.ok) {
           const data = await res.json();
-          // Handle various response formats from the API
-          const used = data.used ?? data.credits_used ?? data.usage ?? 0;
-          const total = data.total ?? data.credits_total ?? data.limit ?? 5.00;
-          setAiCredits({ used: parseFloat(used) || 0, total: parseFloat(total) || 5.00 });
+          // Try multiple field names since we don't know exact API format
+          const used = data.used ?? (data.total != null && data.remaining != null ? data.total - data.remaining : null);
+          const total = data.total ?? 5.00;
+          if (used !== null && total !== null) {
+            setAiCredits({ used: parseFloat(used) || 0, total: parseFloat(total) || 5.00 });
+          } else if (data.remaining !== null && data.remaining !== undefined) {
+            // If we only have remaining, calculate used from $5 total
+            const t = parseFloat(data.total) || 5.00;
+            const r = parseFloat(data.remaining) || 0;
+            setAiCredits({ used: t - r, total: t });
+          }
         }
       } catch {}
     };

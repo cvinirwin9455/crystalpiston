@@ -33,11 +33,26 @@ export async function GET() {
     })
 
     if (!res.ok) {
-      return NextResponse.json({ error: 'Failed to fetch credits' }, { status: 500 })
+      const errText = await res.text()
+      console.error('AI credits endpoint error:', res.status, errText)
+      return NextResponse.json({ error: 'Failed to fetch credits', status: res.status, raw: errText }, { status: 500 })
     }
 
     const data = await res.json()
-    return NextResponse.json(data)
+    console.log('AI credits raw response:', JSON.stringify(data))
+
+    // Pass through the raw response and also try to normalize it
+    // Vercel AI Gateway may use different field names
+    const remaining = data.remaining ?? data.remaining_credits ?? data.balance ?? null
+    const used = data.used ?? data.credits_used ?? data.usage ?? null
+    const total = data.total ?? data.credits_total ?? data.limit ?? data.granted ?? null
+
+    return NextResponse.json({
+      raw: data,
+      remaining: remaining,
+      used: used,
+      total: total,
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to check credits' }, { status: 500 })
   }
