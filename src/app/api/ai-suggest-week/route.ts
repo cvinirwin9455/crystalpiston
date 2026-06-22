@@ -360,7 +360,7 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
 
     if (aiGatewayKey) {
       // Use Vercel AI Gateway (recommended - built into Vercel, $5 free/month)
-      baseUrl = 'https://gateway.vercel.ai/v1'
+      baseUrl = 'https://ai-gateway.vercel.sh/v1'
       apiKey = aiGatewayKey
     } else if (openaiKey) {
       // Fallback to direct OpenAI API
@@ -372,6 +372,9 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
       }, { status: 500 })
     }
 
+    // Use provider-prefixed model name for AI Gateway, plain name for direct OpenAI
+    const modelName = aiGatewayKey ? 'openai/gpt-4o-mini' : 'gpt-4o-mini'
+
     const aiResponse = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -379,7 +382,7 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: modelName,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
@@ -427,7 +430,7 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
         days: suggestion.days,
       },
       meta: {
-        model: 'gpt-4o-mini',
+        model: modelName,
         weeksAnalyzed: pastWeeks?.length || 0,
         workoutsAnalyzed: pastWorkouts.length,
       },
