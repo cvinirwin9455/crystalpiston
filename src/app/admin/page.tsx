@@ -814,7 +814,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Plan-period stats filter
-  const [adminStatsFilter, setAdminStatsFilter] = useState<"currentWeek" | "currentPlan" | "allTime">("currentPlan");
+  const [adminStatsFilter, setAdminStatsFilter] = useState<"currentWeek" | "currentPlan" | "allTime">("currentWeek");
 
   // Filter workouts by active plan date range for "Current Plan" stats
   const planFilteredWorkouts = (() => {
