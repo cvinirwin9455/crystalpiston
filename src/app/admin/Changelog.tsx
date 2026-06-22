@@ -3,14 +3,24 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-22T13:15:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-22T22:00:00Z";
 
 const updates = [
   {
     date: "June 22, 2026",
     items: [
+      { area: "All", text: "Workout cards redesigned — cleaner layout with compact metric pills (RPE, Miles, Pace, Duration, HR, Sleep) all in one line" },
+      { area: "All", text: "Consistent source badges on every workout: 'Programmed' (purple), 'Your Workout/Client' (cyan), 'Extra' (yellow for Strava standalone)" },
+      { area: "All", text: "Strava-synced workouts now show the orange Strava logo + activity name (e.g. 'Morning Trail Run') as a badge" },
+      { area: "All", text: "Removed redundant 'Synced from Strava' and 'Kept as extra from Strava' text — the badge handles it now" },
+      { area: "All", text: "Removed green 'Completed' badge — the green checkmark circle is enough" },
+      { area: "All", text: "Distance display improved — actual (green) and target (gray) shown side by side, not stacked" },
+      { area: "All", text: "Comments now available on all workout types — client-created and Strava extras, not just programmed workouts" },
+      { area: "Admin", text: "Admin side now matches client side — same badges, same metrics layout, same distance display" },
       { area: "Admin", text: "Fixed week templates showing 'Run' for every day — now shows the correct workout type for each day" },
       { area: "Admin", text: "Week and day templates now have an Edit button — edit name, category, workouts right on the card" },
+      { area: "Admin", text: "Create templates directly from the Templates view (+ Create Week Template, + Create Day Template)" },
+      { area: "Admin", text: "Templates sorted alphabetically by name" },
       { area: "Admin", text: "Template summary now correctly counts runs, cross training, walks, and rest days" },
       { area: "Admin", text: "Editing a draft now scrolls smoothly to the edit form instead of jumping to the top" },
     ],

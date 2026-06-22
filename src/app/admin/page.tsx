@@ -32,7 +32,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-22T13:15:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-22T22:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);

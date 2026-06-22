@@ -126,6 +126,15 @@ export default function DashboardPage() {
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
 
   const clientUpdates = [
+    { date: "June 22, 2026", items: [
+      "Workout cards redesigned — cleaner layout with metrics in compact pills on one line",
+      "New source badges: 'Programmed' (Crystal's workouts), 'Your Workout' (yours), 'Extra' (Strava standalone)",
+      "Strava-synced workouts show the orange Strava logo + activity name as a badge",
+      "Removed redundant 'Synced from Strava' and 'Kept as extra' text — badges handle it",
+      "Removed green 'Completed' badge — the green checkmark is enough",
+      "Distance now shows actual (green) and target (gray) side by side after completion",
+      "You can now comment on all workout types — your added workouts and Strava extras too",
+    ]},
     { date: "June 21, 2026", items: [
       "New notification toggles in Account: Strava Activity Synced + Workout Comments",
       "You can now turn off Strava sync emails and workout comment emails individually",
@@ -178,7 +187,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
-    if (!lastSeen || lastSeen < "2026-06-21T22:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-22T22:00:00Z") {
       setShowNewBadge(true);
     }
   }, []);
