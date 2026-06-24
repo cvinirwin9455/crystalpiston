@@ -14,6 +14,7 @@ const updates = [
       { area: "Client", text: "No more 'Extra' workout appearing when Strava clearly matches your plan — only shows as Extra when the match isn't clear" },
       { area: "Admin", text: "Crystal gets notified immediately when a client's Strava auto-matches to their programmed workout" },
       { area: "All", text: "Fixed duplicate showing on dashboard — matched Strava workouts no longer appear as both 'completed programmed' AND a separate 'Extra' entry" },
+      { area: "Client", text: "You can now edit your workout log after submitting — tap the Edit button on any completed workout to fix mistakes (wrong miles, RPE, notes, etc.)" },
     ],
   },
   {

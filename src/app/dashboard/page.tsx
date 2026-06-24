@@ -11,6 +11,7 @@ type WeekData = { weekId: string; label: string; dateRange: string; focus: strin
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
+  const [editingWorkoutLog, setEditingWorkoutLog] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
@@ -131,6 +132,7 @@ export default function DashboardPage() {
       "Auto-matched workouts show the Strava badge and your miles/pace/duration/HR automatically on the programmed card",
       "No more 'Extra' workout appearing when Strava clearly matches your plan — only shows as Extra when the match isn't clear",
       "Fixed duplicate issue — matched Strava workouts no longer show as both a completed programmed workout AND a separate Extra entry",
+      "You can now EDIT your workout log after submitting — tap the Edit button to fix mistakes (wrong miles, RPE, pace, notes, etc.)",
     ]},
     { date: "June 22, 2026", items: [
       "Workout cards redesigned — cleaner layout with metrics in compact pills on one line",
@@ -1179,7 +1181,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                     {expandedWorkout === workout.id && !workout.completed && (
-                      <div className="mt-2 ml-9"><button onClick={() => { setExpandedWorkout(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-xs">Cancel</button></div>
+                      <div className="mt-2 ml-9"><button onClick={() => { setExpandedWorkout(null); setEditingWorkoutLog(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-xs">Cancel</button></div>
                     )}
                     {workout.status === "skipped" && workout.skipReason && (
                       <div className="mt-2 ml-9 bg-red-500/10 border border-red-500/20 rounded-lg p-2"><p className="text-red-400 text-xs"><span className="font-medium">Skipped:</span> {workout.skipReason}</p></div>
@@ -1199,8 +1201,9 @@ export default function DashboardPage() {
                           {workout.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Sleep</span> <span className="text-white font-medium">{workout.log.sleep}/10</span></span>}
                           {workout.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
+                          {editingWorkoutLog !== workout.id && <button onClick={() => setEditingWorkoutLog(workout.id)} className="text-xs bg-primary/50 rounded px-2 py-1 text-gray-400 hover:text-accent transition-colors cursor-pointer flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>Edit</button>}
                         </div>
-                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{workout.log.notes}</p>}
+                        {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && !workout.log.notes.startsWith('Auto-synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{workout.log.notes}</p>}
                       </div>
                     )}
 
@@ -1220,7 +1223,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Expanded Log Form */}
-                  {expandedWorkout === workout.id && (
+                  {(expandedWorkout === workout.id || editingWorkoutLog === workout.id) && (
                     <div className="border-t border-white/10 bg-primary/30 p-5">
                       {/* REST DAY - optional comment only */}
                       {workout.type === "rest" && (
@@ -1247,7 +1250,7 @@ export default function DashboardPage() {
                           <p className="text-gray-400 text-xs">Fill in what you actually did below, then explain what you couldn&apos;t complete.</p>
                         </div>
                       )}
-                      <h4 className="font-heading text-sm uppercase text-accent mb-4">{skipType === "partial" ? "What Did You Do?" : "Your Workout Log"}</h4>
+                      <h4 className="font-heading text-sm uppercase text-accent mb-4">{editingWorkoutLog ? "Edit Your Log" : skipType === "partial" ? "What Did You Do?" : "Your Workout Log"}</h4>
 
                       {/* RPE + Sleep — side by side at top */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -1300,11 +1303,11 @@ export default function DashboardPage() {
 
                       {/* Save & Close */}
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-                        <button onClick={() => { setExpandedWorkout(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
-                        {skipType === "partial" ? (
+                        <button onClick={() => { setExpandedWorkout(null); setEditingWorkoutLog(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
+                        {skipType === "partial" && !editingWorkoutLog ? (
                           <button onClick={async () => { if ((workout.type === "run" || workout.type === "walk") && (!workout.log?.actualMiles || !/^\d+(\.\d{1,2})?$/.test(workout.log.actualMiles))) { alert(`Please enter a valid number for Actual ${clientDistanceUnit === "km" ? "KM" : "Miles"} (e.g. 4.34). Only numbers with up to 2 decimal places are allowed.`); return; } await markSkipped(workout.id); setExpandedWorkout(null); }} disabled={savingLog || !skipReason} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Save as Partially Done"}</button>
                         ) : (
-                          <button onClick={async () => { if ((workout.type === "run" || workout.type === "walk") && (!workout.log?.actualMiles || !/^\d+(\.\d{1,2})?$/.test(workout.log.actualMiles))) { alert(`Please enter a valid number for Actual ${clientDistanceUnit === "km" ? "KM" : "Miles"} (e.g. 4.34). Only numbers with up to 2 decimal places are allowed.`); return; } await toggleCompleted(workout.id); setExpandedWorkout(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : "Complete & Save"}</button>
+                          <button onClick={async () => { if ((workout.type === "run" || workout.type === "walk") && workout.log?.actualMiles && !/^\d+(\.\d{1,2})?$/.test(workout.log.actualMiles)) { alert(`Please enter a valid number for Actual ${clientDistanceUnit === "km" ? "KM" : "Miles"} (e.g. 4.34). Only numbers with up to 2 decimal places are allowed.`); return; } await toggleCompleted(workout.id); setExpandedWorkout(null); setEditingWorkoutLog(null); }} disabled={savingLog} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg text-sm transition-colors disabled:opacity-50">{savingLog ? "Saving..." : editingWorkoutLog ? "Save Changes" : "Complete & Save"}</button>
                         )}
                       </div>
                         </>
