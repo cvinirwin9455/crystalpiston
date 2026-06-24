@@ -81,6 +81,7 @@ export async function GET() {
   let stravaActivityNameByWorkoutId = new Map<string, string>()
   let stravaActivitiesByWeek = new Map<string, any[]>()
   let stravaMatchedActivityIds = new Set<string>()
+  let allStravaActivities: any[] = []
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
@@ -88,7 +89,8 @@ export async function GET() {
       .eq('user_id', user.id)
       .in('week_id', weekIds)
     
-    for (const sa of stravaActivities || []) {
+    allStravaActivities = stravaActivities || []
+    for (const sa of allStravaActivities) {
       if (sa.match_status === 'matched' && sa.matched_workout_id) {
         stravaMatchedWorkoutIds.add(sa.matched_workout_id)
         stravaMatchedActivityIds.add(sa.id)
@@ -126,7 +128,7 @@ export async function GET() {
 
     // Also hide strava extras when there's a completed programmed workout of the same
     // type on the same day — handles legacy data where match wasn't confirmed properly
-    for (const sa of stravaActivities || []) {
+    for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue
       if (sa.match_status === 'dismissed') continue
       const weekWorkouts = workoutsByWeekId.get(sa.week_id) || []
@@ -255,6 +257,21 @@ export async function GET() {
       })),
       workouts: weekWorkouts.map(wo => {
         const log = logsByWorkoutId.get(wo.id)
+        // If strava-matched but log has no miles, pull directly from strava_activities
+        let stravaFallback: any = null
+        if (stravaMatchedWorkoutIds.has(wo.id) && log && !log.actual_miles) {
+          stravaFallback = allStravaActivities.find((sa: any) => sa.matched_workout_id === wo.id)
+        }
+        const stravaMiles = stravaFallback ? (stravaFallback.miles || (stravaFallback.distance_meters ? +(stravaFallback.distance_meters / 1609.344).toFixed(2) : null)) : null
+        const stravaPace = stravaFallback ? (stravaFallback.average_pace || (stravaFallback.moving_time_seconds && stravaFallback.distance_meters ? (() => {
+          const m = stravaFallback.distance_meters / 1609.344; const ps = stravaFallback.moving_time_seconds / m
+          return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+        })() : null)) : null
+        const stravaDur = stravaFallback ? (stravaFallback.duration || (stravaFallback.moving_time_seconds ? (() => {
+          const h = Math.floor(stravaFallback.moving_time_seconds / 3600); const m = Math.round((stravaFallback.moving_time_seconds % 3600) / 60)
+          return h > 0 ? `${h}h ${m}m` : `${m}m`
+        })() : null)) : null
+
         return {
           id: wo.id,
           day: wo.day,
@@ -283,12 +300,12 @@ export async function GET() {
             recovery: log.recovery?.toString() || '',
             mood: log.mood?.toString() || '',
             hunger: log.hunger?.toString() || '',
-            actualMiles: log.actual_miles?.toString() || '',
-            actualPace: log.actual_pace || '',
+            actualMiles: log.actual_miles?.toString() || (stravaMiles?.toString() || ''),
+            actualPace: log.actual_pace || stravaPace || '',
             onPeriod: log.on_period ? 'yes' : 'no',
-            duration: log.duration || '',
-            avgHeartrate: log.avg_heartrate || null,
-            maxHeartrate: log.max_heartrate || null,
+            duration: log.duration || stravaDur || '',
+            avgHeartrate: log.avg_heartrate || stravaFallback?.avg_heartrate || null,
+            maxHeartrate: log.max_heartrate || stravaFallback?.max_heartrate || null,
           } : undefined,
         }
       }),

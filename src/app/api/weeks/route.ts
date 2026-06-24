@@ -259,6 +259,23 @@ export async function GET(request: Request) {
       })),
       workouts: weekWorkouts.map(wo => {
         const log = logsByWorkoutId.get(wo.id)
+        // If this workout is strava-matched but the log has no miles, pull from strava_activities
+        let stravaData: any = null
+        if (stravaMatchedWorkoutIds.has(wo.id) && log && !log.actual_miles) {
+          stravaData = (stravaActivities || []).find((sa: any) => sa.matched_workout_id === wo.id)
+        }
+        const actualMilesFromStrava = stravaData ? (stravaData.miles || (stravaData.distance_meters ? +(stravaData.distance_meters / 1609.344).toFixed(2) : null)) : null
+        const actualPaceFromStrava = stravaData ? (stravaData.average_pace || (stravaData.moving_time_seconds && stravaData.distance_meters ? (() => {
+          const m = stravaData.distance_meters / 1609.344
+          const ps = stravaData.moving_time_seconds / m
+          return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+        })() : null)) : null
+        const durationFromStrava = stravaData ? (stravaData.duration || (stravaData.moving_time_seconds ? (() => {
+          const h = Math.floor(stravaData.moving_time_seconds / 3600)
+          const m = Math.round((stravaData.moving_time_seconds % 3600) / 60)
+          return h > 0 ? `${h}h ${m}m` : `${m}m`
+        })() : null)) : null
+
         return {
           id: wo.id,
           day: wo.day,
@@ -288,12 +305,12 @@ export async function GET(request: Request) {
             recovery: log.recovery?.toString() || '',
             mood: log.mood?.toString() || '',
             hunger: log.hunger?.toString() || '',
-            actualMiles: log.actual_miles?.toString() || '',
-            actualPace: log.actual_pace || '',
+            actualMiles: log.actual_miles?.toString() || (actualMilesFromStrava?.toString() || ''),
+            actualPace: log.actual_pace || actualPaceFromStrava || '',
             onPeriod: log.on_period ? 'yes' : 'no',
-            duration: log.duration || '',
-            avgHeartrate: log.avg_heartrate || null,
-            maxHeartrate: log.max_heartrate || null,
+            duration: log.duration || durationFromStrava || '',
+            avgHeartrate: log.avg_heartrate || stravaData?.avg_heartrate || null,
+            maxHeartrate: log.max_heartrate || stravaData?.max_heartrate || null,
           } : undefined,
         }
       }),
