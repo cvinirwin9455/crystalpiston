@@ -171,8 +171,8 @@ export async function GET(request: Request) {
           coachNotes: wo.coach_notes,
           sortOrder: wo.sort_order,
           completed: !!log,
-          stravaSynced: stravaMatchedWorkoutIds.has(wo.id),
-          stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || null,
+          stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
+          stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,
           status: log?.status || null,
           skipReason: log?.skip_reason || null,
           log: log ? {
