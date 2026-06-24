@@ -27,8 +27,10 @@ export function findBestMatch(
   stravaTrainingType: string | null,
   candidates: MatchCandidate[]
 ): MatchResult {
-  // Never auto-match activities with essentially 0 distance (likely accidental start/stop)
-  if (stravaMiles < 0.1) {
+  // Never auto-match activities with essentially 0 distance for distance-based types
+  // (likely accidental start/stop). Non-distance types (stretching, strength, cross) are fine with 0.
+  const distanceTypes = ['run', 'walk', 'cycling'];
+  if (distanceTypes.includes(stravaType) && stravaMiles < 0.1) {
     return { candidateId: null, candidateType: null, confidence: 0, reasons: ['Activity has no distance — likely accidental'] };
   }
 

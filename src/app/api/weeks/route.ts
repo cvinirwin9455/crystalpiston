@@ -128,8 +128,9 @@ export async function GET(request: Request) {
     for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue // already handled
       if (sa.match_status === 'dismissed') continue
-      // Skip 0-mile activities (accidental start/stop)
-      if (!sa.miles && !sa.distance_meters) continue
+      // Skip 0-mile distance-based activities (accidental start/stop) but allow stretching/strength/cross
+      const distanceTypes = ['run', 'walk', 'cycling']
+      if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
       // Check if there's a completed programmed workout on the same day with same type
       for (const [, wos] of workoutsByWeekId) {
         for (const wo of wos) {
@@ -166,7 +167,9 @@ export async function GET(request: Request) {
 
             // Only hide the Extra if we can actually backfill the data
             // Otherwise leave both visible so data isn't lost
-            if (backfillMiles || (existingLog && existingLog.actual_miles)) {
+            // Non-distance types (stretching, strength, cross) can be hidden even without miles
+            const isDistanceType = ['run', 'walk', 'cycling'].includes(sa.type)
+            if (!isDistanceType || backfillMiles || (existingLog && existingLog.actual_miles)) {
               stravaMatchedActivityIds.add(sa.id)
               stravaMatchedWorkoutIds.add(wo.id)
               if (sa.activity_name) {
