@@ -361,7 +361,12 @@ export async function POST(request: Request) {
       if (matchResult.candidateId && matchResult.confidence >= 50) {
         suggestedMatchId = matchResult.candidateId
         suggestedMatchType = matchResult.candidateType
-        matchStatus = 'suggested'
+        // Auto-match for high confidence programmed workouts
+        if (matchResult.confidence >= 80 && matchResult.candidateType === 'programmed') {
+          matchStatus = 'matched'
+        } else {
+          matchStatus = 'suggested'
+        }
       }
     }
 
@@ -396,8 +401,36 @@ export async function POST(request: Request) {
       continue
     }
 
-    // Create client_workouts entry if we have a matching week
-    if (weekId && newActivity) {
+    // For high-confidence auto-matches to programmed workouts:
+    // Create a workout_log and skip creating a standalone client_workouts entry
+    const isAutoMatch = matchStatus === 'matched' && suggestedMatchId && suggestedMatchType === 'programmed'
+
+    if (isAutoMatch && suggestedMatchId && newActivity) {
+      // Create/upsert a workout log for the programmed workout
+      const { data: existingLog } = await adminClient
+        .from('workout_logs')
+        .select('id')
+        .eq('workout_id', suggestedMatchId)
+        .single()
+
+      const logData = {
+        workout_id: suggestedMatchId,
+        status: 'complete',
+        actual_miles: miles,
+        actual_pace: pace,
+        duration,
+        notes: `Auto-synced from Strava: ${activity.name}`,
+        avg_heartrate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
+        max_heartrate: activity.max_heartrate ? Math.round(activity.max_heartrate) : null,
+      }
+
+      if (existingLog) {
+        await adminClient.from('workout_logs').update(logData).eq('id', existingLog.id)
+      } else {
+        await adminClient.from('workout_logs').insert(logData)
+      }
+    } else if (weekId && newActivity) {
+      // Lower confidence or no match — create a client_workouts entry so it shows on dashboard
       await adminClient
         .from('client_workouts')
         .insert({

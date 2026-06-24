@@ -126,6 +126,12 @@ export default function DashboardPage() {
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
 
   const clientUpdates = [
+    { date: "June 24, 2026", items: [
+      "Strava activities now auto-match to your programmed workout when it's an obvious fit — no more manual confirmation needed",
+      "Auto-matched workouts show the Strava badge and your miles/pace/duration/HR automatically on the programmed card",
+      "No more 'Extra' workout appearing when Strava clearly matches your plan — only shows as Extra when the match isn't clear",
+      "Fixed duplicate issue — matched Strava workouts no longer show as both a completed programmed workout AND a separate Extra entry",
+    ]},
     { date: "June 22, 2026", items: [
       "Workout cards redesigned — cleaner layout with metrics in compact pills on one line",
       "New source badges: 'Programmed' (Crystal's workouts), 'Your Workout' (yours), 'Extra' (Strava standalone)",

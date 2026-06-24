@@ -203,6 +203,10 @@ export async function POST(request: Request) {
       }
     }
 
+    // Determine if this is a high-confidence auto-match (>= 80)
+    const isAutoMatch = suggestedMatchId && suggestedMatchType === 'programmed' && matchConfidence >= 80
+    const matchStatus = isAutoMatch ? 'matched' : (suggestedMatchId ? 'suggested' : 'pending')
+
     // Store the strava activity with suggested match
     const activityData = {
       user_id: connection.user_id,
@@ -221,7 +225,7 @@ export async function POST(request: Request) {
       start_date: activity.start_date,
       avg_heartrate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
       max_heartrate: activity.max_heartrate ? Math.round(activity.max_heartrate) : null,
-      match_status: suggestedMatchId ? 'suggested' : 'pending',
+      match_status: matchStatus,
       // Only set matched_workout_id for programmed workouts (FK references workouts table)
       matched_workout_id: (suggestedMatchId && suggestedMatchType === 'programmed') ? suggestedMatchId : null,
       matched_client_workout_id: (suggestedMatchId && suggestedMatchType === 'client') ? suggestedMatchId : null,
@@ -244,8 +248,36 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: insertError.message }, { status: 500 })
       }
 
-      // Create a client_workouts entry so it shows on dashboard (with pending match info)
-      if (weekId && newActivity) {
+      // For high-confidence auto-matches to programmed workouts:
+      // Create a workout_log and skip creating a standalone client_workouts entry
+      if (isAutoMatch && suggestedMatchId && newActivity) {
+        // Create/upsert a workout log for the programmed workout
+        const { data: existingLog } = await adminClient
+          .from('workout_logs')
+          .select('id')
+          .eq('workout_id', suggestedMatchId)
+          .single()
+
+        const logData = {
+          workout_id: suggestedMatchId,
+          status: 'complete',
+          actual_miles: miles,
+          actual_pace: pace,
+          duration,
+          notes: `Auto-synced from Strava: ${activity.name}`,
+          avg_heartrate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
+          max_heartrate: activity.max_heartrate ? Math.round(activity.max_heartrate) : null,
+        }
+
+        if (existingLog) {
+          await adminClient.from('workout_logs').update(logData).eq('id', existingLog.id)
+        } else {
+          await adminClient.from('workout_logs').insert(logData)
+        }
+
+        console.log(`Auto-matched Strava activity ${activityId} to programmed workout ${suggestedMatchId} (confidence: ${matchConfidence}%)`)
+      } else if (weekId && newActivity) {
+        // Lower confidence or no match — create a client_workouts entry so it shows on dashboard
         await adminClient
           .from('client_workouts')
           .insert({
@@ -267,7 +299,7 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log(`Processed Strava activity ${activityId} for user ${connection.user_id}: ${activity.name} (${workoutType}, ${miles} mi, ${duration}) — match: ${suggestedMatchId ? `suggested (${matchConfidence}%)` : 'none'}`)
+    console.log(`Processed Strava activity ${activityId} for user ${connection.user_id}: ${activity.name} (${workoutType}, ${miles} mi, ${duration}) — match: ${isAutoMatch ? `auto-matched (${matchConfidence}%)` : suggestedMatchId ? `suggested (${matchConfidence}%)` : 'none'}`)
 
     // Send email notification to the client about the imported activity
     try {
@@ -338,7 +370,22 @@ export async function POST(request: Request) {
       console.error('Failed to send Strava import email to client:', emailErr)
     }
 
-    return NextResponse.json({ success: true, activityId, type: workoutType, miles, duration, suggestedMatch: suggestedMatchId, matchConfidence })
+    // Notify Crystal about auto-matched activities (high confidence)
+    if (isAutoMatch && suggestedMatchId) {
+      try {
+        await notifyCrystalStravaMatch(adminClient, connection.user_id, {
+          miles,
+          average_pace: pace,
+          duration,
+          activity_name: activity.name,
+          day: dayOfWeek,
+        }, suggestedMatchId, 'programmed', request)
+      } catch (notifErr) {
+        console.error('Failed to send auto-match notification to Crystal:', notifErr)
+      }
+    }
+
+    return NextResponse.json({ success: true, activityId, type: workoutType, miles, duration, suggestedMatch: suggestedMatchId, matchConfidence, autoMatched: isAutoMatch })
   } catch (err: any) {
     console.error('Failed to process Strava activity:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })

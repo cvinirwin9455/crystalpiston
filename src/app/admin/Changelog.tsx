@@ -3,9 +3,19 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-22T22:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-24T22:00:00Z";
 
 const updates = [
+  {
+    date: "June 24, 2026",
+    items: [
+      { area: "Client", text: "Strava activities now auto-match to your programmed workout when it's an obvious fit (same day, same type, similar distance) — no more manual confirmation needed" },
+      { area: "Client", text: "Auto-matched Strava workouts show the orange Strava badge and your miles/pace/duration/HR automatically on the programmed card" },
+      { area: "Client", text: "No more 'Extra' workout appearing when Strava clearly matches your plan — only shows as Extra when the match isn't clear" },
+      { area: "Admin", text: "Crystal gets notified immediately when a client's Strava auto-matches to their programmed workout" },
+      { area: "All", text: "Fixed duplicate showing on dashboard — matched Strava workouts no longer appear as both 'completed programmed' AND a separate 'Extra' entry" },
+    ],
+  },
   {
     date: "June 22, 2026",
     items: [

@@ -74,6 +74,7 @@ export async function GET(request: Request) {
   // Fetch strava activities matched to workouts in these weeks
   let stravaMatchedWorkoutIds = new Set<string>()
   let stravaActivityNameByWorkoutId = new Map<string, string>()
+  let stravaMatchedActivityIds = new Set<string>()
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
@@ -82,6 +83,7 @@ export async function GET(request: Request) {
       .eq('match_status', 'matched')
 
     for (const sa of stravaActivities || []) {
+      stravaMatchedActivityIds.add(sa.id)
       if (sa.matched_workout_id) {
         stravaMatchedWorkoutIds.add(sa.matched_workout_id)
         if (sa.activity_name) {
@@ -125,7 +127,16 @@ export async function GET(request: Request) {
       coachMessage: w.coach_message,
       status: w.status,
       createdAt: w.created_at,
-      clientWorkouts: weekClientWorkouts.map(cw => ({
+      clientWorkouts: weekClientWorkouts
+        .filter(cw => {
+          // Hide strava client_workouts entries that are already matched to a programmed workout
+          // (they show as duplicates otherwise — the data is on the programmed card already)
+          if (cw.source === 'strava' && cw.strava_activity_id && stravaMatchedActivityIds.has(cw.strava_activity_id)) {
+            return false
+          }
+          return true
+        })
+        .map(cw => ({
         id: cw.id,
         day: cw.day,
         type: cw.type,
