@@ -362,7 +362,7 @@ export async function POST(request: Request) {
         suggestedMatchId = matchResult.candidateId
         suggestedMatchType = matchResult.candidateType
         // Auto-match for high confidence programmed workouts
-        if (matchResult.confidence >= 80 && matchResult.candidateType === 'programmed') {
+        if (matchResult.confidence >= 70 && matchResult.candidateType === 'programmed') {
           matchStatus = 'matched'
         } else {
           matchStatus = 'suggested'

@@ -203,8 +203,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Determine if this is a high-confidence auto-match (>= 80)
-    const isAutoMatch = suggestedMatchId && suggestedMatchType === 'programmed' && matchConfidence >= 80
+    // Determine if this is a high-confidence auto-match (>= 70)
+    const isAutoMatch = suggestedMatchId && suggestedMatchType === 'programmed' && matchConfidence >= 70
     const matchStatus = isAutoMatch ? 'matched' : (suggestedMatchId ? 'suggested' : 'pending')
 
     // Store the strava activity with suggested match

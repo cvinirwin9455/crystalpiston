@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [editingWorkoutLog, setEditingWorkoutLog] = useState<string | null>(null);
+  const [showLinkOptions, setShowLinkOptions] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
@@ -1570,6 +1571,36 @@ export default function DashboardPage() {
                               {cw.source === 'strava' && cw.stravaActivityId && stravaMatchDecisions[cw.stravaActivityId] === 'dismissed' && (
                                 <p className="text-gray-500 text-xs mt-2 italic">Dismissed — will disappear on refresh</p>
                               )}
+
+                              {/* Link to programmed workout — always available on standalone Strava extras */}
+                              {cw.source === 'strava' && cw.stravaActivityId && (completedClientWorkouts[cw.id] || stravaMatchDecisions[cw.stravaActivityId] === 'standalone') && !stravaMatchDecisions[cw.stravaActivityId]?.startsWith?.('matched') && (() => {
+                                const unmatchedProgrammed = (currentWeek?.workouts || []).filter(w => w.day === cw.day && !w.completed && w.type !== 'rest');
+                                if (unmatchedProgrammed.length === 0) return null;
+                                return (
+                                  <div className="mt-2">
+                                    <button onClick={() => setShowLinkOptions(showLinkOptions === cw.id ? null : cw.id)} className="text-xs text-orange-400 hover:text-orange-300 transition-colors flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>
+                                      {showLinkOptions === cw.id ? 'Cancel' : 'Link to today\'s programmed workout'}
+                                    </button>
+                                    {showLinkOptions === cw.id && (
+                                      <div className="mt-2 space-y-1.5">
+                                        {unmatchedProgrammed.map(w => (
+                                          <button key={w.id} onClick={() => { handleStravaMatch(cw.stravaActivityId!, w.id, 'programmed'); setShowLinkOptions(null); }} className="w-full text-left bg-primary/40 hover:bg-primary/60 border border-orange-500/20 hover:border-orange-400/50 rounded-lg p-2 transition-colors">
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
+                                                {w.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
+                                                {w.title && <span className="text-gray-300 text-xs">{w.title}</span>}
+                                              </div>
+                                              {w.miles && <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span>}
+                                            </div>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
 
                               {/* Strava Match Log Form — appears when user clicks "Yes, this is it" or a match button */}
                               {cw.source === 'strava' && cw.stravaActivityId && stravaMatchLog?.stravaActivityId === cw.stravaActivityId && (

@@ -38,7 +38,6 @@ export default function AdminPage() {
   }, []);
   const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
-  const [fixingStravaMatches, setFixingStravaMatches] = useState(false);
   const [notifications, setNotifications] = useState({
     workoutCompleted: "immediate",
     workoutSkipped: "immediate",
@@ -2160,32 +2159,6 @@ export default function AdminPage() {
                     <button onClick={() => { saveAdminNotifPrefs(notifications, notifEmail); setNotifEmailSaved(true); setTimeout(() => setNotifEmailSaved(false), 3000); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
                   </div>
                   <p className="text-gray-400 text-xs mt-2">Separate multiple addresses with a comma.</p>
-                </div>
-
-                {/* Strava Tools */}
-                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Strava Tools</h3>
-                  <p className="text-gray-300 text-xs mb-4">Fix Strava activities that synced but didn&apos;t auto-match to the correct programmed workout. This re-runs matching on all unmatched activities and auto-confirms high-confidence matches.</p>
-                  <button
-                    onClick={async () => {
-                      if (!confirm("This will auto-match any Strava activities that clearly belong to a programmed workout (same day, same type, similar distance). Continue?")) return;
-                      setFixingStravaMatches(true);
-                      try {
-                        const res = await fetch('/api/strava/fix-matches', { method: 'POST' });
-                        const data = await res.json();
-                        alert(`Done! Fixed ${data.fixed} activities (auto-matched), re-suggested ${data.reMatched}. Total unmatched checked: ${data.total}`);
-                      } catch (err) {
-                        alert("Failed to run fix. Check console.");
-                        console.error(err);
-                      } finally {
-                        setFixingStravaMatches(false);
-                      }
-                    }}
-                    disabled={fixingStravaMatches}
-                    className="bg-orange-500/20 border border-orange-500/40 text-orange-400 hover:bg-orange-500/30 font-bold py-2.5 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {fixingStravaMatches ? "Fixing..." : "Fix Unmatched Strava Activities"}
-                  </button>
                 </div>
               </>
             ) : showChangelog ? (

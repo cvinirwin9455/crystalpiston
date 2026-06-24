@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         candidates
       )
 
-      if (matchResult.candidateId && matchResult.confidence >= 80) {
+      if (matchResult.candidateId && matchResult.confidence >= 70) {
         // High confidence — auto-confirm this match
         const workoutId = matchResult.candidateId
 
