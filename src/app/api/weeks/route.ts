@@ -175,19 +175,19 @@ export async function GET(request: Request) {
               if (sa.activity_name) {
                 stravaActivityNameByWorkoutId.set(wo.id, sa.activity_name)
               }
-              if (existingLog && !existingLog.actual_miles && backfillMiles) {
-                existingLog.actual_miles = backfillMiles
-                existingLog.actual_pace = backfillPace || existingLog.actual_pace
-                existingLog.duration = backfillDuration || existingLog.duration
-                existingLog.avg_heartrate = backfillAvgHr || existingLog.avg_heartrate
-                existingLog.max_heartrate = backfillMaxHr || existingLog.max_heartrate
+              if (existingLog && (!existingLog.actual_miles || !existingLog.duration || !existingLog.avg_heartrate) && (backfillMiles || backfillDuration || backfillAvgHr)) {
+                if (backfillMiles) existingLog.actual_miles = backfillMiles
+                if (backfillPace) existingLog.actual_pace = backfillPace
+                if (backfillDuration && !existingLog.duration) existingLog.duration = backfillDuration
+                if (backfillAvgHr && !existingLog.avg_heartrate) existingLog.avg_heartrate = backfillAvgHr
+                if (backfillMaxHr && !existingLog.max_heartrate) existingLog.max_heartrate = backfillMaxHr
                 // Persist fix to DB
                 adminClient.from('workout_logs').update({
-                  actual_miles: backfillMiles,
-                  actual_pace: backfillPace || null,
-                  duration: backfillDuration || null,
-                  avg_heartrate: backfillAvgHr || null,
-                  max_heartrate: backfillMaxHr || null,
+                  ...(backfillMiles && !existingLog.actual_miles ? { actual_miles: backfillMiles } : {}),
+                  ...(backfillPace ? { actual_pace: backfillPace } : {}),
+                  ...(backfillDuration ? { duration: backfillDuration } : {}),
+                  ...(backfillAvgHr ? { avg_heartrate: backfillAvgHr } : {}),
+                  ...(backfillMaxHr ? { max_heartrate: backfillMaxHr } : {}),
                 }).eq('id', existingLog.id).then(() => {})
                 adminClient.from('strava_activities').update({
                   match_status: 'matched',
