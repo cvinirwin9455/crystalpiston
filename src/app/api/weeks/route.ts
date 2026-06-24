@@ -78,7 +78,7 @@ export async function GET(request: Request) {
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
-      .select('id, matched_workout_id, match_status, activity_name, day, type, miles, average_pace, duration, avg_heartrate, max_heartrate')
+      .select('id, matched_workout_id, match_status, activity_name, day, type, miles, average_pace, duration, avg_heartrate, max_heartrate, distance_meters, moving_time_seconds')
       .in('week_id', weekIds)
 
     for (const sa of stravaActivities || []) {
@@ -107,13 +107,22 @@ export async function GET(request: Request) {
             }
             // Backfill workout_log with Strava data if log is missing miles/duration
             const existingLog = logsByWorkoutId.get(wo.id)
-            // Get miles from strava_activities, or fallback to client_workouts entry
-            let backfillMiles = sa.miles
-            let backfillPace = sa.average_pace
-            let backfillDuration = sa.duration
+            // Calculate miles from raw distance_meters if miles field is null
+            let backfillMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
+            let backfillPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
+              const m = sa.distance_meters / 1609.344
+              const ps = sa.moving_time_seconds / m
+              return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+            })() : null)
+            let backfillDuration = sa.duration || (sa.moving_time_seconds ? (() => {
+              const h = Math.floor(sa.moving_time_seconds / 3600)
+              const m = Math.round((sa.moving_time_seconds % 3600) / 60)
+              return h > 0 ? `${h}h ${m}m` : `${m}m`
+            })() : null)
             let backfillAvgHr = sa.avg_heartrate
             let backfillMaxHr = sa.max_heartrate
             if (!backfillMiles) {
+              // Last resort: check client_workouts entry
               const { data: cwFallback } = await adminClient
                 .from('client_workouts')
                 .select('miles, average_pace, duration, avg_heartrate, max_heartrate')

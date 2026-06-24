@@ -84,7 +84,7 @@ export async function GET() {
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
-      .select('id, week_id, day, type, miles, duration, average_pace, activity_name, match_status, matched_workout_id, matched_client_workout_id')
+      .select('id, week_id, day, type, miles, duration, average_pace, activity_name, match_status, matched_workout_id, matched_client_workout_id, distance_meters, moving_time_seconds, avg_heartrate, max_heartrate')
       .eq('user_id', user.id)
       .in('week_id', weekIds)
     
@@ -117,9 +117,17 @@ export async function GET() {
           }
           // Backfill workout_log with Strava data if log is missing miles/duration
           const existingLog = logsByWorkoutId.get(wo.id)
-          let backfillMiles = sa.miles
-          let backfillPace = sa.average_pace
-          let backfillDuration = sa.duration
+          let backfillMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
+          let backfillPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
+            const m = sa.distance_meters / 1609.344
+            const ps = sa.moving_time_seconds / m
+            return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+          })() : null)
+          let backfillDuration = sa.duration || (sa.moving_time_seconds ? (() => {
+            const h = Math.floor(sa.moving_time_seconds / 3600)
+            const m = Math.round((sa.moving_time_seconds % 3600) / 60)
+            return h > 0 ? `${h}h ${m}m` : `${m}m`
+          })() : null)
           let backfillAvgHr = sa.avg_heartrate
           let backfillMaxHr = sa.max_heartrate
           if (!backfillMiles) {
