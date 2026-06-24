@@ -88,6 +88,36 @@ export async function GET(request: Request) {
         if (sa.activity_name) {
           stravaActivityNameByWorkoutId.set(sa.matched_workout_id, sa.activity_name)
         }
+        // Backfill: if the matched workout's log is missing miles, fill from Strava raw data
+        const matchedLog = logsByWorkoutId.get(sa.matched_workout_id)
+        if (matchedLog && !matchedLog.actual_miles) {
+          const calcMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
+          const calcPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
+            const m = sa.distance_meters / 1609.344
+            const ps = sa.moving_time_seconds / m
+            return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+          })() : null)
+          const calcDuration = sa.duration || (sa.moving_time_seconds ? (() => {
+            const h = Math.floor(sa.moving_time_seconds / 3600)
+            const m = Math.round((sa.moving_time_seconds % 3600) / 60)
+            return h > 0 ? `${h}h ${m}m` : `${m}m`
+          })() : null)
+          if (calcMiles) {
+            matchedLog.actual_miles = calcMiles
+            matchedLog.actual_pace = calcPace || matchedLog.actual_pace
+            matchedLog.duration = calcDuration || matchedLog.duration
+            matchedLog.avg_heartrate = sa.avg_heartrate || matchedLog.avg_heartrate
+            matchedLog.max_heartrate = sa.max_heartrate || matchedLog.max_heartrate
+            // Persist to DB (fire-and-forget)
+            adminClient.from('workout_logs').update({
+              actual_miles: calcMiles,
+              actual_pace: calcPace || null,
+              duration: calcDuration || null,
+              avg_heartrate: sa.avg_heartrate || null,
+              max_heartrate: sa.max_heartrate || null,
+            }).eq('id', matchedLog.id).then(() => {})
+          }
+        }
       }
     }
 
