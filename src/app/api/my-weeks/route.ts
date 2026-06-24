@@ -68,6 +68,14 @@ export async function GET() {
     logsByWorkoutId.set(log.workout_id, log)
   }
 
+  const workoutsByWeekId = new Map<string, any[]>()
+  for (const wo of workouts || []) {
+    if (!workoutsByWeekId.has(wo.week_id)) {
+      workoutsByWeekId.set(wo.week_id, [])
+    }
+    workoutsByWeekId.get(wo.week_id)!.push(wo)
+  }
+
   // Fetch strava activities matched to workouts in these weeks
   let stravaMatchedWorkoutIds = new Set<string>()
   let stravaActivityNameByWorkoutId = new Map<string, string>()
@@ -93,14 +101,33 @@ export async function GET() {
       }
       stravaActivitiesByWeek.get(sa.week_id)!.push(sa)
     }
-  }
 
-  const workoutsByWeekId = new Map<string, any[]>()
-  for (const wo of workouts || []) {
-    if (!workoutsByWeekId.has(wo.week_id)) {
-      workoutsByWeekId.set(wo.week_id, [])
+    // Also hide strava extras when there's a completed programmed workout of the same
+    // type on the same day — handles legacy data where match wasn't confirmed properly
+    for (const sa of stravaActivities || []) {
+      if (stravaMatchedActivityIds.has(sa.id)) continue
+      if (sa.match_status === 'dismissed') continue
+      const weekWorkouts = workoutsByWeekId.get(sa.week_id) || []
+      for (const wo of weekWorkouts) {
+        if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
+          stravaMatchedActivityIds.add(sa.id)
+          stravaMatchedWorkoutIds.add(wo.id)
+          if (sa.activity_name) {
+            stravaActivityNameByWorkoutId.set(wo.id, sa.activity_name)
+          }
+          // Backfill workout_log with Strava data if log is missing miles/duration
+          const existingLog = logsByWorkoutId.get(wo.id)
+          if (existingLog && !existingLog.actual_miles && sa.miles) {
+            existingLog.actual_miles = sa.miles
+            existingLog.actual_pace = sa.average_pace || existingLog.actual_pace
+            existingLog.duration = sa.duration || existingLog.duration
+            existingLog.avg_heartrate = sa.avg_heartrate || existingLog.avg_heartrate
+            existingLog.max_heartrate = sa.max_heartrate || existingLog.max_heartrate
+          }
+          break
+        }
+      }
     }
-    workoutsByWeekId.get(wo.week_id)!.push(wo)
   }
 
   // Fetch client-added workouts for these weeks
