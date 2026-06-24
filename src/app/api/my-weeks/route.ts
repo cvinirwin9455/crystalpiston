@@ -134,47 +134,32 @@ export async function GET() {
       const weekWorkouts = workoutsByWeekId.get(sa.week_id) || []
       for (const wo of weekWorkouts) {
         if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
-          stravaMatchedActivityIds.add(sa.id)
-          stravaMatchedWorkoutIds.add(wo.id)
-          if (sa.activity_name) {
-            stravaActivityNameByWorkoutId.set(wo.id, sa.activity_name)
-          }
-          // Backfill workout_log with Strava data if log is missing miles/duration
+          // Only hide if we can get the Strava data OR the log already has miles
           const existingLog = logsByWorkoutId.get(wo.id)
-          let backfillMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
-          let backfillPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
-            const m = sa.distance_meters / 1609.344
-            const ps = sa.moving_time_seconds / m
-            return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
-          })() : null)
-          let backfillDuration = sa.duration || (sa.moving_time_seconds ? (() => {
-            const h = Math.floor(sa.moving_time_seconds / 3600)
-            const m = Math.round((sa.moving_time_seconds % 3600) / 60)
-            return h > 0 ? `${h}h ${m}m` : `${m}m`
-          })() : null)
-          let backfillAvgHr = sa.avg_heartrate
-          let backfillMaxHr = sa.max_heartrate
-          if (!backfillMiles) {
-            const { data: cwFallback } = await adminClient
-              .from('client_workouts')
-              .select('miles, average_pace, duration, avg_heartrate, max_heartrate')
-              .eq('strava_activity_id', sa.id)
-              .eq('user_id', user.id)
-              .single()
-            if (cwFallback) {
-              backfillMiles = cwFallback.miles ? parseFloat(cwFallback.miles) : null
-              backfillPace = backfillPace || cwFallback.average_pace
-              backfillDuration = backfillDuration || cwFallback.duration
-              backfillAvgHr = backfillAvgHr || cwFallback.avg_heartrate
-              backfillMaxHr = backfillMaxHr || cwFallback.max_heartrate
+          const hasMiles = sa.miles || sa.distance_meters || (existingLog && existingLog.actual_miles)
+          if (hasMiles) {
+            stravaMatchedActivityIds.add(sa.id)
+            stravaMatchedWorkoutIds.add(wo.id)
+            if (sa.activity_name) {
+              stravaActivityNameByWorkoutId.set(wo.id, sa.activity_name)
             }
-          }
-          if (existingLog && !existingLog.actual_miles && backfillMiles) {
-            existingLog.actual_miles = backfillMiles
-            existingLog.actual_pace = backfillPace || existingLog.actual_pace
-            existingLog.duration = backfillDuration || existingLog.duration
-            existingLog.avg_heartrate = backfillAvgHr || existingLog.avg_heartrate
-            existingLog.max_heartrate = backfillMaxHr || existingLog.max_heartrate
+            // Backfill if needed
+            if (existingLog && !existingLog.actual_miles) {
+              const calcMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
+              if (calcMiles) {
+                existingLog.actual_miles = calcMiles
+                existingLog.actual_pace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
+                  const m = sa.distance_meters / 1609.344; const ps = sa.moving_time_seconds / m
+                  return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+                })() : null) || existingLog.actual_pace
+                existingLog.duration = sa.duration || (sa.moving_time_seconds ? (() => {
+                  const h = Math.floor(sa.moving_time_seconds / 3600); const m = Math.round((sa.moving_time_seconds % 3600) / 60)
+                  return h > 0 ? `${h}h ${m}m` : `${m}m`
+                })() : null) || existingLog.duration
+                existingLog.avg_heartrate = sa.avg_heartrate || existingLog.avg_heartrate
+                existingLog.max_heartrate = sa.max_heartrate || existingLog.max_heartrate
+              }
+            }
           }
           break
         }
