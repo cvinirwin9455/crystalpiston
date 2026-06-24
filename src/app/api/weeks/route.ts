@@ -75,13 +75,15 @@ export async function GET(request: Request) {
   let stravaMatchedWorkoutIds = new Set<string>()
   let stravaActivityNameByWorkoutId = new Map<string, string>()
   let stravaMatchedActivityIds = new Set<string>()
+  let allStravaActivities: any[] = []
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
       .select('id, matched_workout_id, match_status, activity_name, day, type, miles, average_pace, duration, avg_heartrate, max_heartrate, distance_meters, moving_time_seconds')
       .in('week_id', weekIds)
 
-    for (const sa of stravaActivities || []) {
+    allStravaActivities = stravaActivities || []
+    for (const sa of allStravaActivities) {
       if (sa.match_status === 'matched' && sa.matched_workout_id) {
         stravaMatchedActivityIds.add(sa.id)
         stravaMatchedWorkoutIds.add(sa.matched_workout_id)
@@ -123,7 +125,7 @@ export async function GET(request: Request) {
 
     // Also hide strava extras when there's a completed programmed workout of the same
     // type on the same day — handles legacy data where match wasn't confirmed properly
-    for (const sa of stravaActivities || []) {
+    for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue // already handled
       if (sa.match_status === 'dismissed') continue
       // Check if there's a completed programmed workout on the same day with same type
@@ -262,7 +264,7 @@ export async function GET(request: Request) {
         // If this workout is strava-matched but the log has no miles, pull from strava_activities
         let stravaData: any = null
         if (stravaMatchedWorkoutIds.has(wo.id) && log && !log.actual_miles) {
-          stravaData = (stravaActivities || []).find((sa: any) => sa.matched_workout_id === wo.id)
+          stravaData = allStravaActivities.find((sa: any) => sa.matched_workout_id === wo.id)
         }
         const actualMilesFromStrava = stravaData ? (stravaData.miles || (stravaData.distance_meters ? +(stravaData.distance_meters / 1609.344).toFixed(2) : null)) : null
         const actualPaceFromStrava = stravaData ? (stravaData.average_pace || (stravaData.moving_time_seconds && stravaData.distance_meters ? (() => {
