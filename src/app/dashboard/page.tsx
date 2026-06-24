@@ -134,6 +134,7 @@ export default function DashboardPage() {
       "No more 'Extra' workout appearing when Strava clearly matches your plan — only shows as Extra when the match isn't clear",
       "Fixed duplicate issue — matched Strava workouts no longer show as both a completed programmed workout AND a separate Extra entry",
       "You can now EDIT your workout log after submitting — tap the Edit button to fix mistakes (wrong miles, RPE, pace, notes, etc.)",
+      "Strava activities with 0 miles (accidental watch start/stop) no longer get matched to your programmed workout",
     ]},
     { date: "June 22, 2026", items: [
       "Workout cards redesigned — cleaner layout with metrics in compact pills on one line",

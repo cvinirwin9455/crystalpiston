@@ -131,6 +131,8 @@ export async function GET() {
     for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue
       if (sa.match_status === 'dismissed') continue
+      // Skip 0-mile activities (accidental start/stop)
+      if (!sa.miles && !sa.distance_meters) continue
       const weekWorkouts = workoutsByWeekId.get(sa.week_id) || []
       for (const wo of weekWorkouts) {
         if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {

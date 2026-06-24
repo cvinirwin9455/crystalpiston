@@ -128,6 +128,8 @@ export async function GET(request: Request) {
     for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue // already handled
       if (sa.match_status === 'dismissed') continue
+      // Skip 0-mile activities (accidental start/stop)
+      if (!sa.miles && !sa.distance_meters) continue
       // Check if there's a completed programmed workout on the same day with same type
       for (const [, wos] of workoutsByWeekId) {
         for (const wo of wos) {
