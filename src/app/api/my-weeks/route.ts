@@ -117,12 +117,32 @@ export async function GET() {
           }
           // Backfill workout_log with Strava data if log is missing miles/duration
           const existingLog = logsByWorkoutId.get(wo.id)
-          if (existingLog && !existingLog.actual_miles && sa.miles) {
-            existingLog.actual_miles = sa.miles
-            existingLog.actual_pace = sa.average_pace || existingLog.actual_pace
-            existingLog.duration = sa.duration || existingLog.duration
-            existingLog.avg_heartrate = sa.avg_heartrate || existingLog.avg_heartrate
-            existingLog.max_heartrate = sa.max_heartrate || existingLog.max_heartrate
+          let backfillMiles = sa.miles
+          let backfillPace = sa.average_pace
+          let backfillDuration = sa.duration
+          let backfillAvgHr = sa.avg_heartrate
+          let backfillMaxHr = sa.max_heartrate
+          if (!backfillMiles) {
+            const { data: cwFallback } = await adminClient
+              .from('client_workouts')
+              .select('miles, average_pace, duration, avg_heartrate, max_heartrate')
+              .eq('strava_activity_id', sa.id)
+              .eq('user_id', user.id)
+              .single()
+            if (cwFallback) {
+              backfillMiles = cwFallback.miles ? parseFloat(cwFallback.miles) : null
+              backfillPace = backfillPace || cwFallback.average_pace
+              backfillDuration = backfillDuration || cwFallback.duration
+              backfillAvgHr = backfillAvgHr || cwFallback.avg_heartrate
+              backfillMaxHr = backfillMaxHr || cwFallback.max_heartrate
+            }
+          }
+          if (existingLog && !existingLog.actual_miles && backfillMiles) {
+            existingLog.actual_miles = backfillMiles
+            existingLog.actual_pace = backfillPace || existingLog.actual_pace
+            existingLog.duration = backfillDuration || existingLog.duration
+            existingLog.avg_heartrate = backfillAvgHr || existingLog.avg_heartrate
+            existingLog.max_heartrate = backfillMaxHr || existingLog.max_heartrate
           }
           break
         }
