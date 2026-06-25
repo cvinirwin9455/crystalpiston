@@ -429,8 +429,5 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
     summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | This week: ${thisWeekStatus}\n`
   }
 
-    summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | This week: ${thisWeekStatus}\n`
-  }
-
   return summary
 }
