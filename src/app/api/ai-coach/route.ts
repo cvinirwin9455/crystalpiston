@@ -135,6 +135,7 @@ ${context}`
     return NextResponse.json({
       response: aiResponse,
       tokensUsed: data.usage?.total_tokens || 0,
+      debug: context.slice(0, 2000),
     })
   } catch (err: any) {
     console.error('AI Coach error:', err)
