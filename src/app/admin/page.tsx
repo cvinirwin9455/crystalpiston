@@ -2892,13 +2892,13 @@ export default function AdminPage() {
           {/* Client & Data Depth Selector */}
           <div className="px-5 py-3 border-b border-white/5 space-y-2">
             <div className="flex gap-2">
-              <select value={aiSelectedClient} onChange={(e) => setAiSelectedClient(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+              <select value={aiSelectedClient} onChange={(e) => { setAiSelectedClient(e.target.value); setAiResponse(null); setAiCustomPrompt(''); setAiFeedbackGiven(null); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
                 <option value="all">All Active Clients</option>
                 {clients.filter(c => c.status === 'active').map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <select value={aiDataDepth} onChange={(e) => setAiDataDepth(e.target.value as any)} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+              <select value={aiDataDepth} onChange={(e) => { setAiDataDepth(e.target.value as any); setAiResponse(null); }} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
                 <option value="light">Light (2 wks)</option>
                 <option value="standard">Standard (4 wks)</option>
                 <option value="deep">Deep (all)</option>

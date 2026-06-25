@@ -53,8 +53,9 @@ export async function POST(request: Request) {
     const activeClients = await getActiveClients(adminClient)
 
     if (clientId) {
-      // Single client context
-      const clientData = await getClientContext(adminClient, clientId, dataDepth || 'standard')
+      // Single client context — always use at least 'standard' depth for better insights
+      const effectiveDepth = dataDepth === 'light' ? 'standard' : (dataDepth || 'standard')
+      const clientData = await getClientContext(adminClient, clientId, effectiveDepth)
       context = clientData
     } else {
       // All clients summary
@@ -112,7 +113,7 @@ ${context}`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 400,
+        max_tokens: clientId ? 600 : 400,
         temperature: 0.7,
       }),
     })
@@ -325,14 +326,50 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       workoutSummary += `  Miles: ${totalMiles.toFixed(1)}\n`
       workoutSummary += `  Avg RPE: ${avgRpe}\n`
 
-      if (depth !== 'light') {
-        for (const wo of weekWorkouts) {
-          const log = logMap.get(wo.id)
-          if (log) {
-            workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${log.status} | ${log.actual_miles || wo.miles || '?'}mi | RPE ${log.rpe || '?'} | ${log.notes || ''}\n`
-          } else {
-            workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: NOT LOGGED\n`
-          }
+      // Always include per-workout detail for single-client queries
+      for (const wo of weekWorkouts) {
+        const log = logMap.get(wo.id)
+        if (log) {
+          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${log.status} | ${log.actual_miles || wo.miles || '?'}mi | RPE ${log.rpe || '?'}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
+        } else {
+          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: NOT LOGGED\n`
+        }
+      }
+    }
+  }
+
+  // Also get client-created workouts and comments for richer context
+  let extraContext = ''
+  if (weeks && weeks.length > 0) {
+    const { data: clientWorkouts } = await adminClient
+      .from('client_workouts')
+      .select('week_id, day, type, training_type, miles, notes, completed, source, activity_name')
+      .in('week_id', weeks.map((w: any) => w.id))
+      .eq('user_id', clientId)
+      .neq('source', 'strava')
+    
+    if (clientWorkouts && clientWorkouts.length > 0) {
+      extraContext += '\n\nCLIENT-ADDED WORKOUTS (extra training they chose to do):\n'
+      for (const cw of clientWorkouts) {
+        extraContext += `  ${cw.day} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}: ${cw.miles || '?'}mi ${cw.completed ? '(done)' : '(planned)'} ${cw.notes || ''}\n`
+      }
+    }
+
+    // Get workout comments (conversations between coach and client)
+    const workoutIds = (await adminClient.from('workouts').select('id').in('week_id', weeks.map((w: any) => w.id))).data?.map((w: any) => w.id) || []
+    if (workoutIds.length > 0) {
+      const { data: comments } = await adminClient
+        .from('workout_comments')
+        .select('workout_id, message, user_id')
+        .in('workout_id', workoutIds)
+        .order('created_at', { ascending: true })
+        .limit(20)
+      
+      if (comments && comments.length > 0) {
+        extraContext += '\n\nRECENT WORKOUT COMMENTS (coach-client conversations):\n'
+        for (const c of comments) {
+          const isCoach = c.user_id !== clientId
+          extraContext += `  ${isCoach ? 'Crystal' : 'Client'}: "${c.message}"\n`
         }
       }
     }
@@ -345,7 +382,7 @@ Profile: ${user?.gender || '?'} | Age: ${client.age || '?'} | Experience: ${clie
 Target: ${client.target_distance || '?'} | Race Date: ${client.race_date || '?'} | Easy Pace: ${client.easy_pace || '?'} | Goal Pace: ${client.goal_pace || '?'}
 Injuries: ${client.injury_notes || 'None noted'}
 
-TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo published weeks yet.'}`
+TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo published weeks yet.'}${extraContext}`
 }
 
 // Helper: get all clients summary
