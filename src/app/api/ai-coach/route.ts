@@ -279,7 +279,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 
   const { data: plan } = await adminClient
     .from('plans')
-    .select('goal, start_date, end_date, status')
+    .select('goal, start_date, end_date, status, owed, paid')
     .eq('client_id', client.id)
     .eq('status', 'active')
     .maybeSingle()
@@ -410,6 +410,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
   return `CLIENT: ${user?.name || 'Unknown'} (${user?.gender === 'female' ? 'she/her' : user?.gender === 'male' ? 'he/him' : 'they/them'})
 Goal: ${plan?.goal || client.goal || 'Not set'}
 Plan: ${plan?.start_date || '?'} to ${plan?.end_date || '?'}
+Payment: ${plan?.owed ? `$${plan.owed} owed, $${plan.paid || 0} paid${(plan.owed - (plan.paid || 0)) > 0 ? ' — $' + (plan.owed - (plan.paid || 0)) + ' OUTSTANDING' : ' — Paid in full'}` : 'No payment info'}
 Profile: ${user?.gender || '?'} | Age: ${client.age || '?'} | Experience: ${client.experience_level || '?'} | Current MPW: ${client.current_mileage || '?'} | Days/wk: ${client.days_per_week || '?'}
 Target: ${client.target_distance || '?'} | Race Date: ${client.race_date || '?'} | Easy Pace: ${client.easy_pace || '?'} | Goal Pace: ${client.goal_pace || '?'}
 Injuries: ${client.injury_notes || 'None noted'}
@@ -434,10 +435,12 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
   for (const client of activeClients) {
     const { data: plan } = await adminClient
       .from('plans')
-      .select('goal')
+      .select('goal, owed, paid')
       .eq('client_id', client.id)
       .eq('status', 'active')
       .maybeSingle()
+
+    const outstanding = plan?.owed && plan?.paid !== undefined ? (plan.owed - (plan.paid || 0)) : 0
 
     // Find the week that matches the current calendar week
     const { data: allWeeks } = await adminClient
@@ -503,7 +506,7 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
       }
     }
 
-    summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | ${thisWeekStatus}\n`
+    summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | ${thisWeekStatus}${outstanding > 0 ? ' | ⚠️ $' + outstanding + ' outstanding' : ''}\n`
   }
 
   return summary
