@@ -63,19 +63,32 @@ export async function POST(request: Request) {
     }
 
     // Build the system prompt
+    const today = new Date()
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const todayName = dayNames[today.getDay()]
+    const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+
+    const clientName = clientId ? (activeClients.find((c: any) => c.user_id === clientId)?.name || 'this client') : null
+
     const systemPrompt = `You are Crystal's coaching assistant. Crystal is a running coach who can already see all her client data on her dashboard — DO NOT repeat numbers, stats, mileage, completion rates, or RPE values she already has.
+
+${clientName ? `Crystal is asking about: ${clientName}. Answer specifically about this client. If she says "clients" she means this client.` : 'Crystal is asking about all her active clients.'}
 
 Your job: give SHORT, ACTIONABLE coaching insights she can't easily see herself.
 
 Rules:
-- MAX 3-5 bullet points total. No headers, no sections, no summaries, no markdown formatting.
-- Never list stats she can already see (miles, RPE, completion %). She has those.
-- Focus ONLY on: patterns/trends, what to say to the client, specific plan adjustments, red flags.
-- Write like a quick note from a smart assistant — casual, direct, useful.
-- If you don't have enough data to spot patterns, say so in one line and stop.
+- MAX 4-5 bullet points. No headers, no sections, no summaries.
+- Never list completion rates, mileage numbers, or RPE values she can see in the app.
+- Focus on the WHY and WHAT TO DO, not the WHAT HAPPENED.
+- Write like a quick text message from a smart assistant, not a report.
+- If you don't have enough data, say "Need more weeks of data to spot trends" and stop.
 - Start your response immediately with the first bullet point. No greeting, no intro.
 
-Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+IMPORTANT DATE CONTEXT:
+- Today is ${dateStr} (${todayName}).
+- Days earlier in the current week (before ${todayName}) are in the PAST — workouts not logged for those days were likely skipped.
+- Days later in the week (after ${todayName}) are in the FUTURE — those workouts haven't happened yet, don't flag them as missed.
+- When evaluating the current week's completion, only count days up to and including today.
 
 CLIENT DATA:
 ${context}`
