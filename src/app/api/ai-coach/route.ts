@@ -156,20 +156,21 @@ export async function GET() {
   }
 
   // Get active clients with data counts
+  const { data: clientUsers } = await adminClient
+    .from('users')
+    .select('id, name')
+    .eq('role', 'client')
+    .neq('status', 'inactive')
+
   const { data: clients } = await adminClient
     .from('clients')
     .select('id, user_id')
-    .eq('status', 'active')
-
-  const { data: users } = await adminClient
-    .from('users')
-    .select('id, name')
-    .in('id', (clients || []).map(c => c.user_id))
+    .in('user_id', (clientUsers || []).map((u: any) => u.id))
 
   const clientDataMap: Record<string, { name: string; weeks: number; logs: number; stravaActivities: number }> = {}
 
   for (const client of clients || []) {
-    const userName = users?.find(u => u.id === client.user_id)?.name || 'Unknown'
+    const userName = clientUsers?.find((u: any) => u.id === client.user_id)?.name || 'Unknown'
 
     const { count: weekCount } = await adminClient
       .from('weeks')
@@ -219,19 +220,21 @@ export async function GET() {
 
 // Helper: get active clients
 async function getActiveClients(adminClient: any) {
+  // Active clients are determined by users.status (not clients table)
+  const { data: clientUsers } = await adminClient
+    .from('users')
+    .select('id, name')
+    .eq('role', 'client')
+    .neq('status', 'inactive')
+
   const { data: clients } = await adminClient
     .from('clients')
     .select('id, user_id')
-    .eq('status', 'active')
-
-  const { data: users } = await adminClient
-    .from('users')
-    .select('id, name')
-    .in('id', (clients || []).map((c: any) => c.user_id))
+    .in('user_id', (clientUsers || []).map((u: any) => u.id))
 
   return (clients || []).map((c: any) => ({
     ...c,
-    name: users?.find((u: any) => u.id === c.user_id)?.name || 'Unknown',
+    name: clientUsers?.find((u: any) => u.id === c.user_id)?.name || 'Unknown',
   }))
 }
 
