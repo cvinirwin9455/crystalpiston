@@ -70,25 +70,33 @@ export async function POST(request: Request) {
 
     const clientName = clientId ? (activeClients.find((c: any) => c.user_id === clientId)?.name || 'this client') : null
 
-    const systemPrompt = `You are Crystal's coaching assistant. Crystal is a running coach who can already see all her client data on her dashboard — DO NOT repeat numbers, stats, mileage, completion rates, or RPE values she already has.
+    const systemPrompt = `You are Crystal's coaching assistant. Crystal is a running coach.
 
-${clientName ? `Crystal is asking about: ${clientName}. Answer specifically about this client. If she says "clients" she means this client.` : 'Crystal is asking about all her active clients.'}
+${clientName ? `Crystal is asking about: ${clientName}. Answer specifically about this client.` : 'Crystal is asking about all her active clients.'}
 
-Your job: give SHORT, ACTIONABLE coaching insights she can't easily see herself.
+WHAT YOU DO:
+- Give 3-4 bullet points max
+- Tell Crystal what to DO (message a client, adjust a plan, check in)
+- Spot patterns she might miss (e.g. "RPE trending up every week" or "always skips Thursdays")
+- Suggest specific conversations or plan changes
 
-Rules:
-- MAX 4-5 bullet points. No headers, no sections, no summaries.
-- Never list completion rates, mileage numbers, or RPE values she can see in the app.
-- Focus on the WHY and WHAT TO DO, not the WHAT HAPPENED.
-- Write like a quick text message from a smart assistant, not a report.
-- If you don't have enough data, say "Need more weeks of data to spot trends" and stop.
-- Start your response immediately with the first bullet point. No greeting, no intro.
+WHAT YOU NEVER DO:
+- Never repeat stats (X/Y workouts, miles, RPE numbers) — Crystal has those on her dashboard
+- Never mention days that haven't happened yet — they're in the future
+- Never flag workouts as "missed" if they're on a day that hasn't occurred yet this week
+- Never include Crystal herself in coaching recommendations — she's the coach, not a client
+- Never use headers, sections, or markdown formatting
+- Never write more than 4 bullet points
 
-IMPORTANT DATE CONTEXT:
+CRITICAL DATE RULES:
 - Today is ${dateStr} (${todayName}).
-- Days earlier in the current week (before ${todayName}) are in the PAST — workouts not logged for those days were likely skipped.
-- Days later in the week (after ${todayName}) are in the FUTURE — those workouts haven't happened yet, don't flag them as missed.
-- When evaluating the current week's completion, only count days up to and including today.
+- The week runs Monday to Sunday.
+- Only Monday through ${todayName} have happened so far this week.
+- ${todayName === 'Monday' ? 'Only Monday has happened.' : todayName === 'Tuesday' ? 'Only Mon-Tue have happened.' : todayName === 'Wednesday' ? 'Only Mon-Wed have happened.' : todayName === 'Thursday' ? 'Only Mon-Thu have happened.' : todayName === 'Friday' ? 'Only Mon-Fri have happened.' : todayName === 'Saturday' ? 'Only Mon-Sat have happened.' : 'The full week has happened.'}
+- Do NOT count Thursday, Friday, Saturday, or Sunday as missed if today is Wednesday or earlier.
+- A client who logged 3 workouts Mon-Wed out of 3 programmed Mon-Wed is at 100% for the week so far.
+
+EXCLUDE: If you see a client named "Crystal" in the data, skip them entirely — that's the coach's own test profile.
 
 CLIENT DATA:
 ${context}`
@@ -344,9 +352,11 @@ TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo pu
 
 // Helper: get all clients summary
 async function getAllClientsSummary(adminClient: any, activeClients: any[], depth: string): Promise<string> {
-  let summary = `ACTIVE CLIENTS (${activeClients.length}):\n\n`
+  // Exclude Crystal's own test profile
+  const clientsToAnalyze = activeClients.filter((c: any) => c.name?.toLowerCase() !== 'crystal')
+  let summary = `ACTIVE CLIENTS (${clientsToAnalyze.length}):\n\n`
 
-  for (const client of activeClients) {
+  for (const client of clientsToAnalyze) {
     const { data: plan } = await adminClient
       .from('plans')
       .select('goal')
