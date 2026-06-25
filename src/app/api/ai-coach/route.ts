@@ -85,7 +85,7 @@ WHAT YOU NEVER DO:
 - Never repeat stats (X/Y workouts, miles, RPE numbers) — Crystal has those on her dashboard
 - Never mention days that haven't happened yet — they're in the future
 - Never flag workouts as "missed" if they're on a day that hasn't occurred yet this week
-- Never include Crystal herself in coaching recommendations — she's the coach, not a client
+- Never use wrong pronouns — check the client's gender in the data and use she/her or he/him correctly
 - Never use headers, sections, or markdown formatting
 - Never write more than 4 bullet points
 
@@ -260,15 +260,16 @@ async function getActiveClients(adminClient: any) {
 
 // Helper: get single client context
 async function getClientContext(adminClient: any, clientId: string, depth: string): Promise<string> {
+  try {
   const weekLimit = depth === 'light' ? 2 : depth === 'standard' ? 4 : 99
 
-  const { data: client } = await adminClient
+  const { data: client, error: clientError } = await adminClient
     .from('clients')
     .select('id, user_id, goal, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
     .eq('user_id', clientId)
-    .single()
+    .maybeSingle()
 
-  if (!client) return 'Client not found.'
+  if (clientError || !client) return `Client not found (user_id: ${clientId}, error: ${clientError?.message || 'no record'}).`
 
   const { data: user } = await adminClient
     .from('users')
@@ -281,7 +282,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     .select('goal, start_date, end_date, status')
     .eq('client_id', client.id)
     .eq('status', 'active')
-    .single()
+    .maybeSingle()
 
   const { data: weeks } = await adminClient
     .from('weeks')
@@ -375,7 +376,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     }
   }
 
-  return `CLIENT: ${user?.name || 'Unknown'}
+  return `CLIENT: ${user?.name || 'Unknown'} (${user?.gender === 'female' ? 'she/her' : user?.gender === 'male' ? 'he/him' : 'they/them'})
 Goal: ${plan?.goal || client.goal || 'Not set'}
 Plan: ${plan?.start_date || '?'} to ${plan?.end_date || '?'}
 Profile: ${user?.gender || '?'} | Age: ${client.age || '?'} | Experience: ${client.experience_level || '?'} | Current MPW: ${client.current_mileage || '?'} | Days/wk: ${client.days_per_week || '?'}
@@ -383,6 +384,9 @@ Target: ${client.target_distance || '?'} | Race Date: ${client.race_date || '?'}
 Injuries: ${client.injury_notes || 'None noted'}
 
 TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo published weeks yet.'}${extraContext}`
+  } catch (err: any) {
+    return `Error loading client data: ${err.message}`
+  }
 }
 
 // Helper: get all clients summary
