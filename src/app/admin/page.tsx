@@ -902,7 +902,7 @@ export default function AdminPage() {
       await fetch('/api/ai-coach', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPromptUsed, response: aiResponse?.slice(0, 500), rating }),
+        body: JSON.stringify({ prompt: aiPromptUsed, response: aiResponse?.slice(0, 1000), rating, clientId: aiSelectedClient === 'all' ? null : aiSelectedClient }),
       });
     } catch (err) { /* silent */ }
   };

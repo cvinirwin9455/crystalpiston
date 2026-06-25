@@ -52,6 +52,22 @@ export async function POST(request: Request) {
     let context = ''
     const activeClients = await getActiveClients(adminClient)
 
+    // Fetch recent positive feedback to learn from
+    const { data: goodExamples } = await adminClient
+      .from('ai_coach_feedback')
+      .select('prompt, response')
+      .eq('rating', 'up')
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    // Fetch recent negative feedback to avoid
+    const { data: badExamples } = await adminClient
+      .from('ai_coach_feedback')
+      .select('prompt, response')
+      .eq('rating', 'down')
+      .order('created_at', { ascending: false })
+      .limit(3)
+
     if (clientId) {
       // Single client context — always use at least 'standard' depth for better insights
       const effectiveDepth = dataDepth === 'light' ? 'standard' : (dataDepth || 'standard')
@@ -98,7 +114,13 @@ CRITICAL DATE RULES:
 - A client who logged 3 workouts Mon-Wed out of 3 programmed Mon-Wed is at 100% for the week so far.
 
 CLIENT DATA:
-${context}`
+${context}${goodExamples && goodExamples.length > 0 ? `
+
+STYLE CRYSTAL LIKES (based on her previous thumbs-up):
+${goodExamples.map((ex: any) => `Q: "${ex.prompt.slice(0, 80)}"\nA: "${ex.response.slice(0, 200)}"`).join('\n\n')}` : ''}${badExamples && badExamples.length > 0 ? `
+
+STYLE CRYSTAL DISLIKES (she gave thumbs-down to these — avoid this style):
+${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : ''}`
 
     // Call AI
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -148,11 +170,24 @@ export async function PATCH(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { prompt, response, rating } = body // rating: 'up' | 'down'
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 
-  // Store feedback (just log for now — can add a table later)
-  console.log(`AI Coach Feedback [${rating}]: prompt="${prompt?.slice(0, 100)}" response="${response?.slice(0, 100)}"`)
+  const body = await request.json()
+  const { prompt, response, rating, clientId } = body
+
+  // Store in database
+  await adminClient.from('ai_coach_feedback').insert({
+    user_id: user.id,
+    prompt: prompt?.slice(0, 500) || '',
+    response: response?.slice(0, 1000) || '',
+    rating,
+    client_id: clientId || null,
+  })
 
   return NextResponse.json({ success: true })
 }
