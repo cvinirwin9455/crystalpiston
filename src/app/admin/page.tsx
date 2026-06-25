@@ -2953,9 +2953,15 @@ export default function AdminPage() {
             {aiResponse && !aiLoading && (
               <div>
                 <div className="bg-primary/30 border border-purple-500/20 rounded-xl p-4 mb-4">
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    {aiResponse.split('\n').map((line, i) => (
-                      <p key={i} className="text-gray-300 text-xs leading-relaxed mb-1 last:mb-0">{line || '\u00A0'}</p>
+                  <div className="space-y-2">
+                    {aiResponse.split('\n').filter(line => line.trim()).map((line, i) => (
+                      <p key={i} className="text-gray-200 text-sm leading-relaxed flex gap-2">
+                        {line.trim().startsWith('•') || line.trim().startsWith('-') ? (
+                          <><span className="text-purple-400 flex-shrink-0 mt-0.5">•</span><span>{line.replace(/^[•\-]\s*/, '')}</span></>
+                        ) : (
+                          <span>{line}</span>
+                        )}
+                      </p>
                     ))}
                   </div>
                 </div>
