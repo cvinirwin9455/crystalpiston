@@ -423,10 +423,15 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
       const pastWorkouts = (workouts || []).filter((w: any) => w.type !== 'rest' && pastDays.includes(w.day))
 
       const totalSoFar = pastWorkouts.length
-      thisWeekStatus = `${completedCount} programmed + ${clientCompletedCount} extra done (${totalSoFar} programmed so far this week)`
+      const totalCompleted = completedCount + clientCompletedCount
+      if (totalSoFar === 0) {
+        thisWeekStatus = `${totalCompleted} completed (no programmed workouts due yet)`
+      } else {
+        thisWeekStatus = `${totalCompleted} completed out of ${totalSoFar} due so far (${7 - todayIndex - 1} days remaining in week)`
+      }
     }
 
-    summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | This week: ${thisWeekStatus}\n`
+    summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | ${thisWeekStatus}\n`
   }
 
   return summary
