@@ -335,15 +335,35 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
         : 'N/A'
 
       workoutSummary += `\nWeek ${week.date_range} (${week.focus || 'no focus'}):\n`
-      workoutSummary += `  Completion: ${completed.length}/${weekWorkouts.length} workouts\n`
+      // For current week, only count workouts on days that have happened
+      const dayNames2 = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      const todayIdx2 = today.getDay() === 0 ? 6 : today.getDay() - 1
+      const isCurrentWeek2 = week === weeks[0]
+      const relevantWorkouts = isCurrentWeek2
+        ? weekWorkouts.filter((w: any) => dayNames2.indexOf(w.day) <= todayIdx2)
+        : weekWorkouts
+      const relevantCompleted = relevantWorkouts.filter((w: any) => logMap.has(w.id))
+      const nonRestRelevant = relevantWorkouts.filter((w: any) => w.type !== 'rest')
+      
+      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} workouts${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
       workoutSummary += `  Miles: ${totalMiles.toFixed(1)}\n`
       workoutSummary += `  Avg RPE: ${avgRpe}\n`
 
       // Always include per-workout detail for single-client queries
       for (const wo of weekWorkouts) {
         const log = logMap.get(wo.id)
+        // Check if this workout's day is in the future (hasn't happened yet this week)
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1
+        const woIdx = dayNames.indexOf(wo.day)
+        // Only mark as future if this is the CURRENT week (most recent)
+        const isCurrentWeek = week === weeks[0]
+        const isFutureDay = isCurrentWeek && woIdx > todayIdx
+
         if (log) {
           workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${log.status} | ${log.actual_miles || wo.miles || '?'}mi | RPE ${log.rpe || '?'}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
+        } else if (isFutureDay) {
+          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: UPCOMING (hasn't happened yet)\n`
         } else {
           workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: NOT LOGGED\n`
         }
