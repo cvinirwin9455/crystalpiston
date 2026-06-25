@@ -2912,31 +2912,23 @@ export default function AdminPage() {
             {!aiResponse && !aiLoading && (
               <div className="space-y-2">
                 <p className="text-gray-400 text-xs mb-3 font-medium">Quick Actions:</p>
-                <button onClick={() => handleAiQuery("Give me a summary of all my clients' progress this week. Who completed their workouts, who's behind, and what's the overall compliance rate?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
-                  <p className="text-white text-xs font-medium group-hover:text-purple-300">Weekly client summary</p>
-                  <p className="text-gray-500 text-[10px] mt-0.5">Who completed what, compliance rates, overall status</p>
+                <button onClick={() => handleAiQuery(aiSelectedClient !== 'all' ? "Give me a progress summary for this client. How are they tracking this week? Any patterns or concerns?" : "Give me a summary of all my clients' progress this week. Who completed their workouts, who's behind, and what's the overall compliance rate?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                  <p className="text-white text-xs font-medium group-hover:text-purple-300">{aiSelectedClient !== 'all' ? 'Progress summary' : 'Weekly client summary'}</p>
+                  <p className="text-gray-500 text-[10px] mt-0.5">{aiSelectedClient !== 'all' ? 'How are they tracking, patterns, concerns' : 'Who completed what, compliance rates, overall status'}</p>
                 </button>
-                <button onClick={() => handleAiQuery("What are my immediate action items? Which clients need attention — skipped workouts, behind on plan, haven't logged recently, or have declining trends?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
-                  <p className="text-white text-xs font-medium group-hover:text-purple-300">Immediate action items</p>
-                  <p className="text-gray-500 text-[10px] mt-0.5">Clients who need your attention right now</p>
+                <button onClick={() => handleAiQuery(aiSelectedClient !== 'all' ? "What should I focus on with this client right now? Any adjustments needed to their plan?" : "What are my immediate action items? Which clients need attention — skipped workouts, behind on plan, haven't logged recently, or have declining trends?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                  <p className="text-white text-xs font-medium group-hover:text-purple-300">{aiSelectedClient !== 'all' ? 'What to focus on' : 'Immediate action items'}</p>
+                  <p className="text-gray-500 text-[10px] mt-0.5">{aiSelectedClient !== 'all' ? 'Adjustments, conversations, plan changes' : 'Clients who need your attention right now'}</p>
                 </button>
-                <button onClick={() => handleAiQuery("Are any of my clients struggling that I should focus on? Look at skip rates, declining RPE, missed workouts, low energy/sleep scores, or comments that suggest frustration.")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
-                  <p className="text-white text-xs font-medium group-hover:text-purple-300">Clients who may be struggling</p>
-                  <p className="text-gray-500 text-[10px] mt-0.5">Declining trends, high skip rates, low morale</p>
+                <button onClick={() => handleAiQuery(aiSelectedClient !== 'all' ? "Is this client on track for their goal? Compare their plan vs actual performance and flag any gaps." : "Are any of my clients struggling that I should focus on? Look at skip rates, declining RPE, missed workouts, low energy/sleep scores, or comments that suggest frustration.")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                  <p className="text-white text-xs font-medium group-hover:text-purple-300">{aiSelectedClient !== 'all' ? 'Goal vs progress' : 'Clients who may be struggling'}</p>
+                  <p className="text-gray-500 text-[10px] mt-0.5">{aiSelectedClient !== 'all' ? 'Are they on track for their goal?' : 'Declining trends, high skip rates, low morale'}</p>
                 </button>
                 {aiSelectedClient !== 'all' && (
                   <>
-                    <button onClick={() => handleAiQuery(`Summarize this client's progress. How are they tracking against their goal? What are the trends in their completion, RPE, and mileage?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
-                      <p className="text-white text-xs font-medium group-hover:text-purple-300">Summarize client progress</p>
-                      <p className="text-gray-500 text-[10px] mt-0.5">Goal vs performance, trends, completion rate</p>
-                    </button>
-                    <button onClick={() => handleAiQuery(`What should I focus on for this client this week? Based on their recent data, what adjustments or conversations should I have?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
-                      <p className="text-white text-xs font-medium group-hover:text-purple-300">What to focus on this week</p>
-                      <p className="text-gray-500 text-[10px] mt-0.5">Recommended adjustments and talking points</p>
-                    </button>
-                    <button onClick={() => handleAiQuery(`Compare this client's plan versus their actual performance. Are they hitting their targets? Where are the gaps between what I programmed and what they're doing?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
-                      <p className="text-white text-xs font-medium group-hover:text-purple-300">Plan vs performance</p>
-                      <p className="text-gray-500 text-[10px] mt-0.5">Target miles vs actual, programmed vs completed</p>
+                    <button onClick={() => handleAiQuery(`Based on the workout data, what conversation should I have with this client? What questions should I ask them?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                      <p className="text-white text-xs font-medium group-hover:text-purple-300">Conversation starters</p>
+                      <p className="text-gray-500 text-[10px] mt-0.5">What to say in your next check-in</p>
                     </button>
                   </>
                 )}
