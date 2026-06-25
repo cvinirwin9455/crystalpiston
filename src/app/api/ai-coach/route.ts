@@ -99,9 +99,14 @@ ${context}`
     })
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      console.error('OpenAI error:', err)
-      return NextResponse.json({ error: 'AI service error' }, { status: 500 })
+      const errText = await response.text()
+      console.error('AI API error:', response.status, errText)
+      let errorDetail = `AI returned status ${response.status}`
+      try {
+        const errJson = JSON.parse(errText)
+        errorDetail = errJson.error?.message || errJson.error || errorDetail
+      } catch {}
+      return NextResponse.json({ error: errorDetail }, { status: 500 })
     }
 
     const data = await response.json()
