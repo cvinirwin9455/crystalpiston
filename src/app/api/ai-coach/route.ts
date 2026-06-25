@@ -96,8 +96,6 @@ CRITICAL DATE RULES:
 - Do NOT count Thursday, Friday, Saturday, or Sunday as missed if today is Wednesday or earlier.
 - A client who logged 3 workouts Mon-Wed out of 3 programmed Mon-Wed is at 100% for the week so far.
 
-EXCLUDE: If you see a client named "Crystal" in the data, skip them entirely — that's the coach's own test profile.
-
 CLIENT DATA:
 ${context}`
 
@@ -352,11 +350,16 @@ TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo pu
 
 // Helper: get all clients summary
 async function getAllClientsSummary(adminClient: any, activeClients: any[], depth: string): Promise<string> {
-  // Exclude Crystal's own test profile
-  const clientsToAnalyze = activeClients.filter((c: any) => c.name?.toLowerCase() !== 'crystal')
-  let summary = `ACTIVE CLIENTS (${clientsToAnalyze.length}):\n\n`
+  let summary = `ACTIVE CLIENTS (${activeClients.length}):\n\n`
 
-  for (const client of clientsToAnalyze) {
+  // Determine current week's Monday
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  monday.setHours(0, 0, 0, 0)
+
+  for (const client of activeClients) {
     const { data: plan } = await adminClient
       .from('plans')
       .select('goal')
@@ -364,21 +367,30 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
       .eq('status', 'active')
       .maybeSingle()
 
-    // Get this week's data
-    const { data: recentWeeks } = await adminClient
+    // Find the week that matches the current calendar week
+    const { data: allWeeks } = await adminClient
       .from('weeks')
       .select('id, date_range, focus')
       .eq('client_id', client.id)
       .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(1)
 
-    let thisWeekStatus = 'No plan'
-    if (recentWeeks && recentWeeks.length > 0) {
+    let currentWeek: any = null
+    for (const week of allWeeks || []) {
+      const weekStartStr = week.date_range.split(' - ')[0]
+      const weekStart = new Date(weekStartStr + ', ' + today.getFullYear())
+      const diffDays = Math.abs(Math.round((weekStart.getTime() - monday.getTime()) / (1000 * 60 * 60 * 24)))
+      if (diffDays <= 1) {
+        currentWeek = week
+        break
+      }
+    }
+
+    let thisWeekStatus = 'No plan published for this week'
+    if (currentWeek) {
       const { data: workouts } = await adminClient
         .from('workouts')
-        .select('id, type, miles')
-        .eq('week_id', recentWeeks[0].id)
+        .select('id, type, day, miles')
+        .eq('week_id', currentWeek.id)
 
       const workoutIds = (workouts || []).map((w: any) => w.id)
       let completedCount = 0
@@ -394,10 +406,28 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
           if (log.rpe) { totalRpe += log.rpe; rpeCount++ }
         }
       }
-      const total = (workouts || []).filter((w: any) => w.type !== 'rest').length
-      const avgRpe = rpeCount > 0 ? (totalRpe / rpeCount).toFixed(1) : '?'
-      thisWeekStatus = `${completedCount}/${total} done | Avg RPE: ${avgRpe}`
+
+      // Also count client-created workouts that are completed this week
+      const { data: clientWorkouts } = await adminClient
+        .from('client_workouts')
+        .select('id, completed')
+        .eq('week_id', currentWeek.id)
+        .eq('user_id', client.user_id)
+        .eq('completed', true)
+      const clientCompletedCount = (clientWorkouts || []).length
+
+      // Only count programmed non-rest workouts that are on days up to today
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      const todayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // 0=Mon, 6=Sun
+      const pastDays = days.slice(0, todayIndex + 1)
+      const pastWorkouts = (workouts || []).filter((w: any) => w.type !== 'rest' && pastDays.includes(w.day))
+
+      const totalSoFar = pastWorkouts.length
+      thisWeekStatus = `${completedCount} programmed + ${clientCompletedCount} extra done (${totalSoFar} programmed so far this week)`
     }
+
+    summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | This week: ${thisWeekStatus}\n`
+  }
 
     summary += `• ${client.name} — Goal: ${plan?.goal || '?'} | This week: ${thisWeekStatus}\n`
   }
