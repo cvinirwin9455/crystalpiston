@@ -28,9 +28,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
   }
 
+  const aiGatewayKey = process.env.AI_GATEWAY_API_KEY
   const openaiKey = process.env.OPENAI_API_KEY
-  if (!openaiKey) {
-    return NextResponse.json({ error: 'OpenAI not configured' }, { status: 500 })
+
+  let baseUrl: string
+  let apiKey: string
+  let modelName: string
+
+  if (aiGatewayKey) {
+    baseUrl = 'https://ai-gateway.vercel.sh/v1'
+    apiKey = aiGatewayKey
+    modelName = 'openai/gpt-4o-mini'
+  } else if (openaiKey) {
+    baseUrl = 'https://api.openai.com/v1'
+    apiKey = openaiKey
+    modelName = 'gpt-4o-mini'
+  } else {
+    return NextResponse.json({ error: 'AI not configured. Add AI_GATEWAY_API_KEY or OPENAI_API_KEY to environment variables.' }, { status: 500 })
   }
 
   try {
@@ -64,15 +78,15 @@ Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month:
 CLIENT DATA:
 ${context}`
 
-    // Call OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call AI
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: modelName,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
