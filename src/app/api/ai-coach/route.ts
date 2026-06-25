@@ -234,7 +234,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 
   const { data: client } = await adminClient
     .from('clients')
-    .select('id, user_id')
+    .select('id, user_id, goal, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
     .eq('user_id', clientId)
     .single()
 
@@ -242,7 +242,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 
   const { data: user } = await adminClient
     .from('users')
-    .select('name, gender, age, experience_level, current_mpw, days_per_week, target_distance, race_date, easy_pace, goal_pace, injuries')
+    .select('name, gender')
     .eq('id', clientId)
     .single()
 
@@ -310,11 +310,11 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
   }
 
   return `CLIENT: ${user?.name || 'Unknown'}
-Goal: ${plan?.goal || 'Not set'}
+Goal: ${plan?.goal || client.goal || 'Not set'}
 Plan: ${plan?.start_date || '?'} to ${plan?.end_date || '?'}
-Profile: ${user?.gender || '?'} | Age: ${user?.age || '?'} | Experience: ${user?.experience_level || '?'} | Current MPW: ${user?.current_mpw || '?'} | Days/wk: ${user?.days_per_week || '?'}
-Target: ${user?.target_distance || '?'} | Race Date: ${user?.race_date || '?'} | Easy Pace: ${user?.easy_pace || '?'} | Goal Pace: ${user?.goal_pace || '?'}
-Injuries: ${user?.injuries || 'None noted'}
+Profile: ${user?.gender || '?'} | Age: ${client.age || '?'} | Experience: ${client.experience_level || '?'} | Current MPW: ${client.current_mileage || '?'} | Days/wk: ${client.days_per_week || '?'}
+Target: ${client.target_distance || '?'} | Race Date: ${client.race_date || '?'} | Easy Pace: ${client.easy_pace || '?'} | Goal Pace: ${client.goal_pace || '?'}
+Injuries: ${client.injury_notes || 'None noted'}
 
 TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo published weeks yet.'}`
 }
@@ -329,7 +329,7 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
       .select('goal')
       .eq('client_id', client.id)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
 
     // Get this week's data
     const { data: recentWeeks } = await adminClient
