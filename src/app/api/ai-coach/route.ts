@@ -285,13 +285,24 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     .eq('status', 'active')
     .maybeSingle()
 
-  const { data: weeks } = await adminClient
+  const { data: allPublishedWeeks } = await adminClient
     .from('weeks')
     .select('id, date_range, focus, status')
     .eq('client_id', client.id)
     .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .limit(weekLimit)
+
+  // Filter to only weeks that have started (not future weeks)
+  const today = new Date()
+  const weeks = (allPublishedWeeks || []).filter((w: any) => {
+    const weekStartStr = w.date_range.split(' - ')[0]
+    const weekStart = new Date(weekStartStr + ', ' + today.getFullYear())
+    return weekStart <= today
+  }).sort((a: any, b: any) => {
+    // Sort by date descending (most recent first)
+    const dateA = new Date(a.date_range.split(' - ')[0] + ', ' + today.getFullYear())
+    const dateB = new Date(b.date_range.split(' - ')[0] + ', ' + today.getFullYear())
+    return dateB.getTime() - dateA.getTime()
+  }).slice(0, weekLimit)
 
   let workoutSummary = ''
   if (weeks && weeks.length > 0) {
