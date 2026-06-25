@@ -2875,10 +2875,17 @@ export default function AdminPage() {
         <div className="fixed bottom-24 right-6 z-50 w-[420px] max-h-[70vh] bg-secondary border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Panel Header */}
           <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/30 to-accent/10">
-            <h3 className="text-white font-heading text-sm uppercase flex items-center gap-2">
-              <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-              AI Coach Assistant
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-heading text-sm uppercase flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                AI Coach Assistant
+              </h3>
+              {aiCredits && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                  ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)}
+                </span>
+              )}
+            </div>
             <p className="text-gray-400 text-xs mt-0.5">Ask me about your clients</p>
           </div>
 
