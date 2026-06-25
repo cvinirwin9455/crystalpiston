@@ -10,7 +10,7 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; experienceLevel?: string | null; currentMileage?: number | null; targetDistance?: string | null; raceDate?: string | null; easyPace?: string | null; goalPace?: string | null; daysPerWeek?: number | null; age?: number | null; injuryNotes?: string | null; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -113,7 +113,7 @@ export default function AdminPage() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
-  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male" });
+  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", age: "", experienceLevel: "", currentMileage: "", targetDistance: "", raceDate: "", easyPace: "", goalPace: "", daysPerWeek: "", injuryNotes: "" });
 
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
@@ -150,6 +150,35 @@ export default function AdminPage() {
   const formatDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const getWeeksInMonth = (month: Date) => { const weeks: Date[][] = []; const firstDay = new Date(month.getFullYear(), month.getMonth(), 1); const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0); let current = getMonday(firstDay); while (current <= lastDay || weeks.length < 5) { const week: Date[] = []; for (let i = 0; i < 7; i++) { week.push(new Date(current)); current.setDate(current.getDate() + 1); } weeks.push(week); if (current > lastDay && weeks.length >= 4) break; } return weeks; };
   const [weekDateWarning, setWeekDateWarning] = useState("");
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiCoachNotes, setAiCoachNotes] = useState("");
+  const [aiCredits, setAiCredits] = useState<{ used: number; total: number } | null>(null);
+
+  // Fetch AI credit balance
+  useEffect(() => {
+    const fetchAiCredits = async () => {
+      try {
+        const res = await fetch('/api/ai-credits');
+        if (res.ok) {
+          const data = await res.json();
+          // Try multiple field names since we don't know exact API format
+          const used = data.used ?? (data.total != null && data.remaining != null ? data.total - data.remaining : null);
+          const total = data.total ?? 5.00;
+          if (used !== null && total !== null) {
+            setAiCredits({ used: parseFloat(used) || 0, total: parseFloat(total) || 5.00 });
+          } else if (data.remaining !== null && data.remaining !== undefined) {
+            // If we only have remaining, calculate used from $5 total
+            const t = parseFloat(data.total) || 5.00;
+            const r = parseFloat(data.remaining) || 0;
+            setAiCredits({ used: t - r, total: t });
+          }
+        }
+      } catch {}
+    };
+    fetchAiCredits();
+  }, [aiSuggesting]);
   const selectWeek = (monday: Date) => {
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
@@ -369,6 +398,73 @@ export default function AdminPage() {
     setShowLoadDayTemplate(null);
   };
 
+  // AI Suggest Week Plan
+  const handleAiSuggest = async () => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client || !client.clientId) return;
+
+    setAiSuggesting(true);
+    setAiReasoning("");
+    setAiError("");
+
+    try {
+      const res = await fetch('/api/ai-suggest-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: client.clientId,
+          dateRange: weekPlan.dateRange || null,
+          coachNotes: aiCoachNotes || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        setAiError(errData.error || 'Failed to generate suggestion');
+        return;
+      }
+
+      const data = await res.json();
+      const suggestion = data.suggestion;
+
+      // Map AI suggestion into the weekPlan state format
+      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const mappedDays = dayNames.map(dayName => {
+        const aiDay = suggestion.days.find((d: any) => d.day === dayName);
+        if (!aiDay || !aiDay.workouts || aiDay.workouts.length === 0) {
+          return { day: dayName, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] };
+        }
+        return {
+          day: dayName,
+          workouts: aiDay.workouts.map((w: any) => ({
+            type: w.type || 'rest',
+            trainingType: w.trainingType || (w.type === 'rest' ? 'Rest' : ''),
+            title: w.title || '',
+            miles: w.miles?.toString() || '',
+            description: w.description || '',
+            paceTarget: w.paceTarget || '',
+            location: w.location || '',
+            coachNotes: w.coachNotes || '',
+            distanceUnit: w.distanceUnit || 'mi',
+          })),
+        };
+      });
+
+      setWeekPlan({
+        ...weekPlan,
+        focus: suggestion.focus || weekPlan.focus,
+        coachMessage: suggestion.coachMessage || weekPlan.coachMessage,
+        days: mappedDays,
+      });
+
+      setAiReasoning(suggestion.reasoning || '');
+    } catch (err: any) {
+      setAiError(err.message || 'Failed to connect to AI service');
+    } finally {
+      setAiSuggesting(false);
+    }
+  };
+
   // Delete template
   const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) return;
@@ -579,6 +675,15 @@ export default function AdminPage() {
           stravaProfileUrl: c.stravaProfileUrl || null,
           weeks: [],
           messages: [],
+          experienceLevel: c.experienceLevel || null,
+          currentMileage: c.currentMileage || null,
+          targetDistance: c.targetDistance || null,
+          raceDate: c.raceDate || null,
+          easyPace: c.easyPace || null,
+          goalPace: c.goalPace || null,
+          daysPerWeek: c.daysPerWeek || null,
+          age: c.age || null,
+          injuryNotes: c.injuryNotes || null,
         }));
         setClients(mapped);
       }
@@ -650,6 +755,15 @@ export default function AdminPage() {
           name: newClientForm.name,
           email: newClientForm.email,
           gender: newClientForm.gender,
+          age: newClientForm.age || null,
+          experienceLevel: newClientForm.experienceLevel || null,
+          currentMileage: newClientForm.currentMileage || null,
+          targetDistance: newClientForm.targetDistance || null,
+          raceDate: newClientForm.raceDate || null,
+          easyPace: newClientForm.easyPace || null,
+          goalPace: newClientForm.goalPace || null,
+          daysPerWeek: newClientForm.daysPerWeek || null,
+          injuryNotes: newClientForm.injuryNotes || null,
         }),
       });
       const data = await res.json();
@@ -657,7 +771,7 @@ export default function AdminPage() {
         setCreateError(data.error || 'Failed to create client');
       } else {
         setShowCreateClient(false);
-        setNewClientForm({ name: "", email: "", gender: "female" });
+        setNewClientForm({ name: "", email: "", gender: "female", age: "", experienceLevel: "", currentMileage: "", targetDistance: "", raceDate: "", easyPace: "", goalPace: "", daysPerWeek: "", injuryNotes: "" });
         fetchClients(); // Refresh the list
       }
     } catch (err) {
@@ -1164,6 +1278,23 @@ export default function AdminPage() {
         setWeekDateWarning("");
         // Refresh weeks
         fetchWeeks(client.clientId);
+        if (publishStatus === "published") {
+          // Navigate to the published week's offset so it's immediately visible
+          const publishedDateStr = weekPlan.dateRange.split(' - ')[0];
+          const publishedMonday = new Date(publishedDateStr + ', ' + new Date().getFullYear());
+          publishedMonday.setHours(0, 0, 0, 0);
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          const thisMonday = new Date(today);
+          thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          thisMonday.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((publishedMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24));
+          const targetOffset = Math.round(diffDays / 7);
+          setAdminWeekOffset(targetOffset);
+          // Expand bounds if needed
+          setAdminMinOffset(prev => Math.min(prev, targetOffset));
+          setAdminMaxOffset(prev => Math.max(prev, targetOffset));
+        }
         setClientTab(publishStatus === "draft" ? "drafts" : "plan");
       }
     } catch (err) {
@@ -1423,9 +1554,26 @@ export default function AdminPage() {
             <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
             <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
             <div className="grid md:grid-cols-3 gap-4 mb-4">
-              <div><label className="text-gray-400 text-xs block mb-1">Full Name</label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Email</label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Gender</label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+            </div>
+            {/* Training Profile (optional - helps AI suggestions) */}
+            <p className="text-purple-300 text-xs font-heading uppercase mb-2 mt-4">Training Profile (optional — improves AI suggestions)</p>
+            <div className="grid md:grid-cols-4 gap-3 mb-3">
+              <div><label className="text-gray-400 text-xs block mb-1">Age</label><input type="number" value={newClientForm.age} onChange={(e) => setNewClientForm({ ...newClientForm, age: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="34" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Experience</label><select value={newClientForm.experienceLevel} onChange={(e) => setNewClientForm({ ...newClientForm, experienceLevel: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="">Select...</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Current MPW</label><input type="text" value={newClientForm.currentMileage} onChange={(e) => setNewClientForm({ ...newClientForm, currentMileage: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="15" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Days/Week</label><select value={newClientForm.daysPerWeek} onChange={(e) => setNewClientForm({ ...newClientForm, daysPerWeek: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="">Select...</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select></div>
+            </div>
+            <div className="grid md:grid-cols-4 gap-3 mb-3">
+              <div><label className="text-gray-400 text-xs block mb-1">Target Distance</label><select value={newClientForm.targetDistance} onChange={(e) => setNewClientForm({ ...newClientForm, targetDistance: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Race Date</label><input type="date" value={newClientForm.raceDate} onChange={(e) => setNewClientForm({ ...newClientForm, raceDate: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Easy Pace</label><input type="text" value={newClientForm.easyPace} onChange={(e) => setNewClientForm({ ...newClientForm, easyPace: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="10:30-11:00/mi" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Goal Race Pace</label><input type="text" value={newClientForm.goalPace} onChange={(e) => setNewClientForm({ ...newClientForm, goalPace: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="8:45/mi" /></div>
+            </div>
+            <div className="mb-4">
+              <label className="text-gray-400 text-xs block mb-1">Injuries / Important Notes</label><input type="text" value={newClientForm.injuryNotes} onChange={(e) => setNewClientForm({ ...newClientForm, injuryNotes: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. History of shin splints, weak left knee, prefers not to run back-to-back days" />
             </div>
             <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
             {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
@@ -1518,12 +1666,7 @@ export default function AdminPage() {
             {/* TRAINING & LOGS */}
             {clientTab === "plan" && (
               <div className="space-y-6">
-                {/* Current week badge */}
-                {adminWeekOffset === 0 && (
-                  <div className="text-center">
-                    <span className="inline-block bg-accent/10 border border-accent/30 rounded-lg py-1.5 px-4 text-accent font-heading text-xs uppercase">Current Week</span>
-                  </div>
-                )}
+                {/* Go to current week link (only when not on current week) */}
                 {adminWeekOffset !== 0 && (
                   <div className={adminWeekOffset < 0 ? "text-right" : "text-left"}>
                     <button onClick={() => setAdminWeekOffset(0)} className="text-accent text-xs hover:underline">{adminWeekOffset < 0 ? "Go to current week →" : "← Go to current week"}</button>
@@ -1534,6 +1677,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} aria-label="Previous week" disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
+                    {adminWeekOffset === 0 && <span className="inline-block bg-accent/10 border border-accent/30 rounded py-0.5 px-3 text-accent font-heading text-xs uppercase mb-1">Current Week</span>}
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
                     {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
                   </div>
@@ -1857,6 +2001,63 @@ export default function AdminPage() {
                     ))}
                   </div>
                 )}
+                {/* AI Suggest Week Plan */}
+                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-purple-300 text-xs font-heading uppercase">AI Week Planner</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold">BETA</span>
+                    <span className="text-gray-500 text-xs">— Suggestions may not be fully accurate. Always review before publishing.</span>
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={handleAiSuggest}
+                      disabled={aiSuggesting || !selectedClient || !weekPlan.dateRange}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                    >
+                      {aiSuggesting ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          Analyzing Client History...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                          AI Suggest Week
+                        </>
+                      )}
+                    </button>
+                    {!weekPlan.dateRange && <span className="text-purple-300/60 text-xs">Select a week date range first</span>}
+                    {weekPlan.dateRange && <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>}
+                    {aiCredits && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                        ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)} used
+                      </span>
+                    )}
+                  </div>
+                  {weekPlan.dateRange && (
+                    <div className="mt-2">
+                      <label className="text-purple-300 text-xs block mb-1">Anything you want AI to consider? (optional but recommended)</label>
+                      <textarea
+                        value={aiCoachNotes}
+                        onChange={(e) => setAiCoachNotes(e.target.value)}
+                        className="w-full bg-primary/50 border border-purple-500/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none placeholder-gray-500"
+                        rows={3}
+                        placeholder={"The more you tell it, the better the plan. Examples:\n• Easy pace 10:30-11:00, tempo pace 9:00-9:15, long run pace 10:45\n• Focus on speed this week, race is Aug 15\n• He's been dealing with shin pain, avoid back-to-back run days\n• Currently running 20mpw, ready to bump to 22-23\n• Keep Tuesday and Thursday as hard days, easy the rest"}
+                      />
+                    </div>
+                  )}
+                  {aiError && (
+                    <div className="mt-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
+                      <p className="text-red-400 text-xs">{aiError}</p>
+                    </div>
+                  )}
+                  {aiReasoning && (
+                    <div className="mt-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
+                      <p className="text-purple-300 text-xs font-heading uppercase mb-1">AI Reasoning (only you see this):</p>
+                      <p className="text-gray-300 text-xs leading-relaxed">{aiReasoning}</p>
+                    </div>
+                  )}
+                </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="relative">
                     <label className="text-gray-400 text-xs block mb-1">Week Date Range <span className="text-accent">*</span></label>
@@ -1869,11 +2070,18 @@ export default function AdminPage() {
                           <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                         </div>
                         <div className="grid grid-cols-7 gap-1 mb-1">{["M","T","W","T","F","S","S"].map((d,i) => <div key={i} className="text-center text-gray-300 text-xs py-1">{d}</div>)}</div>
-                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); return (
-                          <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors ${isSelected ? "bg-accent/20" : "hover:bg-white/5"}`}>
+                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const sunday = week[6]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); const weekDateRange = `${formatDate(monday)} - ${formatDate(sunday)}`; const clientData = clients.find(c => c.id === selectedClient); const existingWeek = clientData?.weeks.find(w => w.dateRange === weekDateRange); const weekStatus = existingWeek?.status || null; return (
+                          <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors relative ${isSelected ? "bg-accent/20" : weekStatus ? "bg-white/3" : "hover:bg-white/5"}`}>
                             {week.map((day, di) => <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : "text-white") : "text-gray-600"}`}>{day.getDate()}</div>)}
+                            {weekStatus === "published" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-400" title="Published" />}
+                            {weekStatus === "draft" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-yellow-400" title="Draft" />}
                           </button>); })}
-                        <p className="text-gray-300 text-xs mt-2 text-center">Click a row to select Mon-Sun</p>
+                        <div className="flex items-center gap-3 mt-2 justify-center">
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>Published</span>
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>Draft</span>
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-transparent border border-gray-500 inline-block"></span>Empty</span>
+                        </div>
+                        <p className="text-gray-300 text-xs mt-1 text-center">Click a row to select Mon-Sun</p>
                       </div>
                     )}
                   </div>

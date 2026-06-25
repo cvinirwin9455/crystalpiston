@@ -55,6 +55,20 @@ export async function GET() {
     .from('clients')
     .select('id, user_id, goal, start_date, plan_end, owed, paid')
 
+  // Try to fetch training profile fields (columns may not exist yet)
+  let trainingProfiles: any[] = []
+  try {
+    const { data } = await adminClient
+      .from('clients')
+      .select('id, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+    trainingProfiles = data || []
+  } catch {}
+
+  const trainingProfileMap = new Map<string, any>()
+  for (const tp of trainingProfiles) {
+    trainingProfileMap.set(tp.id, tp)
+  }
+
   // Build a lookup map: user_id -> client record
   const clientMap = new Map<string, any>()
   for (const cr of clientRecords || []) {
@@ -133,6 +147,15 @@ export async function GET() {
       paid,
       inviteStatus,
       createdAt: u.created_at,
+      experienceLevel: trainingProfileMap.get(clientRecord?.id)?.experience_level || null,
+      currentMileage: trainingProfileMap.get(clientRecord?.id)?.current_mileage || null,
+      targetDistance: trainingProfileMap.get(clientRecord?.id)?.target_distance || null,
+      raceDate: trainingProfileMap.get(clientRecord?.id)?.race_date || null,
+      easyPace: trainingProfileMap.get(clientRecord?.id)?.easy_pace || null,
+      goalPace: trainingProfileMap.get(clientRecord?.id)?.goal_pace || null,
+      daysPerWeek: trainingProfileMap.get(clientRecord?.id)?.days_per_week || null,
+      age: trainingProfileMap.get(clientRecord?.id)?.age || null,
+      injuryNotes: trainingProfileMap.get(clientRecord?.id)?.injury_notes || null,
     })
   }
 
@@ -160,7 +183,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email, gender, goal, startDate, planEnd, owed } = body
+  const { name, email, gender, goal, startDate, planEnd, owed, experienceLevel, currentMileage, targetDistance, raceDate, easyPace, goalPace, daysPerWeek, age, injuryNotes } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -206,6 +229,25 @@ export async function POST(request: Request) {
 
   if (clientError) {
     return NextResponse.json({ error: clientError.message }, { status: 500 })
+  }
+
+  // Try to update training profile fields (columns may not exist yet)
+  if (newClientRecord) {
+    try {
+      const profileUpdates: Record<string, any> = {}
+      if (experienceLevel) profileUpdates.experience_level = experienceLevel
+      if (currentMileage) profileUpdates.current_mileage = parseFloat(currentMileage)
+      if (targetDistance) profileUpdates.target_distance = targetDistance
+      if (raceDate) profileUpdates.race_date = raceDate
+      if (easyPace) profileUpdates.easy_pace = easyPace
+      if (goalPace) profileUpdates.goal_pace = goalPace
+      if (daysPerWeek) profileUpdates.days_per_week = parseInt(daysPerWeek)
+      if (age) profileUpdates.age = parseInt(age)
+      if (injuryNotes) profileUpdates.injury_notes = injuryNotes
+      if (Object.keys(profileUpdates).length > 0) {
+        await adminClient.from('clients').update(profileUpdates).eq('id', newClientRecord.id)
+      }
+    } catch {}
   }
 
   // Create an initial plan if owed amount was provided

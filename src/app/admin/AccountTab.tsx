@@ -22,6 +22,15 @@ type ClientData = {
   gender: string;
   goal: string;
   status: string;
+  experienceLevel?: string | null;
+  currentMileage?: number | null;
+  targetDistance?: string | null;
+  raceDate?: string | null;
+  easyPace?: string | null;
+  goalPace?: string | null;
+  daysPerWeek?: number | null;
+  age?: number | null;
+  injuryNotes?: string | null;
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void }) {
@@ -29,6 +38,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
   const [goal, setGoal] = useState(clientData.goal);
+  const [experienceLevel, setExperienceLevel] = useState(clientData.experienceLevel || "");
+  const [currentMileage, setCurrentMileage] = useState(clientData.currentMileage?.toString() || "");
+  const [targetDistance, setTargetDistance] = useState(clientData.targetDistance || "");
+  const [raceDate, setRaceDate] = useState(clientData.raceDate || "");
+  const [easyPace, setEasyPace] = useState(clientData.easyPace || "");
+  const [goalPace, setGoalPace] = useState(clientData.goalPace || "");
+  const [daysPerWeek, setDaysPerWeek] = useState(clientData.daysPerWeek?.toString() || "");
+  const [age, setAge] = useState(clientData.age?.toString() || "");
+  const [injuryNotes, setInjuryNotes] = useState(clientData.injuryNotes || "");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -50,6 +68,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
     setEmail(clientData.email);
     setGender(clientData.gender);
     setGoal(clientData.goal);
+    setExperienceLevel(clientData.experienceLevel || "");
+    setCurrentMileage(clientData.currentMileage?.toString() || "");
+    setTargetDistance(clientData.targetDistance || "");
+    setRaceDate(clientData.raceDate || "");
+    setEasyPace(clientData.easyPace || "");
+    setGoalPace(clientData.goalPace || "");
+    setDaysPerWeek(clientData.daysPerWeek?.toString() || "");
+    setAge(clientData.age?.toString() || "");
+    setInjuryNotes(clientData.injuryNotes || "");
     setSaveSuccess(false);
   }, [clientData.id]);
 
@@ -90,7 +117,18 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
       const res = await fetch(`/api/clients/${clientData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, gender, goal }),
+        body: JSON.stringify({
+          name, email, gender, goal,
+          experienceLevel: experienceLevel || null,
+          currentMileage: currentMileage || null,
+          targetDistance: targetDistance || null,
+          raceDate: raceDate || null,
+          easyPace: easyPace || null,
+          goalPace: goalPace || null,
+          daysPerWeek: daysPerWeek || null,
+          age: age || null,
+          injuryNotes: injuryNotes || null,
+        }),
       });
       if (res.ok) {
         setSaveSuccess(true);
@@ -194,19 +232,38 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
 
         {!editing ? (
           /* View Mode */
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Name</p>
-              <p className="text-white text-sm">{name || "—"}</p>
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Name</p>
+                <p className="text-white text-sm">{name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Email</p>
+                <p className="text-white text-sm">{email || "—"}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Gender</p>
+                <p className="text-white text-sm capitalize">{gender || "—"}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Email</p>
-              <p className="text-white text-sm">{email || "—"}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Gender</p>
-              <p className="text-white text-sm capitalize">{gender || "—"}</p>
-            </div>
+            {/* Training Profile - only show if any field is filled */}
+            {(age || experienceLevel || currentMileage || targetDistance || raceDate || easyPace || goalPace || daysPerWeek || injuryNotes) && (
+              <div className="border-t border-white/5 pt-3 mt-3">
+                <p className="text-purple-300 text-xs font-heading uppercase mb-2">Training Profile</p>
+                <div className="grid md:grid-cols-4 gap-3">
+                  {age && <div><p className="text-gray-500 text-xs mb-0.5">Age</p><p className="text-white text-sm">{age}</p></div>}
+                  {experienceLevel && <div><p className="text-gray-500 text-xs mb-0.5">Experience</p><p className="text-white text-sm capitalize">{experienceLevel}</p></div>}
+                  {currentMileage && <div><p className="text-gray-500 text-xs mb-0.5">Current MPW</p><p className="text-white text-sm">{currentMileage} mi/wk</p></div>}
+                  {daysPerWeek && <div><p className="text-gray-500 text-xs mb-0.5">Days/Week</p><p className="text-white text-sm">{daysPerWeek}</p></div>}
+                  {targetDistance && <div><p className="text-gray-500 text-xs mb-0.5">Target Distance</p><p className="text-white text-sm">{targetDistance}</p></div>}
+                  {raceDate && <div><p className="text-gray-500 text-xs mb-0.5">Race Date</p><p className="text-white text-sm">{new Date(raceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p></div>}
+                  {easyPace && <div><p className="text-gray-500 text-xs mb-0.5">Easy Pace</p><p className="text-white text-sm">{easyPace}</p></div>}
+                  {goalPace && <div><p className="text-gray-500 text-xs mb-0.5">Goal Pace</p><p className="text-white text-sm">{goalPace}</p></div>}
+                </div>
+                {injuryNotes && <div className="mt-2"><p className="text-gray-500 text-xs mb-0.5">Injuries / Notes</p><p className="text-white text-sm">{injuryNotes}</p></div>}
+              </div>
+            )}
           </div>
         ) : (
           /* Edit Mode */
@@ -228,11 +285,29 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
                 </select>
               </div>
             </div>
+            {/* Training Profile Fields */}
+            <p className="text-purple-300 text-xs font-heading uppercase mb-2 mt-4">Training Profile (helps AI suggestions)</p>
+            <div className="grid md:grid-cols-4 gap-3 mb-3">
+              <div><label className="text-gray-500 text-xs block mb-1">Age</label><input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="34" /></div>
+              <div><label className="text-gray-500 text-xs block mb-1">Experience</label><select value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+              <div><label className="text-gray-500 text-xs block mb-1">Current MPW</label><input type="text" value={currentMileage} onChange={(e) => setCurrentMileage(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="15" /></div>
+              <div><label className="text-gray-500 text-xs block mb-1">Days/Week</label><select value={daysPerWeek} onChange={(e) => setDaysPerWeek(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select></div>
+            </div>
+            <div className="grid md:grid-cols-4 gap-3 mb-3">
+              <div><label className="text-gray-500 text-xs block mb-1">Target Distance</label><select value={targetDistance} onChange={(e) => setTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select></div>
+              <div><label className="text-gray-500 text-xs block mb-1">Race Date</label><input type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
+              <div><label className="text-gray-500 text-xs block mb-1">Easy Pace</label><input type="text" value={easyPace} onChange={(e) => setEasyPace(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10:30-11:00/mi" /></div>
+              <div><label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label><input type="text" value={goalPace} onChange={(e) => setGoalPace(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" /></div>
+            </div>
+            <div className="mb-4">
+              <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes</label>
+              <input type="text" value={injuryNotes} onChange={(e) => setInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
+            </div>
             <div className="flex items-center gap-3">
               <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
               </button>
-              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
+              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); setAge(clientData.age?.toString() || ""); setExperienceLevel(clientData.experienceLevel || ""); setCurrentMileage(clientData.currentMileage?.toString() || ""); setTargetDistance(clientData.targetDistance || ""); setRaceDate(clientData.raceDate || ""); setEasyPace(clientData.easyPace || ""); setGoalPace(clientData.goalPace || ""); setDaysPerWeek(clientData.daysPerWeek?.toString() || ""); setInjuryNotes(clientData.injuryNotes || ""); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
               {saveSuccess && <span className="text-green-400 text-xs">Saved!</span>}
             </div>
           </>
