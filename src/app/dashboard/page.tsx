@@ -128,6 +128,9 @@ export default function DashboardPage() {
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
 
   const clientUpdates = [
+    { date: "June 25, 2026", items: [
+      "New Help Center — tap the ? icon in the header to search guides on how to use every feature",
+    ]},
     { date: "June 24, 2026", items: [
       "Strava activities now auto-match to your programmed workout when it's an obvious fit — no more manual confirmation needed",
       "Auto-matched workouts show the Strava badge and your miles/pace/duration/HR automatically on the programmed card",
@@ -197,7 +200,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
-    if (!lastSeen || lastSeen < "2026-06-24T22:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
       setShowNewBadge(true);
     }
   }, []);
@@ -929,7 +932,7 @@ export default function DashboardPage() {
               {/* Updates Dropdown */}
               {showUpdatesDropdown && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-24T22:00:00Z"); setLastSeenUpdates("2026-06-24T22:00:00Z"); }} />
+                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-25T01:00:00Z"); setLastSeenUpdates("2026-06-25T01:00:00Z"); }} />
                   <div className="absolute right-0 top-8 w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                     <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                       <h3 className="text-white text-sm font-heading uppercase">What&apos;s New</h3>
@@ -958,7 +961,7 @@ export default function DashboardPage() {
                       })()}
                     </div>
                     <div className="px-4 py-2.5 border-t border-white/10">
-                      <button onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-24T22:00:00Z"); setLastSeenUpdates("2026-06-24T22:00:00Z"); setShowAllUpdates(true); }} className="text-accent hover:text-white text-xs font-medium transition-colors w-full text-center">View all updates</button>
+                      <button onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-25T01:00:00Z"); setLastSeenUpdates("2026-06-25T01:00:00Z"); setShowAllUpdates(true); }} className="text-accent hover:text-white text-xs font-medium transition-colors w-full text-center">View all updates</button>
                     </div>
                   </div>
                 </>

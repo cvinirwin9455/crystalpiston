@@ -28,11 +28,23 @@ export default function AdminPage() {
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
+  const [showAllDrafts, setShowAllDrafts] = useState(false);
+  const [showAllPayments, setShowAllPayments] = useState(false);
+
+  // AI Coach Assistant state
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiPromptUsed, setAiPromptUsed] = useState("");
+  const [aiSelectedClient, setAiSelectedClient] = useState<string>("all");
+  const [aiDataDepth, setAiDataDepth] = useState<"light" | "standard" | "deep">("standard");
+  const [aiCustomPrompt, setAiCustomPrompt] = useState("");
+  const [aiFeedbackGiven, setAiFeedbackGiven] = useState<"up" | "down" | null>(null);
 
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-24T22:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -854,6 +866,47 @@ export default function AdminPage() {
   useEffect(() => {
     adminMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [adminMessages]);
+  // AI Coach handler
+  const handleAiQuery = async (prompt: string) => {
+    setAiLoading(true);
+    setAiResponse(null);
+    setAiPromptUsed(prompt);
+    setAiFeedbackGiven(null);
+    try {
+      const res = await fetch('/api/ai-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          clientId: aiSelectedClient === 'all' ? null : aiSelectedClient,
+          dataDepth: aiDataDepth,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiResponse(data.response);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAiResponse(`Error: ${err.error || 'Something went wrong. Try again.'}`);
+      }
+    } catch (err) {
+      setAiResponse('Error: Failed to connect. Check your internet connection.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAiFeedback = async (rating: 'up' | 'down') => {
+    setAiFeedbackGiven(rating);
+    try {
+      await fetch('/api/ai-coach', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPromptUsed, response: aiResponse?.slice(0, 500), rating }),
+      });
+    } catch (err) { /* silent */ }
+  };
+
   const filteredClients = clients.filter(c => (clientFilter === "all" || c.status === clientFilter) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
   // Fetch messages when Messages tab is opened for a client
@@ -1522,7 +1575,7 @@ export default function AdminPage() {
           })}
         </div>
         <div className="p-3 border-t border-white/10 space-y-2">
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-24T22:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             What&apos;s New
             {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
@@ -2731,9 +2784,9 @@ export default function AdminPage() {
                   {/* Drafts Ready to Publish */}
                   {allDrafts.length > 0 && (
                     <div className="bg-secondary/50 border border-yellow-500/20 rounded-xl p-5">
-                      <h3 className="font-heading text-sm uppercase text-yellow-400 mb-3">Drafts Ready to Publish</h3>
+                      <h3 className="font-heading text-sm uppercase text-yellow-400 mb-3">Drafts Ready to Publish ({allDrafts.length})</h3>
                       <div className="space-y-2">
-                        {allDrafts.map((item, i) => (
+                        {(showAllDrafts ? allDrafts : allDrafts.slice(0, 3)).map((item, i) => (
                           <div key={i} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
                             <div className="flex items-center gap-3">
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
@@ -2746,6 +2799,12 @@ export default function AdminPage() {
                           </div>
                         ))}
                       </div>
+                      {allDrafts.length > 3 && !showAllDrafts && (
+                        <button onClick={() => setShowAllDrafts(true)} className="w-full mt-3 text-yellow-400 hover:text-yellow-300 text-xs font-medium py-2 border border-yellow-500/20 rounded-lg hover:bg-yellow-500/5 transition-colors">Show all {allDrafts.length} drafts</button>
+                      )}
+                      {showAllDrafts && allDrafts.length > 3 && (
+                        <button onClick={() => setShowAllDrafts(false)} className="w-full mt-3 text-gray-400 hover:text-white text-xs py-2 transition-colors">Show less</button>
+                      )}
                     </div>
                   )}
 
@@ -2772,9 +2831,9 @@ export default function AdminPage() {
                   {/* Payment Overview */}
                   {unpaidClients.length > 0 && (
                     <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
-                      <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">Outstanding Payments</h3>
+                      <h3 className="font-heading text-sm uppercase text-gray-400 mb-3">Outstanding Payments ({unpaidClients.length})</h3>
                       <div className="space-y-2">
-                        {unpaidClients.map((c) => (
+                        {(showAllPayments ? unpaidClients : unpaidClients.slice(0, 3)).map((c) => (
                           <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("account"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
                             <div className="flex items-center gap-3">
                               <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{c.name.charAt(0)}</div>
@@ -2784,6 +2843,12 @@ export default function AdminPage() {
                           </button>
                         ))}
                       </div>
+                      {unpaidClients.length > 3 && !showAllPayments && (
+                        <button onClick={() => setShowAllPayments(true)} className="w-full mt-3 text-gray-400 hover:text-white text-xs font-medium py-2 border border-white/10 rounded-lg hover:bg-white/5 transition-colors">Show all {unpaidClients.length} outstanding</button>
+                      )}
+                      {showAllPayments && unpaidClients.length > 3 && (
+                        <button onClick={() => setShowAllPayments(false)} className="w-full mt-3 text-gray-400 hover:text-white text-xs py-2 transition-colors">Show less</button>
+                      )}
                     </div>
                   )}
                 </>
@@ -2796,6 +2861,125 @@ export default function AdminPage() {
           </div>
         )}
       </main>
+
+      {/* AI Coach Assistant — Floating Button + Panel */}
+      <button onClick={() => setShowAiPanel(!showAiPanel)} className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAiPanel ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gradient-to-r from-purple-600 to-accent hover:scale-105'}`} title="AI Coach Assistant">
+        {showAiPanel ? (
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        ) : (
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+        )}
+      </button>
+
+      {showAiPanel && (
+        <div className="fixed bottom-24 right-6 z-50 w-[420px] max-h-[70vh] bg-secondary border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          {/* Panel Header */}
+          <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/30 to-accent/10">
+            <h3 className="text-white font-heading text-sm uppercase flex items-center gap-2">
+              <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+              AI Coach Assistant
+            </h3>
+            <p className="text-gray-400 text-xs mt-0.5">Ask me about your clients</p>
+          </div>
+
+          {/* Client & Data Depth Selector */}
+          <div className="px-5 py-3 border-b border-white/5 space-y-2">
+            <div className="flex gap-2">
+              <select value={aiSelectedClient} onChange={(e) => setAiSelectedClient(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+                <option value="all">All Active Clients</option>
+                {clients.filter(c => c.status === 'active').map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <select value={aiDataDepth} onChange={(e) => setAiDataDepth(e.target.value as any)} className="bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+                <option value="light">Light (2 wks)</option>
+                <option value="standard">Standard (4 wks)</option>
+                <option value="deep">Deep (all)</option>
+              </select>
+            </div>
+            <p className="text-gray-500 text-[10px]">{aiDataDepth === 'light' ? 'Fastest, least detail' : aiDataDepth === 'standard' ? 'Balanced speed + detail' : 'Most detail, slower'} — {aiSelectedClient === 'all' ? 'All clients' : clients.find(c => c.id === aiSelectedClient)?.name}</p>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            {!aiResponse && !aiLoading && (
+              <div className="space-y-2">
+                <p className="text-gray-400 text-xs mb-3 font-medium">Quick Actions:</p>
+                <button onClick={() => handleAiQuery("Give me a summary of all my clients' progress this week. Who completed their workouts, who's behind, and what's the overall compliance rate?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                  <p className="text-white text-xs font-medium group-hover:text-purple-300">Weekly client summary</p>
+                  <p className="text-gray-500 text-[10px] mt-0.5">Who completed what, compliance rates, overall status</p>
+                </button>
+                <button onClick={() => handleAiQuery("What are my immediate action items? Which clients need attention — skipped workouts, behind on plan, haven't logged recently, or have declining trends?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                  <p className="text-white text-xs font-medium group-hover:text-purple-300">Immediate action items</p>
+                  <p className="text-gray-500 text-[10px] mt-0.5">Clients who need your attention right now</p>
+                </button>
+                <button onClick={() => handleAiQuery("Are any of my clients struggling that I should focus on? Look at skip rates, declining RPE, missed workouts, low energy/sleep scores, or comments that suggest frustration.")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                  <p className="text-white text-xs font-medium group-hover:text-purple-300">Clients who may be struggling</p>
+                  <p className="text-gray-500 text-[10px] mt-0.5">Declining trends, high skip rates, low morale</p>
+                </button>
+                {aiSelectedClient !== 'all' && (
+                  <>
+                    <button onClick={() => handleAiQuery(`Summarize this client's progress. How are they tracking against their goal? What are the trends in their completion, RPE, and mileage?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                      <p className="text-white text-xs font-medium group-hover:text-purple-300">Summarize client progress</p>
+                      <p className="text-gray-500 text-[10px] mt-0.5">Goal vs performance, trends, completion rate</p>
+                    </button>
+                    <button onClick={() => handleAiQuery(`What should I focus on for this client this week? Based on their recent data, what adjustments or conversations should I have?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                      <p className="text-white text-xs font-medium group-hover:text-purple-300">What to focus on this week</p>
+                      <p className="text-gray-500 text-[10px] mt-0.5">Recommended adjustments and talking points</p>
+                    </button>
+                    <button onClick={() => handleAiQuery(`Compare this client's plan versus their actual performance. Are they hitting their targets? Where are the gaps between what I programmed and what they're doing?`)} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
+                      <p className="text-white text-xs font-medium group-hover:text-purple-300">Plan vs performance</p>
+                      <p className="text-gray-500 text-[10px] mt-0.5">Target miles vs actual, programmed vs completed</p>
+                    </button>
+                  </>
+                )}
+                <div className="pt-2 border-t border-white/5">
+                  <p className="text-gray-400 text-xs mb-2 font-medium">Ask anything:</p>
+                  <div className="flex gap-2">
+                    <input type="text" value={aiCustomPrompt} onChange={(e) => setAiCustomPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && aiCustomPrompt.trim()) handleAiQuery(aiCustomPrompt.trim()); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Type your question..." />
+                    <button onClick={() => { if (aiCustomPrompt.trim()) handleAiQuery(aiCustomPrompt.trim()); }} disabled={!aiCustomPrompt.trim()} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors">Ask</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {aiLoading && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-gray-400 text-xs">Analyzing {aiSelectedClient === 'all' ? 'all clients' : 'client data'}...</p>
+              </div>
+            )}
+
+            {aiResponse && !aiLoading && (
+              <div>
+                <div className="bg-primary/30 border border-purple-500/20 rounded-xl p-4 mb-4">
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    {aiResponse.split('\n').map((line, i) => (
+                      <p key={i} className="text-gray-300 text-xs leading-relaxed mb-1 last:mb-0">{line || '\u00A0'}</p>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-gray-500 text-[10px]">Was this helpful?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleAiFeedback('up')} className={`p-1.5 rounded-lg transition-colors ${aiFeedbackGiven === 'up' ? 'bg-green-500/20 text-green-400' : 'text-gray-500 hover:text-green-400 hover:bg-green-500/10'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
+                    </button>
+                    <button onClick={() => handleAiFeedback('down')} className={`p-1.5 rounded-lg transition-colors ${aiFeedbackGiven === 'down' ? 'bg-red-500/20 text-red-400' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" /></svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ask another */}
+                <button onClick={() => { setAiResponse(null); setAiCustomPrompt(''); }} className="w-full text-center text-purple-400 hover:text-purple-300 text-xs font-medium py-2 border border-purple-500/20 rounded-lg hover:bg-purple-500/5 transition-colors">Ask another question</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

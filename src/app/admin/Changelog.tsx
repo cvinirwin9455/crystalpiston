@@ -3,9 +3,23 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-24T22:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-25T01:00:00Z";
 
 const updates = [
+  {
+    date: "June 25, 2026",
+    items: [
+      { area: "Admin", text: "NEW: AI Coach Assistant — floating purple button (bottom-right) opens a panel where you can ask AI about your clients" },
+      { area: "Admin", text: "Pre-built quick actions: Weekly summary, Immediate action items, Clients who may be struggling" },
+      { area: "Admin", text: "Select a specific client to get: Progress summary, What to focus on this week, Plan vs performance" },
+      { area: "Admin", text: "Choose data depth (Light/Standard/Deep) to control how much history the AI analyzes — helps keep costs low" },
+      { area: "Admin", text: "Free-form 'Ask anything' input for custom questions about any client" },
+      { area: "Admin", text: "Thumbs up/down on AI responses so the system can learn what's helpful" },
+      { area: "Admin", text: "Drafts section now shows first 3 with 'Show all' button — no more long scrolling lists" },
+      { area: "Admin", text: "Outstanding Payments section same — first 3 shown, expand to see all" },
+      { area: "Client", text: "New Help Center (? icon in header) — searchable guide covering all app features" },
+    ],
+  },
   {
     date: "June 24, 2026",
     items: [
