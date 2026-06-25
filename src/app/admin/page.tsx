@@ -884,7 +884,7 @@ export default function AdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setAiResponse(data.response + (data.debug ? '\n\n---DEBUG DATA SENT TO AI---\n' + data.debug : ''));
+        setAiResponse(data.response);
       } else {
         const err = await res.json().catch(() => ({}));
         setAiResponse(`Error: ${err.error || 'Something went wrong. Try again.'}`);
