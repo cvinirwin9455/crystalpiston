@@ -122,8 +122,8 @@ ${goodExamples.map((ex: any) => `Q: "${ex.prompt.slice(0, 80)}"\nA: "${ex.respon
 STYLE CRYSTAL DISLIKES (she gave thumbs-down to these — avoid this style):
 ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : ''}`
 
-    // Call AI
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    // Call AI — try gateway first, fall back to direct OpenAI if rate-limited
+    let response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -139,6 +139,26 @@ ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : 
         temperature: 0.7,
       }),
     })
+
+    // If gateway rate-limits and we have an OpenAI key, retry directly
+    if (!response.ok && response.status === 429 && process.env.OPENAI_API_KEY && baseUrl !== 'https://api.openai.com/v1') {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: clientId ? 600 : 400,
+          temperature: 0.7,
+        }),
+      })
+    }
 
     if (!response.ok) {
       const errText = await response.text()
