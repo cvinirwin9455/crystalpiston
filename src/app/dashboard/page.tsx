@@ -130,6 +130,8 @@ export default function DashboardPage() {
   const clientUpdates = [
     { date: "June 25, 2026", items: [
       "New Help Center — tap the ? icon in the header to search guides on how to use every feature",
+      "Strava auto-synced workouts now show a reminder to add your RPE & Sleep — tap 'Add' to fill them in",
+      "Strava sync email updated — clearly tells you the workout was auto-matched and asks you to log RPE & Sleep",
     ]},
     { date: "June 24, 2026", items: [
       "Strava activities now auto-match to your programmed workout when it's an obvious fit — no more manual confirmation needed",
@@ -1199,6 +1201,16 @@ export default function DashboardPage() {
                     )}
                     {(workout.status === "complete" || workout.status === "partial") && workout.log && (
                       <div className="mt-2 ml-9">
+                        {/* RPE/Sleep missing reminder for Strava-synced workouts */}
+                        {workout.stravaSynced && (!workout.log.rpe || !workout.log.sleep) && editingWorkoutLog !== workout.id && (
+                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2.5 mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                              <p className="text-orange-300 text-xs"><span className="font-medium">Strava synced your activity!</span> Add your {!workout.log.rpe && !workout.log.sleep ? 'RPE & Sleep' : !workout.log.rpe ? 'RPE' : 'Sleep'} so Crystal can track how you&apos;re feeling.</p>
+                            </div>
+                            <button onClick={() => setEditingWorkoutLog(workout.id)} className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 ml-2">Add</button>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-1.5">
                           {workout.log.rpe && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">RPE</span> <span className="text-white font-medium">{workout.log.rpe}/10</span></span>}
                           {workout.log.actualMiles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{getWorkoutUnit(workout.id) === "km" ? "km" : "mi"}</span> <span className="text-white font-medium">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi').toFixed(2)}</span></span>}

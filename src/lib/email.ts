@@ -187,13 +187,19 @@ export function buildStravaImportEmail(
   let statusMessage = ''
 
   if (matchStatus === 'programmed') {
-    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #f9731622; color: #f97316; border: 1px solid #f9731644;">Possible Match Found</div>`
-    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">We think this matches your <strong style="color: #ffffff;">programmed workout</strong> from Crystal${matchedWorkoutTitle ? `: <strong style="color: #d4a853;">${matchedWorkoutTitle}</strong>` : ''}.</p>
-    <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Log in to confirm the match so your training log stays accurate.</p>`
+    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #22c55e22; color: #22c55e; border: 1px solid #22c55e44;">Auto-Matched to Your Plan</div>`
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to your <strong style="color: #ffffff;">programmed workout</strong> from Crystal${matchedWorkoutTitle ? `: <strong style="color: #d4a853;">${matchedWorkoutTitle}</strong>` : ''}.</p>
+    <div style="margin: 0 0 20px; padding: 14px 16px; background-color: rgba(234,69,96,0.08); border: 1px solid rgba(234,69,96,0.2); border-radius: 8px;">
+      <p style="margin: 0 0 4px; color: #e94560; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
+      <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps Crystal understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
+    </div>`
   } else if (matchStatus === 'client') {
-    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #06b6d422; color: #06b6d4; border: 1px solid #06b6d444;">Possible Match Found</div>`
-    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">We think this matches a <strong style="color: #ffffff;">workout you created</strong>${matchedWorkoutTitle ? `: <strong style="color: #06b6d4;">${matchedWorkoutTitle}</strong>` : ''}.</p>
-    <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Log in to confirm the match so your training log stays accurate.</p>`
+    statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #22c55e22; color: #22c55e; border: 1px solid #22c55e44;">Auto-Matched to Your Workout</div>`
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to a <strong style="color: #ffffff;">workout you created</strong>${matchedWorkoutTitle ? `: <strong style="color: #06b6d4;">${matchedWorkoutTitle}</strong>` : ''}.</p>
+    <div style="margin: 0 0 20px; padding: 14px 16px; background-color: rgba(234,69,96,0.08); border: 1px solid rgba(234,69,96,0.2); border-radius: 8px;">
+      <p style="margin: 0 0 4px; color: #e94560; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
+      <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps Crystal understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
+    </div>`
   } else {
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #6b728022; color: #9ca3af; border: 1px solid #6b728044;">No Match Found</div>`
     statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">This activity didn&rsquo;t match any of your programmed or your own workouts created. Log in to decide what to do with it &mdash; you can link it to a workout, keep it as an extra, or dismiss it.</p>`
