@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [aiDataDepth, setAiDataDepth] = useState<"light" | "standard" | "deep">("standard");
   const [aiCustomPrompt, setAiCustomPrompt] = useState("");
   const [aiFeedbackGiven, setAiFeedbackGiven] = useState<"up" | "down" | null>(null);
+  const [aiProvider, setAiProvider] = useState<string | null>(null);
 
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
@@ -885,9 +886,15 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setAiResponse(data.response);
+        setAiProvider(data.provider || null);
       } else {
         const err = await res.json().catch(() => ({}));
-        setAiResponse(`Error: ${err.error || 'Something went wrong. Try again.'}`);
+        if (err.isRateLimit) {
+          setAiResponse(null);
+          setAiProvider('rate-limited');
+        } else {
+          setAiResponse(`Error: ${err.error || 'Something went wrong. Try again.'}`);
+        }
       }
     } catch (err) {
       setAiResponse('Error: Failed to connect. Check your internet connection.');
@@ -2949,6 +2956,15 @@ export default function AdminPage() {
               </div>
             )}
 
+            {!aiResponse && !aiLoading && aiProvider === 'rate-limited' && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-5 text-center">
+                <svg className="w-8 h-8 text-yellow-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p className="text-yellow-400 text-sm font-medium mb-1">Rate limit reached</p>
+                <p className="text-gray-400 text-xs mb-4">Too many requests in a short time. Wait 1-2 minutes and try again — the limit resets automatically.</p>
+                <button onClick={() => { setAiProvider(null); }} className="text-yellow-400 hover:text-yellow-300 text-xs font-medium py-2 px-4 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/5 transition-colors">Try again</button>
+              </div>
+            )}
+
             {aiResponse && !aiLoading && (
               <div>
                 <div className="bg-primary/30 border border-purple-500/20 rounded-xl p-4 mb-4">
@@ -2963,6 +2979,9 @@ export default function AdminPage() {
                       </p>
                     ))}
                   </div>
+                  {aiProvider && aiProvider !== 'rate-limited' && (
+                    <p className="text-gray-600 text-[10px] mt-3 pt-2 border-t border-white/5">Powered by {aiProvider}</p>
+                  )}
                 </div>
 
                 {/* Feedback */}

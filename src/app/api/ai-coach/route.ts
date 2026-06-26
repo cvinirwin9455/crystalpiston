@@ -164,10 +164,17 @@ ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : 
       const errText = await response.text()
       console.error('AI API error:', response.status, errText)
       let errorDetail = `AI returned status ${response.status}`
+      let isRateLimit = false
       try {
         const errJson = JSON.parse(errText)
         errorDetail = errJson.error?.message || errJson.error || errorDetail
+        if (response.status === 429 || errorDetail.toLowerCase().includes('rate') || errorDetail.toLowerCase().includes('quota')) {
+          isRateLimit = true
+        }
       } catch {}
+      if (isRateLimit) {
+        return NextResponse.json({ error: 'Rate limit reached. Wait 1-2 minutes and try again — the limit resets automatically.', isRateLimit: true }, { status: 429 })
+      }
       return NextResponse.json({ error: errorDetail }, { status: 500 })
     }
 
@@ -177,6 +184,7 @@ ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : 
     return NextResponse.json({
       response: aiResponse,
       tokensUsed: data.usage?.total_tokens || 0,
+      provider: baseUrl.includes('vercel') ? 'Vercel AI Gateway' : 'OpenAI Direct',
     })
   } catch (err: any) {
     console.error('AI Coach error:', err)
