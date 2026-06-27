@@ -1154,7 +1154,7 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           <p className="text-gray-400 text-sm">{workout.description}</p>
-                          {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {workout.paceTarget}</p>}
+                          {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {getWorkoutUnit(workout.id) === "km" && workout.paceTarget.includes("/mi") ? convertPaceToKm(workout.paceTarget) : getWorkoutUnit(workout.id) === "mi" && workout.paceTarget.includes("/km") ? convertPaceToMi(workout.paceTarget) : workout.paceTarget}{!workout.paceTarget.includes("/") ? `/${getWorkoutUnit(workout.id)}` : ""}</p>}
                           {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>
