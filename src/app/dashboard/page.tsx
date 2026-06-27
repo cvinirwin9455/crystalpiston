@@ -109,6 +109,7 @@ export default function DashboardPage() {
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
+  const [loggedInEmail, setLoggedInEmail] = useState("");
   const [clientDistanceUnit, setClientDistanceUnit] = useState<"mi" | "km">("mi");
   const [workoutUnitOverrides, setWorkoutUnitOverrides] = useState<Record<string, "mi" | "km">>({});
 
@@ -295,6 +296,7 @@ export default function DashboardPage() {
         if (user) {
           const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
           setLoggedInName(profile?.name || user.email || '');
+          setLoggedInEmail(user.email || '');
         }
       } catch (err) { console.error(err); }
     };
@@ -1920,43 +1922,59 @@ export default function DashboardPage() {
         {activeTab === "account" && (
           <div className="space-y-6">
             {/* Training Profile (read-only) */}
-            {trainingProfile && (trainingProfile.birthday || trainingProfile.currentMileage || trainingProfile.easyPace || trainingProfile.goalPace || trainingProfile.injuryNotes) && (
-              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
-                <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Profile</h2>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {trainingProfile.birthday && (
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Age</p>
-                      <p className="text-white">{Math.floor((Date.now() - new Date(trainingProfile.birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))}</p>
-                    </div>
-                  )}
-                  {trainingProfile.currentMileage && (
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Current Mileage</p>
-                      <p className="text-white">{trainingProfile.currentMileage} mi/wk</p>
-                    </div>
-                  )}
-                  {trainingProfile.easyPace && (
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Easy Pace</p>
-                      <p className="text-white">{trainingProfile.easyPace}</p>
-                    </div>
-                  )}
-                  {trainingProfile.goalPace && (
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Goal Pace</p>
-                      <p className="text-white">{trainingProfile.goalPace}</p>
-                    </div>
-                  )}
-                </div>
-                {trainingProfile.injuryNotes && (
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <p className="text-gray-400 text-xs mb-1">Notes</p>
-                    <p className="text-white text-sm">{trainingProfile.injuryNotes}</p>
+            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Profile</h2>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {loggedInName && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Name</p>
+                    <p className="text-white">{loggedInName}</p>
+                  </div>
+                )}
+                {loggedInEmail && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Email</p>
+                    <p className="text-white">{loggedInEmail}</p>
+                  </div>
+                )}
+                {clientGender && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Gender</p>
+                    <p className="text-white capitalize">{clientGender}</p>
+                  </div>
+                )}
+                {trainingProfile?.birthday && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Age</p>
+                    <p className="text-white">{Math.floor((Date.now() - new Date(trainingProfile.birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))}</p>
+                  </div>
+                )}
+                {trainingProfile?.currentMileage && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Current Mileage</p>
+                    <p className="text-white">{trainingProfile.currentMileage} mi/wk</p>
+                  </div>
+                )}
+                {trainingProfile?.easyPace && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Easy Pace</p>
+                    <p className="text-white">{trainingProfile.easyPace}</p>
+                  </div>
+                )}
+                {trainingProfile?.goalPace && (
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Goal Pace</p>
+                    <p className="text-white">{trainingProfile.goalPace}</p>
                   </div>
                 )}
               </div>
-            )}
+              {trainingProfile?.injuryNotes && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-gray-400 text-xs mb-1">Notes</p>
+                  <p className="text-white text-sm">{trainingProfile.injuryNotes}</p>
+                </div>
+              )}
+            </div>
 
             {/* Current Plan & Payment */}
             {clientInfo ? (
