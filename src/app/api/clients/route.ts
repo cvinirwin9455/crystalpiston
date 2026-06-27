@@ -92,7 +92,9 @@ export async function GET() {
     .select('user_id, athlete_profile')
 
   const stravaProfileByUserId = new Map<string, string>()
+  const stravaConnectedUserIds = new Set<string>()
   for (const sc of stravaConnections || []) {
+    stravaConnectedUserIds.add(sc.user_id)
     if (sc.athlete_profile) stravaProfileByUserId.set(sc.user_id, sc.athlete_profile)
   }
 
@@ -140,6 +142,7 @@ export async function GET() {
       status: u.status,
       avatarUrl: u.avatar_url,
       stravaProfileUrl: stravaProfileByUserId.get(u.id) || null,
+      stravaConnected: stravaConnectedUserIds.has(u.id),
       goal: activePlan?.goal || clientRecord?.goal || '',
       startDate: activePlan?.start_date || clientRecord?.start_date || '',
       planEnd: activePlan?.end_date || clientRecord?.plan_end || '',

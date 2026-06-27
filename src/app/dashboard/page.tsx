@@ -922,7 +922,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             {stravaConnection?.connected && stravaConnection.athleteProfile ? (
-              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-10 h-10 rounded-full object-cover" />
+              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             ) : (
               <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
             )}
