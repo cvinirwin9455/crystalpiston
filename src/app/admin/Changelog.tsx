@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-25T01:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-27T12:00:00Z";
 
 const updates = [
+  {
+    date: "June 27, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Editing a workout's distance unit (MI/KM toggle) now saves correctly — previously it always reverted to MI even when you toggled to KM" },
+      { area: "Client", text: "Fixed: If Crystal changes a workout to KM, it now shows KM on the client side too (was incorrectly showing MI)" },
+    ],
+  },
   {
     date: "June 25, 2026",
     items: [

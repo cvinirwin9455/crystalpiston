@@ -32,7 +32,7 @@ export async function PATCH(
 
   const workoutId = params.id
   const body = await request.json()
-  const { day, type, trainingType, title, miles, description, paceTarget, location, coachNotes, sortOrder } = body
+  const { day, type, trainingType, title, miles, description, paceTarget, location, coachNotes, sortOrder, distanceUnit } = body
 
   const updates: Record<string, any> = {}
   if (day !== undefined) updates.day = day
@@ -45,6 +45,7 @@ export async function PATCH(
   if (location !== undefined) updates.location = location
   if (coachNotes !== undefined) updates.coach_notes = coachNotes
   if (sortOrder !== undefined) updates.sort_order = sortOrder
+  if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
 
   const { error } = await adminClient
     .from('workouts')

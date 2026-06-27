@@ -1401,6 +1401,7 @@ export default function AdminPage() {
   const enterEditMode = () => {
     if (!selectedWeek) return;
     const workoutEdits: Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }> = {};
+    const unitEdits: Record<string, "mi" | "km"> = {};
     for (const w of selectedWeek.workouts) {
       workoutEdits[w.id] = {
         type: w.type,
@@ -1412,8 +1413,10 @@ export default function AdminPage() {
         location: w.location || '',
         coachNotes: w.coachNotes || '',
       };
+      unitEdits[w.id] = w.distanceUnit || 'mi';
     }
     setEditedWorkouts(workoutEdits);
+    setEditDistanceUnits(unitEdits);
     setEditedCoachMessage(selectedWeek.coachMessage || '');
     setEditingWeek(true);
   };
@@ -1462,6 +1465,7 @@ export default function AdminPage() {
             paceTarget: edited.paceTarget || null,
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
+            distanceUnit: editDistanceUnits[w.id] || 'mi',
           }),
         });
       });
