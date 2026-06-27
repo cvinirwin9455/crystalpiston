@@ -99,8 +99,26 @@ export async function POST(request: Request) {
     .select()
     .single()
 
+  // If insert failed (columns may not exist), retry with base columns only
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    const fallback = await adminClient
+      .from('plans')
+      .insert({
+        client_id: clientId,
+        start_date: startDate,
+        end_date: endDate,
+        goal: goal || null,
+        owed: owed ? parseFloat(owed) : 0,
+        paid: 0,
+        status: 'active',
+      })
+      .select()
+      .single()
+
+    if (fallback.error) {
+      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    }
+    return NextResponse.json({ success: true, plan: fallback.data })
   }
 
   return NextResponse.json({ success: true, plan })

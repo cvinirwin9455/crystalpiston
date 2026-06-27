@@ -172,6 +172,9 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         setNewPlanRaceDate("");
         setNewPlanGoalPace("");
         setNewPlanInjuryNotes("");
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Failed to create plan. Please try again.');
       }
     } catch (err) {
       console.error("Failed to create plan:", err);
