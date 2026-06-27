@@ -135,7 +135,7 @@ export async function PATCH(
 
   const userId = params.id
   const body = await request.json()
-  const { name, email, gender, status, goal, birthday, currentMileage, easyPace, goalPace, injuryNotes } = body
+  const { name, email, gender, status, goal, birthday } = body
 
   const adminClient = await getAdminClient()
 
@@ -168,14 +168,10 @@ export async function PATCH(
     }
   }
 
-  // Update clients table (goal + training profile fields)
+  // Update clients table (goal + birthday)
   const clientUpdates: Record<string, any> = {}
   if (goal !== undefined) clientUpdates.goal = goal || null
   if (birthday !== undefined) clientUpdates.birthday = birthday || null
-  if (currentMileage !== undefined) clientUpdates.current_mileage = currentMileage ? parseFloat(currentMileage) : null
-  if (easyPace !== undefined) clientUpdates.easy_pace = easyPace || null
-  if (goalPace !== undefined) clientUpdates.goal_pace = goalPace || null
-  if (injuryNotes !== undefined) clientUpdates.injury_notes = injuryNotes || null
 
   if (Object.keys(clientUpdates).length > 0) {
     const { error: clientError } = await adminClient

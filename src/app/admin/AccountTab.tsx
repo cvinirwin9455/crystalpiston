@@ -14,6 +14,8 @@ type Plan = {
   completionReason: string;
   targetDistance: string;
   raceDate: string;
+  goalPace: string;
+  injuryNotes: string;
 };
 
 type ClientData = {
@@ -25,10 +27,6 @@ type ClientData = {
   goal: string;
   status: string;
   birthday?: string | null;
-  currentMileage?: number | null;
-  easyPace?: string | null;
-  goalPace?: string | null;
-  injuryNotes?: string | null;
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void }) {
@@ -37,10 +35,6 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
   const [gender, setGender] = useState(clientData.gender);
   const [goal, setGoal] = useState(clientData.goal);
   const [birthday, setBirthday] = useState(clientData.birthday || "");
-  const [currentMileage, setCurrentMileage] = useState(clientData.currentMileage?.toString() || "");
-  const [easyPace, setEasyPace] = useState(clientData.easyPace || "");
-  const [goalPace, setGoalPace] = useState(clientData.goalPace || "");
-  const [injuryNotes, setInjuryNotes] = useState(clientData.injuryNotes || "");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -54,6 +48,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
   const [newPlanGoal, setNewPlanGoal] = useState("");
   const [newPlanTargetDistance, setNewPlanTargetDistance] = useState("");
   const [newPlanRaceDate, setNewPlanRaceDate] = useState("");
+  const [newPlanGoalPace, setNewPlanGoalPace] = useState("");
+  const [newPlanInjuryNotes, setNewPlanInjuryNotes] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -65,10 +61,6 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
     setGender(clientData.gender);
     setGoal(clientData.goal);
     setBirthday(clientData.birthday || "");
-    setCurrentMileage(clientData.currentMileage?.toString() || "");
-    setEasyPace(clientData.easyPace || "");
-    setGoalPace(clientData.goalPace || "");
-    setInjuryNotes(clientData.injuryNotes || "");
     setSaveSuccess(false);
   }, [clientData.id]);
 
@@ -93,6 +85,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             completionReason: p.completion_reason || '',
             targetDistance: p.target_distance || '',
             raceDate: p.race_date || '',
+            goalPace: p.goal_pace || '',
+            injuryNotes: p.injury_notes || '',
           })));
         }
       } catch (err) {
@@ -114,10 +108,6 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         body: JSON.stringify({
           name, email, gender, goal,
           birthday: birthday || null,
-          currentMileage: currentMileage || null,
-          easyPace: easyPace || null,
-          goalPace: goalPace || null,
-          injuryNotes: injuryNotes || null,
         }),
       });
       if (res.ok) {
@@ -148,6 +138,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
           goal: newPlanGoal,
           targetDistance: newPlanTargetDistance || null,
           raceDate: newPlanRaceDate || null,
+          goalPace: newPlanGoalPace || null,
+          injuryNotes: newPlanInjuryNotes || null,
         }),
       });
       if (res.ok) {
@@ -166,6 +158,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             completionReason: '',
             targetDistance: data.plan.target_distance || '',
             raceDate: data.plan.race_date || '',
+            goalPace: data.plan.goal_pace || '',
+            injuryNotes: data.plan.injury_notes || '',
           },
           ...prev,
         ]);
@@ -176,6 +170,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         setNewPlanGoal("");
         setNewPlanTargetDistance("");
         setNewPlanRaceDate("");
+        setNewPlanGoalPace("");
+        setNewPlanInjuryNotes("");
       }
     } catch (err) {
       console.error("Failed to create plan:", err);
@@ -244,21 +240,9 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               </div>
               <div>
                 <p className="text-gray-500 text-xs mb-1">Birthday</p>
-                <p className="text-white text-sm">{birthday ? `${new Date(birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
+                <p className="text-white text-sm">{birthday ? `${new Date(birthday + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
               </div>
             </div>
-            {/* Training Profile - only show if any field is filled */}
-            {(currentMileage || easyPace || goalPace || injuryNotes) && (
-              <div className="border-t border-white/5 pt-3 mt-3">
-                <p className="text-purple-300 text-xs font-heading uppercase mb-2">Training Profile</p>
-                <div className="grid md:grid-cols-3 gap-3">
-                  {currentMileage && <div><p className="text-gray-500 text-xs mb-0.5">Current MPW</p><p className="text-white text-sm">{currentMileage} mi/wk</p></div>}
-                  {easyPace && <div><p className="text-gray-500 text-xs mb-0.5">Easy Pace</p><p className="text-white text-sm">{easyPace}</p></div>}
-                  {goalPace && <div><p className="text-gray-500 text-xs mb-0.5">Goal Pace</p><p className="text-white text-sm">{goalPace}</p></div>}
-                </div>
-                {injuryNotes && <div className="mt-2"><p className="text-gray-500 text-xs mb-0.5">Injuries / Notes</p><p className="text-white text-sm">{injuryNotes}</p></div>}
-              </div>
-            )}
           </div>
         ) : (
           /* Edit Mode */
@@ -284,22 +268,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
                 <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
               </div>
             </div>
-            {/* Training Profile Fields */}
-            <p className="text-purple-300 text-xs font-heading uppercase mb-2 mt-4">Training Profile (helps AI suggestions)</p>
-            <div className="grid md:grid-cols-3 gap-3 mb-3">
-              <div><label className="text-gray-500 text-xs block mb-1">Current MPW</label><input type="text" value={currentMileage} onChange={(e) => setCurrentMileage(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="15" /></div>
-              <div><label className="text-gray-500 text-xs block mb-1">Easy Pace</label><input type="text" value={easyPace} onChange={(e) => setEasyPace(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10:30-11:00/mi" /></div>
-              <div><label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label><input type="text" value={goalPace} onChange={(e) => setGoalPace(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" /></div>
-            </div>
-            <div className="mb-4">
-              <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes</label>
-              <input type="text" value={injuryNotes} onChange={(e) => setInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
-            </div>
             <div className="flex items-center gap-3">
               <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
               </button>
-              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); setBirthday(clientData.birthday || ""); setCurrentMileage(clientData.currentMileage?.toString() || ""); setEasyPace(clientData.easyPace || ""); setGoalPace(clientData.goalPace || ""); setInjuryNotes(clientData.injuryNotes || ""); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
+              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); setBirthday(clientData.birthday || ""); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
               {saveSuccess && <span className="text-green-400 text-xs">Saved!</span>}
             </div>
           </>
@@ -358,6 +331,16 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
                 <input type="number" value={newPlanOwed} onChange={(e) => setNewPlanOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label>
+                <input type="text" value={newPlanGoalPace} onChange={(e) => setNewPlanGoalPace(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes</label>
+                <input type="text" value={newPlanInjuryNotes} onChange={(e) => setNewPlanInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
               </div>
             </div>
             <div className="flex gap-3">
@@ -425,6 +408,8 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   const [editOwed, setEditOwed] = useState(plan.owed.toString());
   const [editTargetDistance, setEditTargetDistance] = useState(plan.targetDistance || "");
   const [editRaceDate, setEditRaceDate] = useState(plan.raceDate || "");
+  const [editGoalPace, setEditGoalPace] = useState(plan.goalPace || "");
+  const [editInjuryNotes, setEditInjuryNotes] = useState(plan.injuryNotes || "");
   const [savingPlanEdit, setSavingPlanEdit] = useState(false);
 
   const handleSavePlanEdit = async () => {
@@ -433,7 +418,7 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
       const res = await fetch("/api/plans", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDate || null }),
+        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDate || null, goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null }),
       });
       if (res.ok) {
         // Update local state via parent
@@ -580,9 +565,19 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
               <input type="number" value={editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
             </div>
           </div>
+          <div className="grid md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label>
+              <input type="text" value={editGoalPace} onChange={(e) => setEditGoalPace(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes</label>
+              <input type="text" value={editInjuryNotes} onChange={(e) => setEditInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints" />
+            </div>
+          </div>
           <div className="flex gap-3">
             <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
-            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); setEditGoalPace(plan.goalPace || ""); setEditInjuryNotes(plan.injuryNotes || ""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
           </div>
         </div>
       )}
@@ -644,10 +639,12 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
         </div>
       </div>
       {/* Target Distance & Race Date */}
-      {(plan.targetDistance || plan.raceDate) && (
+      {(plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
         <div className="grid md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-white/5">
           {plan.targetDistance && <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance}</p></div>}
           {plan.raceDate && <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{formatDate(plan.raceDate)}</p></div>}
+          {plan.goalPace && <div><p className="text-gray-500 text-xs">Goal Race Pace</p><p className="text-white text-sm">{plan.goalPace}</p></div>}
+          {plan.injuryNotes && <div className="col-span-2"><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes}</p></div>}
         </div>
       )}
       <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">

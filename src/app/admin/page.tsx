@@ -10,7 +10,7 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; currentMileage?: number | null; targetDistance?: string | null; raceDate?: string | null; easyPace?: string | null; goalPace?: string | null; injuryNotes?: string | null; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export default function AdminPage() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
-  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "", currentMileage: "", easyPace: "", goalPace: "", injuryNotes: "" });
+  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "" });
 
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
@@ -689,10 +689,6 @@ export default function AdminPage() {
           weeks: [],
           messages: [],
           birthday: c.birthday || null,
-          currentMileage: c.currentMileage || null,
-          easyPace: c.easyPace || null,
-          goalPace: c.goalPace || null,
-          injuryNotes: c.injuryNotes || null,
         }));
         setClients(mapped);
       }
@@ -765,10 +761,6 @@ export default function AdminPage() {
           email: newClientForm.email,
           gender: newClientForm.gender,
           birthday: newClientForm.birthday || null,
-          currentMileage: newClientForm.currentMileage || null,
-          easyPace: newClientForm.easyPace || null,
-          goalPace: newClientForm.goalPace || null,
-          injuryNotes: newClientForm.injuryNotes || null,
         }),
       });
       const data = await res.json();
@@ -776,7 +768,7 @@ export default function AdminPage() {
         setCreateError(data.error || 'Failed to create client');
       } else {
         setShowCreateClient(false);
-        setNewClientForm({ name: "", email: "", gender: "female", birthday: "", currentMileage: "", easyPace: "", goalPace: "", injuryNotes: "" });
+        setNewClientForm({ name: "", email: "", gender: "female", birthday: "" });
         fetchClients(); // Refresh the list
       }
     } catch (err) {
@@ -1609,23 +1601,13 @@ export default function AdminPage() {
           <div className="p-6 bg-secondary/30 border-b border-white/10">
             <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
             <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div className="grid md:grid-cols-4 gap-4 mb-4">
               <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Gender</label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label><input type="date" value={newClientForm.birthday} onChange={(e) => setNewClientForm({ ...newClientForm, birthday: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent [color-scheme:dark]" /></div>
             </div>
-            {/* Training Profile (optional - helps AI suggestions) */}
-            <p className="text-purple-300 text-xs font-heading uppercase mb-2 mt-4">Training Profile (optional — improves AI suggestions)</p>
-            <div className="grid md:grid-cols-4 gap-3 mb-3">
-              <div><label className="text-gray-400 text-xs block mb-1">Birthday</label><input type="date" value={newClientForm.birthday} onChange={(e) => setNewClientForm({ ...newClientForm, birthday: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent [color-scheme:dark]" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Current MPW</label><input type="text" value={newClientForm.currentMileage} onChange={(e) => setNewClientForm({ ...newClientForm, currentMileage: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="15" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Easy Pace</label><input type="text" value={newClientForm.easyPace} onChange={(e) => setNewClientForm({ ...newClientForm, easyPace: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="10:30-11:00/mi" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Goal Race Pace</label><input type="text" value={newClientForm.goalPace} onChange={(e) => setNewClientForm({ ...newClientForm, goalPace: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="8:45/mi" /></div>
-            </div>
-            <div className="mb-4">
-              <label className="text-gray-400 text-xs block mb-1">Injuries / Important Notes</label><input type="text" value={newClientForm.injuryNotes} onChange={(e) => setNewClientForm({ ...newClientForm, injuryNotes: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. History of shin splints, weak left knee, prefers not to run back-to-back days" />
-            </div>
-            <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
+            <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
             {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
           </div>
         )}

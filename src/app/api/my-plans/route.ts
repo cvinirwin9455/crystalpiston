@@ -26,7 +26,7 @@ export async function GET() {
   // Get the client record (including training profile)
   const { data: client } = await adminClient
     .from('clients')
-    .select('id, birthday, current_mileage, easy_pace, goal_pace, injury_notes')
+    .select('id, birthday')
     .eq('user_id', user.id)
     .single()
 
@@ -37,17 +37,13 @@ export async function GET() {
   // Get all plans for this client
   const { data: plans } = await adminClient
     .from('plans')
-    .select('id, start_date, end_date, goal, owed, paid, status, target_distance, race_date')
+    .select('id, start_date, end_date, goal, owed, paid, status, target_distance, race_date, goal_pace, injury_notes')
     .eq('client_id', client.id)
     .order('start_date', { ascending: false })
 
   if (!plans || plans.length === 0) {
     return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: {
       birthday: client.birthday || null,
-      currentMileage: client.current_mileage || null,
-      easyPace: client.easy_pace || null,
-      goalPace: client.goal_pace || null,
-      injuryNotes: client.injury_notes || null,
     } })
   }
 
@@ -60,6 +56,8 @@ export async function GET() {
     status: p.status,
     targetDistance: p.target_distance || null,
     raceDate: p.race_date || null,
+    goalPace: p.goal_pace || null,
+    injuryNotes: p.injury_notes || null,
   }))
 
   const activePlan = formatted.find(p => p.status === 'active') || null
@@ -70,10 +68,6 @@ export async function GET() {
     gender: userProfile?.gender || null,
     trainingProfile: {
       birthday: client.birthday || null,
-      currentMileage: client.current_mileage || null,
-      easyPace: client.easy_pace || null,
-      goalPace: client.goal_pace || null,
-      injuryNotes: client.injury_notes || null,
     },
   })
 }

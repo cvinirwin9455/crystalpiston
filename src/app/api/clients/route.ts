@@ -60,7 +60,7 @@ export async function GET() {
   try {
     const { data } = await adminClient
       .from('clients')
-      .select('id, birthday, current_mileage, easy_pace, goal_pace, injury_notes')
+      .select('id, birthday')
     trainingProfiles = data || []
   } catch {}
 
@@ -148,10 +148,6 @@ export async function GET() {
       inviteStatus,
       createdAt: u.created_at,
       birthday: trainingProfileMap.get(clientRecord?.id)?.birthday || null,
-      currentMileage: trainingProfileMap.get(clientRecord?.id)?.current_mileage || null,
-      easyPace: trainingProfileMap.get(clientRecord?.id)?.easy_pace || null,
-      goalPace: trainingProfileMap.get(clientRecord?.id)?.goal_pace || null,
-      injuryNotes: trainingProfileMap.get(clientRecord?.id)?.injury_notes || null,
     })
   }
 
@@ -179,7 +175,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email, gender, goal, startDate, planEnd, owed, birthday, currentMileage, easyPace, goalPace, injuryNotes } = body
+  const { name, email, gender, goal, startDate, planEnd, owed, birthday } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -232,10 +228,6 @@ export async function POST(request: Request) {
     try {
       const profileUpdates: Record<string, any> = {}
       if (birthday) profileUpdates.birthday = birthday
-      if (currentMileage) profileUpdates.current_mileage = parseFloat(currentMileage)
-      if (easyPace) profileUpdates.easy_pace = easyPace
-      if (goalPace) profileUpdates.goal_pace = goalPace
-      if (injuryNotes) profileUpdates.injury_notes = injuryNotes
       if (Object.keys(profileUpdates).length > 0) {
         await adminClient.from('clients').update(profileUpdates).eq('id', newClientRecord.id)
       }
