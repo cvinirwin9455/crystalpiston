@@ -23,23 +23,47 @@ export async function GET() {
     .eq('id', user.id)
     .single()
 
-  // Get the client record (including training profile)
-  const { data: client } = await adminClient
+  // Get the client record (try birthday column, fall back to just id)
+  let client: any = null
+  const clientResult = await adminClient
     .from('clients')
     .select('id, birthday')
     .eq('user_id', user.id)
     .single()
 
+  if (clientResult.error) {
+    const fallback = await adminClient
+      .from('clients')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+    client = fallback.data
+  } else {
+    client = clientResult.data
+  }
+
   if (!client) {
     return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: null })
   }
 
-  // Get all plans for this client
-  const { data: plans } = await adminClient
+  // Get all plans for this client (try new columns, fall back if they don't exist yet)
+  let plans: any[] | null = null
+  const fullResult = await adminClient
     .from('plans')
     .select('id, start_date, end_date, goal, owed, paid, status, target_distance, race_date, goal_pace, injury_notes')
     .eq('client_id', client.id)
     .order('start_date', { ascending: false })
+
+  if (fullResult.error) {
+    const fallback = await adminClient
+      .from('plans')
+      .select('id, start_date, end_date, goal, owed, paid, status')
+      .eq('client_id', client.id)
+      .order('start_date', { ascending: false })
+    plans = fallback.data
+  } else {
+    plans = fullResult.data
+  }
 
   if (!plans || plans.length === 0) {
     return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: {

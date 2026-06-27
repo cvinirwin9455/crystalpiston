@@ -24,11 +24,30 @@ export async function GET(request: Request) {
   }
 
   const adminClient = await getAdminClient()
-  const { data: plans, error } = await adminClient
+
+  // Try with new columns first, fall back to base columns if they don't exist yet
+  let plans: any[] | null = null
+  let error: any = null
+
+  const fullResult = await adminClient
     .from('plans')
     .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
+
+  if (fullResult.error) {
+    // Columns may not exist yet — fall back to base columns
+    const fallbackResult = await adminClient
+      .from('plans')
+      .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, created_at')
+      .eq('client_id', clientId)
+      .order('start_date', { ascending: false })
+    plans = fallbackResult.data
+    error = fallbackResult.error
+  } else {
+    plans = fullResult.data
+    error = fullResult.error
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
