@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const adminClient = await getAdminClient()
   const { data: plans, error } = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, startDate, endDate, owed, goal } = body
+  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate } = body
 
   if (!clientId || !startDate || !endDate) {
     return NextResponse.json({ error: 'clientId, startDate, and endDate are required' }, { status: 400 })
@@ -72,6 +72,8 @@ export async function POST(request: Request) {
       owed: owed ? parseFloat(owed) : 0,
       paid: 0,
       status: 'active',
+      target_distance: targetDistance || null,
+      race_date: raceDate || null,
     })
     .select()
     .single()
@@ -100,7 +102,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { planId, startDate, endDate, owed, paid, status, completionReason, goal } = body
+  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate } = body
 
   if (!planId) {
     return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -116,6 +118,8 @@ export async function PATCH(request: Request) {
   if (status !== undefined) updates.status = status
   if (completionReason !== undefined) updates.completion_reason = completionReason
   if (goal !== undefined) updates.goal = goal || null
+  if (targetDistance !== undefined) updates.target_distance = targetDistance || null
+  if (raceDate !== undefined) updates.race_date = raceDate || null
 
   let { error } = await adminClient
     .from('plans')

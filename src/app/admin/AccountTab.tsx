@@ -12,6 +12,8 @@ type Plan = {
   paid: number;
   status: string;
   completionReason: string;
+  targetDistance: string;
+  raceDate: string;
 };
 
 type ClientData = {
@@ -22,14 +24,10 @@ type ClientData = {
   gender: string;
   goal: string;
   status: string;
-  experienceLevel?: string | null;
+  birthday?: string | null;
   currentMileage?: number | null;
-  targetDistance?: string | null;
-  raceDate?: string | null;
   easyPace?: string | null;
   goalPace?: string | null;
-  daysPerWeek?: number | null;
-  age?: number | null;
   injuryNotes?: string | null;
 };
 
@@ -38,14 +36,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
   const [goal, setGoal] = useState(clientData.goal);
-  const [experienceLevel, setExperienceLevel] = useState(clientData.experienceLevel || "");
+  const [birthday, setBirthday] = useState(clientData.birthday || "");
   const [currentMileage, setCurrentMileage] = useState(clientData.currentMileage?.toString() || "");
-  const [targetDistance, setTargetDistance] = useState(clientData.targetDistance || "");
-  const [raceDate, setRaceDate] = useState(clientData.raceDate || "");
   const [easyPace, setEasyPace] = useState(clientData.easyPace || "");
   const [goalPace, setGoalPace] = useState(clientData.goalPace || "");
-  const [daysPerWeek, setDaysPerWeek] = useState(clientData.daysPerWeek?.toString() || "");
-  const [age, setAge] = useState(clientData.age?.toString() || "");
   const [injuryNotes, setInjuryNotes] = useState(clientData.injuryNotes || "");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -58,6 +52,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
   const [newPlanEnd, setNewPlanEnd] = useState("");
   const [newPlanOwed, setNewPlanOwed] = useState("");
   const [newPlanGoal, setNewPlanGoal] = useState("");
+  const [newPlanTargetDistance, setNewPlanTargetDistance] = useState("");
+  const [newPlanRaceDate, setNewPlanRaceDate] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -68,14 +64,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
     setEmail(clientData.email);
     setGender(clientData.gender);
     setGoal(clientData.goal);
-    setExperienceLevel(clientData.experienceLevel || "");
+    setBirthday(clientData.birthday || "");
     setCurrentMileage(clientData.currentMileage?.toString() || "");
-    setTargetDistance(clientData.targetDistance || "");
-    setRaceDate(clientData.raceDate || "");
     setEasyPace(clientData.easyPace || "");
     setGoalPace(clientData.goalPace || "");
-    setDaysPerWeek(clientData.daysPerWeek?.toString() || "");
-    setAge(clientData.age?.toString() || "");
     setInjuryNotes(clientData.injuryNotes || "");
     setSaveSuccess(false);
   }, [clientData.id]);
@@ -99,6 +91,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             paid: parseFloat(p.paid) || 0,
             status: p.status,
             completionReason: p.completion_reason || '',
+            targetDistance: p.target_distance || '',
+            raceDate: p.race_date || '',
           })));
         }
       } catch (err) {
@@ -119,14 +113,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name, email, gender, goal,
-          experienceLevel: experienceLevel || null,
+          birthday: birthday || null,
           currentMileage: currentMileage || null,
-          targetDistance: targetDistance || null,
-          raceDate: raceDate || null,
           easyPace: easyPace || null,
           goalPace: goalPace || null,
-          daysPerWeek: daysPerWeek || null,
-          age: age || null,
           injuryNotes: injuryNotes || null,
         }),
       });
@@ -156,6 +146,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
           endDate: newPlanEnd,
           owed: newPlanOwed,
           goal: newPlanGoal,
+          targetDistance: newPlanTargetDistance || null,
+          raceDate: newPlanRaceDate || null,
         }),
       });
       if (res.ok) {
@@ -172,6 +164,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             paid: parseFloat(data.plan.paid) || 0,
             status: data.plan.status,
             completionReason: '',
+            targetDistance: data.plan.target_distance || '',
+            raceDate: data.plan.race_date || '',
           },
           ...prev,
         ]);
@@ -180,6 +174,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         setNewPlanEnd("");
         setNewPlanOwed("");
         setNewPlanGoal("");
+        setNewPlanTargetDistance("");
+        setNewPlanRaceDate("");
       }
     } catch (err) {
       console.error("Failed to create plan:", err);
@@ -233,7 +229,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         {!editing ? (
           /* View Mode */
           <div className="space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <div>
                 <p className="text-gray-500 text-xs mb-1">Name</p>
                 <p className="text-white text-sm">{name || "—"}</p>
@@ -246,18 +242,17 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
                 <p className="text-gray-500 text-xs mb-1">Gender</p>
                 <p className="text-white text-sm capitalize">{gender || "—"}</p>
               </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Birthday</p>
+                <p className="text-white text-sm">{birthday ? `${new Date(birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
+              </div>
             </div>
             {/* Training Profile - only show if any field is filled */}
-            {(age || experienceLevel || currentMileage || targetDistance || raceDate || easyPace || goalPace || daysPerWeek || injuryNotes) && (
+            {(currentMileage || easyPace || goalPace || injuryNotes) && (
               <div className="border-t border-white/5 pt-3 mt-3">
                 <p className="text-purple-300 text-xs font-heading uppercase mb-2">Training Profile</p>
-                <div className="grid md:grid-cols-4 gap-3">
-                  {age && <div><p className="text-gray-500 text-xs mb-0.5">Age</p><p className="text-white text-sm">{age}</p></div>}
-                  {experienceLevel && <div><p className="text-gray-500 text-xs mb-0.5">Experience</p><p className="text-white text-sm capitalize">{experienceLevel}</p></div>}
+                <div className="grid md:grid-cols-3 gap-3">
                   {currentMileage && <div><p className="text-gray-500 text-xs mb-0.5">Current MPW</p><p className="text-white text-sm">{currentMileage} mi/wk</p></div>}
-                  {daysPerWeek && <div><p className="text-gray-500 text-xs mb-0.5">Days/Week</p><p className="text-white text-sm">{daysPerWeek}</p></div>}
-                  {targetDistance && <div><p className="text-gray-500 text-xs mb-0.5">Target Distance</p><p className="text-white text-sm">{targetDistance}</p></div>}
-                  {raceDate && <div><p className="text-gray-500 text-xs mb-0.5">Race Date</p><p className="text-white text-sm">{new Date(raceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p></div>}
                   {easyPace && <div><p className="text-gray-500 text-xs mb-0.5">Easy Pace</p><p className="text-white text-sm">{easyPace}</p></div>}
                   {goalPace && <div><p className="text-gray-500 text-xs mb-0.5">Goal Pace</p><p className="text-white text-sm">{goalPace}</p></div>}
                 </div>
@@ -268,7 +263,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         ) : (
           /* Edit Mode */
           <>
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div className="grid md:grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
@@ -284,18 +279,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
                   <option value="male">Male</option>
                 </select>
               </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Birthday</label>
+                <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+              </div>
             </div>
             {/* Training Profile Fields */}
             <p className="text-purple-300 text-xs font-heading uppercase mb-2 mt-4">Training Profile (helps AI suggestions)</p>
-            <div className="grid md:grid-cols-4 gap-3 mb-3">
-              <div><label className="text-gray-500 text-xs block mb-1">Age</label><input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="34" /></div>
-              <div><label className="text-gray-500 text-xs block mb-1">Experience</label><select value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+            <div className="grid md:grid-cols-3 gap-3 mb-3">
               <div><label className="text-gray-500 text-xs block mb-1">Current MPW</label><input type="text" value={currentMileage} onChange={(e) => setCurrentMileage(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="15" /></div>
-              <div><label className="text-gray-500 text-xs block mb-1">Days/Week</label><select value={daysPerWeek} onChange={(e) => setDaysPerWeek(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select></div>
-            </div>
-            <div className="grid md:grid-cols-4 gap-3 mb-3">
-              <div><label className="text-gray-500 text-xs block mb-1">Target Distance</label><select value={targetDistance} onChange={(e) => setTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select></div>
-              <div><label className="text-gray-500 text-xs block mb-1">Race Date</label><input type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" /></div>
               <div><label className="text-gray-500 text-xs block mb-1">Easy Pace</label><input type="text" value={easyPace} onChange={(e) => setEasyPace(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10:30-11:00/mi" /></div>
               <div><label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label><input type="text" value={goalPace} onChange={(e) => setGoalPace(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" /></div>
             </div>
@@ -307,7 +299,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
               </button>
-              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); setAge(clientData.age?.toString() || ""); setExperienceLevel(clientData.experienceLevel || ""); setCurrentMileage(clientData.currentMileage?.toString() || ""); setTargetDistance(clientData.targetDistance || ""); setRaceDate(clientData.raceDate || ""); setEasyPace(clientData.easyPace || ""); setGoalPace(clientData.goalPace || ""); setDaysPerWeek(clientData.daysPerWeek?.toString() || ""); setInjuryNotes(clientData.injuryNotes || ""); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
+              <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); setBirthday(clientData.birthday || ""); setCurrentMileage(clientData.currentMileage?.toString() || ""); setEasyPace(clientData.easyPace || ""); setGoalPace(clientData.goalPace || ""); setInjuryNotes(clientData.injuryNotes || ""); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
               {saveSuccess && <span className="text-green-400 text-xs">Saved!</span>}
             </div>
           </>
@@ -340,11 +332,21 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         {showNewPlan && !plans.some(p => p.status === "active") && (
           <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-4">
             <p className="text-accent text-xs font-heading uppercase mb-3">Create New Plan</p>
-            <div className="grid md:grid-cols-4 gap-4 mb-3">
+            <div className="grid md:grid-cols-3 gap-4 mb-3">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Goal</label>
                 <input type="text" value={newPlanGoal} onChange={(e) => setNewPlanGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. War Eagle 50K" />
               </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Target Distance</label>
+                <select value={newPlanTargetDistance} onChange={(e) => setNewPlanTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Race Date</label>
+                <input type="date" value={newPlanRaceDate} onChange={(e) => setNewPlanRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4 mb-3">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Start Date</label>
                 <input type="date" value={newPlanStart} onChange={(e) => setNewPlanStart(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
@@ -421,6 +423,8 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
   const [editStartDate, setEditStartDate] = useState(plan.startDate);
   const [editEndDate, setEditEndDate] = useState(plan.endDate);
   const [editOwed, setEditOwed] = useState(plan.owed.toString());
+  const [editTargetDistance, setEditTargetDistance] = useState(plan.targetDistance || "");
+  const [editRaceDate, setEditRaceDate] = useState(plan.raceDate || "");
   const [savingPlanEdit, setSavingPlanEdit] = useState(false);
 
   const handleSavePlanEdit = async () => {
@@ -429,7 +433,7 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
       const res = await fetch("/api/plans", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed }),
+        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDate || null }),
       });
       if (res.ok) {
         // Update local state via parent
@@ -548,11 +552,21 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
       {editingPlan && plan.status === "active" && (
         <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-3">
           <p className="text-accent text-xs font-heading uppercase mb-3">Edit Plan</p>
-          <div className="grid md:grid-cols-4 gap-3 mb-3">
+          <div className="grid md:grid-cols-3 gap-3 mb-3">
             <div>
               <label className="text-gray-500 text-xs block mb-1">Goal</label>
               <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. War Eagle 50K" />
             </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Target Distance</label>
+              <select value={editTargetDistance} onChange={(e) => setEditTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select>
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Race Date</label>
+              <input type="date" value={editRaceDate} onChange={(e) => setEditRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-3 mb-3">
             <div>
               <label className="text-gray-500 text-xs block mb-1">Start Date</label>
               <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
@@ -568,7 +582,7 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
           </div>
           <div className="flex gap-3">
             <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
-            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
           </div>
         </div>
       )}
@@ -629,6 +643,13 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
           </p>
         </div>
       </div>
+      {/* Target Distance & Race Date */}
+      {(plan.targetDistance || plan.raceDate) && (
+        <div className="grid md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-white/5">
+          {plan.targetDistance && <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance}</p></div>}
+          {plan.raceDate && <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{formatDate(plan.raceDate)}</p></div>}
+        </div>
+      )}
       <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">
         <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
       </div>

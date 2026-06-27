@@ -10,7 +10,7 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; experienceLevel?: string | null; currentMileage?: number | null; targetDistance?: string | null; raceDate?: string | null; easyPace?: string | null; goalPace?: string | null; daysPerWeek?: number | null; age?: number | null; injuryNotes?: string | null; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; currentMileage?: number | null; targetDistance?: string | null; raceDate?: string | null; easyPace?: string | null; goalPace?: string | null; injuryNotes?: string | null; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export default function AdminPage() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
-  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", age: "", experienceLevel: "", currentMileage: "", targetDistance: "", raceDate: "", easyPace: "", goalPace: "", daysPerWeek: "", injuryNotes: "" });
+  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "", currentMileage: "", easyPace: "", goalPace: "", injuryNotes: "" });
 
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
@@ -688,14 +688,10 @@ export default function AdminPage() {
           stravaProfileUrl: c.stravaProfileUrl || null,
           weeks: [],
           messages: [],
-          experienceLevel: c.experienceLevel || null,
+          birthday: c.birthday || null,
           currentMileage: c.currentMileage || null,
-          targetDistance: c.targetDistance || null,
-          raceDate: c.raceDate || null,
           easyPace: c.easyPace || null,
           goalPace: c.goalPace || null,
-          daysPerWeek: c.daysPerWeek || null,
-          age: c.age || null,
           injuryNotes: c.injuryNotes || null,
         }));
         setClients(mapped);
@@ -768,14 +764,10 @@ export default function AdminPage() {
           name: newClientForm.name,
           email: newClientForm.email,
           gender: newClientForm.gender,
-          age: newClientForm.age || null,
-          experienceLevel: newClientForm.experienceLevel || null,
+          birthday: newClientForm.birthday || null,
           currentMileage: newClientForm.currentMileage || null,
-          targetDistance: newClientForm.targetDistance || null,
-          raceDate: newClientForm.raceDate || null,
           easyPace: newClientForm.easyPace || null,
           goalPace: newClientForm.goalPace || null,
-          daysPerWeek: newClientForm.daysPerWeek || null,
           injuryNotes: newClientForm.injuryNotes || null,
         }),
       });
@@ -784,7 +776,7 @@ export default function AdminPage() {
         setCreateError(data.error || 'Failed to create client');
       } else {
         setShowCreateClient(false);
-        setNewClientForm({ name: "", email: "", gender: "female", age: "", experienceLevel: "", currentMileage: "", targetDistance: "", raceDate: "", easyPace: "", goalPace: "", daysPerWeek: "", injuryNotes: "" });
+        setNewClientForm({ name: "", email: "", gender: "female", birthday: "", currentMileage: "", easyPace: "", goalPace: "", injuryNotes: "" });
         fetchClients(); // Refresh the list
       }
     } catch (err) {
@@ -1625,14 +1617,8 @@ export default function AdminPage() {
             {/* Training Profile (optional - helps AI suggestions) */}
             <p className="text-purple-300 text-xs font-heading uppercase mb-2 mt-4">Training Profile (optional — improves AI suggestions)</p>
             <div className="grid md:grid-cols-4 gap-3 mb-3">
-              <div><label className="text-gray-400 text-xs block mb-1">Age</label><input type="number" value={newClientForm.age} onChange={(e) => setNewClientForm({ ...newClientForm, age: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="34" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Experience</label><select value={newClientForm.experienceLevel} onChange={(e) => setNewClientForm({ ...newClientForm, experienceLevel: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="">Select...</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Birthday</label><input type="date" value={newClientForm.birthday} onChange={(e) => setNewClientForm({ ...newClientForm, birthday: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent [color-scheme:dark]" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Current MPW</label><input type="text" value={newClientForm.currentMileage} onChange={(e) => setNewClientForm({ ...newClientForm, currentMileage: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="15" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Days/Week</label><select value={newClientForm.daysPerWeek} onChange={(e) => setNewClientForm({ ...newClientForm, daysPerWeek: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="">Select...</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select></div>
-            </div>
-            <div className="grid md:grid-cols-4 gap-3 mb-3">
-              <div><label className="text-gray-400 text-xs block mb-1">Target Distance</label><select value={newClientForm.targetDistance} onChange={(e) => setNewClientForm({ ...newClientForm, targetDistance: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Race Date</label><input type="date" value={newClientForm.raceDate} onChange={(e) => setNewClientForm({ ...newClientForm, raceDate: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Easy Pace</label><input type="text" value={newClientForm.easyPace} onChange={(e) => setNewClientForm({ ...newClientForm, easyPace: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="10:30-11:00/mi" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Goal Race Pace</label><input type="text" value={newClientForm.goalPace} onChange={(e) => setNewClientForm({ ...newClientForm, goalPace: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="8:45/mi" /></div>
             </div>

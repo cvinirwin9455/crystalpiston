@@ -60,7 +60,7 @@ export async function GET() {
   try {
     const { data } = await adminClient
       .from('clients')
-      .select('id, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+      .select('id, birthday, current_mileage, easy_pace, goal_pace, injury_notes')
     trainingProfiles = data || []
   } catch {}
 
@@ -147,14 +147,10 @@ export async function GET() {
       paid,
       inviteStatus,
       createdAt: u.created_at,
-      experienceLevel: trainingProfileMap.get(clientRecord?.id)?.experience_level || null,
+      birthday: trainingProfileMap.get(clientRecord?.id)?.birthday || null,
       currentMileage: trainingProfileMap.get(clientRecord?.id)?.current_mileage || null,
-      targetDistance: trainingProfileMap.get(clientRecord?.id)?.target_distance || null,
-      raceDate: trainingProfileMap.get(clientRecord?.id)?.race_date || null,
       easyPace: trainingProfileMap.get(clientRecord?.id)?.easy_pace || null,
       goalPace: trainingProfileMap.get(clientRecord?.id)?.goal_pace || null,
-      daysPerWeek: trainingProfileMap.get(clientRecord?.id)?.days_per_week || null,
-      age: trainingProfileMap.get(clientRecord?.id)?.age || null,
       injuryNotes: trainingProfileMap.get(clientRecord?.id)?.injury_notes || null,
     })
   }
@@ -183,7 +179,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email, gender, goal, startDate, planEnd, owed, experienceLevel, currentMileage, targetDistance, raceDate, easyPace, goalPace, daysPerWeek, age, injuryNotes } = body
+  const { name, email, gender, goal, startDate, planEnd, owed, birthday, currentMileage, easyPace, goalPace, injuryNotes } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -235,14 +231,10 @@ export async function POST(request: Request) {
   if (newClientRecord) {
     try {
       const profileUpdates: Record<string, any> = {}
-      if (experienceLevel) profileUpdates.experience_level = experienceLevel
+      if (birthday) profileUpdates.birthday = birthday
       if (currentMileage) profileUpdates.current_mileage = parseFloat(currentMileage)
-      if (targetDistance) profileUpdates.target_distance = targetDistance
-      if (raceDate) profileUpdates.race_date = raceDate
       if (easyPace) profileUpdates.easy_pace = easyPace
       if (goalPace) profileUpdates.goal_pace = goalPace
-      if (daysPerWeek) profileUpdates.days_per_week = parseInt(daysPerWeek)
-      if (age) profileUpdates.age = parseInt(age)
       if (injuryNotes) profileUpdates.injury_notes = injuryNotes
       if (Object.keys(profileUpdates).length > 0) {
         await adminClient.from('clients').update(profileUpdates).eq('id', newClientRecord.id)

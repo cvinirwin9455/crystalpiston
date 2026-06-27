@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-27T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-27T18:00:00Z";
 
 const updates = [
   {
@@ -11,6 +11,13 @@ const updates = [
     items: [
       { area: "Admin", text: "Fixed: Editing a workout's distance unit (MI/KM toggle) now saves correctly — previously it always reverted to MI even when you toggled to KM" },
       { area: "Client", text: "Fixed: If Crystal changes a workout to KM, it now shows KM on the client side too (was incorrectly showing MI)" },
+      { area: "Admin", text: "Age field replaced with Birthday — the platform now automatically calculates and displays the client's current age" },
+      { area: "Admin", text: "Removed Experience Level and Days/Week fields — these were rarely used and added clutter" },
+      { area: "Admin", text: "Target Distance and Race Date moved to Plans & Payments — now tracked per plan so you can see what each plan was training toward" },
+      { area: "Admin", text: "When creating or editing a plan, you can now set Target Distance (5K, 10K, Half, Marathon, Ultra) and Race Date" },
+      { area: "Admin", text: "Training Profile section simplified — now shows Current MPW, Easy Pace, Goal Pace, and Injuries only" },
+      { area: "Client", text: "NEW: 'Your Profile' section in Account tab — clients can now see their training info (age, mileage, paces, notes)" },
+      { area: "Client", text: "Target Distance and Race Date now show under 'Your Plan' so clients know what they're training for" },
     ],
   },
   {

@@ -98,9 +98,10 @@ export default function DashboardPage() {
     }
   };
 
-  const [clientInfo, setClientInfo] = useState<{goal: string; planEnd: string; startDate: string; owed: number; paid: number; status: string} | null>(null);
-  const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string}[]>([]);
+  const [clientInfo, setClientInfo] = useState<{goal: string; planEnd: string; startDate: string; owed: number; paid: number; status: string; targetDistance?: string | null; raceDate?: string | null} | null>(null);
+  const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string; targetDistance?: string | null; raceDate?: string | null}[]>([]);
   const [clientGender, setClientGender] = useState<string | null>(null);
+  const [trainingProfile, setTrainingProfile] = useState<{birthday?: string | null; currentMileage?: number | null; easyPace?: string | null; goalPace?: string | null; injuryNotes?: string | null} | null>(null);
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifStravaSynced, setNotifStravaSynced] = useState(true);
@@ -379,6 +380,7 @@ export default function DashboardPage() {
             setClientInfo(data.activePlan || null);
             setAllPlans(data.allPlans || []);
             setClientGender(data.gender || null);
+            setTrainingProfile(data.trainingProfile || null);
           }
         }
       } catch (err) {
@@ -1917,6 +1919,45 @@ export default function DashboardPage() {
         {/* ACCOUNT TAB */}
         {activeTab === "account" && (
           <div className="space-y-6">
+            {/* Training Profile (read-only) */}
+            {trainingProfile && (trainingProfile.birthday || trainingProfile.currentMileage || trainingProfile.easyPace || trainingProfile.goalPace || trainingProfile.injuryNotes) && (
+              <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+                <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Profile</h2>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {trainingProfile.birthday && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Age</p>
+                      <p className="text-white">{Math.floor((Date.now() - new Date(trainingProfile.birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))}</p>
+                    </div>
+                  )}
+                  {trainingProfile.currentMileage && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Current Mileage</p>
+                      <p className="text-white">{trainingProfile.currentMileage} mi/wk</p>
+                    </div>
+                  )}
+                  {trainingProfile.easyPace && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Easy Pace</p>
+                      <p className="text-white">{trainingProfile.easyPace}</p>
+                    </div>
+                  )}
+                  {trainingProfile.goalPace && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Goal Pace</p>
+                      <p className="text-white">{trainingProfile.goalPace}</p>
+                    </div>
+                  )}
+                </div>
+                {trainingProfile.injuryNotes && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-gray-400 text-xs mb-1">Notes</p>
+                    <p className="text-white text-sm">{trainingProfile.injuryNotes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Current Plan & Payment */}
             {clientInfo ? (
               <>
@@ -1924,6 +1965,8 @@ export default function DashboardPage() {
                   <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Plan</h2>
                   <div className="space-y-3 text-sm">
                     {clientInfo.goal && <div className="flex justify-between"><span className="text-gray-400">Goal:</span><span className="text-white font-medium">{clientInfo.goal}</span></div>}
+                    {clientInfo.targetDistance && <div className="flex justify-between"><span className="text-gray-400">Target Distance:</span><span className="text-white">{clientInfo.targetDistance}</span></div>}
+                    {clientInfo.raceDate && <div className="flex justify-between"><span className="text-gray-400">Race Date:</span><span className="text-white">{new Date(clientInfo.raceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>}
                     {clientInfo.startDate && <div className="flex justify-between"><span className="text-gray-400">Start Date:</span><span className="text-white">{new Date(clientInfo.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>}
                     {clientInfo.planEnd && <div className="flex justify-between"><span className="text-gray-400">Plan End:</span><span className="text-white">{new Date(clientInfo.planEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>}
                   </div>
