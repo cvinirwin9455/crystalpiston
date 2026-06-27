@@ -1547,13 +1547,21 @@ export default function AdminPage() {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden relative ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>
-                  {client.stravaProfileUrl ? <img src={client.stravaProfileUrl} alt={client.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : null}
-                  {!client.stravaProfileUrl && client.name.charAt(0)}
-                  {client.stravaConnected && <span className="absolute -top-0.5 -left-0.5 w-3.5 h-3.5 bg-orange-500 rounded-full flex items-center justify-center"><svg className="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg></span>}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden ${isSelected ? "bg-accent text-white" : "bg-white/10 text-gray-400"}`}>
+                  {client.stravaProfileUrl ? <img src={client.stravaProfileUrl} alt={client.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling && ((e.target as HTMLImageElement).nextElementSibling as HTMLElement).style.removeProperty('display'); }} /> : null}
+                  {!client.stravaProfileUrl && (
+                    client.gender === "female" ? (
+                      <svg className="w-full h-full" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    ) : (
+                      <svg className="w-full h-full" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    )
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                    {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
+                  </div>
                   <p className="text-gray-300 text-xs truncate">
                     {client.inviteStatus !== "accepted" 
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
