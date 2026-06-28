@@ -2152,6 +2152,16 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Date Format */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Date Format</p>
+                <p className="text-gray-300 text-xs mb-3">Choose how dates are displayed.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => { fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'MM/DD/YYYY' }) }); }} className="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors bg-primary/50 border border-white/10 text-gray-400 hover:text-white">MM/DD/YYYY</button>
+                  <button onClick={() => { fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'DD/MM/YYYY' }) }); }} className="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors bg-primary/50 border border-white/10 text-gray-400 hover:text-white">DD/MM/YYYY</button>
+                </div>
+              </div>
+
               {/* Default Week View */}
               <div className="mb-6">
                 <p className="text-white text-sm font-medium mb-1">Default Week View</p>

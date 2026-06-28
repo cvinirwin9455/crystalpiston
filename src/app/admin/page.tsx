@@ -64,6 +64,7 @@ export default function AdminPage() {
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
+  const [adminDateFormat, setAdminDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
@@ -83,6 +84,7 @@ export default function AdminPage() {
           });
           setNotifEmail(data.notificationEmails || '');
           if (data.distanceUnit) setAdminDistanceUnit(data.distanceUnit);
+          if (data.dateFormat) setAdminDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setAdminDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
@@ -95,7 +97,7 @@ export default function AdminPage() {
   }, []);
 
   // Save admin notification preferences (called on every change)
-  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean) => {
+  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean, dateFormat?: string) => {
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
@@ -109,6 +111,7 @@ export default function AdminPage() {
           ...(email !== undefined ? { notificationEmails: email } : {}),
           ...(unit !== undefined ? { distanceUnit: unit } : {}),
           ...(expanded !== undefined ? { defaultExpanded: expanded } : {}),
+          ...(dateFormat !== undefined ? { dateFormat } : {}),
         }),
       });
     } catch (err) {
@@ -614,6 +617,7 @@ export default function AdminPage() {
             location: w.location || '',
             coachNotes: w.coachNotes || '',
             distanceUnit: w.distanceUnit || 'mi',
+            structure: w.structure || undefined,
           })),
         };
       });
@@ -2734,6 +2738,16 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDistanceUnit("mi"); saveAdminNotifPrefs(notifications, undefined, "mi"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                     <button onClick={() => { setAdminDistanceUnit("km"); saveAdminNotifPrefs(notifications, undefined, "km"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                  </div>
+                </div>
+
+                {/* Date Format Preference */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Date Format</h3>
+                  <p className="text-gray-300 text-xs mb-4">Choose how dates are displayed across the platform.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setAdminDateFormat("MM/DD/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "MM/DD/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "MM/DD/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>MM/DD/YYYY <span className="text-gray-500 text-xs ml-1">(06/28/2026)</span></button>
+                    <button onClick={() => { setAdminDateFormat("DD/MM/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "DD/MM/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "DD/MM/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>DD/MM/YYYY <span className="text-gray-500 text-xs ml-1">(28/06/2026)</span></button>
                   </div>
                 </div>
 

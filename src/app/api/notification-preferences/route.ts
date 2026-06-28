@@ -31,6 +31,7 @@ export async function GET() {
       theme: prefs?.theme || 'dark',
       distanceUnit: prefs?.distance_unit || 'mi',
       defaultExpanded: prefs?.default_expanded ?? true,
+      dateFormat: prefs?.date_format || 'MM/DD/YYYY',
     })
   }
 
@@ -43,6 +44,7 @@ export async function GET() {
     theme: prefs?.theme || 'dark',
     distanceUnit: prefs?.distance_unit || 'mi',
     defaultExpanded: prefs?.default_expanded ?? true,
+    dateFormat: prefs?.date_format || 'MM/DD/YYYY',
   })
 }
 
@@ -53,7 +55,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit, defaultExpanded } = body
+  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit, defaultExpanded, dateFormat } = body
 
   // Build updates object
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
@@ -79,6 +81,7 @@ export async function PUT(request: Request) {
   if (theme !== undefined) updates.theme = theme
   if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
   if (defaultExpanded !== undefined) updates.default_expanded = defaultExpanded
+  if (dateFormat !== undefined) updates.date_format = dateFormat
 
   // Upsert: update if exists, insert if not
   const { error } = await supabase
