@@ -1707,17 +1707,15 @@ export default function AdminPage() {
             const primaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && cc.isDefault));
             const secondaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && !cc.isDefault));
             const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
-            // If there's only one coach in the system, don't show sections
-            const showSections = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
-            const allToShow = showSections ? [...primaryClients, ...secondaryClients, ...otherClients] : filteredClients;
+            const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
             return (
               <>
-                {showSections && primaryClients.length > 0 && (
+                {primaryClients.length > 0 && (
                   <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
                     <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
                   </div>
                 )}
-                {(showSections ? primaryClients : filteredClients).map((client) => {
+                {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
@@ -1751,7 +1749,7 @@ export default function AdminPage() {
               </button>
             );
           })}
-                {showSections && secondaryClients.length > 0 && (
+                {showSecondary && secondaryClients.length > 0 && (
                   <>
                     <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
                       <p className="text-purple-400 text-[10px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
@@ -1790,7 +1788,7 @@ export default function AdminPage() {
                     })}
                   </>
                 )}
-                {showSections && otherClients.length > 0 && (
+                {showSecondary && otherClients.length > 0 && (
                   <>
                     <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
                       <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
