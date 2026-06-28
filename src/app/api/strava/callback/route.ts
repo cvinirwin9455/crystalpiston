@@ -65,7 +65,7 @@ export async function GET(request: Request) {
         expires_at: tokenData.expires_at,
         athlete_firstname: tokenData.athlete.firstname,
         athlete_lastname: tokenData.athlete.lastname,
-        athlete_profile: tokenData.athlete.profile_medium || tokenData.athlete.profile,
+        athlete_profile: (tokenData.athlete.profile_medium || tokenData.athlete.profile || '').replace(/^http:\/\//i, 'https://'),
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id',

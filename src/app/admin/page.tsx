@@ -4,13 +4,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
+import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay } from "./StructuredRunBuilder";
+import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; };
+type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -27,6 +30,7 @@ export default function AdminPage() {
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showManageCoaches, setShowManageCoaches] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
@@ -45,7 +49,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-29T01:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -60,6 +64,7 @@ export default function AdminPage() {
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
+  const [adminDateFormat, setAdminDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
@@ -79,6 +84,7 @@ export default function AdminPage() {
           });
           setNotifEmail(data.notificationEmails || '');
           if (data.distanceUnit) setAdminDistanceUnit(data.distanceUnit);
+          if (data.dateFormat) setAdminDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setAdminDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
@@ -91,7 +97,7 @@ export default function AdminPage() {
   }, []);
 
   // Save admin notification preferences (called on every change)
-  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean) => {
+  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean, dateFormat?: string) => {
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
@@ -105,6 +111,7 @@ export default function AdminPage() {
           ...(email !== undefined ? { notificationEmails: email } : {}),
           ...(unit !== undefined ? { distanceUnit: unit } : {}),
           ...(expanded !== undefined ? { defaultExpanded: expanded } : {}),
+          ...(dateFormat !== undefined ? { dateFormat } : {}),
         }),
       });
     } catch (err) {
@@ -219,7 +226,7 @@ export default function AdminPage() {
       const weekEnd = new Date(sunday);
       weekEnd.setHours(0, 0, 0, 0);
       if (weekStart < planStart || weekEnd > planEnd) {
-        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const fmt = (d: Date) => { const day = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'long' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${day} ${m} ${y}` : `${m} ${day}, ${y}`; };
         setWeekDateWarning(`This week falls outside the active plan (${fmt(planStart)} – ${fmt(planEnd)}). You won't be able to save until you select a week within the plan dates, or update the plan dates in the Account tab.`);
       } else {
         setWeekDateWarning("");
@@ -232,6 +239,156 @@ export default function AdminPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState<string>("");
+  const [loggedInUserId, setLoggedInUserId] = useState<string>("");
+
+  // All coaches in the system (for multi-coach dropdown)
+  type CoachOption = { id: string; name: string; email: string };
+  const [allCoaches, setAllCoaches] = useState<CoachOption[]>([]);
+  const [showCoachDropdown, setShowCoachDropdown] = useState(false);
+  const [coachAssigning, setCoachAssigning] = useState(false);
+
+  // Manage coaches state
+  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "" });
+  const [creatingCoach, setCreatingCoach] = useState(false);
+  const [createCoachError, setCreateCoachError] = useState("");
+  const [createCoachSuccess, setCreateCoachSuccess] = useState("");
+  const [deletingCoachId, setDeletingCoachId] = useState<string | null>(null);
+
+  // Fetch all coaches in the system
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      try {
+        const res = await fetch('/api/coaches');
+        if (res.ok) {
+          const data = await res.json();
+          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+        }
+      } catch (err) { console.error('Failed to fetch coaches:', err); }
+    };
+    fetchCoaches();
+  }, []);
+
+  // Assign a coach to the selected client
+  const handleAssignCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    setCoachAssigning(true);
+    try {
+      const isFirst = client.coaches.length === 0;
+      const res = await fetch('/api/coaches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId, isDefault: isFirst }),
+      });
+      if (res.ok) {
+        const coachName = allCoaches.find(c => c.id === coachId)?.name || 'Unknown';
+        setClients(prev => prev.map(c => c.id === selectedClient ? {
+          ...c,
+          coaches: [...c.coaches, { coachId, coachName, isDefault: isFirst }],
+        } : c));
+      }
+    } catch (err) { console.error('Failed to assign coach:', err); }
+    finally { setCoachAssigning(false); setShowCoachDropdown(false); }
+  };
+
+  // Remove a coach from the selected client
+  const handleRemoveCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    try {
+      const res = await fetch('/api/coaches', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId }),
+      });
+      if (res.ok) {
+        // If we removed the default, the API auto-promotes the next one
+        const wasDefault = client.coaches.find(c => c.coachId === coachId)?.isDefault;
+        const remaining = client.coaches.filter(c => c.coachId !== coachId);
+        if (wasDefault && remaining.length > 0) remaining[0].isDefault = true;
+        setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, coaches: remaining } : c));
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to remove coach');
+      }
+    } catch (err) { console.error('Failed to remove coach:', err); }
+  };
+
+  // Set a coach as default for the selected client
+  const handleSetDefaultCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    try {
+      const res = await fetch('/api/coaches', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId }),
+      });
+      if (res.ok) {
+        setClients(prev => prev.map(c => c.id === selectedClient ? {
+          ...c,
+          coaches: c.coaches.map(coach => ({ ...coach, isDefault: coach.coachId === coachId })),
+        } : c));
+      }
+    } catch (err) { console.error('Failed to set default coach:', err); }
+  };
+
+  // Invite a new coach to the system
+  const handleInviteCoach = async () => {
+    if (!newCoachForm.name.trim() || !newCoachForm.email.trim()) return;
+    setCreatingCoach(true);
+    setCreateCoachError("");
+    setCreateCoachSuccess("");
+    try {
+      const res = await fetch('/api/coaches/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateCoachError(data.error || 'Failed to invite coach');
+      } else {
+        setCreateCoachSuccess(`Invite sent to ${newCoachForm.email}!`);
+        setNewCoachForm({ name: "", email: "" });
+        // Refresh the coaches list
+        const coachRes = await fetch('/api/coaches');
+        if (coachRes.ok) {
+          const coachData = await coachRes.json();
+          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+        }
+        setTimeout(() => setCreateCoachSuccess(""), 5000);
+      }
+    } catch (err) {
+      setCreateCoachError('Network error. Please try again.');
+    } finally {
+      setCreatingCoach(false);
+    }
+  };
+
+  // Delete/deactivate a coach from the system
+  const handleDeleteCoach = async (coachId: string) => {
+    const coach = allCoaches.find(c => c.id === coachId);
+    if (!confirm(`Are you sure you want to remove ${coach?.name || 'this coach'}? They will lose admin access. Their existing week plans and comments will remain.`)) return;
+    setDeletingCoachId(coachId);
+    try {
+      const res = await fetch('/api/coaches/invite', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId }),
+      });
+      if (res.ok) {
+        setAllCoaches(prev => prev.filter(c => c.id !== coachId));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to remove coach');
+      }
+    } catch (err) {
+      console.error('Failed to delete coach:', err);
+    } finally {
+      setDeletingCoachId(null);
+    }
+  };
 
   // Fetch logged-in user name
   useEffect(() => {
@@ -243,6 +400,7 @@ export default function AdminPage() {
         if (user) {
           const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
           setLoggedInUser(profile?.name || user.email || '');
+          setLoggedInUserId(user.id);
         }
       } catch (err) { console.error(err); }
     };
@@ -254,6 +412,7 @@ export default function AdminPage() {
   const [resendSuccess, setResendSuccess] = useState(false);
   const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
   const [totalUnread, setTotalUnread] = useState(0);
+  const [clientsWithComments, setClientsWithComments] = useState<Set<string>>(new Set());
 
   // Templates state
   type Template = { id: string; name: string; type: "week" | "day"; category: string; data: any; created_at: string };
@@ -459,6 +618,7 @@ export default function AdminPage() {
             location: w.location || '',
             coachNotes: w.coachNotes || '',
             distanceUnit: w.distanceUnit || 'mi',
+            structure: w.structure || undefined,
           })),
         };
       });
@@ -666,6 +826,24 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch clients with recent workout comments (for purple dot indicator)
+  useEffect(() => {
+    const fetchCommentIndicators = async () => {
+      try {
+        const res = await fetch('/api/workout-comments/unread');
+        if (res.ok) {
+          const data = await res.json();
+          setClientsWithComments(new Set(data.clientUserIds || []));
+        }
+      } catch (err) {
+        console.error('Failed to fetch comment indicators:', err);
+      }
+    };
+    fetchCommentIndicators();
+    const interval = setInterval(fetchCommentIndicators, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Fetch clients from API
   const fetchClients = useCallback(async () => {
     try {
@@ -690,6 +868,11 @@ export default function AdminPage() {
           weeks: [],
           messages: [],
           birthday: c.birthday || null,
+          coaches: (c.coaches || []).map((coach: any) => ({
+            coachId: coach.coachId,
+            coachName: coach.coachName || 'Unknown',
+            isDefault: coach.isDefault || false,
+          })),
         }));
         setClients(mapped);
       }
@@ -738,6 +921,7 @@ export default function AdminPage() {
                   stravaActivityName: wo.stravaActivityName || null,
                   status: wo.status || undefined,
                   skipReason: wo.skipReason || undefined, log: wo.log || undefined,
+                  structure: wo.structure || null,
                 })),
               }));
               setClients(prev => prev.map(c => c.id === client.id ? { ...c, weeks: [...c.weeks, ...mapped] } : c));
@@ -816,6 +1000,27 @@ export default function AdminPage() {
 
   const selectedClientData = clients.find((c) => c.id === selectedClient);
 
+  // Helper: select a client and mark their workout comments as viewed (clears purple dot)
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClient(clientId);
+    setAdminWeekOffset(0);
+    setClientTab("plan");
+    setEditingWeek(false);
+    setShowTemplatesView(false);
+    setShowNotificationSettings(false);
+    setShowChangelog(false);
+    setAdminStatsFilter("currentWeek");
+    // Mark workout comments as viewed for this client (clears purple dot)
+    if (clientsWithComments.has(clientId)) {
+      setClientsWithComments(prev => { const next = new Set(prev); next.delete(clientId); return next; });
+      fetch('/api/workout-comments/unread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientUserId: clientId }),
+      }).catch(() => {});
+    }
+  };
+
   // Distance conversion helper - converts from sourceUnit to admin's preferred unit
   const convertDist = (value: number, sourceUnit?: "mi" | "km") => {
     const from = sourceUnit || "mi";
@@ -828,6 +1033,30 @@ export default function AdminPage() {
   const distUnitLabel = adminDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
 
+  // Global date formatter that respects saved date format preference
+  // Always uses named months so dates are never ambiguous
+  const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
+    if (!dateStr) return "—";
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const currentYear = new Date().getFullYear();
+    const showYear = options?.includeYear || year !== currentYear;
+    if (showYear) {
+      // Full format: "June 23, 2026" or "23 June 2026"
+      if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+      return `${monthLong} ${day}, ${year}`;
+    }
+    // Short format (current year): "Jun 23" or "23 Jun"
+    if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort}`;
+    return `${monthShort} ${day}`;
+  };
+
+  const fmtDateFull = (dateStr: string | null | undefined) => fmtDate(dateStr, { includeYear: true });
+
   const selectedClientWeeks = selectedClientData?.weeks || [];
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
   const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft").sort((a, b) => {
@@ -839,7 +1068,7 @@ export default function AdminPage() {
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log && (w.type === 'run' || w.type === 'walk')).reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || convertDist(w.miles || 0, w.distanceUnit), "mi"), 0);
   const totalMilesProgrammed = allClientWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(w.miles || 0, w.distanceUnit), 0);
-  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string; fromName?: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -932,9 +1161,10 @@ export default function AdminPage() {
         const data = await res.json();
         setAdminMessages(prev => [...prev, {
           id: data.messageId,
-          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          date: fmtDateFull(data.createdAt),
           from: 'crystal',
           message: newMessage.trim(),
+          fromName: loggedInUser?.split(' ')[0] || 'Coach',
         }]);
         setNewMessage("");
         setShowMessageForm(false);
@@ -1073,6 +1303,7 @@ export default function AdminPage() {
             completed: wo.completed || false,
             stravaSynced: wo.stravaSynced || false,
             stravaActivityName: wo.stravaActivityName || null,
+            structure: wo.structure || null,
             status: wo.status || undefined,
             skipReason: wo.skipReason || undefined,
             log: wo.log || undefined,
@@ -1245,7 +1476,7 @@ export default function AdminPage() {
       weekEnd.setHours(0, 0, 0, 0);
 
       if (weekStart < planStart || weekEnd > planEnd) {
-        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const fmt = (d: Date) => { const dy = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'long' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${dy} ${m} ${y}` : `${m} ${dy}, ${y}`; };
         alert(`This week (${weekPlan.dateRange}) falls outside the active plan dates (${fmt(planStart)} – ${fmt(planEnd)}). Please select a week within the plan period, or update the plan dates in the Account tab.`);
         return;
       }
@@ -1283,6 +1514,7 @@ export default function AdminPage() {
         location: w.location || null,
         coachNotes: w.coachNotes || null,
         distanceUnit: w.distanceUnit || 'mi',
+        structure: (w as any).structure || null,
       }))
     );
 
@@ -1543,17 +1775,32 @@ export default function AdminPage() {
           <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg transition-colors">+ New Client</button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredClients.map((client) => {
+          {/* Primary clients (this coach is the default) */}
+          {(() => {
+            const primaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && cc.isDefault));
+            const secondaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && !cc.isDefault));
+            const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
+            const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
+            return (
+              <>
+                {primaryClients.length > 0 && (
+                  <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
+                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                  </div>
+                )}
+                {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className={`w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative ${isSelected ? "" : ""}`}>
+              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+                  {client.stravaProfileUrl ? (
+                    <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                  ) : null}
                   {client.gender === "female" ? (
-                    <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -1570,6 +1817,9 @@ export default function AdminPage() {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
+                  {clientsWithComments.has(client.id) && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
+                  )}
                   {unreadByClient[client.id] > 0 && (
                     <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
                   )}
@@ -1577,27 +1827,114 @@ export default function AdminPage() {
               </button>
             );
           })}
+                {showSecondary && secondaryClients.length > 0 && (
+                  <>
+                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-purple-400 text-[10px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
+                    </div>
+                    {secondaryClients.map((client) => {
+                      const isSelected = selectedClient === client.id;
+                      return (
+                        <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+                            {client.stravaProfileUrl ? (
+                              <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                            ) : null}
+                            {client.gender === "female" ? (
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                            ) : (
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                              {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
+                            </div>
+                            <p className="text-gray-300 text-xs truncate">
+                              {client.inviteStatus !== "accepted" 
+                                ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                              }
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {clientsWithComments.has(client.id) && (
+                              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
+                            )}
+                            {unreadByClient[client.id] > 0 && (
+                              <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+                {showSecondary && otherClients.length > 0 && (
+                  <>
+                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
+                    </div>
+                    {otherClients.map((client) => {
+                      const isSelected = selectedClient === client.id;
+                      return (
+                        <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+                            {client.stravaProfileUrl ? (
+                              <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                            ) : null}
+                            {client.gender === "female" ? (
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                            ) : (
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                              {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
+                            </div>
+                            <p className="text-gray-300 text-xs truncate">
+                              {client.inviteStatus !== "accepted" 
+                                ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                              }
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
         <div className="p-3 border-t border-white/10 space-y-2">
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             What&apos;s New
             {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
           </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
             Templates ({templates.length})
           </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             Account Preferences
+          </button>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            Manage Coaches ({allCoaches.length})
           </button>
           <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
         </div>
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto`}>
+      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -1614,7 +1951,22 @@ export default function AdminPage() {
               <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label><input type="date" value={newClientForm.birthday} onChange={(e) => setNewClientForm({ ...newClientForm, birthday: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent [color-scheme:dark]" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label>
+                <div className="flex gap-2">
+                  <select value={newClientForm.birthday ? new Date(newClientForm.birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'long' }) : ''} onChange={(e) => { const current = newClientForm.birthday ? new Date(newClientForm.birthday + 'T00:00:00') : new Date(1990, 0, 1); const monthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(e.target.value); if (monthIdx >= 0) { current.setMonth(monthIdx); setNewClientForm({ ...newClientForm, birthday: current.toISOString().split('T')[0] }); } }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Month</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={newClientForm.birthday ? new Date(newClientForm.birthday + 'T00:00:00').getDate().toString() : ''} onChange={(e) => { const current = newClientForm.birthday ? new Date(newClientForm.birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setDate(parseInt(e.target.value)); setNewClientForm({ ...newClientForm, birthday: current.toISOString().split('T')[0] }); }} className="w-16 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Day</option>
+                    {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
+                  </select>
+                  <select value={newClientForm.birthday ? new Date(newClientForm.birthday + 'T00:00:00').getFullYear().toString() : ''} onChange={(e) => { const current = newClientForm.birthday ? new Date(newClientForm.birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setFullYear(parseInt(e.target.value)); setNewClientForm({ ...newClientForm, birthday: current.toISOString().split('T')[0] }); }} className="w-20 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Year</option>
+                    {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
+                  </select>
+                </div>
+              </div>
             </div>
             <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
             {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
@@ -1626,16 +1978,73 @@ export default function AdminPage() {
             {/* Client Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 relative">
+                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-secondary flex items-center justify-center">
+                  {selectedClientData.stravaProfileUrl ? (
+                    <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                  ) : null}
                   {selectedClientData.gender === "female" ? (
-                    <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-10 h-10 ${selectedClientData.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-10 h-10 ${selectedClientData.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div>
-                <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
+                  {/* Coaches badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedClientData.coaches.map(coach => (
+                      <span key={coach.coachId} className={`text-xs px-2 py-0.5 rounded-full border ${coach.isDefault ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                        {coach.coachName.split(' ')[0]}{coach.isDefault ? ' ★' : ''}
+                      </span>
+                    ))}
+                    {/* Add coach button */}
+                    <div className="relative">
+                      <button onClick={() => setShowCoachDropdown(!showCoachDropdown)} className="text-xs px-2 py-0.5 rounded-full border border-dashed border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">+</button>
+                      {showCoachDropdown && (
+                        <div className="absolute top-full left-0 mt-1 z-50 bg-secondary border border-white/10 rounded-lg shadow-xl p-2 min-w-56">
+                          <p className="text-gray-400 text-xs font-heading uppercase mb-2 px-2">Manage Coaches</p>
+                          {/* Current coaches with remove/default options */}
+                          {selectedClientData.coaches.length > 0 && (
+                            <div className="mb-2 pb-2 border-b border-white/5">
+                              {selectedClientData.coaches.map(coach => (
+                                <div key={coach.coachId} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-white/5">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs ${coach.isDefault ? 'text-gold font-medium' : 'text-gray-300'}`}>{coach.coachName}</span>
+                                    {coach.isDefault && <span className="text-[10px] text-gold bg-gold/10 px-1.5 rounded">Default</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {!coach.isDefault && (
+                                      <button onClick={() => handleSetDefaultCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-gold px-1.5 py-0.5 rounded border border-white/10 hover:border-gold/30">Set Default</button>
+                                    )}
+                                    {selectedClientData.coaches.length > 1 && (
+                                      <button onClick={() => handleRemoveCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-red-400 px-1.5 py-0.5 rounded border border-white/10 hover:border-red-500/30">Remove</button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* Available coaches to add */}
+                          {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length > 0 && (
+                            <>
+                              <p className="text-gray-500 text-[10px] uppercase px-2 mb-1">Add Coach</p>
+                              {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).map(coach => (
+                                <button key={coach.id} onClick={() => handleAssignCoach(coach.id)} disabled={coachAssigning} className="w-full text-left px-2 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-accent/10 rounded transition-colors disabled:opacity-50">
+                                  + {coach.name}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                          {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length === 0 && selectedClientData.coaches.length > 0 && (
+                            <p className="text-gray-500 text-xs px-2 py-1">All coaches assigned</p>
+                          )}
+                          <button onClick={() => setShowCoachDropdown(false)} className="w-full text-center text-gray-500 hover:text-white text-xs mt-2 pt-2 border-t border-white/5 py-1">Close</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <p className="text-sm">
                   {selectedClientData.inviteStatus !== "accepted"
                     ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
@@ -1807,7 +2216,7 @@ export default function AdminPage() {
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                 {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{w.stravaActivityName || 'Synced'}</span>}
                               </div>
-                              <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
+                              <p className="text-gray-300 text-sm mt-0.5">{(w as any).structure ? formatStructureForDisplay((w as any).structure) : `${w.title || ''}${w.description ? ` — ${w.description}` : ''}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
                             </div>
                             {w.miles && <div className="flex items-baseline gap-1.5 flex-shrink-0">
@@ -1871,7 +2280,7 @@ export default function AdminPage() {
                             {(editedWorkouts[w.id]?.type || w.type) === "run" && (
                               <>
                                 <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                                  <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                  <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Trail">Trail</option>
                                 </select>
                                 <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button><input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${(editDistanceUnits[w.id] || "mi")}`} /></div>
                               </>
@@ -1968,7 +2377,7 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { setEditingWeek(false); setEditedWorkouts({}); setEditDistanceUnits({}); }} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg text-sm">Cancel</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button></div>}
+                {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { setEditingWeek(false); setEditedWorkouts({}); setEditDistanceUnits({}); }} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg text-sm">Cancel</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button>{adminWeekOffset > 0 && selectedWeek && !selectedWeek.workouts.some(w => w.completed) && (<button onClick={async () => { if (!selectedWeek) return; if (!confirm('Are you sure you want to permanently delete this entire week plan? This cannot be undone.')) return; try { const res = await fetch(`/api/weeks/${selectedWeek.weekId}`, { method: 'DELETE' }); if (res.ok) { const client = clients.find(c => c.id === selectedClient); if (client?.clientId) await fetchWeeks(client.clientId, true); setEditingWeek(false); } } catch (err) { console.error('Failed to delete week:', err); } }} className="border border-red-500/30 text-red-400 hover:text-red-300 py-2 px-4 rounded-lg text-sm">Delete Week</button>)}</div>}
                 </>)}
               </div>
             )}
@@ -2029,7 +2438,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
-                      <p className="text-gray-400 text-xs">{new Date(activePlan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(activePlan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
                     </div>
                     <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
                   </div>
@@ -2117,15 +2526,16 @@ export default function AdminPage() {
                           <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                         </div>
                         <div className="grid grid-cols-7 gap-1 mb-1">{["M","T","W","T","F","S","S"].map((d,i) => <div key={i} className="text-center text-gray-300 text-xs py-1">{d}</div>)}</div>
-                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const sunday = week[6]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); const weekDateRange = `${formatDate(monday)} - ${formatDate(sunday)}`; const clientData = clients.find(c => c.id === selectedClient); const existingWeek = clientData?.weeks.find(w => w.dateRange === weekDateRange); const weekStatus = existingWeek?.status || null; return (
-                          <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors relative ${isSelected ? "bg-accent/20" : weekStatus ? "bg-white/3" : "hover:bg-white/5"}`}>
-                            {week.map((day, di) => <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : "text-white") : "text-gray-600"}`}>{day.getDate()}</div>)}
+                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const sunday = week[6]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); const weekDateRange = `${formatDate(monday)} - ${formatDate(sunday)}`; const clientData = clients.find(c => c.id === selectedClient); const existingWeek = clientData?.weeks.find(w => w.dateRange === weekDateRange); const weekStatus = existingWeek?.status || null; const today = new Date(); today.setHours(0, 0, 0, 0); const isCurrentWeek = monday <= today && sunday >= today; return (
+                          <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors relative ${isSelected ? "bg-accent/20" : isCurrentWeek ? "bg-yellow-500/10 border border-yellow-500/30" : weekStatus ? "bg-white/3" : "hover:bg-white/5"}`}>
+                            {week.map((day, di) => <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : isCurrentWeek ? "text-yellow-300" : "text-white") : "text-gray-600"}`}>{day.getDate()}</div>)}
                             {weekStatus === "published" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-400" title="Published" />}
                             {weekStatus === "draft" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-yellow-400" title="Draft" />}
                           </button>); })}
-                        <div className="flex items-center gap-3 mt-2 justify-center">
+                        <div className="flex items-center gap-3 mt-2 justify-center flex-wrap">
                           <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>Published</span>
                           <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>Draft</span>
+                          <span className="flex items-center gap-1 text-xs text-yellow-300"><span className="w-3 h-2 rounded border border-yellow-500/50 inline-block"></span>Current Week</span>
                           <span className="flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-transparent border border-gray-500 inline-block"></span>Empty</span>
                         </div>
                         <p className="text-gray-300 text-xs mt-1 text-center">Click a row to select Mon-Sun</p>
@@ -2163,7 +2573,7 @@ export default function AdminPage() {
                             {wo.type === "run" && (
                               <>
                                 <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
-                                  <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                  <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                 </select>
                                 <div className="flex items-center gap-1">
                                   <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
@@ -2191,8 +2601,27 @@ export default function AdminPage() {
                             )}
                             {day.workouts.length > 1 && <button type="button" onClick={() => removeWorkoutFromDay(i, wi)} className="text-red-400 hover:text-red-300 text-xs ml-auto">Remove</button>}
                           </div>
-                          {(wo.type === "run" || wo.type === "walk") && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" /></div>)}
-                          {(wo.type === "run" || wo.type === "walk") && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
+                          {wo.type === "run" && (
+                            <>
+                              <StructuredRunBuilder
+                                structure={(wo as any).structure || { warmUp: null, blocks: [{ blockType: "intervals", reps: "", work: { type: "distance", value: "", unit: "meters" }, intensity: "", recovery: { type: "distance", value: "", unit: "meters", recoveryType: "Jog" } }], coolDown: null }}
+                                onChange={(structure) => {
+                                  const updated = [...weekPlan.days];
+                                  const workouts = [...updated[i].workouts];
+                                  (workouts[wi] as any).structure = structure;
+                                  // Auto-calculate distance
+                                  const autoMiles = calculateTotalDistance(structure);
+                                  if (autoMiles > 0) (workouts[wi] as any).miles = autoMiles.toString();
+                                  updated[i] = { ...updated[i], workouts };
+                                  setWeekPlan({ ...weekPlan, days: updated });
+                                }}
+                              />
+                              <div className="mt-2">
+                                <input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (free text — e.g. Keep effort controlled, Stay conversational, Run by feel)" />
+                              </div>
+                            </>
+                          )}
+                          {wo.type === "walk" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
                           {wo.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /></div><textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
                           {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
                           {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div>}
@@ -2281,6 +2710,9 @@ export default function AdminPage() {
                   {adminMessages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.from === "crystal" ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] ${msg.from === "crystal" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
+                        {msg.from === "crystal" && msg.fromName && (
+                          <p className="text-white/70 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
+                        )}
                         <p className={`text-sm ${msg.from === "crystal" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                         <p className={`text-xs mt-1 ${msg.from === "crystal" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                       </div>
@@ -2329,6 +2761,7 @@ export default function AdminPage() {
                     console.error('Failed to delete client:', err);
                   }
                 }}
+                dateFormat={adminDateFormat}
               />
             )}
           </div>
@@ -2402,6 +2835,16 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* Date Format Preference */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Date Format</h3>
+                  <p className="text-gray-300 text-xs mb-4">Choose how dates are displayed across the platform.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setAdminDateFormat("MM/DD/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "MM/DD/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "MM/DD/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}><span>June 23, 2026</span><br/><span className="text-xs opacity-60">Month first</span></button>
+                    <button onClick={() => { setAdminDateFormat("DD/MM/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "DD/MM/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "DD/MM/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}><span>23 June 2026</span><br/><span className="text-xs opacity-60">Day first</span></button>
+                  </div>
+                </div>
+
                 {/* Default Week View Preference */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Default Week View</h3>
@@ -2412,15 +2855,10 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Email Destination */}
+                {/* Email Destination - Removed: emails now auto-send to all assigned coaches */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Send Notifications To</h3>
-                  <p className="text-gray-300 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
-                  <div className="flex gap-3">
-                    <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
-                    <button onClick={() => { saveAdminNotifPrefs(notifications, notifEmail); setNotifEmailSaved(true); setTimeout(() => setNotifEmailSaved(false), 3000); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
-                  </div>
-                  <p className="text-gray-400 text-xs mt-2">Separate multiple addresses with a comma.</p>
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Email Notifications</h3>
+                  <p className="text-gray-300 text-xs">Notification emails are automatically sent to all coaches assigned to a client (primary and secondary). Clients can turn off specific notifications from their own Account tab.</p>
                 </div>
               </>
             ) : showChangelog ? (
@@ -2463,7 +2901,7 @@ export default function AdminPage() {
                                   {wo.type === "run" && (
                                     <>
                                       <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                        <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                        <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                       </select>
                                       <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                                       <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
@@ -2574,7 +3012,7 @@ export default function AdminPage() {
                                           {wo.type === "run" && (
                                             <>
                                               <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                                <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                                <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                               </select>
                                               <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                                             </>
@@ -2628,7 +3066,7 @@ export default function AdminPage() {
                         {newDayTemplateData.type === "run" && (
                           <>
                             <select value={newDayTemplateData.trainingType || ""} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                              <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                              <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                             </select>
                             <input type="text" value={newDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setNewDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                           </>
@@ -2720,7 +3158,7 @@ export default function AdminPage() {
                                 {editDayTemplateData.type === "run" && (
                                   <>
                                     <select value={editDayTemplateData.trainingType || ""} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                      <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                      <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                     </select>
                                     <input type="text" value={editDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setEditDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                                   </>
@@ -2755,6 +3193,87 @@ export default function AdminPage() {
                       );})}
                     </div>
                   )}
+                </div>
+              </>
+            ) : showManageCoaches ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-2xl uppercase text-white">Manage Coaches</h2>
+                  <button onClick={() => setShowManageCoaches(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
+                </div>
+
+                <p className="text-gray-400 text-sm">Add new coaches and manage who has admin access to the platform.</p>
+
+                {/* Invite New Coach */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-purple-400 mb-4">Invite New Coach</h3>
+                  <p className="text-gray-300 text-xs mb-4">Send an invite email to a new coach. They&apos;ll set their password and get full admin access to manage clients, create weeks, send messages, etc.</p>
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label>
+                      <input type="text" value={newCoachForm.name} onChange={(e) => setNewCoachForm({ ...newCoachForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Coach Name" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label>
+                      <input type="email" value={newCoachForm.email} onChange={(e) => setNewCoachForm({ ...newCoachForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="coach@email.com" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleInviteCoach} disabled={creatingCoach || !newCoachForm.name.trim() || !newCoachForm.email.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 transition-colors">{creatingCoach ? "Sending Invite..." : "Send Invite"}</button>
+                    {createCoachError && <p className="text-red-400 text-xs">{createCoachError}</p>}
+                    {createCoachSuccess && <p className="text-green-400 text-xs">{createCoachSuccess}</p>}
+                  </div>
+                </div>
+
+                {/* Existing Coaches */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-4">Current Coaches ({allCoaches.length})</h3>
+                  {allCoaches.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No coaches found. This shouldn&apos;t happen — you should see yourself here.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {allCoaches.map(coach => {
+                        const isYou = coach.id === loggedInUserId;
+                        const clientCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id)).length;
+                        const defaultCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id && cc.isDefault)).length;
+                        return (
+                          <div key={coach.id} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                <span className="text-purple-400 font-bold text-sm">{coach.name.charAt(0).toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-sm font-medium">{coach.name}</p>
+                                  {isYou && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">You</span>}
+                                </div>
+                                <p className="text-gray-400 text-xs">{coach.email}</p>
+                                <p className="text-gray-500 text-xs mt-0.5">
+                                  {clientCount > 0 ? `${clientCount} client${clientCount !== 1 ? 's' : ''} assigned` : 'No clients assigned'}
+                                  {defaultCount > 0 && ` (${defaultCount} as default)`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!isYou && (
+                                <button onClick={() => handleDeleteCoach(coach.id)} disabled={deletingCoachId === coach.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                                  {deletingCoachId === coach.id ? "Removing..." : "Remove"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info box */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs leading-relaxed">
+                    <strong className="text-white">How coaches work:</strong> When a coach is assigned to a client, they can create weekly plans, send messages, and add comments. Each coach has their own preferences (MI/KM, notifications). 
+                    The <span className="text-gold">default coach</span> is the name shown to the client throughout their dashboard and in emails. You can change the default per-client from the client&apos;s header area.
+                  </p>
                 </div>
               </>
             ) : (
@@ -2864,7 +3383,7 @@ export default function AdminPage() {
       </main>
 
       {/* AI Coach Assistant — Floating Button + Panel */}
-      <button onClick={() => setShowAiPanel(!showAiPanel)} className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAiPanel ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gradient-to-r from-purple-600 to-accent hover:scale-105'}`} title="AI Coach Assistant">
+      <button onClick={() => setShowAiPanel(!showAiPanel)} className={`fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAiPanel ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gradient-to-r from-purple-600 to-accent hover:scale-105'}`} title="AI Coach Assistant">
         {showAiPanel ? (
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         ) : (

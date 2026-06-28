@@ -47,7 +47,7 @@ export async function GET() {
   const weekIds = weeks.map(w => w.id)
   const { data: workouts } = await adminClient
     .from('workouts')
-    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit, distance_unit')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit, structure')
     .in('week_id', weekIds)
     .order('sort_order', { ascending: true })
 
@@ -275,6 +275,7 @@ export async function GET() {
           paceTarget: wo.pace_target || '',
           location: wo.location || '',
           coachNotes: wo.coach_notes || '',
+          structure: wo.structure || null,
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,

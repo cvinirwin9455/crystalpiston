@@ -68,10 +68,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: queryError.message }, { status: 500 })
     }
 
+    // Get names for all coach senders (from_user_id where from !== client)
+    const coachSenderIds = [...new Set(messages.filter(m => m.from_user_id !== withUserId).map(m => m.from_user_id))]
+    const coachNameMap: Record<string, string> = {}
+    if (coachSenderIds.length > 0) {
+      const { data: coachUsers } = await adminClient
+        .from('users')
+        .select('id, name')
+        .in('id', coachSenderIds)
+      for (const cu of coachUsers || []) {
+        coachNameMap[cu.id] = cu.name?.split(' ')[0] || 'Coach'
+      }
+    }
+
     const formatted = messages.map(m => ({
       id: m.id,
       from: m.from_user_id === withUserId ? 'client' : 'crystal',
       fromUserId: m.from_user_id,
+      fromName: m.from_user_id !== withUserId ? (coachNameMap[m.from_user_id] || 'Coach') : undefined,
       toUserId: m.to_user_id,
       message: m.message,
       read: m.read,
@@ -125,10 +139,24 @@ export async function GET(request: Request) {
       .eq('read', false)
   }
 
+  // Get coach names for messages sent by coaches
+  const coachSenderIds = [...new Set((messages || []).filter(m => m.from_user_id !== user.id).map(m => m.from_user_id))]
+  const coachNameMap: Record<string, string> = {}
+  if (coachSenderIds.length > 0) {
+    const { data: coachUsers } = await adminClient
+      .from('users')
+      .select('id, name')
+      .in('id', coachSenderIds)
+    for (const cu of coachUsers || []) {
+      coachNameMap[cu.id] = cu.name?.split(' ')[0] || 'Coach'
+    }
+  }
+
   return NextResponse.json((messages || []).map(m => ({
     id: m.id,
     from: m.from_user_id === user.id ? 'client' : 'crystal',
     fromUserId: m.from_user_id,
+    fromName: m.from_user_id !== user.id ? (coachNameMap[m.from_user_id] || 'Coach') : undefined,
     toUserId: m.to_user_id,
     message: m.message,
     read: m.read,
@@ -153,22 +181,57 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
-  // If toUserId not provided (client sending), find the primary admin (first created)
+  // If toUserId not provided (client sending), find the default coach for this client
   let recipientId = toUserId
   if (!recipientId) {
-    const { data: adminUsers } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .order('created_at', { ascending: true })
-      .limit(1)
-    
-    const adminUser = adminUsers?.[0]
-    if (!adminUser) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+    // First try: get the default coach from client_coaches
+    let defaultCoachId: string | null = null
+    try {
+      const { data: clientRecord } = await adminClient
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (clientRecord) {
+        const { data: coachAssignment } = await adminClient
+          .from('client_coaches')
+          .select('coach_id')
+          .eq('client_id', clientRecord.id)
+          .eq('is_default', true)
+          .single()
+
+        if (coachAssignment) {
+          defaultCoachId = coachAssignment.coach_id
+        }
+      }
+    } catch {}
+
+    if (defaultCoachId) {
+      recipientId = defaultCoachId
+    } else {
+      // Fallback: first admin (for clients without coach assignments yet)
+      const { data: adminUsers } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('role', 'admin')
+        .order('created_at', { ascending: true })
+        .limit(1)
+      
+      const adminUser = adminUsers?.[0]
+      if (!adminUser) {
+        return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+      }
+      recipientId = adminUser.id
     }
-    recipientId = adminUser.id
   }
+
+  // Get sender's role before insert so we can set created_by_coach_id
+  const { data: senderRole } = await adminClient
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
   const { data: newMessage, error } = await adminClient
     .from('messages')
@@ -176,6 +239,7 @@ export async function POST(request: Request) {
       from_user_id: user.id,
       to_user_id: recipientId,
       message: message.trim(),
+      created_by_coach_id: senderRole?.role === 'admin' ? user.id : null,
     })
     .select('id, created_at')
     .single()
@@ -200,47 +264,77 @@ export async function POST(request: Request) {
     .single()
 
   if (recipientProfile?.role === 'admin') {
-    // Sending TO an admin (Crystal): check admin's notification preferences
-    const { data: adminNotifPrefs } = await adminClient
-      .from('notification_preferences')
-      .select('client_message, notification_emails')
-      .eq('user_id', recipientId)
-      .maybeSingle()
+    // Client is sending TO a coach: notify ALL assigned coaches (not just the recipient)
+    // First, find the client's record to get all coach assignments
+    let allCoachIds: string[] = [recipientId]
+    try {
+      const { data: clientRecord } = await adminClient
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
 
-    const clientMessagePref = adminNotifPrefs?.client_message || 'immediate'
+      if (clientRecord) {
+        const { data: coachAssignments } = await adminClient
+          .from('client_coaches')
+          .select('coach_id')
+          .eq('client_id', clientRecord.id)
 
-    if (clientMessagePref === 'immediate') {
-      let notifEmails: string[] = []
-      if (adminNotifPrefs?.notification_emails) {
-        notifEmails = adminNotifPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+        if (coachAssignments && coachAssignments.length > 0) {
+          allCoachIds = coachAssignments.map((ca: any) => ca.coach_id)
+        }
       }
-      if (notifEmails.length === 0 && recipientProfile.email) {
-        notifEmails = [recipientProfile.email]
-      }
+    } catch {}
 
-      if (notifEmails.length > 0) {
-        const { sendEmail } = await import('@/lib/email')
-        const url = new URL(request.url)
-        const siteUrl = `${url.protocol}//${url.host}`
-        const senderName = senderProfile?.name || 'A client'
-        const truncated = message.trim().length > 150 ? message.trim().slice(0, 150) + '...' : message.trim()
+    // Get all coach profiles
+    const { data: allCoachProfiles } = await adminClient
+      .from('users')
+      .select('id, email, name')
+      .in('id', allCoachIds)
 
-        const emailHtml = `
-          <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New message from ${senderName}</h2>
-          <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
-            <p style="margin: 0; font-size: 14px; color: #e0e0e0; line-height: 1.5;">${truncated}</p>
-          </div>
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
-            <tr>
-              <td align="center">
-                <a href="${siteUrl}/admin" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
-              </td>
-            </tr>
-          </table>
-        `
+    for (const coachProfile of allCoachProfiles || []) {
+      // Check each coach's notification preferences
+      const { data: coachNotifPrefs } = await adminClient
+        .from('notification_preferences')
+        .select('client_message, notification_emails')
+        .eq('user_id', coachProfile.id)
+        .maybeSingle()
 
-        for (const email of notifEmails) {
-          sendEmail({ to: email, subject: `New message from ${senderName}`, html: emailHtml }).catch(console.error)
+      const clientMessagePref = coachNotifPrefs?.client_message || 'immediate'
+
+      if (clientMessagePref === 'immediate') {
+        let notifEmails: string[] = []
+        if (coachNotifPrefs?.notification_emails) {
+          notifEmails = coachNotifPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+        }
+        if (notifEmails.length === 0 && coachProfile.email) {
+          notifEmails = [coachProfile.email]
+        }
+
+        if (notifEmails.length > 0) {
+          const { sendEmail } = await import('@/lib/email')
+          const url = new URL(request.url)
+          const siteUrl = `${url.protocol}//${url.host}`
+          const senderName = senderProfile?.name?.split(' ')[0] || 'A client'
+          const truncated = message.trim().length > 150 ? message.trim().slice(0, 150) + '...' : message.trim()
+
+          const emailHtml = `
+            <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New message from ${senderName}</h2>
+            <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
+              <p style="margin: 0; font-size: 14px; color: #e0e0e0; line-height: 1.5;">${truncated}</p>
+            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+              <tr>
+                <td align="center">
+                  <a href="${siteUrl}/admin" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
+                </td>
+              </tr>
+            </table>
+          `
+
+          for (const email of notifEmails) {
+            sendEmail({ to: email, subject: `New message from ${senderName}`, html: emailHtml }).catch(console.error)
+          }
         }
       }
     }
@@ -258,7 +352,7 @@ export async function POST(request: Request) {
       const { sendEmail, buildNewMessageEmail } = await import('@/lib/email')
       const url = new URL(request.url)
       const siteUrl = `${url.protocol}//${url.host}`
-      const emailContent = buildNewMessageEmail(recipientProfile.name || 'there', message.trim(), siteUrl)
+      const emailContent = buildNewMessageEmail(recipientProfile.name?.split(' ')[0] || 'there', message.trim(), siteUrl, senderProfile?.name?.split(' ')[0] || undefined)
       sendEmail({ to: recipientProfile.email, ...emailContent }).catch(console.error)
     }
   }

@@ -29,7 +29,7 @@ type ClientData = {
   birthday?: string | null;
 };
 
-export default function AccountTab({ clientData, onSave, onArchive, onDelete }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void }) {
+export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
@@ -213,7 +213,13 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+    return `${monthLong} ${day}, ${year}`;
   };
 
   return (
@@ -243,7 +249,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               </div>
               <div>
                 <p className="text-gray-500 text-xs mb-1">Birthday</p>
-                <p className="text-white text-sm">{birthday ? `${new Date(birthday + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
+                <p className="text-white text-sm">{birthday ? `${formatDate(birthday)} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
               </div>
             </div>
           </div>
@@ -268,7 +274,20 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               </div>
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Birthday</label>
-                <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                <div className="flex gap-2">
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'long' }) : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); const monthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(e.target.value); if (monthIdx >= 0) { current.setMonth(monthIdx); setBirthday(current.toISOString().split('T')[0]); } }} className="flex-1 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                    <option value="" disabled>Month</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').getDate().toString() : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setDate(parseInt(e.target.value)); setBirthday(current.toISOString().split('T')[0]); }} className="w-16 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                    <option value="" disabled>Day</option>
+                    {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
+                  </select>
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').getFullYear().toString() : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setFullYear(parseInt(e.target.value)); setBirthday(current.toISOString().split('T')[0]); }} className="w-20 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                    <option value="" disabled>Year</option>
+                    {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -360,7 +379,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         {!loadingPlans && plans.length === 0 && <p className="text-gray-500 text-sm">No plans yet. Create one above.</p>}
         {/* Active Plan */}
         {plans.filter(p => p.status === "active").map((plan) => (
-          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} />
+          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} />
         ))}
         {/* Completed Plans - collapsible */}
         {plans.filter(p => p.status !== "active").length > 0 && (
@@ -370,7 +389,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             </summary>
             <div className="mt-3 space-y-3">
               {plans.filter(p => p.status !== "active").map((plan) => (
-                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} />
+                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} />
               ))}
             </div>
           </details>
@@ -394,7 +413,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
 }
 
 // Sub-component for individual plan card with payment logging
-function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, updates: any) => void }) {
+function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
@@ -463,7 +482,13 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+    return `${monthLong} ${day}, ${year}`;
   };
 
   const handleLogPayment = async () => {
@@ -641,8 +666,16 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
           </p>
         </div>
       </div>
-      {/* Target Distance & Race Date */}
-      {(plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
+      {/* Target Distance & Race Date — always show for active plans */}
+      {plan.status === "active" && (
+        <div className="grid md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-white/5">
+          <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance || "—"}</p></div>
+          <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{plan.raceDate ? formatDate(plan.raceDate) : "—"}</p></div>
+          <div><p className="text-gray-500 text-xs">Goal Race Pace</p><p className="text-white text-sm">{plan.goalPace || "—"}</p></div>
+          <div><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes || "—"}</p></div>
+        </div>
+      )}
+      {plan.status !== "active" && (plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
         <div className="grid md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-white/5">
           {plan.targetDistance && <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance}</p></div>}
           {plan.raceDate && <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{formatDate(plan.raceDate)}</p></div>}

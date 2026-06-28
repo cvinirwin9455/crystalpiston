@@ -4,9 +4,42 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
+
+// Helper: format structured workout for display
+function formatWorkoutStructure(structure: any): string {
+  if (!structure) return '';
+  const parts: string[] = [];
+  const unitLabel = (u: string) => { switch (u) { case "meters": return "m"; case "km": return "km"; case "miles": return "mi"; case "minutes": return "min"; case "seconds": return "sec"; case "hours": return "hr"; default: return u; } };
+
+  if (structure.warmUp?.value) {
+    const u = unitLabel(structure.warmUp.unit);
+    parts.push(`Warm-up: ${structure.warmUp.value} ${u} easy`);
+  }
+
+  for (const block of structure.blocks || []) {
+    if (block.blockType === "tempo" && block.work?.value) {
+      parts.push(`${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}`);
+    } else if (block.blockType === "progression" && block.segments?.length) {
+      parts.push(block.segments.map((s: any) => `${s.value} ${unitLabel(s.unit)}${s.intensity ? ` ${s.intensity}` : ''}`).join(' + '));
+    } else if (block.blockType === "fartlek" && block.work?.value) {
+      const rest = block.fartlekRest;
+      parts.push(`${block.reps || '?'} x (${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)`);
+    } else if (block.work?.value) {
+      const recov = (block.recovery?.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : '';
+      parts.push(`${block.reps || '?'} x ${block.work.value}${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${recov}`);
+    }
+  }
+
+  if (structure.coolDown?.value) {
+    const u = unitLabel(structure.coolDown.unit);
+    parts.push(`Cool-down: ${structure.coolDown.value} ${u} easy`);
+  }
+
+  return parts.join('\n');
+}
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
@@ -40,7 +73,7 @@ export default function DashboardPage() {
 
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
-  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; fromName?: string; message: string}[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +117,7 @@ export default function DashboardPage() {
         const data = await res.json();
         setClientMessages(prev => [...prev, {
           id: data.messageId,
-          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          date: fmtDateFull(data.createdAt),
           from: 'client',
           message: newMessage.trim(),
         }]);
@@ -102,6 +135,7 @@ export default function DashboardPage() {
   const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string; targetDistance?: string | null; raceDate?: string | null}[]>([]);
   const [clientGender, setClientGender] = useState<string | null>(null);
   const [trainingProfile, setTrainingProfile] = useState<{birthday?: string | null} | null>(null);
+  const [coachName, setCoachName] = useState<string>("your coach");
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifStravaSynced, setNotifStravaSynced] = useState(true);
@@ -111,6 +145,7 @@ export default function DashboardPage() {
   const [loggedInName, setLoggedInName] = useState("");
   const [loggedInEmail, setLoggedInEmail] = useState("");
   const [clientDistanceUnit, setClientDistanceUnit] = useState<"mi" | "km">("mi");
+  const [clientDateFormat, setClientDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
   const [workoutUnitOverrides, setWorkoutUnitOverrides] = useState<Record<string, "mi" | "km">>({});
 
   // Strava connection state
@@ -145,7 +180,7 @@ export default function DashboardPage() {
     ]},
     { date: "June 22, 2026", items: [
       "Workout cards redesigned — cleaner layout with metrics in compact pills on one line",
-      "New source badges: 'Programmed' (Crystal's workouts), 'Your Workout' (yours), 'Extra' (Strava standalone)",
+      "New source badges: 'Programmed' (your coach's workouts), 'Your Workout' (yours), 'Extra' (Strava standalone)",
       "Strava-synced workouts show the orange Strava logo + activity name as a badge",
       "Removed redundant 'Synced from Strava' and 'Kept as extra' text — badges handle it",
       "Removed green 'Completed' badge — the green checkmark is enough",
@@ -160,8 +195,8 @@ export default function DashboardPage() {
       "Click the bell to see what's new — only shows updates you haven't read",
       "'View all updates' opens a full-screen history of every change",
       "Logout is now an icon (door with arrow) in the header",
-      "Crystal now sees all your Strava data (miles, pace, duration, heart rate)",
-      "Strava now matches to your own created workouts (not just Crystal's)",
+      "Your coach now sees all your Strava data (miles, pace, duration, heart rate)",
+      "Strava now matches to your own created workouts (not just your coach's)",
       "Heart rate (avg + max) shows on all Strava-imported workouts",
       "After matching Strava, miles/pace/duration/HR show on the card",
       "Actual miles now show in green on the right after completing a workout",
@@ -191,7 +226,7 @@ export default function DashboardPage() {
     ]},
     { date: "June 15, 2026", items: [
       "Add your own workouts under each day",
-      "Crystal can comment on your completed workouts (you get an email)",
+      "Your coach can comment on your completed workouts (you get an email)",
       "Per-workout mi/km toggle to quickly check conversions",
       "Rest days simplified — just an optional comment button",
     ]},
@@ -204,7 +239,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
-    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-28T01:00:00Z") {
       setShowNewBadge(true);
     }
   }, []);
@@ -315,6 +350,7 @@ export default function DashboardPage() {
           if (data.stravaSynced !== undefined) setNotifStravaSynced(data.stravaSynced);
           if (data.workoutComments !== undefined) setNotifWorkoutComments(data.workoutComments);
           if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
+          if (data.dateFormat) setClientDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
@@ -383,6 +419,7 @@ export default function DashboardPage() {
             setAllPlans(data.allPlans || []);
             setClientGender(data.gender || null);
             setTrainingProfile(data.trainingProfile || null);
+            if (data.coachName) setCoachName(data.coachName);
           }
         }
       } catch (err) {
@@ -492,6 +529,7 @@ export default function DashboardPage() {
               completed: wo.completed || false,
               stravaSynced: wo.stravaSynced || false,
               stravaActivityName: wo.stravaActivityName || null,
+              structure: wo.structure || null,
               status: wo.status || undefined,
               skipReason: wo.skipReason || undefined,
               log: wo.log || undefined,
@@ -557,6 +595,29 @@ export default function DashboardPage() {
     return +value.toFixed(2);
   };
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
+
+  // Global date formatter respecting user's date format preference
+  // Always uses named months so dates are never ambiguous
+  const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
+    if (!dateStr) return "—";
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const currentYear = new Date().getFullYear();
+    const showYear = options?.includeYear || year !== currentYear;
+    if (showYear) {
+      // Full format: "June 23, 2026" or "23 June 2026"
+      if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+      return `${monthLong} ${day}, ${year}`;
+    }
+    // Short format (current year): "Jun 23" or "23 Jun"
+    if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort}`;
+    return `${monthShort} ${day}`;
+  };
+  const fmtDateFull = (dateStr: string | null | undefined) => fmtDate(dateStr, { includeYear: true });
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
   // Pace conversion helpers (e.g. "9:04/mi" → "5:38/km")
@@ -930,15 +991,15 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
-              <button onClick={() => { setShowUpdatesDropdown(!showUpdatesDropdown); }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
+              <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-28T01:00:00Z"); setLastSeenUpdates("2026-06-28T01:00:00Z"); } else { setShowUpdatesDropdown(true); } }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                {showNewBadge && <span className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">!</span>}
+                {(showNewBadge && !showUpdatesDropdown) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent" />}
               </button>
 
               {/* Updates Dropdown */}
               {showUpdatesDropdown && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-25T01:00:00Z"); setLastSeenUpdates("2026-06-25T01:00:00Z"); }} />
+                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-28T01:00:00Z"); setLastSeenUpdates("2026-06-28T01:00:00Z"); }} />
                   <div className="absolute right-0 top-8 w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                     <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                       <h3 className="text-white text-sm font-heading uppercase">What&apos;s New</h3>
@@ -984,13 +1045,13 @@ export default function DashboardPage() {
       </header>
 
       {/* Tabs — sticky below header */}
-      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[65px] z-30">
-        <div className="max-w-7xl mx-auto px-6 flex gap-1" role="tablist" aria-label="Dashboard navigation">
+      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[65px] z-30 overflow-visible">
+        <div className="max-w-7xl mx-auto px-6 flex gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadCount}</span>
+                <span className="absolute -top-1 -right-2 bg-accent text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
               )}
             </button>
           ))}
@@ -1034,7 +1095,7 @@ export default function DashboardPage() {
             {!currentWeek && (
               <div className="text-center py-8 bg-secondary/30 border border-white/10 rounded-xl">
                 <p className="text-gray-400">No training plan published for this week.</p>
-                {weekOffset === 0 && <p className="text-gray-300 text-sm mt-1">Check back soon or message Crystal.</p>}
+                {weekOffset === 0 && <p className="text-gray-300 text-sm mt-1">Check back soon or message {coachName}.</p>}
               </div>
             )}
 
@@ -1075,7 +1136,7 @@ export default function DashboardPage() {
               <div className="bg-secondary/50 border border-gold/30 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
-                  <div><p className="text-gold text-xs font-heading uppercase mb-1">Message from Crystal</p><p className="text-gray-300 text-sm leading-relaxed">{currentWeek.coachMessage}</p></div>
+                  <div><p className="text-gold text-xs font-heading uppercase mb-1">Message from {coachName}</p><p className="text-gray-300 text-sm leading-relaxed">{currentWeek.coachMessage}</p></div>
                 </div>
               </div>
             )}
@@ -1101,7 +1162,9 @@ export default function DashboardPage() {
                 const weekStart = getMondayForOffset(weekOffset);
                 const dayDate = new Date(weekStart);
                 dayDate.setDate(weekStart.getDate() + dayIndex);
-                const dayDateStr = dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                const dayDateStr = clientDateFormat === 'DD/MM/YYYY'
+                  ? dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : dayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
@@ -1121,7 +1184,7 @@ export default function DashboardPage() {
                     {/* Day Content - only when expanded */}
                     {isExpanded && (
                       <div className="p-4 space-y-3">
-                    {/* Crystal's programmed workouts for this day — with Strava suggestions attached */}
+                    {/* Coach's programmed workouts for this day — with Strava suggestions attached */}
                     {dayWorkouts.map((workout) => {
                       // Find Strava imports that suggest matching to THIS workout
                       const suggestedStravaForWorkout = dayClientWorkouts.filter(cw => {
@@ -1153,7 +1216,11 @@ export default function DashboardPage() {
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
-                          <p className="text-gray-400 text-sm">{workout.description}</p>
+                          {workout.structure ? (
+                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure)}</div>
+                          ) : workout.description ? (
+                            <p className="text-gray-400 text-sm">{workout.description}</p>
+                          ) : null}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {getWorkoutUnit(workout.id) === "km" && workout.paceTarget.includes("/mi") ? convertPaceToKm(workout.paceTarget) : getWorkoutUnit(workout.id) === "mi" && workout.paceTarget.includes("/km") ? convertPaceToMi(workout.paceTarget) : workout.paceTarget}{!workout.paceTarget.includes("/") ? `/${getWorkoutUnit(workout.id)}` : ""}</p>}
                           {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
@@ -1210,7 +1277,7 @@ export default function DashboardPage() {
                           <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2.5 mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <svg className="w-4 h-4 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                              <p className="text-orange-300 text-xs"><span className="font-medium">Strava synced your activity!</span> Add your {!workout.log.rpe && !workout.log.sleep ? 'RPE & Sleep' : !workout.log.rpe ? 'RPE' : 'Sleep'} so Crystal can track how you&apos;re feeling.</p>
+                              <p className="text-orange-300 text-xs"><span className="font-medium">Strava synced your activity!</span> Add your {!workout.log.rpe && !workout.log.sleep ? 'RPE & Sleep' : !workout.log.rpe ? 'RPE' : 'Sleep'} so {coachName} can track how you&apos;re feeling.</p>
                             </div>
                             <button onClick={() => setEditingWorkoutLog(workout.id)} className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 ml-2">Add</button>
                           </div>
@@ -1254,7 +1321,7 @@ export default function DashboardPage() {
                         <>
                           <h4 className="font-heading text-sm uppercase text-green-400 mb-3">Rest Day Notes</h4>
                           <div className="mb-4">
-                            <label className="text-gray-400 text-xs block mb-1">Anything to share with Crystal about today? (optional)</label>
+                            <label className="text-gray-400 text-xs block mb-1">Anything to share with {coachName} about today? (optional)</label>
                             <textarea value={workout.log?.notes || ""} onChange={(e) => updateWorkoutLog(workout.id, "notes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="e.g. Feeling good and recovered, went for a light walk, legs still sore from yesterday..." />
                           </div>
                           <div className="flex items-center justify-between pt-2 border-t border-white/10">
@@ -1346,7 +1413,7 @@ export default function DashboardPage() {
                           {(workoutComments[workout.id] || []).map(c => (
                             <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
                               <div className="flex items-center gap-2 mb-0.5">
-                                <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
+                                <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? coachName : c.userName}</span>
                                 <span className="text-gray-400 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                               </div>
                               <p className="text-gray-300 text-xs">{c.message}</p>
@@ -1355,7 +1422,7 @@ export default function DashboardPage() {
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
+                        <input type="text" value={commentInput[workout.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [workout.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(workout.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder={`Reply to ${coachName} or add a note...`} />
                         <button onClick={() => handleSendWorkoutComment(workout.id)} disabled={sendingComment === workout.id || !commentInput[workout.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === workout.id ? '...' : 'Send'}</button>
                       </div>
                     </div>
@@ -1688,7 +1755,7 @@ export default function DashboardPage() {
                                 {(workoutComments[cw.id] || []).map(c => (
                                   <div key={c.id} className={`${c.isCoach ? 'bg-purple-500/5 border border-purple-500/10' : 'bg-primary/30 border border-white/5'} rounded-lg p-2`}>
                                     <div className="flex items-center gap-2 mb-0.5">
-                                      <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? 'Crystal' : c.userName}</span>
+                                      <span className={`text-xs font-bold ${c.isCoach ? 'text-purple-400' : 'text-accent'}`}>{c.isCoach ? coachName : c.userName}</span>
                                       <span className="text-gray-400 text-xs">{new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                                     </div>
                                     <p className="text-gray-300 text-xs">{c.message}</p>
@@ -1697,7 +1764,7 @@ export default function DashboardPage() {
                               </div>
                             )}
                             <div className="flex gap-2">
-                              <input type="text" value={commentInput[cw.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [cw.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(cw.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Reply to Crystal or add a note..." />
+                              <input type="text" value={commentInput[cw.id] || ''} onChange={(e) => setCommentInput(prev => ({ ...prev, [cw.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkoutComment(cw.id); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder={`Reply to ${coachName} or add a note...`} />
                               <button onClick={() => handleSendWorkoutComment(cw.id)} disabled={sendingComment === cw.id || !commentInput[cw.id]?.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50">{sendingComment === cw.id ? '...' : 'Send'}</button>
                             </div>
                           </div>
@@ -1871,8 +1938,8 @@ export default function DashboardPage() {
             {/* Chat Header */}
             <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-bold">C</span></div>
-                <div><p className="text-white text-sm font-medium">Crystal</p><p className="text-gray-300 text-xs">Coach</p></div>
+                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-bold">{coachName.charAt(0)}</span></div>
+                <div><p className="text-white text-sm font-medium">{coachName}</p><p className="text-gray-300 text-xs">Coach</p></div>
               </div>
             </div>
 
@@ -1881,12 +1948,15 @@ export default function DashboardPage() {
               {clientMessages.length === 0 && (
                 <div className="text-center py-12 text-gray-500">
                   <p className="text-sm">No messages yet.</p>
-                  <p className="text-xs mt-1">Send Crystal a message below!</p>
+                  <p className="text-xs mt-1">Send {coachName} a message below!</p>
                 </div>
               )}
               {clientMessages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] ${msg.from === "client" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
+                    {msg.from !== "client" && msg.fromName && (
+                      <p className="text-purple-300 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
+                    )}
                     <p className={`text-sm ${msg.from === "client" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                     <p className={`text-xs mt-1 ${msg.from === "client" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                   </div>
@@ -1971,7 +2041,7 @@ export default function DashboardPage() {
                   {(clientInfo.owed - clientInfo.paid) > 0 ? (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
                       <div className="flex items-center gap-2 mb-1"><svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><p className="text-red-400 text-sm font-medium">Balance Due</p></div>
-                      <p className="text-gray-400 text-xs">You have an outstanding balance. Contact Crystal to arrange payment.</p>
+                      <p className="text-gray-400 text-xs">You have an outstanding balance. Contact {coachName} to arrange payment.</p>
                     </div>
                   ) : (
                     <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
@@ -1989,7 +2059,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6 text-center">
-                <p className="text-gray-500">No active plan. Contact Crystal for details.</p>
+                <p className="text-gray-500">No active plan. Contact your coach for details.</p>
               </div>
             )}
 
@@ -2112,6 +2182,16 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Date Format */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Date Format</p>
+                <p className="text-gray-300 text-xs mb-3">Choose how dates are displayed throughout the app.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => { setClientDateFormat('MM/DD/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'MM/DD/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'MM/DD/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}><span className="block">June 23, 2026</span><span className="block text-xs opacity-60 mt-0.5">Month first</span></button>
+                  <button onClick={() => { setClientDateFormat('DD/MM/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'DD/MM/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'DD/MM/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}><span className="block">23 June 2026</span><span className="block text-xs opacity-60 mt-0.5">Day first</span></button>
+                </div>
+              </div>
+
               {/* Default Week View */}
               <div className="mb-6">
                 <p className="text-white text-sm font-medium mb-1">Default Week View</p>
@@ -2131,7 +2211,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white text-sm font-medium">New Training Plan Published</p>
-                      <p className="text-gray-300 text-xs mt-0.5">Get notified when Crystal publishes your weekly training plan</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get notified when your coach publishes your weekly training plan</p>
                     </div>
                     <button
                       role="switch"
@@ -2144,7 +2224,7 @@ export default function DashboardPage() {
                   </div>
                   {!notifPlanPublished && (
                     <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2.5">
-                      <p className="text-yellow-400 text-xs">Turning this off means you&apos;ll need to log in regularly to check if Crystal has published your plan for the week. We recommend keeping this on.</p>
+                      <p className="text-yellow-400 text-xs">Turning this off means you&apos;ll need to log in regularly to check if your coach has published your plan for the week. We recommend keeping this on.</p>
                     </div>
                   )}
                 </div>
@@ -2153,7 +2233,7 @@ export default function DashboardPage() {
                 <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-white text-sm font-medium">Messages from Crystal</p>
+                      <p className="text-white text-sm font-medium">Messages from Coach</p>
                       <p className="text-gray-300 text-xs mt-0.5">How you receive message notifications</p>
                     </div>
                   </div>
@@ -2169,8 +2249,8 @@ export default function DashboardPage() {
                     </button>
                   </div>
                   <p className="text-gray-400 text-xs mt-2">
-                    {notifMessages === "immediate" && "You'll receive an email each time Crystal sends you a message."}
-                    {notifMessages === "daily" && "You'll receive one email per day summarising any messages from Crystal."}
+                    {notifMessages === "immediate" && `You'll receive an email each time ${coachName} sends you a message.`}
+                    {notifMessages === "daily" && `You'll receive one email per day summarising any messages from ${coachName}.`}
                     {notifMessages === "off" && "You won't receive email notifications for messages. Check the app to read them."}
                   </p>
                 </div>
@@ -2198,7 +2278,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white text-sm font-medium">Workout Comments</p>
-                      <p className="text-gray-300 text-xs mt-0.5">Get emailed when Crystal comments on one of your workouts</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get emailed when your coach comments on one of your workouts</p>
                     </div>
                     <button
                       role="switch"
