@@ -1702,7 +1702,22 @@ export default function AdminPage() {
           <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg transition-colors">+ New Client</button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredClients.map((client) => {
+          {/* Primary clients (this coach is the default) */}
+          {(() => {
+            const primaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && cc.isDefault));
+            const secondaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && !cc.isDefault));
+            const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
+            // If there's only one coach in the system, don't show sections
+            const showSections = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
+            const allToShow = showSections ? [...primaryClients, ...secondaryClients, ...otherClients] : filteredClients;
+            return (
+              <>
+                {showSections && primaryClients.length > 0 && (
+                  <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
+                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                  </div>
+                )}
+                {(showSections ? primaryClients : filteredClients).map((client) => {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
@@ -1736,6 +1751,81 @@ export default function AdminPage() {
               </button>
             );
           })}
+                {showSections && secondaryClients.length > 0 && (
+                  <>
+                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-purple-400 text-[10px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
+                    </div>
+                    {secondaryClients.map((client) => {
+                      const isSelected = selectedClient === client.id;
+                      return (
+                        <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
+                            {client.gender === "female" ? (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                            ) : (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                            )}
+                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                              {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
+                            </div>
+                            <p className="text-gray-300 text-xs truncate">
+                              {client.inviteStatus !== "accepted" 
+                                ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                              }
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {unreadByClient[client.id] > 0 && (
+                              <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+                {showSections && otherClients.length > 0 && (
+                  <>
+                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
+                    </div>
+                    {otherClients.map((client) => {
+                      const isSelected = selectedClient === client.id;
+                      return (
+                        <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
+                            {client.gender === "female" ? (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                            ) : (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                            )}
+                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                            </div>
+                            <p className="text-gray-300 text-xs truncate">
+                              {client.inviteStatus !== "accepted" 
+                                ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                              }
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
         <div className="p-3 border-t border-white/10 space-y-2">
           <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
