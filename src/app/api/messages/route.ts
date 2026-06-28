@@ -167,21 +167,49 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
-  // If toUserId not provided (client sending), find the primary admin (first created)
+  // If toUserId not provided (client sending), find the default coach for this client
   let recipientId = toUserId
   if (!recipientId) {
-    const { data: adminUsers } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .order('created_at', { ascending: true })
-      .limit(1)
-    
-    const adminUser = adminUsers?.[0]
-    if (!adminUser) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+    // First try: get the default coach from client_coaches
+    let defaultCoachId: string | null = null
+    try {
+      const { data: clientRecord } = await adminClient
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (clientRecord) {
+        const { data: coachAssignment } = await adminClient
+          .from('client_coaches')
+          .select('coach_id')
+          .eq('client_id', clientRecord.id)
+          .eq('is_default', true)
+          .single()
+
+        if (coachAssignment) {
+          defaultCoachId = coachAssignment.coach_id
+        }
+      }
+    } catch {}
+
+    if (defaultCoachId) {
+      recipientId = defaultCoachId
+    } else {
+      // Fallback: first admin (for clients without coach assignments yet)
+      const { data: adminUsers } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('role', 'admin')
+        .order('created_at', { ascending: true })
+        .limit(1)
+      
+      const adminUser = adminUsers?.[0]
+      if (!adminUser) {
+        return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+      }
+      recipientId = adminUser.id
     }
-    recipientId = adminUser.id
   }
 
   // Get sender's role before insert so we can set created_by_coach_id
