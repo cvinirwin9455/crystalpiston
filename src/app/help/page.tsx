@@ -68,7 +68,14 @@ const helpArticles: HelpArticle[] = [
     title: "Importing Past Strava Activities",
     category: "Strava",
     keywords: ["strava", "import", "history", "past", "old", "before", "previous"],
-    content: `If you connected Strava after you'd already done some workouts, you can import past activities. Go to **Account Tab → Strava → Import Past Activities**.\n\nSelect a date range and tap **"Import Activities"**. The system will pull in all your Strava activities from that period and match them to your programmed workouts where possible.`,
+    content: `If you connected Strava after you'd already done some workouts, you can import past activities. Go to **Account Tab → Strava → Import Past Activities**.\n\nSelect a date range and tap **"Import Activities"**. The system will pull in all your Strava activities from that period and match them to your programmed workouts where possible.\n\n**Tip:** The "To" date includes that entire day. So if you want today's activities, just set the "To" date to today.`,
+  },
+  {
+    id: "strava-not-syncing",
+    title: "My Strava Activity Didn't Sync",
+    category: "Strava",
+    keywords: ["strava", "missing", "not syncing", "didn't show", "lost", "where", "not showing", "failed", "sync failed"],
+    content: `Sometimes Strava's automatic sync can miss an activity. This is rare but it happens — it's on Strava's end, not yours. If your activity isn't showing up after a few minutes:\n\n**Quick fix:** Go to **Account Tab → Strava → Import Past Activities**, set the "From" date to today (or the day of the missing activity), and tap **"Import Activities"**. This manually pulls it from Strava.\n\n**Automatic backup:** The system also runs a daily check at 6am UTC that catches any activities Strava's webhook missed in the past 24 hours. So even if you don't manually import, it should appear by the next morning.\n\n**Still not working?** Make sure the activity is fully saved in Strava (not still processing), and that your Strava connection is active in Account Tab.`,
   },
 
   {
@@ -80,17 +87,17 @@ const helpArticles: HelpArticle[] = [
   },
   {
     id: "messages",
-    title: "Messaging Crystal",
+    title: "Messaging Your Coach",
     category: "Communication",
     keywords: ["message", "chat", "crystal", "coach", "talk", "ask", "question"],
-    content: `Tap the **Messages** tab to open a direct chat with Crystal. Type your message and tap **"Send"**. Crystal receives an email notification and will reply when available.\n\nYou'll get an email when Crystal replies (configurable in Account → Notifications). Messages are organized chronologically like a text conversation. A red badge on the Messages tab shows your unread count.`,
+    content: `Tap the **Messages** tab to open a direct chat with your coach. Type your message and tap **"Send"**. Your coach receives an email notification and will reply when available.\n\nYou'll get an email when your coach replies (configurable in Account → Notifications). Messages are organized chronologically like a text conversation. A red badge on the Messages tab shows your unread count.`,
   },
   {
     id: "comments",
     title: "Workout Comments",
     category: "Communication",
     keywords: ["comment", "reply", "feedback", "thread", "conversation", "workout comment"],
-    content: `After completing a workout, a comment thread appears at the bottom of the card. Use this to:\n\n• Share how the workout felt\n• Ask Crystal a question about that specific workout\n• Respond to Crystal's feedback\n\nCrystal's comments appear with a purple badge. You'll receive an email when she comments (configurable in notifications). Comments are tied to the specific workout so context is always clear.`,
+    content: `After completing a workout, a comment thread appears at the bottom of the card. Use this to:\n\n• Share how the workout felt\n• Ask your coach a question about that specific workout\n• Respond to your coach's feedback\n\nYour coach's comments appear with a purple badge. You'll receive an email when they comment (configurable in notifications). Comments are tied to the specific workout so context is always clear.`,
   },
   {
     id: "weekly-stats",
