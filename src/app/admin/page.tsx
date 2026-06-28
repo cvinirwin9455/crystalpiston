@@ -1093,7 +1093,7 @@ export default function AdminPage() {
           date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           from: 'crystal',
           message: newMessage.trim(),
-          fromName: loggedInUser || 'Coach',
+          fromName: loggedInUser?.split(' ')[0] || 'Coach',
         }]);
         setNewMessage("");
         setShowMessageForm(false);

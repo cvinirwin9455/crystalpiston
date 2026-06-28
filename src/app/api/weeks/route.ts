@@ -454,11 +454,11 @@ export async function POST(request: Request) {
             const url = new URL(request.url)
             const siteUrl = `${url.protocol}//${url.host}`
             const emailContent = buildPlanPublishedEmail(
-              clientUser.name || 'there',
+              clientUser.name?.split(' ')[0] || 'there',
               dateRange,
               focus || '',
               siteUrl,
-              coachProfile?.name || undefined
+              coachProfile?.name?.split(' ')[0] || undefined
             )
             sendEmail({ to: clientUser.email, ...emailContent }).catch(console.error)
           }
