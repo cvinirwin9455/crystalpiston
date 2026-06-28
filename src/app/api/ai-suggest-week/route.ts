@@ -302,12 +302,14 @@ COACHING RULES:
 - Age affects recovery needs — older athletes (40+) may need more recovery time between hard efforts
 
 AVAILABLE WORKOUT TYPES (use ONLY these exact values):
-- "run" with subtypes: Easy, LongRun, Tempo, Threshold, Intervals, Fartlek, Hills, SpeedRoad, SpeedTrack, Progressive, Recovery, RacePace, ClosePace, TimeTrial, Trail, Treadmill
+- "run" with subtypes: Easy, LongRun, Intervals, SpeedRoad, SpeedTrack, Progressive, RacePace, ClosePace, Trail
 - "cross" (cross training - no subtype required)
 - "cycling" (no subtype required)
 - "walk" with subtypes: WalkPower, WalkRecovery
 - "stretching" with subtypes: FoamRoll, Stretching, Yoga
 - "rest" with subtype: Rest
+
+FOR RUN WORKOUTS: Include a "structure" field with warm-up, blocks (intervals/tempo/progression), and cool-down. This is how the client sees the workout breakdown.
 
 RESPONSE FORMAT:
 You must respond with a valid JSON object with this exact structure:
@@ -322,11 +324,16 @@ You must respond with a valid JSON object with this exact structure:
         {
           "type": "run",
           "trainingType": "Easy",
-          "title": "Easy Shakeout",
-          "miles": "3",
-          "description": "Easy conversational pace. Keep HR in Zone 2.",
+          "miles": "5",
           "paceTarget": "10:00-10:30/mi",
-          "coachNotes": ""
+          "coachNotes": "Keep effort conversational. Stay in Zone 2.",
+          "structure": {
+            "warmUp": { "type": "distance", "value": "1", "unit": "miles" },
+            "blocks": [
+              { "blockType": "tempo", "reps": "1", "work": { "type": "distance", "value": "3", "unit": "miles" }, "intensity": "Easy", "recovery": { "type": "distance", "value": "", "unit": "meters", "recoveryType": "Jog" } }
+            ],
+            "coolDown": { "type": "distance", "value": "1", "unit": "miles" }
+          }
         }
       ]
     },
@@ -334,9 +341,23 @@ You must respond with a valid JSON object with this exact structure:
   ]
 }
 
-Each day MUST have at least one workout. Use "rest" type for rest days. The "miles" field should be a string number. Do not include "location" or "distanceUnit" fields.
+STRUCTURE RULES FOR RUN WORKOUTS:
+- warmUp/coolDown: use "type": "distance" or "time", with appropriate "unit" (miles, km, meters, minutes, hours, seconds)
+- blocks: array of workout blocks. Each block has:
+  - blockType: "intervals" | "tempo" | "progression" | "strides" | "hillRepeats" | "fartlek"
+  - reps: number of repetitions (as string)
+  - work: { type, value, unit } — the work interval
+  - intensity: "Easy" | "Moderate" | "Marathon Pace" | "Threshold" | "Tempo" | "10K Pace" | "5K Pace" | "VO2 Max" | "Sprint" | "" (optional)
+  - recovery: { type, value, unit, recoveryType } — recovery between reps (use empty value "" for no recovery)
+  - recoveryType: "Walk" | "Jog" | "Standing" | "Easy Run" | "Custom"
+- For "tempo" blockType: no reps needed (set to "1"), just work distance/time + intensity
+- For "progression" blockType: use "segments" array instead of work: [{ value, unit, type, intensity }]
+- For simple easy runs: one block with blockType "tempo", work = full distance, intensity = "Easy"
+- The "miles" field should equal the total of warm-up + all blocks + cool-down
 
-IMPORTANT FOR DESCRIPTIONS: Be specific in the "description" field. Don't just say "Easy run" - include guidance like warm-up structure, pace feel, heart rate zone, interval breakdowns, etc. Make it useful for the client.`
+Each day MUST have at least one workout. Use "rest" type for rest days (no structure needed for rest). The "miles" field should be a string number.
+
+IMPORTANT FOR COACH NOTES: Use the coachNotes field for effort guidance, terrain suggestions, cadence cues, and coaching philosophy. Keep it brief and actionable.`
 
     const userPrompt = `Generate a week plan for this client:
 ${coachNotes ? `\n=== CRYSTAL'S INSTRUCTIONS (HIGHEST PRIORITY — shape the entire plan around these) ===\n${coachNotes}\n===\n` : ''}
