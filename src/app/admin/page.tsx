@@ -1000,6 +1000,27 @@ export default function AdminPage() {
 
   const selectedClientData = clients.find((c) => c.id === selectedClient);
 
+  // Helper: select a client and mark their workout comments as viewed (clears purple dot)
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClient(clientId);
+    setAdminWeekOffset(0);
+    setClientTab("plan");
+    setEditingWeek(false);
+    setShowTemplatesView(false);
+    setShowNotificationSettings(false);
+    setShowChangelog(false);
+    setAdminStatsFilter("currentWeek");
+    // Mark workout comments as viewed for this client (clears purple dot)
+    if (clientsWithComments.has(clientId)) {
+      setClientsWithComments(prev => { const next = new Set(prev); next.delete(clientId); return next; });
+      fetch('/api/workout-comments/unread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientUserId: clientId }),
+      }).catch(() => {});
+    }
+  };
+
   // Distance conversion helper - converts from sourceUnit to admin's preferred unit
   const convertDist = (value: number, sourceUnit?: "mi" | "km") => {
     const from = sourceUnit || "mi";
@@ -1770,7 +1791,7 @@ export default function AdminPage() {
                 {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                 <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
                   {client.stravaProfileUrl ? (
                     <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
@@ -1814,7 +1835,7 @@ export default function AdminPage() {
                     {secondaryClients.map((client) => {
                       const isSelected = selectedClient === client.id;
                       return (
-                        <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                        <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                           <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
                             {client.stravaProfileUrl ? (
                               <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
@@ -1858,7 +1879,7 @@ export default function AdminPage() {
                     {otherClients.map((client) => {
                       const isSelected = selectedClient === client.id;
                       return (
-                        <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
+                        <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
                           <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
                             {client.stravaProfileUrl ? (
                               <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
