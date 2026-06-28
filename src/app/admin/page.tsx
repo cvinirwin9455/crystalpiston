@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showManageCoaches, setShowManageCoaches] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
@@ -241,6 +242,13 @@ export default function AdminPage() {
   const [showCoachDropdown, setShowCoachDropdown] = useState(false);
   const [coachAssigning, setCoachAssigning] = useState(false);
 
+  // Manage coaches state
+  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "" });
+  const [creatingCoach, setCreatingCoach] = useState(false);
+  const [createCoachError, setCreateCoachError] = useState("");
+  const [createCoachSuccess, setCreateCoachSuccess] = useState("");
+  const [deletingCoachId, setDeletingCoachId] = useState<string | null>(null);
+
   // Fetch all coaches in the system
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -318,6 +326,63 @@ export default function AdminPage() {
         } : c));
       }
     } catch (err) { console.error('Failed to set default coach:', err); }
+  };
+
+  // Invite a new coach to the system
+  const handleInviteCoach = async () => {
+    if (!newCoachForm.name.trim() || !newCoachForm.email.trim()) return;
+    setCreatingCoach(true);
+    setCreateCoachError("");
+    setCreateCoachSuccess("");
+    try {
+      const res = await fetch('/api/coaches/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateCoachError(data.error || 'Failed to invite coach');
+      } else {
+        setCreateCoachSuccess(`Invite sent to ${newCoachForm.email}!`);
+        setNewCoachForm({ name: "", email: "" });
+        // Refresh the coaches list
+        const coachRes = await fetch('/api/coaches');
+        if (coachRes.ok) {
+          const coachData = await coachRes.json();
+          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+        }
+        setTimeout(() => setCreateCoachSuccess(""), 5000);
+      }
+    } catch (err) {
+      setCreateCoachError('Network error. Please try again.');
+    } finally {
+      setCreatingCoach(false);
+    }
+  };
+
+  // Delete/deactivate a coach from the system
+  const handleDeleteCoach = async (coachId: string) => {
+    const coach = allCoaches.find(c => c.id === coachId);
+    if (!confirm(`Are you sure you want to remove ${coach?.name || 'this coach'}? They will lose admin access. Their existing week plans and comments will remain.`)) return;
+    setDeletingCoachId(coachId);
+    try {
+      const res = await fetch('/api/coaches/invite', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId }),
+      });
+      if (res.ok) {
+        setAllCoaches(prev => prev.filter(c => c.id !== coachId));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to remove coach');
+      }
+    } catch (err) {
+      console.error('Failed to delete coach:', err);
+    } finally {
+      setDeletingCoachId(null);
+    }
   };
 
   // Fetch logged-in user name
@@ -1673,18 +1738,22 @@ export default function AdminPage() {
           })}
         </div>
         <div className="p-3 border-t border-white/10 space-y-2">
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             What&apos;s New
             {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
           </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
             Templates ({templates.length})
           </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             Account Preferences
+          </button>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            Manage Coaches ({allCoaches.length})
           </button>
           <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
         </div>
@@ -2907,6 +2976,87 @@ export default function AdminPage() {
                       );})}
                     </div>
                   )}
+                </div>
+              </>
+            ) : showManageCoaches ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-2xl uppercase text-white">Manage Coaches</h2>
+                  <button onClick={() => setShowManageCoaches(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
+                </div>
+
+                <p className="text-gray-400 text-sm">Add new coaches and manage who has admin access to the platform.</p>
+
+                {/* Invite New Coach */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-purple-400 mb-4">Invite New Coach</h3>
+                  <p className="text-gray-300 text-xs mb-4">Send an invite email to a new coach. They&apos;ll set their password and get full admin access to manage clients, create weeks, send messages, etc.</p>
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label>
+                      <input type="text" value={newCoachForm.name} onChange={(e) => setNewCoachForm({ ...newCoachForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Coach Name" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label>
+                      <input type="email" value={newCoachForm.email} onChange={(e) => setNewCoachForm({ ...newCoachForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="coach@email.com" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleInviteCoach} disabled={creatingCoach || !newCoachForm.name.trim() || !newCoachForm.email.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 transition-colors">{creatingCoach ? "Sending Invite..." : "Send Invite"}</button>
+                    {createCoachError && <p className="text-red-400 text-xs">{createCoachError}</p>}
+                    {createCoachSuccess && <p className="text-green-400 text-xs">{createCoachSuccess}</p>}
+                  </div>
+                </div>
+
+                {/* Existing Coaches */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-4">Current Coaches ({allCoaches.length})</h3>
+                  {allCoaches.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No coaches found. This shouldn&apos;t happen — you should see yourself here.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {allCoaches.map(coach => {
+                        const isYou = coach.id === loggedInUserId;
+                        const clientCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id)).length;
+                        const defaultCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id && cc.isDefault)).length;
+                        return (
+                          <div key={coach.id} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                <span className="text-purple-400 font-bold text-sm">{coach.name.charAt(0).toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-sm font-medium">{coach.name}</p>
+                                  {isYou && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">You</span>}
+                                </div>
+                                <p className="text-gray-400 text-xs">{coach.email}</p>
+                                <p className="text-gray-500 text-xs mt-0.5">
+                                  {clientCount > 0 ? `${clientCount} client${clientCount !== 1 ? 's' : ''} assigned` : 'No clients assigned'}
+                                  {defaultCount > 0 && ` (${defaultCount} as default)`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!isYou && (
+                                <button onClick={() => handleDeleteCoach(coach.id)} disabled={deletingCoachId === coach.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                                  {deletingCoachId === coach.id ? "Removing..." : "Remove"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info box */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs leading-relaxed">
+                    <strong className="text-white">How coaches work:</strong> When a coach is assigned to a client, they can create weekly plans, send messages, and add comments. Each coach has their own preferences (MI/KM, notifications). 
+                    The <span className="text-gold">default coach</span> is the name shown to the client throughout their dashboard and in emails. You can change the default per-client from the client&apos;s header area.
+                  </p>
                 </div>
               </>
             ) : (
