@@ -1,0 +1,166 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+async function getAdminClient() {
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
+
+// POST /api/coaches/invite - Invite a new coach (creates admin user)
+export async function POST(request: Request) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const { name, email } = body
+
+  if (!name || !email) {
+    return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
+  }
+
+  const adminClient = await getAdminClient()
+
+  // Check if this email already exists
+  const { data: existingUser } = await adminClient
+    .from('users')
+    .select('id, role')
+    .eq('email', email)
+    .single()
+
+  if (existingUser) {
+    if (existingUser.role === 'admin') {
+      return NextResponse.json({ error: 'This email is already a coach/admin in the system.' }, { status: 400 })
+    } else {
+      return NextResponse.json({ error: 'This email belongs to an existing client. A user cannot be both a client and a coach.' }, { status: 400 })
+    }
+  }
+
+  // Invite the user via Supabase Auth
+  const url = new URL(request.url)
+  const siteUrl = `${url.protocol}//${url.host}`
+
+  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+    data: {
+      name,
+      role: 'admin',
+    },
+    redirectTo: `${siteUrl}/auth/callback?next=/set-password`,
+  })
+
+  if (inviteError) {
+    return NextResponse.json({ error: inviteError.message }, { status: 500 })
+  }
+
+  const newUserId = inviteData.user.id
+
+  // Update the auto-created users row to set role to admin
+  await adminClient
+    .from('users')
+    .update({ role: 'admin', name })
+    .eq('id', newUserId)
+
+  return NextResponse.json({
+    success: true,
+    userId: newUserId,
+    message: `Coach invite sent to ${email}`,
+  })
+}
+
+// DELETE /api/coaches/invite - Remove a coach (downgrade to inactive, remove from all client assignments)
+export async function DELETE(request: Request) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const { coachId } = body
+
+  if (!coachId) {
+    return NextResponse.json({ error: 'coachId is required' }, { status: 400 })
+  }
+
+  // Cannot remove yourself
+  if (coachId === user.id) {
+    return NextResponse.json({ error: 'You cannot remove yourself.' }, { status: 400 })
+  }
+
+  const adminClient = await getAdminClient()
+
+  // Check this is actually an admin
+  const { data: coachProfile } = await adminClient
+    .from('users')
+    .select('role, name')
+    .eq('id', coachId)
+    .single()
+
+  if (!coachProfile || coachProfile.role !== 'admin') {
+    return NextResponse.json({ error: 'User is not a coach/admin.' }, { status: 400 })
+  }
+
+  // Get all client_coaches assignments for this coach
+  const { data: assignments } = await adminClient
+    .from('client_coaches')
+    .select('id, client_id, is_default')
+    .eq('coach_id', coachId)
+
+  // For each assignment where this coach was default, promote another coach
+  for (const assignment of assignments || []) {
+    if (assignment.is_default) {
+      // Find another coach for this client
+      const { data: otherCoaches } = await adminClient
+        .from('client_coaches')
+        .select('id, coach_id')
+        .eq('client_id', assignment.client_id)
+        .neq('coach_id', coachId)
+        .limit(1)
+
+      if (otherCoaches && otherCoaches.length > 0) {
+        await adminClient
+          .from('client_coaches')
+          .update({ is_default: true })
+          .eq('id', otherCoaches[0].id)
+      }
+    }
+  }
+
+  // Remove all coach assignments
+  await adminClient
+    .from('client_coaches')
+    .delete()
+    .eq('coach_id', coachId)
+
+  // Downgrade the user role to 'inactive_coach' (keeps the data but removes admin access)
+  await adminClient
+    .from('users')
+    .update({ role: 'inactive_coach' })
+    .eq('id', coachId)
+
+  return NextResponse.json({ success: true, message: `${coachProfile.name || 'Coach'} has been removed.` })
+}

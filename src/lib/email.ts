@@ -80,13 +80,14 @@ function wrapInBrandedTemplate(content: string): string {
 
 // Specific email templates
 
-export function buildPlanPublishedEmail(clientName: string, weekDateRange: string, focus: string, siteUrl: string): { subject: string; html: string } {
+export function buildPlanPublishedEmail(clientName: string, weekDateRange: string, focus: string, siteUrl: string, coachName?: string): { subject: string; html: string } {
   const firstName = clientName.split(' ')[0]
+  const coach = coachName || 'Your coach'
   return {
     subject: `Your training plan for ${weekDateRange} is ready!`,
     html: `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hey ${firstName}! Your plan is ready</h2>
-      <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Crystal has published your training plan for <strong style="color: #ffffff;">${weekDateRange}</strong>.</p>
+      <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">${coach} has published your training plan for <strong style="color: #ffffff;">${weekDateRange}</strong>.</p>
       ${focus ? `<p style="margin: 0 0 16px; font-size: 14px; color: #d4a853;">Focus: ${focus}</p>` : ''}
       <p style="margin: 0 0 24px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Log in to view your workouts for the week and start crushing it!</p>
       <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
@@ -100,13 +101,14 @@ export function buildPlanPublishedEmail(clientName: string, weekDateRange: strin
   }
 }
 
-export function buildNewMessageEmail(clientName: string, messagePreview: string, siteUrl: string): { subject: string; html: string } {
+export function buildNewMessageEmail(clientName: string, messagePreview: string, siteUrl: string, coachName?: string): { subject: string; html: string } {
   const firstName = clientName.split(' ')[0]
+  const coach = coachName || 'Your coach'
   const truncated = messagePreview.length > 150 ? messagePreview.slice(0, 150) + '...' : messagePreview
   return {
-    subject: 'New message from Crystal',
+    subject: `New message from ${coach}`,
     html: `
-      <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hey ${firstName}! Crystal sent you a message</h2>
+      <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hey ${firstName}! ${coach} sent you a message</h2>
       <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(233,69,96,0.1); border-left: 3px solid #e94560; border-radius: 4px;">
         <p style="margin: 0; font-size: 14px; color: #e0e0e0; line-height: 1.5;">${truncated}</p>
       </div>
@@ -131,10 +133,12 @@ export function buildWorkoutCommentEmail(
   workoutMiles: string | null,
   comment: string,
   siteUrl: string,
-  isFromCoach: boolean
+  isFromCoach: boolean,
+  coachName?: string
 ): { subject: string; html: string } {
+  const coach = coachName || senderName
   const subject = isFromCoach
-    ? `Crystal commented on your ${workoutDay} workout`
+    ? `${coach} commented on your ${workoutDay} workout`
     : `${senderName} replied on their ${workoutDay} workout`
 
   const workoutDetails = [
@@ -146,7 +150,7 @@ export function buildWorkoutCommentEmail(
   const html = `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hi ${recipientName},</h2>
       <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">
-        ${isFromCoach ? 'Crystal left a comment on your workout:' : `${senderName} replied on their workout:`}
+        ${isFromCoach ? `${coach} left a comment on your workout:` : `${senderName} replied on their workout:`}
       </p>
       <div style="margin: 0 0 16px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
         <p style="margin: 0 0 6px; color: #d4a853; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">${workoutDay} Workout</p>
@@ -179,26 +183,28 @@ export function buildStravaImportEmail(
   matchStatus: 'programmed' | 'client' | 'none',
   matchedWorkoutTitle: string | null,
   day: string,
-  siteUrl: string
+  siteUrl: string,
+  coachName?: string
 ): { subject: string; html: string } {
   const firstName = clientName.split(' ')[0]
+  const coach = coachName || 'your coach'
 
   let statusBadge = ''
   let statusMessage = ''
 
   if (matchStatus === 'programmed') {
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #22c55e22; color: #22c55e; border: 1px solid #22c55e44;">Auto-Matched to Your Plan</div>`
-    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to your <strong style="color: #ffffff;">programmed workout</strong> from Crystal${matchedWorkoutTitle ? `: <strong style="color: #d4a853;">${matchedWorkoutTitle}</strong>` : ''}.</p>
+    statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to your <strong style="color: #ffffff;">programmed workout</strong> from ${coach}${matchedWorkoutTitle ? `: <strong style="color: #d4a853;">${matchedWorkoutTitle}</strong>` : ''}.</p>
     <div style="margin: 0 0 20px; padding: 14px 16px; background-color: rgba(234,69,96,0.08); border: 1px solid rgba(234,69,96,0.2); border-radius: 8px;">
       <p style="margin: 0 0 4px; color: #e94560; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
-      <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps Crystal understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
+      <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps ${coach} understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
     </div>`
   } else if (matchStatus === 'client') {
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #22c55e22; color: #22c55e; border: 1px solid #22c55e44;">Auto-Matched to Your Workout</div>`
     statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to a <strong style="color: #ffffff;">workout you created</strong>${matchedWorkoutTitle ? `: <strong style="color: #06b6d4;">${matchedWorkoutTitle}</strong>` : ''}.</p>
     <div style="margin: 0 0 20px; padding: 14px 16px; background-color: rgba(234,69,96,0.08); border: 1px solid rgba(234,69,96,0.2); border-radius: 8px;">
       <p style="margin: 0 0 4px; color: #e94560; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
-      <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps Crystal understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
+      <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps ${coach} understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
     </div>`
   } else {
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #6b728022; color: #9ca3af; border: 1px solid #6b728044;">No Match Found</div>`
