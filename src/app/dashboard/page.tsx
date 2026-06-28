@@ -1551,9 +1551,8 @@ export default function DashboardPage() {
                               {cw.notes && !cw.activityName && !cw.notes.startsWith('Kept as extra') && <p className="text-gray-400 text-sm">{cw.notes}</p>}
                               {/* Strava/synced activity details */}
                               {cw.activityName && <p className="text-white text-sm font-medium">{cw.activityName}</p>}
-                              {(cw.averagePace || cw.duration || cw.avgHeartrate || cw.miles) && (
+                              {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                  {cw.miles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</span> <span className="text-green-400 font-medium">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</span></span>}
                                   {cw.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{cw.duration}</span></span>}
                                   {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{cw.averagePace}</span></span>}
                                   {cw.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{cw.avgHeartrate}</span></span>}
@@ -1740,7 +1739,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex items-center gap-3">
                             {cw.miles && <div className="text-right">
-                              <p className="font-heading text-xl text-white">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p>
+                              <p className="font-heading text-xl text-green-400">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p>
                               <p className="text-gray-300 text-xs">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</p>
                               <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [cw.id]: getWorkoutUnit(cw.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(cw.id) === "km" ? "→ mi" : "→ km"}</button>
                             </div>}
@@ -1841,7 +1840,7 @@ export default function DashboardPage() {
                                     )}
                                   </div>
                                 </div>
-                                {scw.miles && <div className="text-right ml-3"><p className="font-heading text-xl text-orange-400">{convertDist(scw.miles, getWorkoutUnit(scw.id), 'mi')}</p><p className="text-gray-400 text-xs">{getWorkoutUnit(scw.id) === "km" ? "km" : "mi"}</p></div>}
+                                {scw.miles && <div className="text-right ml-3"><p className="font-heading text-xl text-green-400">{convertDist(scw.miles, getWorkoutUnit(scw.id), 'mi')}</p><p className="text-gray-400 text-xs">{getWorkoutUnit(scw.id) === "km" ? "km" : "mi"}</p></div>}
                               </div>
                             </div>
                           </div>
