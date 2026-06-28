@@ -135,7 +135,7 @@ export default function DashboardPage() {
   const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string; targetDistance?: string | null; raceDate?: string | null}[]>([]);
   const [clientGender, setClientGender] = useState<string | null>(null);
   const [trainingProfile, setTrainingProfile] = useState<{birthday?: string | null} | null>(null);
-  const [coachName, setCoachName] = useState<string>("Crystal");
+  const [coachName, setCoachName] = useState<string>("your coach");
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifStravaSynced, setNotifStravaSynced] = useState(true);
@@ -2059,7 +2059,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6 text-center">
-                <p className="text-gray-500">No active plan. Contact Crystal for details.</p>
+                <p className="text-gray-500">No active plan. Contact your coach for details.</p>
               </div>
             )}
 
@@ -2211,7 +2211,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white text-sm font-medium">New Training Plan Published</p>
-                      <p className="text-gray-300 text-xs mt-0.5">Get notified when {coachName} publishes your weekly training plan</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get notified when your coach publishes your weekly training plan</p>
                     </div>
                     <button
                       role="switch"
@@ -2224,7 +2224,7 @@ export default function DashboardPage() {
                   </div>
                   {!notifPlanPublished && (
                     <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2.5">
-                      <p className="text-yellow-400 text-xs">Turning this off means you&apos;ll need to log in regularly to check if {coachName} has published your plan for the week. We recommend keeping this on.</p>
+                      <p className="text-yellow-400 text-xs">Turning this off means you&apos;ll need to log in regularly to check if your coach has published your plan for the week. We recommend keeping this on.</p>
                     </div>
                   )}
                 </div>
@@ -2233,7 +2233,7 @@ export default function DashboardPage() {
                 <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-white text-sm font-medium">Messages from {coachName}</p>
+                      <p className="text-white text-sm font-medium">Messages from Coach</p>
                       <p className="text-gray-300 text-xs mt-0.5">How you receive message notifications</p>
                     </div>
                   </div>
@@ -2278,7 +2278,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white text-sm font-medium">Workout Comments</p>
-                      <p className="text-gray-300 text-xs mt-0.5">Get emailed when Crystal comments on one of your workouts</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Get emailed when your coach comments on one of your workouts</p>
                     </div>
                     <button
                       role="switch"
