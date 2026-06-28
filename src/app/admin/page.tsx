@@ -898,6 +898,7 @@ export default function AdminPage() {
                   stravaActivityName: wo.stravaActivityName || null,
                   status: wo.status || undefined,
                   skipReason: wo.skipReason || undefined, log: wo.log || undefined,
+                  structure: wo.structure || null,
                 })),
               }));
               setClients(prev => prev.map(c => c.id === client.id ? { ...c, weeks: [...c.weeks, ...mapped] } : c));
@@ -1234,6 +1235,7 @@ export default function AdminPage() {
             completed: wo.completed || false,
             stravaSynced: wo.stravaSynced || false,
             stravaActivityName: wo.stravaActivityName || null,
+            structure: wo.structure || null,
             status: wo.status || undefined,
             skipReason: wo.skipReason || undefined,
             log: wo.log || undefined,
@@ -2116,7 +2118,7 @@ export default function AdminPage() {
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                 {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{w.stravaActivityName || 'Synced'}</span>}
                               </div>
-                              <p className="text-gray-300 text-sm mt-0.5">{w.title} {w.description && `— ${w.description}`}</p>
+                              <p className="text-gray-300 text-sm mt-0.5">{(w as any).structure ? formatStructureForDisplay((w as any).structure) : `${w.title || ''}${w.description ? ` — ${w.description}` : ''}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{w.paceTarget}</p>}
                             </div>
                             {w.miles && <div className="flex items-baseline gap-1.5 flex-shrink-0">
