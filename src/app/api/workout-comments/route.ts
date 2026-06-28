@@ -86,16 +86,44 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  const { data, error } = await supabase
+  // Use admin client to bypass RLS for coaches commenting on any client's workout
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Try insert with created_by_coach_id (if migration has been run), fall back without
+  let data: any = null
+  let error: any = null
+
+  const commentData: any = {
+    workout_id: workoutId,
+    user_id: user.id,
+    message: message.trim(),
+  }
+
+  // Try with coach tracking column first
+  const result1 = await adminClient
     .from('workout_comments')
-    .insert({
-      workout_id: workoutId,
-      user_id: user.id,
-      message: message.trim(),
-      created_by_coach_id: profile?.role === 'admin' ? user.id : null,
-    })
+    .insert({ ...commentData, created_by_coach_id: profile?.role === 'admin' ? user.id : null })
     .select()
     .single()
+
+  if (result1.error && result1.error.message?.includes('created_by_coach_id')) {
+    // Column doesn't exist yet — retry without it
+    const result2 = await adminClient
+      .from('workout_comments')
+      .insert(commentData)
+      .select()
+      .single()
+    data = result2.data
+    error = result2.error
+  } else {
+    data = result1.data
+    error = result1.error
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
