@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       .select('id, name, role')
       .in('id', userIds)
     for (const u of users || []) {
-      userNames[u.id] = u.name || 'Unknown'
+      userNames[u.id] = u.name?.split(' ')[0] || 'Unknown'
       userRoles[u.id] = u.role || 'client'
     }
   }
@@ -217,8 +217,8 @@ export async function POST(request: Request) {
           if (recipientEmail) {
             const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
             const emailContent = buildWorkoutCommentEmail(
-              recipientName,
-              profile?.name || 'Someone',
+              recipientName.split(' ')[0],
+              profile?.name?.split(' ')[0] || 'Someone',
               workout.day,
               workout.type,
               workout.title || '',
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
               message.trim(),
               siteUrl,
               isCoach,
-              isCoach ? (profile?.name || undefined) : undefined
+              isCoach ? (profile?.name?.split(' ')[0] || undefined) : undefined
             )
             sendEmail({ to: recipientEmail, ...emailContent }).catch(console.error)
           }
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
     id: data.id,
     workoutId: data.workout_id,
     userId: data.user_id,
-    userName: profile?.name || 'Unknown',
+    userName: profile?.name?.split(' ')[0] || 'Unknown',
     message: data.message,
     createdAt: data.created_at,
     isCoach: profile?.role === 'admin',

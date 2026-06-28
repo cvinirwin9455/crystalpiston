@@ -77,7 +77,7 @@ export async function GET(request: Request) {
         .select('id, name')
         .in('id', coachSenderIds)
       for (const cu of coachUsers || []) {
-        coachNameMap[cu.id] = cu.name || 'Coach'
+        coachNameMap[cu.id] = cu.name?.split(' ')[0] || 'Coach'
       }
     }
 
@@ -272,7 +272,7 @@ export async function POST(request: Request) {
         const { sendEmail } = await import('@/lib/email')
         const url = new URL(request.url)
         const siteUrl = `${url.protocol}//${url.host}`
-        const senderName = senderProfile?.name || 'A client'
+        const senderName = senderProfile?.name?.split(' ')[0] || 'A client'
         const truncated = message.trim().length > 150 ? message.trim().slice(0, 150) + '...' : message.trim()
 
         const emailHtml = `
@@ -308,7 +308,7 @@ export async function POST(request: Request) {
       const { sendEmail, buildNewMessageEmail } = await import('@/lib/email')
       const url = new URL(request.url)
       const siteUrl = `${url.protocol}//${url.host}`
-      const emailContent = buildNewMessageEmail(recipientProfile.name || 'there', message.trim(), siteUrl, senderProfile?.name || undefined)
+      const emailContent = buildNewMessageEmail(recipientProfile.name?.split(' ')[0] || 'there', message.trim(), siteUrl, senderProfile?.name?.split(' ')[0] || undefined)
       sendEmail({ to: recipientProfile.email, ...emailContent }).catch(console.error)
     }
   }
