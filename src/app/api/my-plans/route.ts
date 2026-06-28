@@ -62,7 +62,7 @@ export async function GET() {
         .select('name')
         .eq('id', coachAssignment.coach_id)
         .single()
-      coachName = coachUser?.name || null
+      coachName = coachUser?.name?.split(' ')[0] || null
     }
   } catch {
     // Table may not exist yet - fallback to first admin
@@ -73,7 +73,7 @@ export async function GET() {
         .eq('role', 'admin')
         .order('created_at', { ascending: true })
         .limit(1)
-      coachName = adminUsers?.[0]?.name || null
+      coachName = adminUsers?.[0]?.name?.split(' ')[0] || null
     } catch {}
   }
 
