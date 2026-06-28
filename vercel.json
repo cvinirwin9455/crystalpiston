@@ -1,3 +1,9 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/strava/sync-check",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }
