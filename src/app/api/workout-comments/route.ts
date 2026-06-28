@@ -187,29 +187,58 @@ export async function POST(request: Request) {
               recipientName = clientUser?.name || 'there'
             }
           } else {
-            // Client commented → email Crystal (admin)
-            const { data: adminUsers } = await adminClient
-              .from('users')
-              .select('id, email, name')
-              .eq('role', 'admin')
+            // Client commented → email all assigned coaches
+            const { data: coachAssignments } = await adminClient
+              .from('client_coaches')
+              .select('coach_id')
+              .eq('client_id', week.client_id)
 
-            const adminUser = adminUsers?.[0]
-            if (adminUser) {
-              // Check admin notification preferences
-              const { data: adminNotifPrefs } = await adminClient
-                .from('notification_preferences')
-                .select('client_message, notification_emails')
-                .eq('user_id', adminUser.id)
-                .single()
+            if (coachAssignments && coachAssignments.length > 0) {
+              const coachIds = coachAssignments.map((ca: any) => ca.coach_id)
+              const { data: coachUsers } = await adminClient
+                .from('users')
+                .select('id, email, name')
+                .in('id', coachIds)
 
-              const shouldSend = !adminNotifPrefs || adminNotifPrefs.client_message !== 'off'
-              if (shouldSend) {
-                // Use notification_emails if set, otherwise admin's own email
-                const targetEmail = adminNotifPrefs?.notification_emails
-                  ? adminNotifPrefs.notification_emails.split(',')[0].trim()
-                  : adminUser.email
-                recipientEmail = targetEmail || null
-                recipientName = adminUser.name || 'Crystal'
+              for (const coach of coachUsers || []) {
+                const { data: coachPrefs } = await adminClient
+                  .from('notification_preferences')
+                  .select('client_message')
+                  .eq('user_id', coach.id)
+                  .maybeSingle()
+
+                const shouldSend = !coachPrefs || coachPrefs.client_message !== 'off'
+                if (shouldSend && coach.email) {
+                  recipientEmail = coach.email
+                  recipientName = coach.name?.split(' ')[0] || 'Coach'
+
+                  const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
+                  const emailContent = buildWorkoutCommentEmail(
+                    recipientName,
+                    profile?.name?.split(' ')[0] || 'Someone',
+                    workout.day,
+                    workout.type,
+                    workout.title || '',
+                    workout.miles?.toString() || null,
+                    message.trim(),
+                    siteUrl,
+                    isCoach,
+                    undefined
+                  )
+                  sendEmail({ to: recipientEmail, ...emailContent }).catch(console.error)
+                }
+              }
+            } else {
+              // Fallback: first admin
+              const { data: adminUsers } = await adminClient
+                .from('users')
+                .select('id, email, name')
+                .eq('role', 'admin')
+                .limit(1)
+              const adminUser = adminUsers?.[0]
+              if (adminUser?.email) {
+                recipientEmail = adminUser.email
+                recipientName = adminUser.name?.split(' ')[0] || 'Coach'
               }
             }
           }
