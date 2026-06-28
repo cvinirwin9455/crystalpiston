@@ -50,7 +50,11 @@ export async function POST(request: Request) {
 
   // Convert dates to Unix timestamps
   const after = Math.floor(new Date(afterDate).getTime() / 1000)
-  const before = beforeDate ? Math.floor(new Date(beforeDate).getTime() / 1000) : Math.floor(Date.now() / 1000)
+  // Add 1 day to "before" date so activities on that day are included
+  // (Strava's API uses "before" as exclusive — activities must be BEFORE this timestamp)
+  const beforeDateObj = beforeDate ? new Date(beforeDate) : new Date()
+  beforeDateObj.setDate(beforeDateObj.getDate() + 1)
+  const before = Math.floor(beforeDateObj.getTime() / 1000)
 
   // Debug: log the conversion
   console.log('Strava import date conversion:', { afterDate, beforeDate, after, before, afterISO: new Date(after * 1000).toISOString(), beforeISO: new Date(before * 1000).toISOString() })

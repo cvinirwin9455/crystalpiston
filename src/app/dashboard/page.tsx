@@ -2052,7 +2052,7 @@ export default function DashboardPage() {
                   {/* Import History Section */}
                   <div className="bg-primary/30 border border-white/5 rounded-lg p-4 mb-4">
                     <p className="text-white text-sm font-medium mb-1">Import Past Activities</p>
-                    <p className="text-gray-500 text-xs mb-3">Pull in activities from Strava that happened before you connected.</p>
+                    <p className="text-gray-500 text-xs mb-3">Pull in activities from Strava that were missed or happened before you connected. Set the date range and import.</p>
                     {!showStravaImport ? (
                       <button onClick={() => setShowStravaImport(true)} className="text-orange-400 text-xs hover:underline">Import history...</button>
                     ) : (
