@@ -132,9 +132,12 @@ export async function GET(request: Request) {
       const distanceTypes = ['run', 'walk', 'cycling']
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
       // Check if there's a completed programmed workout on the same day with same type
+      // IMPORTANT: Only match to workouts that were actually COMPLETED (not skipped/partial)
       for (const [, wos] of workoutsByWeekId) {
         for (const wo of wos) {
-          if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
+          const woLog = logsByWorkoutId.get(wo.id)
+          const isActuallyCompleted = woLog && (woLog.status === 'complete' || (!woLog.status && woLog.rpe))
+          if (wo.day === sa.day && wo.type === sa.type && isActuallyCompleted && !stravaMatchedWorkoutIds.has(wo.id)) {
             // Try to get Strava data to backfill
             const existingLog = logsByWorkoutId.get(wo.id)
             let backfillMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)

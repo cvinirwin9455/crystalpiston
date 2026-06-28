@@ -136,7 +136,9 @@ export async function GET() {
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
       const weekWorkouts = workoutsByWeekId.get(sa.week_id) || []
       for (const wo of weekWorkouts) {
-        if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
+        const woLog = logsByWorkoutId.get(wo.id)
+        const isActuallyCompleted = woLog && (woLog.status === 'complete' || (!woLog.status && woLog.rpe))
+        if (wo.day === sa.day && wo.type === sa.type && isActuallyCompleted && !stravaMatchedWorkoutIds.has(wo.id)) {
           // Only hide if we can get the Strava data OR the log already has miles
           // Non-distance types (stretching, strength, cross) can always be hidden
           const existingLog = logsByWorkoutId.get(wo.id)
