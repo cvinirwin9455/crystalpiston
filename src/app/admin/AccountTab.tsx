@@ -29,7 +29,7 @@ type ClientData = {
   birthday?: string | null;
 };
 
-export default function AccountTab({ clientData, onSave, onArchive, onDelete }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void }) {
+export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
@@ -213,7 +213,13 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
+    return `${monthShort} ${day}, ${year}`;
   };
 
   return (
@@ -243,7 +249,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
               </div>
               <div>
                 <p className="text-gray-500 text-xs mb-1">Birthday</p>
-                <p className="text-white text-sm">{birthday ? `${new Date(birthday + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
+                <p className="text-white text-sm">{birthday ? `${formatDate(birthday)} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
               </div>
             </div>
           </div>
@@ -360,7 +366,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
         {!loadingPlans && plans.length === 0 && <p className="text-gray-500 text-sm">No plans yet. Create one above.</p>}
         {/* Active Plan */}
         {plans.filter(p => p.status === "active").map((plan) => (
-          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} />
+          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} />
         ))}
         {/* Completed Plans - collapsible */}
         {plans.filter(p => p.status !== "active").length > 0 && (
@@ -370,7 +376,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
             </summary>
             <div className="mt-3 space-y-3">
               {plans.filter(p => p.status !== "active").map((plan) => (
-                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} />
+                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} />
               ))}
             </div>
           </details>
@@ -394,7 +400,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete }: 
 }
 
 // Sub-component for individual plan card with payment logging
-function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, updates: any) => void }) {
+function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
@@ -463,7 +469,13 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
+    return `${monthShort} ${day}, ${year}`;
   };
 
   const handleLogPayment = async () => {

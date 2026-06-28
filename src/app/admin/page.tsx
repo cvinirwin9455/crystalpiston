@@ -49,7 +49,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-28T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-29T01:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -226,7 +226,7 @@ export default function AdminPage() {
       const weekEnd = new Date(sunday);
       weekEnd.setHours(0, 0, 0, 0);
       if (weekStart < planStart || weekEnd > planEnd) {
-        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const fmt = (d: Date) => { const day = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'short' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${day} ${m} ${y}` : `${m} ${day}, ${y}`; };
         setWeekDateWarning(`This week falls outside the active plan (${fmt(planStart)} – ${fmt(planEnd)}). You won't be able to save until you select a week within the plan dates, or update the plan dates in the Account tab.`);
       } else {
         setWeekDateWarning("");
@@ -412,6 +412,7 @@ export default function AdminPage() {
   const [resendSuccess, setResendSuccess] = useState(false);
   const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
   const [totalUnread, setTotalUnread] = useState(0);
+  const [clientsWithComments, setClientsWithComments] = useState<Set<string>>(new Set());
 
   // Templates state
   type Template = { id: string; name: string; type: "week" | "day"; category: string; data: any; created_at: string };
@@ -825,6 +826,24 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch clients with recent workout comments (for purple dot indicator)
+  useEffect(() => {
+    const fetchCommentIndicators = async () => {
+      try {
+        const res = await fetch('/api/workout-comments/unread');
+        if (res.ok) {
+          const data = await res.json();
+          setClientsWithComments(new Set(data.clientUserIds || []));
+        }
+      } catch (err) {
+        console.error('Failed to fetch comment indicators:', err);
+      }
+    };
+    fetchCommentIndicators();
+    const interval = setInterval(fetchCommentIndicators, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Fetch clients from API
   const fetchClients = useCallback(async () => {
     try {
@@ -993,6 +1012,25 @@ export default function AdminPage() {
   const distUnitLabel = adminDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
 
+  // Global date formatter that respects saved date format preference
+  const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
+    if (!dateStr) return "—";
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    if (options?.includeYear) {
+      if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
+      return `${monthShort} ${day}, ${year}`;
+    }
+    if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort}`;
+    return `${monthShort} ${day}`;
+  };
+
+  const fmtDateFull = (dateStr: string | null | undefined) => fmtDate(dateStr, { includeYear: true });
+
   const selectedClientWeeks = selectedClientData?.weeks || [];
   const publishedWeeks = selectedClientWeeks.filter(w => w.status === "published");
   const draftWeeks = selectedClientWeeks.filter(w => w.status === "draft").sort((a, b) => {
@@ -1097,7 +1135,7 @@ export default function AdminPage() {
         const data = await res.json();
         setAdminMessages(prev => [...prev, {
           id: data.messageId,
-          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          date: fmtDateFull(data.createdAt),
           from: 'crystal',
           message: newMessage.trim(),
           fromName: loggedInUser?.split(' ')[0] || 'Coach',
@@ -1412,7 +1450,7 @@ export default function AdminPage() {
       weekEnd.setHours(0, 0, 0, 0);
 
       if (weekStart < planStart || weekEnd > planEnd) {
-        const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const fmt = (d: Date) => { const dy = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'short' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${dy} ${m} ${y}` : `${m} ${dy}, ${y}`; };
         alert(`This week (${weekPlan.dateRange}) falls outside the active plan dates (${fmt(planStart)} – ${fmt(planEnd)}). Please select a week within the plan period, or update the plan dates in the Account tab.`);
         return;
       }
@@ -1734,7 +1772,7 @@ export default function AdminPage() {
                   ) : (
                     <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                  {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -1751,6 +1789,9 @@ export default function AdminPage() {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
+                  {clientsWithComments.has(client.id) && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
+                  )}
                   {unreadByClient[client.id] > 0 && (
                     <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
                   )}
@@ -1773,7 +1814,7 @@ export default function AdminPage() {
                             ) : (
                               <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                             )}
-                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -1788,6 +1829,9 @@ export default function AdminPage() {
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
+                            {clientsWithComments.has(client.id) && (
+                              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
+                            )}
                             {unreadByClient[client.id] > 0 && (
                               <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
                             )}
@@ -1812,7 +1856,7 @@ export default function AdminPage() {
                             ) : (
                               <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                             )}
-                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -1893,7 +1937,7 @@ export default function AdminPage() {
                   ) : (
                     <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-full h-full rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                  {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-full h-full rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div>
                 <div className="flex items-center gap-3">
@@ -2345,7 +2389,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
-                      <p className="text-gray-400 text-xs">{new Date(activePlan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(activePlan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
                     </div>
                     <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
                   </div>
@@ -2433,7 +2477,7 @@ export default function AdminPage() {
                           <button onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1))} className="text-gray-400 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                         </div>
                         <div className="grid grid-cols-7 gap-1 mb-1">{["M","T","W","T","F","S","S"].map((d,i) => <div key={i} className="text-center text-gray-300 text-xs py-1">{d}</div>)}</div>
-                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const sunday = week[6]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); const weekDateRange = `${formatDate(monday)} - ${formatDate(sunday)}`; const clientData = clients.find(c => c.id === selectedClient); const existingWeek = clientData?.weeks.find(w => w.dateRange === weekDateRange); const weekStatus = existingWeek?.status || null; const today = new Date(); const isCurrentWeek = monday <= today && sunday >= today; return (
+                        {getWeeksInMonth(pickerMonth).map((week, wi) => { const monday = week[0]; const sunday = week[6]; const isSelected = selectedWeekStart && monday.getTime() === selectedWeekStart.getTime(); const weekDateRange = `${formatDate(monday)} - ${formatDate(sunday)}`; const clientData = clients.find(c => c.id === selectedClient); const existingWeek = clientData?.weeks.find(w => w.dateRange === weekDateRange); const weekStatus = existingWeek?.status || null; const today = new Date(); today.setHours(0, 0, 0, 0); const isCurrentWeek = monday <= today && sunday >= today; return (
                           <button key={wi} onClick={() => selectWeek(monday)} className={`w-full grid grid-cols-7 gap-1 rounded-lg py-1 transition-colors relative ${isSelected ? "bg-accent/20" : isCurrentWeek ? "bg-yellow-500/10 border border-yellow-500/30" : weekStatus ? "bg-white/3" : "hover:bg-white/5"}`}>
                             {week.map((day, di) => <div key={di} className={`text-center text-xs py-1 rounded ${day.getMonth() === pickerMonth.getMonth() ? (isSelected ? "text-accent font-bold" : isCurrentWeek ? "text-yellow-300" : "text-white") : "text-gray-600"}`}>{day.getDate()}</div>)}
                             {weekStatus === "published" && <span className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-400" title="Published" />}
@@ -2668,6 +2712,7 @@ export default function AdminPage() {
                     console.error('Failed to delete client:', err);
                   }
                 }}
+                dateFormat={adminDateFormat}
               />
             )}
           </div>

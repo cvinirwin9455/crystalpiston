@@ -3,9 +3,20 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-28T18:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-29T01:00:00Z";
 
 const updates = [
+  {
+    date: "June 29, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Strava profile picture now shows correctly in the admin header when a client is selected" },
+      { area: "Admin", text: "NEW: Purple dot indicator in the sidebar shows which clients have recent workout comments (last 14 days)" },
+      { area: "Admin", text: "Fixed: Current week highlight (yellow border) now shows correctly in the date picker calendar" },
+      { area: "Admin", text: "Fixed: AI planner no longer crashes when publishing weeks — structured run data from AI is now handled safely" },
+      { area: "All", text: "Date format preference (MM/DD or DD/MM) now applies everywhere — plan dates, birthday, payment dates, and more" },
+      { area: "Client", text: "Date format preference buttons now visually indicate which format is currently selected" },
+    ],
+  },
   {
     date: "June 28, 2026",
     items: [
