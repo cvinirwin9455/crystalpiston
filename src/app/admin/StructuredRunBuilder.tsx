@@ -172,7 +172,7 @@ function formatBlock(block: WorkBlock): string {
   const reps = block.reps || "?";
   const w = `${block.work.value}${unitLabel(block.work.unit)}`;
   const intensity = block.intensity ? ` @ ${block.intensity}` : "";
-  const recov = block.recovery.value ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${block.recovery.recoveryType.toLowerCase()}` : "";
+  const recov = (block.recovery.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${block.recovery.recoveryType.toLowerCase()}` : "";
   return `${reps} x ${w}${intensity}${recov}`;
 }
 
@@ -365,9 +365,20 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
           {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
         </select>
       </div>
-      {/* Recovery */}
+      {/* Recovery (optional) */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-gray-500 text-xs">Recovery:</span>
+        <button type="button" onClick={() => {
+          const hasRecovery = block.recovery.value && parseFloat(block.recovery.value) > 0;
+          if (hasRecovery) {
+            onChange({ ...block, recovery: { ...block.recovery, value: "", } });
+          } else {
+            onChange({ ...block, recovery: { ...block.recovery, value: "200", unit: "meters" } });
+          }
+        }} className={`text-xs px-2 py-0.5 rounded border transition-colors ${block.recovery.value && parseFloat(block.recovery.value) > 0 ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/10 text-gray-500 hover:text-white'}`}>
+          Recovery {block.recovery.value && parseFloat(block.recovery.value) > 0 ? '✓' : '(optional)'}
+        </button>
+        {block.recovery.value && parseFloat(block.recovery.value) > 0 && (
+          <>
         <select value={block.recovery.type} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
           <option value="distance">Dist</option>
           <option value="time">Time</option>
@@ -388,6 +399,8 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
         <select value={block.recovery.recoveryType} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, recoveryType: e.target.value as RecoveryType } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
           {RECOVERY_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
+          </>
+        )}
       </div>
     </div>
   );

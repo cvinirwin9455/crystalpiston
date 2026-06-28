@@ -28,7 +28,7 @@ function formatWorkoutStructure(structure: any): string {
       const rest = block.fartlekRest;
       parts.push(`${block.reps || '?'} x (${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)`);
     } else if (block.work?.value) {
-      const recov = block.recovery?.value ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : '';
+      const recov = (block.recovery?.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : '';
       parts.push(`${block.reps || '?'} x ${block.work.value}${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${recov}`);
     }
   }
