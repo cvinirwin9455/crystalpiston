@@ -73,7 +73,7 @@ export default function DashboardPage() {
 
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
-  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; fromName?: string; message: string}[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -1954,6 +1954,9 @@ export default function DashboardPage() {
               {clientMessages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] ${msg.from === "client" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
+                    {msg.from !== "client" && msg.fromName && (
+                      <p className="text-purple-300 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
+                    )}
                     <p className={`text-sm ${msg.from === "client" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                     <p className={`text-xs mt-1 ${msg.from === "client" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                   </div>

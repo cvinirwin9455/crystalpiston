@@ -187,7 +187,7 @@ export async function POST(request: Request) {
               recipientName = clientUser?.name || 'there'
             }
           } else {
-            // Client commented → email all assigned coaches
+            // Client commented → email ALL assigned coaches
             const { data: coachAssignments } = await adminClient
               .from('client_coaches')
               .select('coach_id')
@@ -200,6 +200,7 @@ export async function POST(request: Request) {
                 .select('id, email, name')
                 .in('id', coachIds)
 
+              const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
               for (const coach of coachUsers || []) {
                 const { data: coachPrefs } = await adminClient
                   .from('notification_preferences')
@@ -209,12 +210,8 @@ export async function POST(request: Request) {
 
                 const shouldSend = !coachPrefs || coachPrefs.client_message !== 'off'
                 if (shouldSend && coach.email) {
-                  recipientEmail = coach.email
-                  recipientName = coach.name?.split(' ')[0] || 'Coach'
-
-                  const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
                   const emailContent = buildWorkoutCommentEmail(
-                    recipientName,
+                    coach.name?.split(' ')[0] || 'Coach',
                     profile?.name?.split(' ')[0] || 'Someone',
                     workout.day,
                     workout.type,
@@ -225,20 +222,32 @@ export async function POST(request: Request) {
                     isCoach,
                     undefined
                   )
-                  sendEmail({ to: recipientEmail, ...emailContent }).catch(console.error)
+                  sendEmail({ to: coach.email, ...emailContent }).catch(console.error)
                 }
               }
             } else {
-              // Fallback: first admin
+              // Fallback: all admins (for clients without coach assignments)
               const { data: adminUsers } = await adminClient
                 .from('users')
                 .select('id, email, name')
                 .eq('role', 'admin')
-                .limit(1)
-              const adminUser = adminUsers?.[0]
-              if (adminUser?.email) {
-                recipientEmail = adminUser.email
-                recipientName = adminUser.name?.split(' ')[0] || 'Coach'
+              const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
+              for (const adminUser of adminUsers || []) {
+                if (adminUser.email) {
+                  const emailContent = buildWorkoutCommentEmail(
+                    adminUser.name?.split(' ')[0] || 'Coach',
+                    profile?.name?.split(' ')[0] || 'Someone',
+                    workout.day,
+                    workout.type,
+                    workout.title || '',
+                    workout.miles?.toString() || null,
+                    message.trim(),
+                    siteUrl,
+                    isCoach,
+                    undefined
+                  )
+                  sendEmail({ to: adminUser.email, ...emailContent }).catch(console.error)
+                }
               }
             }
           }
