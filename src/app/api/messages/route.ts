@@ -68,10 +68,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: queryError.message }, { status: 500 })
     }
 
+    // Get names for all coach senders (from_user_id where from !== client)
+    const coachSenderIds = [...new Set(messages.filter(m => m.from_user_id !== withUserId).map(m => m.from_user_id))]
+    const coachNameMap: Record<string, string> = {}
+    if (coachSenderIds.length > 0) {
+      const { data: coachUsers } = await adminClient
+        .from('users')
+        .select('id, name')
+        .in('id', coachSenderIds)
+      for (const cu of coachUsers || []) {
+        coachNameMap[cu.id] = cu.name?.split(' ')[0] || 'Coach'
+      }
+    }
+
     const formatted = messages.map(m => ({
       id: m.id,
       from: m.from_user_id === withUserId ? 'client' : 'crystal',
       fromUserId: m.from_user_id,
+      fromName: m.from_user_id !== withUserId ? (coachNameMap[m.from_user_id] || 'Coach') : undefined,
       toUserId: m.to_user_id,
       message: m.message,
       read: m.read,
@@ -153,22 +167,57 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
-  // If toUserId not provided (client sending), find the primary admin (first created)
+  // If toUserId not provided (client sending), find the default coach for this client
   let recipientId = toUserId
   if (!recipientId) {
-    const { data: adminUsers } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .order('created_at', { ascending: true })
-      .limit(1)
-    
-    const adminUser = adminUsers?.[0]
-    if (!adminUser) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+    // First try: get the default coach from client_coaches
+    let defaultCoachId: string | null = null
+    try {
+      const { data: clientRecord } = await adminClient
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (clientRecord) {
+        const { data: coachAssignment } = await adminClient
+          .from('client_coaches')
+          .select('coach_id')
+          .eq('client_id', clientRecord.id)
+          .eq('is_default', true)
+          .single()
+
+        if (coachAssignment) {
+          defaultCoachId = coachAssignment.coach_id
+        }
+      }
+    } catch {}
+
+    if (defaultCoachId) {
+      recipientId = defaultCoachId
+    } else {
+      // Fallback: first admin (for clients without coach assignments yet)
+      const { data: adminUsers } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('role', 'admin')
+        .order('created_at', { ascending: true })
+        .limit(1)
+      
+      const adminUser = adminUsers?.[0]
+      if (!adminUser) {
+        return NextResponse.json({ error: 'Admin user not found' }, { status: 500 })
+      }
+      recipientId = adminUser.id
     }
-    recipientId = adminUser.id
   }
+
+  // Get sender's role before insert so we can set created_by_coach_id
+  const { data: senderRole } = await adminClient
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
   const { data: newMessage, error } = await adminClient
     .from('messages')
@@ -176,6 +225,7 @@ export async function POST(request: Request) {
       from_user_id: user.id,
       to_user_id: recipientId,
       message: message.trim(),
+      created_by_coach_id: senderRole?.role === 'admin' ? user.id : null,
     })
     .select('id, created_at')
     .single()
@@ -222,7 +272,7 @@ export async function POST(request: Request) {
         const { sendEmail } = await import('@/lib/email')
         const url = new URL(request.url)
         const siteUrl = `${url.protocol}//${url.host}`
-        const senderName = senderProfile?.name || 'A client'
+        const senderName = senderProfile?.name?.split(' ')[0] || 'A client'
         const truncated = message.trim().length > 150 ? message.trim().slice(0, 150) + '...' : message.trim()
 
         const emailHtml = `
@@ -258,7 +308,7 @@ export async function POST(request: Request) {
       const { sendEmail, buildNewMessageEmail } = await import('@/lib/email')
       const url = new URL(request.url)
       const siteUrl = `${url.protocol}//${url.host}`
-      const emailContent = buildNewMessageEmail(recipientProfile.name || 'there', message.trim(), siteUrl)
+      const emailContent = buildNewMessageEmail(recipientProfile.name?.split(' ')[0] || 'there', message.trim(), siteUrl, senderProfile?.name?.split(' ')[0] || undefined)
       sendEmail({ to: recipientProfile.email, ...emailContent }).catch(console.error)
     }
   }

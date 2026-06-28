@@ -160,7 +160,7 @@ async function notifyCrystalWorkoutLog(
     .eq('id', userId)
     .single()
 
-  const clientName = clientUser?.name || 'A client'
+  const clientName = clientUser?.name?.split(' ')[0] || 'A client'
 
   // Get workout details
   const { data: workout } = await adminClient

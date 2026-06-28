@@ -370,6 +370,7 @@ export async function POST(request: Request) {
       focus: focus || null,
       coach_message: coachMessage || null,
       status: status || 'draft',
+      created_by_coach_id: user.id,
     })
     .select()
     .single()
@@ -444,14 +445,22 @@ export async function POST(request: Request) {
             .single()
 
           if (clientUser?.email) {
+            // Get the coach name who published this week
+            const { data: coachProfile } = await adminClient
+              .from('users')
+              .select('name')
+              .eq('id', user.id)
+              .single()
+
             const { sendEmail, buildPlanPublishedEmail } = await import('@/lib/email')
             const url = new URL(request.url)
             const siteUrl = `${url.protocol}//${url.host}`
             const emailContent = buildPlanPublishedEmail(
-              clientUser.name || 'there',
+              clientUser.name?.split(' ')[0] || 'there',
               dateRange,
               focus || '',
-              siteUrl
+              siteUrl,
+              coachProfile?.name?.split(' ')[0] || undefined
             )
             sendEmail({ to: clientUser.email, ...emailContent }).catch(console.error)
           }

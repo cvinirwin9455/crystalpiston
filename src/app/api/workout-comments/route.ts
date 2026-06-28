@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       .select('id, name, role')
       .in('id', userIds)
     for (const u of users || []) {
-      userNames[u.id] = u.name || 'Unknown'
+      userNames[u.id] = u.name?.split(' ')[0] || 'Unknown'
       userRoles[u.id] = u.role || 'client'
     }
   }
@@ -86,15 +86,44 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  const { data, error } = await supabase
+  // Use admin client to bypass RLS for coaches commenting on any client's workout
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Try insert with created_by_coach_id (if migration has been run), fall back without
+  let data: any = null
+  let error: any = null
+
+  const commentData: any = {
+    workout_id: workoutId,
+    user_id: user.id,
+    message: message.trim(),
+  }
+
+  // Try with coach tracking column first
+  const result1 = await adminClient
     .from('workout_comments')
-    .insert({
-      workout_id: workoutId,
-      user_id: user.id,
-      message: message.trim(),
-    })
+    .insert({ ...commentData, created_by_coach_id: profile?.role === 'admin' ? user.id : null })
     .select()
     .single()
+
+  if (result1.error && result1.error.message?.includes('created_by_coach_id')) {
+    // Column doesn't exist yet — retry without it
+    const result2 = await adminClient
+      .from('workout_comments')
+      .insert(commentData)
+      .select()
+      .single()
+    data = result2.data
+    error = result2.error
+  } else {
+    data = result1.data
+    error = result1.error
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -188,15 +217,16 @@ export async function POST(request: Request) {
           if (recipientEmail) {
             const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
             const emailContent = buildWorkoutCommentEmail(
-              recipientName,
-              profile?.name || 'Someone',
+              recipientName.split(' ')[0],
+              profile?.name?.split(' ')[0] || 'Someone',
               workout.day,
               workout.type,
               workout.title || '',
               workout.miles?.toString() || null,
               message.trim(),
               siteUrl,
-              isCoach
+              isCoach,
+              isCoach ? (profile?.name?.split(' ')[0] || undefined) : undefined
             )
             sendEmail({ to: recipientEmail, ...emailContent }).catch(console.error)
           }
@@ -211,7 +241,7 @@ export async function POST(request: Request) {
     id: data.id,
     workoutId: data.workout_id,
     userId: data.user_id,
-    userName: profile?.name || 'Unknown',
+    userName: profile?.name?.split(' ')[0] || 'Unknown',
     message: data.message,
     createdAt: data.created_at,
     isCoach: profile?.role === 'admin',

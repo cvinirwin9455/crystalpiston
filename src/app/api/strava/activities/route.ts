@@ -351,7 +351,7 @@ export async function POST(request: Request) {
         const siteUrl = `https://${url.host}`
 
         const { subject, html } = buildStravaImportEmail(
-          clientUser.name || 'there',
+          clientUser.name?.split(' ')[0] || 'there',
           activity.name,
           workoutType,
           miles,
@@ -640,7 +640,7 @@ async function notifyCrystalStravaMatch(adminClient: any, userId: string, strava
     .select('name')
     .eq('id', userId)
     .single()
-  const clientName = clientUser?.name || 'A client'
+  const clientName = clientUser?.name?.split(' ')[0] || 'A client'
 
   // Get the programmed workout details (if matched to programmed)
   let workoutTitle = stravaAct.activity_name || 'Workout'

@@ -12,7 +12,8 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; };
+type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export default function AdminPage() {
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showManageCoaches, setShowManageCoaches] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
@@ -47,7 +49,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-28T01:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -234,6 +236,156 @@ export default function AdminPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState<string>("");
+  const [loggedInUserId, setLoggedInUserId] = useState<string>("");
+
+  // All coaches in the system (for multi-coach dropdown)
+  type CoachOption = { id: string; name: string; email: string };
+  const [allCoaches, setAllCoaches] = useState<CoachOption[]>([]);
+  const [showCoachDropdown, setShowCoachDropdown] = useState(false);
+  const [coachAssigning, setCoachAssigning] = useState(false);
+
+  // Manage coaches state
+  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "" });
+  const [creatingCoach, setCreatingCoach] = useState(false);
+  const [createCoachError, setCreateCoachError] = useState("");
+  const [createCoachSuccess, setCreateCoachSuccess] = useState("");
+  const [deletingCoachId, setDeletingCoachId] = useState<string | null>(null);
+
+  // Fetch all coaches in the system
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      try {
+        const res = await fetch('/api/coaches');
+        if (res.ok) {
+          const data = await res.json();
+          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+        }
+      } catch (err) { console.error('Failed to fetch coaches:', err); }
+    };
+    fetchCoaches();
+  }, []);
+
+  // Assign a coach to the selected client
+  const handleAssignCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    setCoachAssigning(true);
+    try {
+      const isFirst = client.coaches.length === 0;
+      const res = await fetch('/api/coaches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId, isDefault: isFirst }),
+      });
+      if (res.ok) {
+        const coachName = allCoaches.find(c => c.id === coachId)?.name || 'Unknown';
+        setClients(prev => prev.map(c => c.id === selectedClient ? {
+          ...c,
+          coaches: [...c.coaches, { coachId, coachName, isDefault: isFirst }],
+        } : c));
+      }
+    } catch (err) { console.error('Failed to assign coach:', err); }
+    finally { setCoachAssigning(false); setShowCoachDropdown(false); }
+  };
+
+  // Remove a coach from the selected client
+  const handleRemoveCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    try {
+      const res = await fetch('/api/coaches', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId }),
+      });
+      if (res.ok) {
+        // If we removed the default, the API auto-promotes the next one
+        const wasDefault = client.coaches.find(c => c.coachId === coachId)?.isDefault;
+        const remaining = client.coaches.filter(c => c.coachId !== coachId);
+        if (wasDefault && remaining.length > 0) remaining[0].isDefault = true;
+        setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, coaches: remaining } : c));
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to remove coach');
+      }
+    } catch (err) { console.error('Failed to remove coach:', err); }
+  };
+
+  // Set a coach as default for the selected client
+  const handleSetDefaultCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    try {
+      const res = await fetch('/api/coaches', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId }),
+      });
+      if (res.ok) {
+        setClients(prev => prev.map(c => c.id === selectedClient ? {
+          ...c,
+          coaches: c.coaches.map(coach => ({ ...coach, isDefault: coach.coachId === coachId })),
+        } : c));
+      }
+    } catch (err) { console.error('Failed to set default coach:', err); }
+  };
+
+  // Invite a new coach to the system
+  const handleInviteCoach = async () => {
+    if (!newCoachForm.name.trim() || !newCoachForm.email.trim()) return;
+    setCreatingCoach(true);
+    setCreateCoachError("");
+    setCreateCoachSuccess("");
+    try {
+      const res = await fetch('/api/coaches/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateCoachError(data.error || 'Failed to invite coach');
+      } else {
+        setCreateCoachSuccess(`Invite sent to ${newCoachForm.email}!`);
+        setNewCoachForm({ name: "", email: "" });
+        // Refresh the coaches list
+        const coachRes = await fetch('/api/coaches');
+        if (coachRes.ok) {
+          const coachData = await coachRes.json();
+          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+        }
+        setTimeout(() => setCreateCoachSuccess(""), 5000);
+      }
+    } catch (err) {
+      setCreateCoachError('Network error. Please try again.');
+    } finally {
+      setCreatingCoach(false);
+    }
+  };
+
+  // Delete/deactivate a coach from the system
+  const handleDeleteCoach = async (coachId: string) => {
+    const coach = allCoaches.find(c => c.id === coachId);
+    if (!confirm(`Are you sure you want to remove ${coach?.name || 'this coach'}? They will lose admin access. Their existing week plans and comments will remain.`)) return;
+    setDeletingCoachId(coachId);
+    try {
+      const res = await fetch('/api/coaches/invite', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId }),
+      });
+      if (res.ok) {
+        setAllCoaches(prev => prev.filter(c => c.id !== coachId));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to remove coach');
+      }
+    } catch (err) {
+      console.error('Failed to delete coach:', err);
+    } finally {
+      setDeletingCoachId(null);
+    }
+  };
 
   // Fetch logged-in user name
   useEffect(() => {
@@ -245,6 +397,7 @@ export default function AdminPage() {
         if (user) {
           const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
           setLoggedInUser(profile?.name || user.email || '');
+          setLoggedInUserId(user.id);
         }
       } catch (err) { console.error(err); }
     };
@@ -692,6 +845,11 @@ export default function AdminPage() {
           weeks: [],
           messages: [],
           birthday: c.birthday || null,
+          coaches: (c.coaches || []).map((coach: any) => ({
+            coachId: coach.coachId,
+            coachName: coach.coachName || 'Unknown',
+            isDefault: coach.isDefault || false,
+          })),
         }));
         setClients(mapped);
       }
@@ -841,7 +999,7 @@ export default function AdminPage() {
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log && (w.type === 'run' || w.type === 'walk')).reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || convertDist(w.miles || 0, w.distanceUnit), "mi"), 0);
   const totalMilesProgrammed = allClientWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(w.miles || 0, w.distanceUnit), 0);
-  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string; fromName?: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -937,6 +1095,7 @@ export default function AdminPage() {
           date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           from: 'crystal',
           message: newMessage.trim(),
+          fromName: loggedInUser?.split(' ')[0] || 'Coach',
         }]);
         setNewMessage("");
         setShowMessageForm(false);
@@ -1546,7 +1705,20 @@ export default function AdminPage() {
           <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg transition-colors">+ New Client</button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredClients.map((client) => {
+          {/* Primary clients (this coach is the default) */}
+          {(() => {
+            const primaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && cc.isDefault));
+            const secondaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && !cc.isDefault));
+            const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
+            const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
+            return (
+              <>
+                {primaryClients.length > 0 && (
+                  <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
+                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                  </div>
+                )}
+                {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
@@ -1580,20 +1752,99 @@ export default function AdminPage() {
               </button>
             );
           })}
+                {showSecondary && secondaryClients.length > 0 && (
+                  <>
+                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-purple-400 text-[10px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
+                    </div>
+                    {secondaryClients.map((client) => {
+                      const isSelected = selectedClient === client.id;
+                      return (
+                        <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
+                            {client.gender === "female" ? (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                            ) : (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                            )}
+                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                              {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
+                            </div>
+                            <p className="text-gray-300 text-xs truncate">
+                              {client.inviteStatus !== "accepted" 
+                                ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                              }
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {unreadByClient[client.id] > 0 && (
+                              <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+                {showSecondary && otherClients.length > 0 && (
+                  <>
+                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
+                    </div>
+                    {otherClients.map((client) => {
+                      const isSelected = selectedClient === client.id;
+                      return (
+                        <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
+                            {client.gender === "female" ? (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                            ) : (
+                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                            )}
+                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                            </div>
+                            <p className="text-gray-300 text-xs truncate">
+                              {client.inviteStatus !== "accepted" 
+                                ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
+                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                              }
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
         <div className="p-3 border-t border-white/10 space-y-2">
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             What&apos;s New
             {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
           </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
             Templates ({templates.length})
           </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             Account Preferences
+          </button>
+          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            Manage Coaches ({allCoaches.length})
           </button>
           <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
         </div>
@@ -1638,7 +1889,62 @@ export default function AdminPage() {
                   {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div>
-                <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
+                  {/* Coaches badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedClientData.coaches.map(coach => (
+                      <span key={coach.coachId} className={`text-xs px-2 py-0.5 rounded-full border ${coach.isDefault ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                        {coach.coachName.split(' ')[0]}{coach.isDefault ? ' ★' : ''}
+                      </span>
+                    ))}
+                    {/* Add coach button */}
+                    <div className="relative">
+                      <button onClick={() => setShowCoachDropdown(!showCoachDropdown)} className="text-xs px-2 py-0.5 rounded-full border border-dashed border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">+</button>
+                      {showCoachDropdown && (
+                        <div className="absolute top-full left-0 mt-1 z-50 bg-secondary border border-white/10 rounded-lg shadow-xl p-2 min-w-56">
+                          <p className="text-gray-400 text-xs font-heading uppercase mb-2 px-2">Manage Coaches</p>
+                          {/* Current coaches with remove/default options */}
+                          {selectedClientData.coaches.length > 0 && (
+                            <div className="mb-2 pb-2 border-b border-white/5">
+                              {selectedClientData.coaches.map(coach => (
+                                <div key={coach.coachId} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-white/5">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs ${coach.isDefault ? 'text-gold font-medium' : 'text-gray-300'}`}>{coach.coachName}</span>
+                                    {coach.isDefault && <span className="text-[10px] text-gold bg-gold/10 px-1.5 rounded">Default</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {!coach.isDefault && (
+                                      <button onClick={() => handleSetDefaultCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-gold px-1.5 py-0.5 rounded border border-white/10 hover:border-gold/30">Set Default</button>
+                                    )}
+                                    {selectedClientData.coaches.length > 1 && (
+                                      <button onClick={() => handleRemoveCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-red-400 px-1.5 py-0.5 rounded border border-white/10 hover:border-red-500/30">Remove</button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* Available coaches to add */}
+                          {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length > 0 && (
+                            <>
+                              <p className="text-gray-500 text-[10px] uppercase px-2 mb-1">Add Coach</p>
+                              {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).map(coach => (
+                                <button key={coach.id} onClick={() => handleAssignCoach(coach.id)} disabled={coachAssigning} className="w-full text-left px-2 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-accent/10 rounded transition-colors disabled:opacity-50">
+                                  + {coach.name}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                          {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length === 0 && selectedClientData.coaches.length > 0 && (
+                            <p className="text-gray-500 text-xs px-2 py-1">All coaches assigned</p>
+                          )}
+                          <button onClick={() => setShowCoachDropdown(false)} className="w-full text-center text-gray-500 hover:text-white text-xs mt-2 pt-2 border-t border-white/5 py-1">Close</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <p className="text-sm">
                   {selectedClientData.inviteStatus !== "accepted"
                     ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
@@ -2303,6 +2609,9 @@ export default function AdminPage() {
                   {adminMessages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.from === "crystal" ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] ${msg.from === "crystal" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
+                        {msg.from === "crystal" && msg.fromName && selectedClientData && selectedClientData.coaches.length > 1 && (
+                          <p className="text-white/70 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
+                        )}
                         <p className={`text-sm ${msg.from === "crystal" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                         <p className={`text-xs mt-1 ${msg.from === "crystal" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                       </div>
@@ -2777,6 +3086,87 @@ export default function AdminPage() {
                       );})}
                     </div>
                   )}
+                </div>
+              </>
+            ) : showManageCoaches ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-2xl uppercase text-white">Manage Coaches</h2>
+                  <button onClick={() => setShowManageCoaches(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
+                </div>
+
+                <p className="text-gray-400 text-sm">Add new coaches and manage who has admin access to the platform.</p>
+
+                {/* Invite New Coach */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-purple-400 mb-4">Invite New Coach</h3>
+                  <p className="text-gray-300 text-xs mb-4">Send an invite email to a new coach. They&apos;ll set their password and get full admin access to manage clients, create weeks, send messages, etc.</p>
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label>
+                      <input type="text" value={newCoachForm.name} onChange={(e) => setNewCoachForm({ ...newCoachForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Coach Name" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label>
+                      <input type="email" value={newCoachForm.email} onChange={(e) => setNewCoachForm({ ...newCoachForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="coach@email.com" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleInviteCoach} disabled={creatingCoach || !newCoachForm.name.trim() || !newCoachForm.email.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 transition-colors">{creatingCoach ? "Sending Invite..." : "Send Invite"}</button>
+                    {createCoachError && <p className="text-red-400 text-xs">{createCoachError}</p>}
+                    {createCoachSuccess && <p className="text-green-400 text-xs">{createCoachSuccess}</p>}
+                  </div>
+                </div>
+
+                {/* Existing Coaches */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-4">Current Coaches ({allCoaches.length})</h3>
+                  {allCoaches.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No coaches found. This shouldn&apos;t happen — you should see yourself here.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {allCoaches.map(coach => {
+                        const isYou = coach.id === loggedInUserId;
+                        const clientCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id)).length;
+                        const defaultCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id && cc.isDefault)).length;
+                        return (
+                          <div key={coach.id} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                <span className="text-purple-400 font-bold text-sm">{coach.name.charAt(0).toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-sm font-medium">{coach.name}</p>
+                                  {isYou && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">You</span>}
+                                </div>
+                                <p className="text-gray-400 text-xs">{coach.email}</p>
+                                <p className="text-gray-500 text-xs mt-0.5">
+                                  {clientCount > 0 ? `${clientCount} client${clientCount !== 1 ? 's' : ''} assigned` : 'No clients assigned'}
+                                  {defaultCount > 0 && ` (${defaultCount} as default)`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!isYou && (
+                                <button onClick={() => handleDeleteCoach(coach.id)} disabled={deletingCoachId === coach.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                                  {deletingCoachId === coach.id ? "Removing..." : "Remove"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info box */}
+                <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs leading-relaxed">
+                    <strong className="text-white">How coaches work:</strong> When a coach is assigned to a client, they can create weekly plans, send messages, and add comments. Each coach has their own preferences (MI/KM, notifications). 
+                    The <span className="text-gold">default coach</span> is the name shown to the client throughout their dashboard and in emails. You can change the default per-client from the client&apos;s header area.
+                  </p>
                 </div>
               </>
             ) : (
