@@ -1813,6 +1813,7 @@ export default function AdminPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                              {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
                             </div>
                             <p className="text-gray-300 text-xs truncate">
                               {client.inviteStatus !== "accepted" 
@@ -1853,7 +1854,7 @@ export default function AdminPage() {
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto`}>
+      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -1888,7 +1889,7 @@ export default function AdminPage() {
                   ) : (
                     <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                  {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-full h-full rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div>
                 <div className="flex items-center gap-3">
@@ -2182,7 +2183,7 @@ export default function AdminPage() {
                             {(editedWorkouts[w.id]?.type || w.type) === "run" && (
                               <>
                                 <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                                  <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Tempo">Tempo Runs</option><option value="Threshold">Threshold Runs</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                  <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Trail">Trail</option>
                                 </select>
                                 <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button><input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${(editDistanceUnits[w.id] || "mi")}`} /></div>
                               </>
@@ -2474,7 +2475,7 @@ export default function AdminPage() {
                             {wo.type === "run" && (
                               <>
                                 <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
-                                  <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery Run</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                  <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                 </select>
                                 <div className="flex items-center gap-1">
                                   <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
@@ -2745,15 +2746,10 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Email Destination */}
+                {/* Email Destination - Removed: emails now auto-send to all assigned coaches */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Send Notifications To</h3>
-                  <p className="text-gray-300 text-xs mb-4">Where should notification emails be sent? You can add multiple email addresses separated by commas.</p>
-                  <div className="flex gap-3">
-                    <input type="text" value={notifEmail} onChange={(e) => setNotifEmail(e.target.value)} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="crystal@pistolpc.com, backup@gmail.com" />
-                    <button onClick={() => { saveAdminNotifPrefs(notifications, notifEmail); setNotifEmailSaved(true); setTimeout(() => setNotifEmailSaved(false), 3000); }} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm">{notifEmailSaved ? "Saved ✓" : "Save"}</button>
-                  </div>
-                  <p className="text-gray-400 text-xs mt-2">Separate multiple addresses with a comma.</p>
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Email Notifications</h3>
+                  <p className="text-gray-300 text-xs">Notification emails are automatically sent to all coaches assigned to a client (primary and secondary). Clients can turn off specific notifications from their own Account tab.</p>
                 </div>
               </>
             ) : showChangelog ? (
@@ -2796,7 +2792,7 @@ export default function AdminPage() {
                                   {wo.type === "run" && (
                                     <>
                                       <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                        <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                        <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                       </select>
                                       <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                                       <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
@@ -2907,7 +2903,7 @@ export default function AdminPage() {
                                           {wo.type === "run" && (
                                             <>
                                               <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                                <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                                <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                               </select>
                                               <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                                             </>
@@ -2961,7 +2957,7 @@ export default function AdminPage() {
                         {newDayTemplateData.type === "run" && (
                           <>
                             <select value={newDayTemplateData.trainingType || ""} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                              <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                              <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                             </select>
                             <input type="text" value={newDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setNewDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                           </>
@@ -3053,7 +3049,7 @@ export default function AdminPage() {
                                 {editDayTemplateData.type === "run" && (
                                   <>
                                     <select value={editDayTemplateData.trainingType || ""} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                      <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Fartlek">Fartlek</option><option value="Hills">Hill Repeats</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="Recovery">Recovery</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Tempo">Tempo</option><option value="Threshold">Threshold</option><option value="TimeTrial">Time Trial</option><option value="Trail">Trail</option><option value="Treadmill">Treadmill</option>
+                                      <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                     </select>
                                     <input type="text" value={editDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setEditDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Miles" />
                                   </>
@@ -3278,7 +3274,7 @@ export default function AdminPage() {
       </main>
 
       {/* AI Coach Assistant — Floating Button + Panel */}
-      <button onClick={() => setShowAiPanel(!showAiPanel)} className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAiPanel ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gradient-to-r from-purple-600 to-accent hover:scale-105'}`} title="AI Coach Assistant">
+      <button onClick={() => setShowAiPanel(!showAiPanel)} className={`fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAiPanel ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gradient-to-r from-purple-600 to-accent hover:scale-105'}`} title="AI Coach Assistant">
         {showAiPanel ? (
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         ) : (

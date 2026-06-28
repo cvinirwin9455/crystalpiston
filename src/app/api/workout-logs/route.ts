@@ -123,35 +123,56 @@ async function notifyCrystalWorkoutLog(
   else if (status === 'partial') prefField = 'workout_partial'
   else return
 
-  // Get the admin user
-  const { data: adminUsers } = await adminClient
-    .from('users')
-    .select('id, email')
-    .eq('role', 'admin')
-    .limit(1)
+  // Get all coaches assigned to this client
+  const { data: clientRecord } = await adminClient
+    .from('clients')
+    .select('id')
+    .eq('user_id', userId)
+    .single()
 
-  const adminUser = adminUsers?.[0]
-  if (!adminUser) return
+  let coachEmails: { email: string; coachId: string }[] = []
+  if (clientRecord) {
+    const { data: coachAssignments } = await adminClient
+      .from('client_coaches')
+      .select('coach_id')
+      .eq('client_id', clientRecord.id)
 
-  // Check admin's notification preferences
-  const { data: adminPrefs } = await adminClient
-    .from('notification_preferences')
-    .select(`${prefField}, notification_emails`)
-    .eq('user_id', adminUser.id)
-    .maybeSingle()
+    if (coachAssignments && coachAssignments.length > 0) {
+      const coachIds = coachAssignments.map((ca: any) => ca.coach_id)
+      const { data: coachUsers } = await adminClient
+        .from('users')
+        .select('id, email')
+        .in('id', coachIds)
 
-  const pref = adminPrefs?.[prefField] || 'immediate'
-  if (pref !== 'immediate') return
+      for (const coach of coachUsers || []) {
+        // Check each coach's notification preference
+        const { data: coachPrefs } = await adminClient
+          .from('notification_preferences')
+          .select(prefField)
+          .eq('user_id', coach.id)
+          .maybeSingle()
 
-  // Get notification emails
-  let notifEmails: string[] = []
-  if (adminPrefs?.notification_emails) {
-    notifEmails = adminPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+        const coachPref = coachPrefs?.[prefField] || 'immediate'
+        if (coachPref === 'immediate' && coach.email) {
+          coachEmails.push({ email: coach.email, coachId: coach.id })
+        }
+      }
+    }
   }
-  if (notifEmails.length === 0 && adminUser.email) {
-    notifEmails = [adminUser.email]
+
+  // Fallback: if no coach assignments found, use first admin
+  if (coachEmails.length === 0) {
+    const { data: adminUsers } = await adminClient
+      .from('users')
+      .select('id, email')
+      .eq('role', 'admin')
+      .limit(1)
+    const adminUser = adminUsers?.[0]
+    if (!adminUser?.email) return
+    coachEmails = [{ email: adminUser.email, coachId: adminUser.id }]
   }
-  if (notifEmails.length === 0) return
+
+  if (coachEmails.length === 0) return
 
   // Get client name
   const { data: clientUser } = await adminClient
@@ -225,7 +246,7 @@ async function notifyCrystalWorkoutLog(
     </table>
   `
 
-  for (const email of notifEmails) {
+  for (const { email } of coachEmails) {
     sendEmail({ to: email, subject, html: emailHtml }).catch(console.error)
   }
 }
