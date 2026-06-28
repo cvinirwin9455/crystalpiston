@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
 
@@ -1189,8 +1189,8 @@ export default function DashboardPage() {
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
-                          {(workout as any).structure ? (
-                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure((workout as any).structure)}</div>
+                          {workout.structure ? (
+                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure)}</div>
                           ) : workout.description ? (
                             <p className="text-gray-400 text-sm">{workout.description}</p>
                           ) : null}
