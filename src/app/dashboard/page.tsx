@@ -8,6 +8,39 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
 
+// Helper: format structured workout for display
+function formatWorkoutStructure(structure: any): string {
+  if (!structure) return '';
+  const parts: string[] = [];
+  const unitLabel = (u: string) => { switch (u) { case "meters": return "m"; case "km": return "km"; case "miles": return "mi"; case "minutes": return "min"; case "seconds": return "sec"; case "hours": return "hr"; default: return u; } };
+
+  if (structure.warmUp?.value) {
+    const u = unitLabel(structure.warmUp.unit);
+    parts.push(`Warm-up: ${structure.warmUp.value} ${u} easy`);
+  }
+
+  for (const block of structure.blocks || []) {
+    if (block.blockType === "tempo" && block.work?.value) {
+      parts.push(`${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}`);
+    } else if (block.blockType === "progression" && block.segments?.length) {
+      parts.push(block.segments.map((s: any) => `${s.value} ${unitLabel(s.unit)}${s.intensity ? ` ${s.intensity}` : ''}`).join(' + '));
+    } else if (block.blockType === "fartlek" && block.work?.value) {
+      const rest = block.fartlekRest;
+      parts.push(`${block.reps || '?'} x (${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)`);
+    } else if (block.work?.value) {
+      const recov = block.recovery?.value ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : '';
+      parts.push(`${block.reps || '?'} x ${block.work.value}${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${recov}`);
+    }
+  }
+
+  if (structure.coolDown?.value) {
+    const u = unitLabel(structure.coolDown.unit);
+    parts.push(`Cool-down: ${structure.coolDown.value} ${u} easy`);
+  }
+
+  return parts.join('\n');
+}
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
@@ -1153,7 +1186,11 @@ export default function DashboardPage() {
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
-                          <p className="text-gray-400 text-sm">{workout.description}</p>
+                          {(workout as any).structure ? (
+                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure((workout as any).structure)}</div>
+                          ) : workout.description ? (
+                            <p className="text-gray-400 text-sm">{workout.description}</p>
+                          ) : null}
                           {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {getWorkoutUnit(workout.id) === "km" && workout.paceTarget.includes("/mi") ? convertPaceToKm(workout.paceTarget) : getWorkoutUnit(workout.id) === "mi" && workout.paceTarget.includes("/km") ? convertPaceToMi(workout.paceTarget) : workout.paceTarget}{!workout.paceTarget.includes("/") ? `/${getWorkoutUnit(workout.id)}` : ""}</p>}
                           {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}

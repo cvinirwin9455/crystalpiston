@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const weekIds = weeks.map(w => w.id)
   const { data: workouts } = await adminClient
     .from('workouts')
-    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit, structure')
     .in('week_id', weekIds)
     .order('sort_order', { ascending: true })
 
@@ -297,6 +297,7 @@ export async function GET(request: Request) {
           location: wo.location,
           coachNotes: wo.coach_notes,
           sortOrder: wo.sort_order,
+          structure: wo.structure || null,
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,
@@ -392,6 +393,7 @@ export async function POST(request: Request) {
       coach_notes: w.coachNotes || null,
       sort_order: index,
       distance_unit: w.distanceUnit || 'mi',
+      structure: w.structure || null,
     }))
 
     const { error: workoutsError } = await adminClient
