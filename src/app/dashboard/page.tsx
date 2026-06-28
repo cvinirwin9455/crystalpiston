@@ -597,17 +597,23 @@ export default function DashboardPage() {
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
 
   // Global date formatter respecting user's date format preference
+  // Always uses named months so dates are never ambiguous
   const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
     if (!dateStr) return "—";
     const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate();
-    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
     const year = date.getFullYear();
-    if (options?.includeYear) {
-      if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
-      return `${monthShort} ${day}, ${year}`;
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const currentYear = new Date().getFullYear();
+    const showYear = options?.includeYear || year !== currentYear;
+    if (showYear) {
+      // Full format: "June 23, 2026" or "23 June 2026"
+      if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+      return `${monthLong} ${day}, ${year}`;
     }
+    // Short format (current year): "Jun 23" or "23 Jun"
     if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort}`;
     return `${monthShort} ${day}`;
   };
@@ -2176,10 +2182,10 @@ export default function DashboardPage() {
               {/* Date Format */}
               <div className="mb-6">
                 <p className="text-white text-sm font-medium mb-1">Date Format</p>
-                <p className="text-gray-300 text-xs mb-3">Choose how dates are displayed.</p>
+                <p className="text-gray-300 text-xs mb-3">Choose how dates are displayed throughout the app.</p>
                 <div className="flex gap-2">
-                  <button onClick={() => { setClientDateFormat('MM/DD/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'MM/DD/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'MM/DD/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}>MM/DD/YYYY</button>
-                  <button onClick={() => { setClientDateFormat('DD/MM/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'DD/MM/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'DD/MM/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}>DD/MM/YYYY</button>
+                  <button onClick={() => { setClientDateFormat('MM/DD/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'MM/DD/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'MM/DD/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}><span className="block">June 23, 2026</span><span className="block text-xs opacity-60 mt-0.5">Month first</span></button>
+                  <button onClick={() => { setClientDateFormat('DD/MM/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'DD/MM/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'DD/MM/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}><span className="block">23 June 2026</span><span className="block text-xs opacity-60 mt-0.5">Day first</span></button>
                 </div>
               </div>
 

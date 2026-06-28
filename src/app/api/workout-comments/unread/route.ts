@@ -1,14 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// GET /api/workout-comments/unread - Get clients who have unread (from-client) workout comments
-// Returns a set of client user IDs that have comments from clients (not coach) in the last 7 days
+// GET /api/workout-comments/unread - Get clients who have recent workout comments from clients
+// Returns user IDs of clients whose workouts have comments from non-coach users in the last 14 days
+// Works for any admin/coach regardless of whether they are primary or secondary coach
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verify admin
+  // Verify admin/coach role
   const { data: profile } = await supabase
     .from('users')
     .select('role')
@@ -26,7 +27,7 @@ export async function GET() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // Get all workout comments from clients (non-admin users) in the last 14 days
+  // Get all workout comments from the last 14 days
   const fourteenDaysAgo = new Date()
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
@@ -39,29 +40,37 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!comments || comments.length === 0) return NextResponse.json({ clientUserIds: [] })
 
-  // Get the user roles for comment authors
+  // Get the user roles for ALL comment authors to identify client comments
   const authorIds = [...new Set(comments.map(c => c.user_id))]
   const { data: authors } = await adminClient
     .from('users')
     .select('id, role')
     .in('id', authorIds)
 
+  // We want comments FROM clients (role != 'admin')
   const clientAuthors = new Set((authors || []).filter(a => a.role === 'client').map(a => a.id))
 
-  // Filter to only comments from clients
+  // Filter to only comments authored by clients
   const clientComments = comments.filter(c => clientAuthors.has(c.user_id))
   if (clientComments.length === 0) return NextResponse.json({ clientUserIds: [] })
 
   // Get the workout -> week -> client mapping
   const workoutIds = [...new Set(clientComments.map(c => c.workout_id))]
-  const { data: workouts } = await adminClient
-    .from('workouts')
-    .select('id, week_id')
-    .in('id', workoutIds)
 
-  if (!workouts || workouts.length === 0) return NextResponse.json({ clientUserIds: [] })
+  // Batch in chunks of 100 to avoid Supabase query limits
+  const allWorkouts: { id: string; week_id: string }[] = []
+  for (let i = 0; i < workoutIds.length; i += 100) {
+    const batch = workoutIds.slice(i, i + 100)
+    const { data: workouts } = await adminClient
+      .from('workouts')
+      .select('id, week_id')
+      .in('id', batch)
+    if (workouts) allWorkouts.push(...workouts)
+  }
 
-  const weekIds = [...new Set(workouts.map(w => w.week_id))]
+  if (allWorkouts.length === 0) return NextResponse.json({ clientUserIds: [] })
+
+  const weekIds = [...new Set(allWorkouts.map(w => w.week_id))]
   const { data: weeks } = await adminClient
     .from('weeks')
     .select('id, client_id')
@@ -70,16 +79,16 @@ export async function GET() {
   if (!weeks || weeks.length === 0) return NextResponse.json({ clientUserIds: [] })
 
   // Map client_id (from clients table) to user_id
-  const clientIds = [...new Set(weeks.map(w => w.client_id))]
-  const { data: clients } = await adminClient
+  const clientRecordIds = [...new Set(weeks.map(w => w.client_id))]
+  const { data: clientRecords } = await adminClient
     .from('clients')
     .select('id, user_id')
-    .in('id', clientIds)
+    .in('id', clientRecordIds)
 
-  // Build the chain: comment -> workout -> week -> client -> user_id
-  const workoutToWeek = new Map(workouts.map(w => [w.id, w.week_id]))
+  // Build the chain: comment -> workout -> week -> client record -> user_id
+  const workoutToWeek = new Map(allWorkouts.map(w => [w.id, w.week_id]))
   const weekToClient = new Map(weeks.map(w => [w.id, w.client_id]))
-  const clientToUser = new Map((clients || []).map(c => [c.id, c.user_id]))
+  const clientToUser = new Map((clientRecords || []).map(c => [c.id, c.user_id]))
 
   const clientUserIdsWithComments = new Set<string>()
   for (const comment of clientComments) {

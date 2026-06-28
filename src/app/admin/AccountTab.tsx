@@ -216,10 +216,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
     const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate();
-    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
     const year = date.getFullYear();
-    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
-    return `${monthShort} ${day}, ${year}`;
+    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+    return `${monthLong} ${day}, ${year}`;
   };
 
   return (
@@ -472,10 +472,10 @@ function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planI
     const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate();
-    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
     const year = date.getFullYear();
-    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
-    return `${monthShort} ${day}, ${year}`;
+    if (dateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+    return `${monthLong} ${day}, ${year}`;
   };
 
   const handleLogPayment = async () => {
