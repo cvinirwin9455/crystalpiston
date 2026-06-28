@@ -641,8 +641,16 @@ function PlanCard({ plan, onUpdate }: { plan: Plan; onUpdate: (planId: string, u
           </p>
         </div>
       </div>
-      {/* Target Distance & Race Date */}
-      {(plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
+      {/* Target Distance & Race Date — always show for active plans */}
+      {plan.status === "active" && (
+        <div className="grid md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-white/5">
+          <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance || "—"}</p></div>
+          <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{plan.raceDate ? formatDate(plan.raceDate) : "—"}</p></div>
+          <div><p className="text-gray-500 text-xs">Goal Race Pace</p><p className="text-white text-sm">{plan.goalPace || "—"}</p></div>
+          <div><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes || "—"}</p></div>
+        </div>
+      )}
+      {plan.status !== "active" && (plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
         <div className="grid md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-white/5">
           {plan.targetDistance && <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance}</p></div>}
           {plan.raceDate && <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{formatDate(plan.raceDate)}</p></div>}
