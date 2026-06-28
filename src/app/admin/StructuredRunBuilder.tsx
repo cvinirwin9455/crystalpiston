@@ -32,7 +32,7 @@ export type WorkBlock = {
   reps: string;
   work: { type: MeasureType; value: string; unit: DistanceUnit | TimeUnit };
   intensity: string;
-  recovery: Recovery;
+  recovery?: Recovery;
   // For progression runs: multiple segments
   segments?: { value: string; unit: DistanceUnit | TimeUnit; type: MeasureType; intensity: string }[];
   // For fartlek: work and rest alternate
@@ -81,6 +81,7 @@ function emptyProgressionSegment() {
 
 // Calculate total distance in miles from the structure
 export function calculateTotalDistance(structure: WorkoutStructure): number {
+  if (!structure) return 0;
   let total = 0;
 
   // Warm-up
@@ -89,20 +90,24 @@ export function calculateTotalDistance(structure: WorkoutStructure): number {
   }
 
   // Blocks
-  for (const block of structure.blocks) {
-    const reps = parseInt(block.reps) || 1;
+  if (structure.blocks && Array.isArray(structure.blocks)) {
+    for (const block of structure.blocks) {
+      const reps = parseInt(block.reps) || 1;
 
-    if (block.blockType === "progression" && block.segments) {
-      for (const seg of block.segments) {
-        total += toMiles(parseFloat(seg.value) || 0, seg.unit, seg.type);
+      if (block.blockType === "progression" && block.segments) {
+        for (const seg of block.segments) {
+          total += toMiles(parseFloat(seg.value) || 0, seg.unit, seg.type);
+        }
+      } else if (block.blockType === "tempo") {
+        if (block.work) {
+          total += toMiles(parseFloat(block.work.value) || 0, block.work.unit, block.work.type);
+        }
+      } else {
+        // Intervals, strides, hill repeats, fartlek
+        const workDist = block.work ? toMiles(parseFloat(block.work.value) || 0, block.work.unit, block.work.type) : 0;
+        const recovDist = block.recovery ? toMiles(parseFloat(block.recovery.value) || 0, block.recovery.unit, block.recovery.type) : 0;
+        total += reps * (workDist + recovDist);
       }
-    } else if (block.blockType === "tempo") {
-      total += toMiles(parseFloat(block.work.value) || 0, block.work.unit, block.work.type);
-    } else {
-      // Intervals, strides, hill repeats, fartlek
-      const workDist = toMiles(parseFloat(block.work.value) || 0, block.work.unit, block.work.type);
-      const recovDist = toMiles(parseFloat(block.recovery.value) || 0, block.recovery.unit, block.recovery.type);
-      total += reps * (workDist + recovDist);
     }
   }
 
@@ -127,6 +132,7 @@ function toMiles(value: number, unit: DistanceUnit | TimeUnit, type: MeasureType
 
 // Format the structure as a display string for the client
 export function formatStructureForDisplay(structure: WorkoutStructure): string {
+  if (!structure) return "";
   const parts: string[] = [];
 
   if (structure.warmUp && structure.warmUp.value) {
@@ -134,8 +140,12 @@ export function formatStructureForDisplay(structure: WorkoutStructure): string {
     parts.push(`Warm-up: ${structure.warmUp.value} ${u} easy`);
   }
 
-  for (const block of structure.blocks) {
-    parts.push(formatBlock(block));
+  if (structure.blocks && Array.isArray(structure.blocks)) {
+    for (const block of structure.blocks) {
+      try {
+        parts.push(formatBlock(block));
+      } catch { /* skip malformed blocks */ }
+    }
   }
 
   if (structure.coolDown && structure.coolDown.value) {
@@ -153,7 +163,7 @@ function formatBlock(block: WorkBlock): string {
   };
 
   if (block.blockType === "tempo") {
-    const w = `${block.work.value} ${unitLabel(block.work.unit)}`;
+    const w = block.work ? `${block.work.value} ${unitLabel(block.work.unit)}` : "";
     return `${w}${block.intensity ? ` @ ${block.intensity}` : ''}`;
   }
 
@@ -163,16 +173,16 @@ function formatBlock(block: WorkBlock): string {
 
   if (block.blockType === "fartlek") {
     const reps = block.reps || "?";
-    const w = `${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'}`;
-    const r = block.fartlekRest ? `${block.fartlekRest.value} ${unitLabel(block.fartlekRest.unit)} easy` : `${block.recovery.value} ${unitLabel(block.recovery.unit)} easy`;
+    const w = block.work ? `${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'}` : "hard";
+    const r = block.fartlekRest ? `${block.fartlekRest.value} ${unitLabel(block.fartlekRest.unit)} easy` : (block.recovery ? `${block.recovery.value} ${unitLabel(block.recovery.unit)} easy` : "easy");
     return `${reps} x (${w} / ${r})`;
   }
 
   // Intervals, strides, hill repeats
   const reps = block.reps || "?";
-  const w = `${block.work.value}${unitLabel(block.work.unit)}`;
+  const w = block.work ? `${block.work.value}${unitLabel(block.work.unit)}` : "";
   const intensity = block.intensity ? ` @ ${block.intensity}` : "";
-  const recov = (block.recovery.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${block.recovery.recoveryType.toLowerCase()}` : "";
+  const recov = (block.recovery && block.recovery.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : "";
   return `${reps} x ${w}${intensity}${recov}`;
 }
 

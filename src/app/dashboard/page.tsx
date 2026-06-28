@@ -117,7 +117,7 @@ export default function DashboardPage() {
         const data = await res.json();
         setClientMessages(prev => [...prev, {
           id: data.messageId,
-          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          date: fmtDateFull(data.createdAt),
           from: 'client',
           message: newMessage.trim(),
         }]);
@@ -145,6 +145,7 @@ export default function DashboardPage() {
   const [loggedInName, setLoggedInName] = useState("");
   const [loggedInEmail, setLoggedInEmail] = useState("");
   const [clientDistanceUnit, setClientDistanceUnit] = useState<"mi" | "km">("mi");
+  const [clientDateFormat, setClientDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
   const [workoutUnitOverrides, setWorkoutUnitOverrides] = useState<Record<string, "mi" | "km">>({});
 
   // Strava connection state
@@ -349,6 +350,7 @@ export default function DashboardPage() {
           if (data.stravaSynced !== undefined) setNotifStravaSynced(data.stravaSynced);
           if (data.workoutComments !== undefined) setNotifWorkoutComments(data.workoutComments);
           if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
+          if (data.dateFormat) setClientDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
         }
       } catch (err) {
@@ -593,6 +595,23 @@ export default function DashboardPage() {
     return +value.toFixed(2);
   };
   const distUnitLabel = clientDistanceUnit === "km" ? "KM" : "Miles";
+
+  // Global date formatter respecting user's date format preference
+  const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
+    if (!dateStr) return "—";
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr;
+    const day = date.getDate();
+    const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    if (options?.includeYear) {
+      if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
+      return `${monthShort} ${day}, ${year}`;
+    }
+    if (clientDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort}`;
+    return `${monthShort} ${day}`;
+  };
+  const fmtDateFull = (dateStr: string | null | undefined) => fmtDate(dateStr, { includeYear: true });
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
   // Pace conversion helpers (e.g. "9:04/mi" → "5:38/km")
@@ -1137,7 +1156,9 @@ export default function DashboardPage() {
                 const weekStart = getMondayForOffset(weekOffset);
                 const dayDate = new Date(weekStart);
                 dayDate.setDate(weekStart.getDate() + dayIndex);
-                const dayDateStr = dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                const dayDateStr = clientDateFormat === 'DD/MM/YYYY'
+                  ? dayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : dayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
@@ -2157,8 +2178,8 @@ export default function DashboardPage() {
                 <p className="text-white text-sm font-medium mb-1">Date Format</p>
                 <p className="text-gray-300 text-xs mb-3">Choose how dates are displayed.</p>
                 <div className="flex gap-2">
-                  <button onClick={() => { fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'MM/DD/YYYY' }) }); }} className="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors bg-primary/50 border border-white/10 text-gray-400 hover:text-white">MM/DD/YYYY</button>
-                  <button onClick={() => { fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'DD/MM/YYYY' }) }); }} className="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors bg-primary/50 border border-white/10 text-gray-400 hover:text-white">DD/MM/YYYY</button>
+                  <button onClick={() => { setClientDateFormat('MM/DD/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'MM/DD/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'MM/DD/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}>MM/DD/YYYY</button>
+                  <button onClick={() => { setClientDateFormat('DD/MM/YYYY'); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dateFormat: 'DD/MM/YYYY' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDateFormat === 'DD/MM/YYYY' ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}>DD/MM/YYYY</button>
                 </div>
               </div>
 
