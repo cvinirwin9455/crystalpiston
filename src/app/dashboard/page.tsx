@@ -238,7 +238,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
-    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-28T01:00:00Z") {
       setShowNewBadge(true);
     }
   }, []);
@@ -966,7 +966,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
-              <button onClick={() => { setShowUpdatesDropdown(!showUpdatesDropdown); }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
+              <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); } else { setShowUpdatesDropdown(true); } setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-28T01:00:00Z"); setLastSeenUpdates("2026-06-28T01:00:00Z"); }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                 {showNewBadge && <span className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">!</span>}
               </button>
@@ -974,7 +974,7 @@ export default function DashboardPage() {
               {/* Updates Dropdown */}
               {showUpdatesDropdown && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-25T01:00:00Z"); setLastSeenUpdates("2026-06-25T01:00:00Z"); }} />
+                  <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", "2026-06-28T01:00:00Z"); setLastSeenUpdates("2026-06-28T01:00:00Z"); }} />
                   <div className="absolute right-0 top-8 w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                     <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                       <h3 className="text-white text-sm font-heading uppercase">What&apos;s New</h3>
