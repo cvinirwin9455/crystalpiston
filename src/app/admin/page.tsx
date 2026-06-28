@@ -2334,7 +2334,7 @@ export default function AdminPage() {
                                 {cw.notes && !cw.activityName && !cw.notes.startsWith?.('Kept as extra') && <p className="text-gray-400 text-sm mt-0.5">{cw.notes}</p>}
                                 {(cw.averagePace || cw.duration || cw.avgHeartrate || cw.miles) && (
                                   <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                    {cw.miles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{distUnitShort}</span> <span className={`font-medium ${(cw.completed || cw.source === 'strava') ? 'text-green-400' : 'text-white'}`}>{convertDist(cw.miles)}</span></span>}
+                                    {cw.miles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{distUnitShort}</span> <span className="text-green-400 font-medium">{convertDist(cw.miles)}</span></span>}
                                     {cw.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{cw.duration}</span></span>}
                                     {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{cw.averagePace}</span></span>}
                                     {cw.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{cw.avgHeartrate}</span></span>}
@@ -2342,7 +2342,7 @@ export default function AdminPage() {
                                   </div>
                                 )}
                               </div>
-                              {cw.miles && !cw.averagePace && !cw.duration && <span className={`font-heading text-lg flex-shrink-0 ${(cw.completed || cw.source === 'strava') ? 'text-green-400' : 'text-white'}`}>{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
+                              {cw.miles && !cw.averagePace && !cw.duration && <span className="text-green-400 font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
                             {/* Comments on client workouts */}
                             {cw.completed && (
