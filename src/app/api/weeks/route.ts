@@ -131,10 +131,11 @@ export async function GET(request: Request) {
       // Skip 0-mile distance-based activities (accidental start/stop) but allow stretching/strength/cross
       const distanceTypes = ['run', 'walk', 'cycling']
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
+      // IMPORTANT: Only match within the SAME week — don't cross week boundaries
+      const sameWeekWorkouts = sa.week_id ? (workoutsByWeekId.get(sa.week_id) || []) : []
       // Check if there's a completed programmed workout on the same day with same type
       // IMPORTANT: Only match to workouts that were actually COMPLETED (not skipped/partial)
-      for (const [, wos] of workoutsByWeekId) {
-        for (const wo of wos) {
+      for (const wo of sameWeekWorkouts) {
           const woLog = logsByWorkoutId.get(wo.id)
           const isActuallyCompleted = woLog && (woLog.status === 'complete' || (!woLog.status && woLog.rpe))
           if (wo.day === sa.day && wo.type === sa.type && isActuallyCompleted && !stravaMatchedWorkoutIds.has(wo.id)) {
@@ -201,8 +202,6 @@ export async function GET(request: Request) {
             break
           }
         }
-        if (stravaMatchedActivityIds.has(sa.id)) break
-      }
     }
   }
 
