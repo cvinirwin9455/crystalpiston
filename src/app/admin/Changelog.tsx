@@ -3,9 +3,24 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-27T18:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-06-28T18:00:00Z";
 
 const updates = [
+  {
+    date: "June 28, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Multi-Coach System — you can now add multiple coaches to a client" },
+      { area: "Admin", text: "Coach badges appear next to the client name showing all assigned coaches (gold star = default coach)" },
+      { area: "Admin", text: "Click the '+' button next to coach badges to add/remove coaches or change the default" },
+      { area: "Admin", text: "When you create a new client, you're automatically assigned as their default coach" },
+      { area: "Admin", text: "Each coach's account preferences (distance unit MI/KM, notification settings, etc.) are independent — your settings don't affect other coaches" },
+      { area: "Admin", text: "When multiple coaches are assigned, messages in the chat now show which coach sent each one" },
+      { area: "Client", text: "All references to 'Crystal' throughout the app now dynamically show the name of your assigned default coach" },
+      { area: "Client", text: "Notification settings now reference your actual coach name (e.g. 'Messages from [Coach Name]')" },
+      { area: "Client", text: "Workout comment threads show the actual coach name who commented" },
+      { area: "All", text: "Emails (plan published, new message, workout comments, Strava sync) now reference the correct coach name" },
+    ],
+  },
   {
     date: "June 27, 2026",
     items: [

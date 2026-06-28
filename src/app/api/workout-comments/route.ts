@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       workout_id: workoutId,
       user_id: user.id,
       message: message.trim(),
+      created_by_coach_id: profile?.role === 'admin' ? user.id : null,
     })
     .select()
     .single()
@@ -196,7 +197,8 @@ export async function POST(request: Request) {
               workout.miles?.toString() || null,
               message.trim(),
               siteUrl,
-              isCoach
+              isCoach,
+              isCoach ? (profile?.name || undefined) : undefined
             )
             sendEmail({ to: recipientEmail, ...emailContent }).catch(console.error)
           }

@@ -10,7 +10,8 @@ type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross"
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; };
+type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-25T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-06-28T01:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -232,6 +233,92 @@ export default function AdminPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState<string>("");
+  const [loggedInUserId, setLoggedInUserId] = useState<string>("");
+
+  // All coaches in the system (for multi-coach dropdown)
+  type CoachOption = { id: string; name: string; email: string };
+  const [allCoaches, setAllCoaches] = useState<CoachOption[]>([]);
+  const [showCoachDropdown, setShowCoachDropdown] = useState(false);
+  const [coachAssigning, setCoachAssigning] = useState(false);
+
+  // Fetch all coaches in the system
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      try {
+        const res = await fetch('/api/coaches');
+        if (res.ok) {
+          const data = await res.json();
+          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+        }
+      } catch (err) { console.error('Failed to fetch coaches:', err); }
+    };
+    fetchCoaches();
+  }, []);
+
+  // Assign a coach to the selected client
+  const handleAssignCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    setCoachAssigning(true);
+    try {
+      const isFirst = client.coaches.length === 0;
+      const res = await fetch('/api/coaches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId, isDefault: isFirst }),
+      });
+      if (res.ok) {
+        const coachName = allCoaches.find(c => c.id === coachId)?.name || 'Unknown';
+        setClients(prev => prev.map(c => c.id === selectedClient ? {
+          ...c,
+          coaches: [...c.coaches, { coachId, coachName, isDefault: isFirst }],
+        } : c));
+      }
+    } catch (err) { console.error('Failed to assign coach:', err); }
+    finally { setCoachAssigning(false); setShowCoachDropdown(false); }
+  };
+
+  // Remove a coach from the selected client
+  const handleRemoveCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    try {
+      const res = await fetch('/api/coaches', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId }),
+      });
+      if (res.ok) {
+        // If we removed the default, the API auto-promotes the next one
+        const wasDefault = client.coaches.find(c => c.coachId === coachId)?.isDefault;
+        const remaining = client.coaches.filter(c => c.coachId !== coachId);
+        if (wasDefault && remaining.length > 0) remaining[0].isDefault = true;
+        setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, coaches: remaining } : c));
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to remove coach');
+      }
+    } catch (err) { console.error('Failed to remove coach:', err); }
+  };
+
+  // Set a coach as default for the selected client
+  const handleSetDefaultCoach = async (coachId: string) => {
+    const client = clients.find(c => c.id === selectedClient);
+    if (!client?.clientId) return;
+    try {
+      const res = await fetch('/api/coaches', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.clientId, coachId }),
+      });
+      if (res.ok) {
+        setClients(prev => prev.map(c => c.id === selectedClient ? {
+          ...c,
+          coaches: c.coaches.map(coach => ({ ...coach, isDefault: coach.coachId === coachId })),
+        } : c));
+      }
+    } catch (err) { console.error('Failed to set default coach:', err); }
+  };
 
   // Fetch logged-in user name
   useEffect(() => {
@@ -243,6 +330,7 @@ export default function AdminPage() {
         if (user) {
           const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
           setLoggedInUser(profile?.name || user.email || '');
+          setLoggedInUserId(user.id);
         }
       } catch (err) { console.error(err); }
     };
@@ -690,6 +778,11 @@ export default function AdminPage() {
           weeks: [],
           messages: [],
           birthday: c.birthday || null,
+          coaches: (c.coaches || []).map((coach: any) => ({
+            coachId: coach.coachId,
+            coachName: coach.coachName || 'Unknown',
+            isDefault: coach.isDefault || false,
+          })),
         }));
         setClients(mapped);
       }
@@ -839,7 +932,7 @@ export default function AdminPage() {
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log && (w.type === 'run' || w.type === 'walk')).reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || convertDist(w.miles || 0, w.distanceUnit), "mi"), 0);
   const totalMilesProgrammed = allClientWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(w.miles || 0, w.distanceUnit), 0);
-  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string}[]>([]);
+  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string; fromName?: string}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -935,6 +1028,7 @@ export default function AdminPage() {
           date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           from: 'crystal',
           message: newMessage.trim(),
+          fromName: loggedInUser || 'Coach',
         }]);
         setNewMessage("");
         setShowMessageForm(false);
@@ -1635,7 +1729,62 @@ export default function AdminPage() {
                   {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover absolute inset-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div>
-                <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
+                  {/* Coaches badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedClientData.coaches.map(coach => (
+                      <span key={coach.coachId} className={`text-xs px-2 py-0.5 rounded-full border ${coach.isDefault ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                        {coach.coachName.split(' ')[0]}{coach.isDefault ? ' ★' : ''}
+                      </span>
+                    ))}
+                    {/* Add coach button */}
+                    <div className="relative">
+                      <button onClick={() => setShowCoachDropdown(!showCoachDropdown)} className="text-xs px-2 py-0.5 rounded-full border border-dashed border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors">+</button>
+                      {showCoachDropdown && (
+                        <div className="absolute top-full left-0 mt-1 z-50 bg-secondary border border-white/10 rounded-lg shadow-xl p-2 min-w-56">
+                          <p className="text-gray-400 text-xs font-heading uppercase mb-2 px-2">Manage Coaches</p>
+                          {/* Current coaches with remove/default options */}
+                          {selectedClientData.coaches.length > 0 && (
+                            <div className="mb-2 pb-2 border-b border-white/5">
+                              {selectedClientData.coaches.map(coach => (
+                                <div key={coach.coachId} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-white/5">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs ${coach.isDefault ? 'text-gold font-medium' : 'text-gray-300'}`}>{coach.coachName}</span>
+                                    {coach.isDefault && <span className="text-[10px] text-gold bg-gold/10 px-1.5 rounded">Default</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {!coach.isDefault && (
+                                      <button onClick={() => handleSetDefaultCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-gold px-1.5 py-0.5 rounded border border-white/10 hover:border-gold/30">Set Default</button>
+                                    )}
+                                    {selectedClientData.coaches.length > 1 && (
+                                      <button onClick={() => handleRemoveCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-red-400 px-1.5 py-0.5 rounded border border-white/10 hover:border-red-500/30">Remove</button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* Available coaches to add */}
+                          {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length > 0 && (
+                            <>
+                              <p className="text-gray-500 text-[10px] uppercase px-2 mb-1">Add Coach</p>
+                              {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).map(coach => (
+                                <button key={coach.id} onClick={() => handleAssignCoach(coach.id)} disabled={coachAssigning} className="w-full text-left px-2 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-accent/10 rounded transition-colors disabled:opacity-50">
+                                  + {coach.name}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                          {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length === 0 && selectedClientData.coaches.length > 0 && (
+                            <p className="text-gray-500 text-xs px-2 py-1">All coaches assigned</p>
+                          )}
+                          <button onClick={() => setShowCoachDropdown(false)} className="w-full text-center text-gray-500 hover:text-white text-xs mt-2 pt-2 border-t border-white/5 py-1">Close</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <p className="text-sm">
                   {selectedClientData.inviteStatus !== "accepted"
                     ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
@@ -2281,6 +2430,9 @@ export default function AdminPage() {
                   {adminMessages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.from === "crystal" ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] ${msg.from === "crystal" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
+                        {msg.from === "crystal" && msg.fromName && selectedClientData && selectedClientData.coaches.length > 1 && (
+                          <p className="text-white/70 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
+                        )}
                         <p className={`text-sm ${msg.from === "crystal" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                         <p className={`text-xs mt-1 ${msg.from === "crystal" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                       </div>

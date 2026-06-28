@@ -98,6 +98,37 @@ export async function GET() {
     if (sc.athlete_profile) stravaProfileByUserId.set(sc.user_id, sc.athlete_profile)
   }
 
+  // Fetch all coach assignments for all clients
+  let coachAssignments: any[] = []
+  try {
+    const { data } = await adminClient
+      .from('client_coaches')
+      .select('client_id, coach_id, is_default')
+    coachAssignments = data || []
+  } catch {}
+
+  // Build a lookup map: client_id -> coaches array
+  const coachesByClientId = new Map<string, { coachId: string; isDefault: boolean }[]>()
+  for (const ca of coachAssignments) {
+    if (!coachesByClientId.has(ca.client_id)) {
+      coachesByClientId.set(ca.client_id, [])
+    }
+    coachesByClientId.get(ca.client_id)!.push({ coachId: ca.coach_id, isDefault: ca.is_default })
+  }
+
+  // Get coach names for display
+  const allCoachIds = [...new Set(coachAssignments.map(ca => ca.coach_id))]
+  const coachNameMap = new Map<string, string>()
+  if (allCoachIds.length > 0) {
+    const { data: coachUsers } = await adminClient
+      .from('users')
+      .select('id, name, email')
+      .in('id', allCoachIds)
+    for (const cu of coachUsers || []) {
+      coachNameMap.set(cu.id, cu.name || cu.email || 'Unknown')
+    }
+  }
+
   // Build response, auto-create missing client records
   const formatted = []
   for (const u of clientUsers || []) {
@@ -133,6 +164,14 @@ export async function GET() {
       }
     }
 
+    // Get coaches for this client
+    const clientCoaches = clientRecord ? (coachesByClientId.get(clientRecord.id) || []) : []
+    const coaches = clientCoaches.map(cc => ({
+      coachId: cc.coachId,
+      coachName: coachNameMap.get(cc.coachId) || 'Unknown',
+      isDefault: cc.isDefault,
+    }))
+
     formatted.push({
       userId: u.id,
       clientId: clientRecord?.id || null,
@@ -151,6 +190,7 @@ export async function GET() {
       inviteStatus,
       createdAt: u.created_at,
       birthday: trainingProfileMap.get(clientRecord?.id)?.birthday || null,
+      coaches,
     })
   }
 
@@ -250,6 +290,21 @@ export async function POST(request: Request) {
         paid: 0,
         status: 'active',
       })
+  }
+
+  // Auto-assign the creating coach (logged-in admin) as the default coach for this client
+  if (newClientRecord) {
+    try {
+      await adminClient
+        .from('client_coaches')
+        .insert({
+          client_id: newClientRecord.id,
+          coach_id: user.id,
+          is_default: true,
+        })
+    } catch (err) {
+      console.error('Failed to assign coach to new client:', err)
+    }
   }
 
   return NextResponse.json({ 
