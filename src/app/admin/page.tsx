@@ -226,7 +226,7 @@ export default function AdminPage() {
       const weekEnd = new Date(sunday);
       weekEnd.setHours(0, 0, 0, 0);
       if (weekStart < planStart || weekEnd > planEnd) {
-        const fmt = (d: Date) => { const day = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'short' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${day} ${m} ${y}` : `${m} ${day}, ${y}`; };
+        const fmt = (d: Date) => { const day = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'long' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${day} ${m} ${y}` : `${m} ${day}, ${y}`; };
         setWeekDateWarning(`This week falls outside the active plan (${fmt(planStart)} – ${fmt(planEnd)}). You won't be able to save until you select a week within the plan dates, or update the plan dates in the Account tab.`);
       } else {
         setWeekDateWarning("");
@@ -1013,18 +1013,23 @@ export default function AdminPage() {
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
 
   // Global date formatter that respects saved date format preference
+  // Always uses named months so dates are never ambiguous
   const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
     if (!dateStr) return "—";
     const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate();
-    const month = date.getMonth() + 1;
     const year = date.getFullYear();
+    const monthLong = date.toLocaleDateString('en-US', { month: 'long' });
     const monthShort = date.toLocaleDateString('en-US', { month: 'short' });
-    if (options?.includeYear) {
-      if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort} ${year}`;
-      return `${monthShort} ${day}, ${year}`;
+    const currentYear = new Date().getFullYear();
+    const showYear = options?.includeYear || year !== currentYear;
+    if (showYear) {
+      // Full format: "June 23, 2026" or "23 June 2026"
+      if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthLong} ${year}`;
+      return `${monthLong} ${day}, ${year}`;
     }
+    // Short format (current year): "Jun 23" or "23 Jun"
     if (adminDateFormat === 'DD/MM/YYYY') return `${day} ${monthShort}`;
     return `${monthShort} ${day}`;
   };
@@ -1450,7 +1455,7 @@ export default function AdminPage() {
       weekEnd.setHours(0, 0, 0, 0);
 
       if (weekStart < planStart || weekEnd > planEnd) {
-        const fmt = (d: Date) => { const dy = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'short' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${dy} ${m} ${y}` : `${m} ${dy}, ${y}`; };
+        const fmt = (d: Date) => { const dy = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'long' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${dy} ${m} ${y}` : `${m} ${dy}, ${y}`; };
         alert(`This week (${weekPlan.dateRange}) falls outside the active plan dates (${fmt(planStart)} – ${fmt(planEnd)}). Please select a week within the plan period, or update the plan dates in the Account tab.`);
         return;
       }
@@ -1766,13 +1771,15 @@ export default function AdminPage() {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className={`w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative ${isSelected ? "" : ""}`}>
+                <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+                  {client.stravaProfileUrl ? (
+                    <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                  ) : null}
                   {client.gender === "female" ? (
-                    <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -1808,13 +1815,15 @@ export default function AdminPage() {
                       const isSelected = selectedClient === client.id;
                       return (
                         <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+                            {client.stravaProfileUrl ? (
+                              <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                            ) : null}
                             {client.gender === "female" ? (
-                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                             ) : (
-                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                             )}
-                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -1850,13 +1859,15 @@ export default function AdminPage() {
                       const isSelected = selectedClient === client.id;
                       return (
                         <button key={client.id} onClick={() => { setSelectedClient(client.id); setAdminWeekOffset(0); setClientTab("plan"); setEditingWeek(false); setShowTemplatesView(false); setShowNotificationSettings(false); setShowChangelog(false); setAdminStatsFilter("currentWeek"); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
-                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
+                          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+                            {client.stravaProfileUrl ? (
+                              <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                            ) : null}
                             {client.gender === "female" ? (
-                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                             ) : (
-                              <svg className="w-8 h-8" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                             )}
-                            {client.stravaProfileUrl && <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -1931,13 +1942,15 @@ export default function AdminPage() {
             {/* Client Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 relative">
+                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-secondary flex items-center justify-center">
+                  {selectedClientData.stravaProfileUrl ? (
+                    <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                  ) : null}
                   {selectedClientData.gender === "female" ? (
-                    <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-10 h-10 ${selectedClientData.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-10 h-10 ${selectedClientData.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
-                  {selectedClientData.stravaProfileUrl && <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-full h-full rounded-full object-cover absolute inset-0 z-10" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                 </div>
                 <div>
                 <div className="flex items-center gap-3">
@@ -2791,8 +2804,8 @@ export default function AdminPage() {
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Date Format</h3>
                   <p className="text-gray-300 text-xs mb-4">Choose how dates are displayed across the platform.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => { setAdminDateFormat("MM/DD/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "MM/DD/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "MM/DD/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>MM/DD/YYYY <span className="text-gray-500 text-xs ml-1">(06/28/2026)</span></button>
-                    <button onClick={() => { setAdminDateFormat("DD/MM/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "DD/MM/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "DD/MM/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>DD/MM/YYYY <span className="text-gray-500 text-xs ml-1">(28/06/2026)</span></button>
+                    <button onClick={() => { setAdminDateFormat("MM/DD/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "MM/DD/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "MM/DD/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}><span>June 23, 2026</span><br/><span className="text-xs opacity-60">Month first</span></button>
+                    <button onClick={() => { setAdminDateFormat("DD/MM/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "DD/MM/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "DD/MM/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}><span>23 June 2026</span><br/><span className="text-xs opacity-60">Day first</span></button>
                   </div>
                 </div>
 

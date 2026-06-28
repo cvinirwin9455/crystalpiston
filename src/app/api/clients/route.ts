@@ -95,7 +95,11 @@ export async function GET() {
   const stravaConnectedUserIds = new Set<string>()
   for (const sc of stravaConnections || []) {
     stravaConnectedUserIds.add(sc.user_id)
-    if (sc.athlete_profile) stravaProfileByUserId.set(sc.user_id, sc.athlete_profile)
+    if (sc.athlete_profile) {
+      // Ensure HTTPS — Strava sometimes returns HTTP URLs which get blocked as mixed content
+      const profileUrl = sc.athlete_profile.replace(/^http:\/\//i, 'https://')
+      stravaProfileByUserId.set(sc.user_id, profileUrl)
+    }
   }
 
   // Fetch all coach assignments for all clients
