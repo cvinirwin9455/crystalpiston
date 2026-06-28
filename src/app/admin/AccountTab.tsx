@@ -274,7 +274,20 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
               </div>
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Birthday</label>
-                <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                <div className="flex gap-2">
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').toLocaleDateString('en-US', { month: 'long' }) : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); const monthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(e.target.value); if (monthIdx >= 0) { current.setMonth(monthIdx); setBirthday(current.toISOString().split('T')[0]); } }} className="flex-1 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                    <option value="" disabled>Month</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').getDate().toString() : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setDate(parseInt(e.target.value)); setBirthday(current.toISOString().split('T')[0]); }} className="w-16 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                    <option value="" disabled>Day</option>
+                    {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
+                  </select>
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').getFullYear().toString() : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setFullYear(parseInt(e.target.value)); setBirthday(current.toISOString().split('T')[0]); }} className="w-20 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                    <option value="" disabled>Year</option>
+                    {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
