@@ -527,6 +527,7 @@ export default function DashboardPage() {
               completed: wo.completed || false,
               stravaSynced: wo.stravaSynced || false,
               stravaActivityName: wo.stravaActivityName || null,
+              structure: wo.structure || null,
               status: wo.status || undefined,
               skipReason: wo.skipReason || undefined,
               log: wo.log || undefined,
