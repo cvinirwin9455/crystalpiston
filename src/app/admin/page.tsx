@@ -2730,9 +2730,13 @@ export default function AdminPage() {
                                   const updated = [...weekPlan.days];
                                   const workouts = [...updated[i].workouts];
                                   (workouts[wi] as any).structure = structure;
-                                  // Auto-calculate distance
+                                  // Auto-calculate distance in the workout's unit
                                   const autoMiles = calculateTotalDistance(structure);
-                                  if (autoMiles > 0) (workouts[wi] as any).miles = autoMiles.toString();
+                                  if (autoMiles > 0) {
+                                    const unit = (workouts[wi] as any).distanceUnit || adminDistanceUnit;
+                                    const autoValue = unit === 'km' ? (autoMiles * 1.60934) : autoMiles;
+                                    (workouts[wi] as any).miles = autoValue.toFixed(2);
+                                  }
                                   updated[i] = { ...updated[i], workouts };
                                   setWeekPlan({ ...weekPlan, days: updated });
                                 }}

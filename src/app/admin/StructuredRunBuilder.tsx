@@ -257,7 +257,7 @@ export default function StructuredRunBuilder({ structure, onChange, distanceUnit
         <div className="bg-primary/50 border border-white/5 rounded-lg p-2 mt-2">
           <p className="text-gray-400 text-[10px] uppercase mb-1">Preview (client sees):</p>
           <p className="text-white text-xs whitespace-pre-line leading-relaxed">{formatStructureForDisplay(structure)}</p>
-          <p className="text-purple-300 text-[10px] mt-1">Auto-calculated: {calculateTotalDistance(structure)} mi</p>
+          <p className="text-purple-300 text-[10px] mt-1">Auto-calculated: {distanceUnit === 'km' ? (calculateTotalDistance(structure) * 1.60934).toFixed(2) : calculateTotalDistance(structure)} {distanceUnit === 'km' ? 'km' : 'mi'}</p>
         </div>
       )}
     </div>
