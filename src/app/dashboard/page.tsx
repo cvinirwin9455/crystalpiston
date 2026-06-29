@@ -9,8 +9,21 @@ type ClientWorkout = { id: string; day: string; type: string; trainingType: stri
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
 
 // Helper: format structured workout for display
-function formatWorkoutStructure(structure: any): string {
+function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", sourceUnit?: "mi" | "km"): string {
   if (!structure) return '';
+
+  // Helper to convert distance values based on unit preference
+  const convertVal = (value: string, unit: string): { value: string; unit: string } => {
+    if (!targetUnit || !value || !parseFloat(value)) return { value, unit };
+    // Only convert distance units (not time)
+    if (unit === 'miles' && targetUnit === 'km') {
+      return { value: (parseFloat(value) * 1.60934).toFixed(2).replace(/\.?0+$/, ''), unit: 'km' };
+    }
+    if (unit === 'km' && targetUnit === 'mi') {
+      return { value: (parseFloat(value) / 1.60934).toFixed(2).replace(/\.?0+$/, ''), unit: 'miles' };
+    }
+    return { value, unit };
+  };
 
   // Cross-training structure (has exercises array)
   if (structure.exercises && Array.isArray(structure.exercises)) {
@@ -32,27 +45,32 @@ function formatWorkoutStructure(structure: any): string {
   const unitLabel = (u: string) => { switch (u) { case "meters": return "m"; case "km": return "km"; case "miles": return "mi"; case "minutes": return "min"; case "seconds": return "sec"; case "hours": return "hr"; default: return u; } };
 
   if (structure.warmUp?.value) {
-    const u = unitLabel(structure.warmUp.unit);
-    parts.push(`Warm-up: ${structure.warmUp.value} ${u} easy`);
+    const c = convertVal(structure.warmUp.value, structure.warmUp.unit);
+    const u = unitLabel(c.unit);
+    parts.push(`Warm-up: ${c.value} ${u} easy`);
   }
 
   for (const block of structure.blocks || []) {
     if (block.blockType === "tempo" && block.work?.value) {
-      parts.push(`${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}`);
+      const c = convertVal(block.work.value, block.work.unit);
+      parts.push(`${c.value} ${unitLabel(c.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}`);
     } else if (block.blockType === "progression" && block.segments?.length) {
-      parts.push(block.segments.map((s: any) => `${s.value} ${unitLabel(s.unit)}${s.intensity ? ` ${s.intensity}` : ''}`).join(' + '));
+      parts.push(block.segments.map((s: any) => { const c = convertVal(s.value, s.unit); return `${c.value} ${unitLabel(c.unit)}${s.intensity ? ` ${s.intensity}` : ''}`; }).join(' + '));
     } else if (block.blockType === "fartlek" && block.work?.value) {
       const rest = block.fartlekRest;
-      parts.push(`${block.reps || '?'} x (${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)`);
+      const cw = convertVal(block.work.value, block.work.unit);
+      parts.push(`${block.reps || '?'} x (${cw.value} ${unitLabel(cw.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)`);
     } else if (block.work?.value) {
-      const recov = (block.recovery?.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : '';
-      parts.push(`${block.reps || '?'} x ${block.work.value}${unitLabel(block.work.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${recov}`);
+      const cw = convertVal(block.work.value, block.work.unit);
+      const recov = (block.recovery?.value && parseFloat(block.recovery.value) > 0) ? (() => { const cr = convertVal(block.recovery.value, block.recovery.unit); return ` w/ ${cr.value}${unitLabel(cr.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}`; })() : '';
+      parts.push(`${block.reps || '?'} x ${cw.value}${unitLabel(cw.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${recov}`);
     }
   }
 
   if (structure.coolDown?.value) {
-    const u = unitLabel(structure.coolDown.unit);
-    parts.push(`Cool-down: ${structure.coolDown.value} ${u} easy`);
+    const c = convertVal(structure.coolDown.value, structure.coolDown.unit);
+    const u = unitLabel(c.unit);
+    parts.push(`Cool-down: ${c.value} ${u} easy`);
   }
 
   return parts.join('\n');
@@ -1290,7 +1308,7 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
-                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure)}</div>
+                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure, getWorkoutUnit(workout.id), workout.distanceUnit)}</div>
                           ) : workout.description ? (
                             <p className="text-gray-400 text-sm">{workout.description}</p>
                           ) : null}
