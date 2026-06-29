@@ -1419,7 +1419,7 @@ export default function AdminPage() {
   const currentWeekWorkouts = selectedWeek ? selectedWeek.workouts : [];
 
   // Client-added workout miles (for stats)
-  const allClientAddedMiles = publishedWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0);
+  const allClientAddedMiles = publishedWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0);
   const planClientAddedMiles = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientAddedMiles;
     const planStart = new Date(activePlan.startDate);
@@ -1433,9 +1433,9 @@ export default function AdminPage() {
       weekMonday.setHours(0, 0, 0, 0);
       return weekMonday >= planStart && weekMonday <= planEnd;
     });
-    return planWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0);
+    return planWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0);
   })();
-  const currentWeekClientMiles = selectedWeek ? (selectedWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
+  const currentWeekClientMiles = selectedWeek ? (selectedWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0) : 0;
 
   const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts.filter(w => w.type !== "rest") : adminStatsFilter === "currentPlan" ? planFilteredWorkouts.filter(w => w.type !== "rest") : allClientWorkouts.filter(w => w.type !== "rest");
   const displayMarked = displayWorkouts.filter((w) => w.completed);
