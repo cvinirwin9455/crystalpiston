@@ -52,25 +52,38 @@ export async function POST(request: Request) {
 
     // Process the activity asynchronously
     // We respond immediately to Strava (they require < 2 second response)
-    // Then process in background via internal API call
+    // Then process in background via internal API call with retry
     const url = new URL(request.url)
     const processUrl = `${url.protocol}//${url.host}/api/strava/activities`
 
-    // Fire and forget - process in background
-    fetch(processUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-Strava-Webhook-Secret': getVerifyToken(),
-      },
-      body: JSON.stringify({
+    // Fire with retry (up to 3 attempts with exponential backoff)
+    const processWithRetry = async () => {
+      const payload = JSON.stringify({
         athleteId: event.owner_id,
         activityId: event.object_id,
         aspectType: event.aspect_type,
-      }),
-    }).catch(err => {
-      console.error('Failed to trigger activity processing:', err)
-    })
+      })
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const res = await fetch(processUrl, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Strava-Webhook-Secret': getVerifyToken(),
+            },
+            body: payload,
+          })
+          if (res.ok || res.status < 500) return // Success or client error (don't retry)
+          console.error(`Strava activity processing attempt ${attempt} failed: ${res.status}`)
+        } catch (err) {
+          console.error(`Strava activity processing attempt ${attempt} error:`, err)
+        }
+        // Wait before retry: 2s, 4s, 8s
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt - 1)))
+      }
+      console.error(`Strava activity processing FAILED after 3 attempts for activity ${event.object_id}`)
+    }
+    processWithRetry().catch(console.error)
 
     // Respond to Strava immediately
     return NextResponse.json({ received: true })
