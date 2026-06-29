@@ -1851,8 +1851,8 @@ export default function DashboardPage() {
                     </div>
                     ))}
 
-                    {/* Add Workout Button for this day (current week only) */}
-                    {weekOffset === 0 && (
+                    {/* Add Workout Button for this day (current week and past weeks) */}
+                    {weekOffset <= 0 && (
                       showAddWorkoutForDay === day ? (
                       <div className="border border-cyan-500/20 bg-cyan-500/5 rounded-2xl p-4 mt-2">
                         <p className="text-cyan-400 text-xs font-heading uppercase mb-3">Add Your Own Workout — {day}</p>
