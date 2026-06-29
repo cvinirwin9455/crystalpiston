@@ -179,9 +179,27 @@ export default function AdminPage() {
     const newUnit = oldUnit === 'km' ? 'mi' : 'km';
     const factor = oldUnit === 'mi' ? 1.60934 : (1 / 1.60934); // mi→km or km→mi
 
+    // Smart rounding: avoids floating-point drift on round-trip conversions
+    // (e.g. 5km → 3.11mi → 5.01km). Snaps to nearest clean value if within tolerance.
+    const smartRound = (num: number): string => {
+      // Snap to integer if within 0.011 (max round-trip error from 2dp + conversion)
+      const nearest = Math.round(num);
+      if (Math.abs(num - nearest) < 0.011) return String(nearest);
+      // Snap to nearest 0.5 if within 0.011 (e.g. 4.5, 7.5)
+      const nearestHalf = Math.round(num * 2) / 2;
+      if (Math.abs(num - nearestHalf) < 0.011) {
+        return nearestHalf % 1 === 0 ? String(nearestHalf) : String(nearestHalf);
+      }
+      // Standard 2dp, strip trailing zero
+      const rounded = Math.round(num * 100) / 100;
+      if (rounded % 1 === 0) return String(rounded);
+      const s = rounded.toFixed(2);
+      return s.endsWith('0') ? s.slice(0, -1) : s;
+    };
+
     // Convert main distance
     if (wo.miles && parseFloat(wo.miles) > 0) {
-      wo.miles = (parseFloat(wo.miles) * factor).toFixed(2);
+      wo.miles = smartRound(parseFloat(wo.miles) * factor);
     }
 
     // Convert pace (e.g. "10:00/mi" → "6:13/km")
@@ -204,11 +222,11 @@ export default function AdminPage() {
         if (unit === 'meters') return { unit, value }; // Never touch meters
         if (newUnit === 'km') {
           // Converting TO km: only 'miles' needs converting
-          if (unit === 'miles') return { unit: 'km', value: value && parseFloat(value) > 0 ? (parseFloat(value) * 1.60934).toFixed(2) : value };
+          if (unit === 'miles') return { unit: 'km', value: value && parseFloat(value) > 0 ? smartRound(parseFloat(value) * 1.60934) : value };
           return { unit, value }; // Already km or something else
         } else {
           // Converting TO mi: only 'km' needs converting
-          if (unit === 'km') return { unit: 'miles', value: value && parseFloat(value) > 0 ? (parseFloat(value) / 1.60934).toFixed(2) : value };
+          if (unit === 'km') return { unit: 'miles', value: value && parseFloat(value) > 0 ? smartRound(parseFloat(value) / 1.60934) : value };
           return { unit, value }; // Already miles or something else
         }
       };
