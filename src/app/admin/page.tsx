@@ -2953,14 +2953,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="bg-primary/30 border border-white/5 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1"><span className="text-yellow-400">&#189;</span><p className="text-white text-sm font-medium">Client partially completes a workout</p></div>
-                    <p className="text-gray-300 text-xs mb-3">Get an email each time any client partially completes a workout with what they did and why they stopped</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => updateNotifSetting("workoutPartial", "immediate")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "immediate" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Immediately</button>
-                      <button onClick={() => updateNotifSetting("workoutPartial", "off")} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${(notifications as any).workoutPartial === "off" ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Off</button>
-                    </div>
-                  </div>
+
                 </div>
 
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-6">
