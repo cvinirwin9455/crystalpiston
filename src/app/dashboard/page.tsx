@@ -661,12 +661,19 @@ export default function DashboardPage() {
     const secs = miSeconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}/mi`;
   };
+  // Universal pace converter based on current preference
+  const convertPace = (pace: string | null | undefined): string => {
+    if (!pace) return '';
+    if (clientDistanceUnit === 'km' && pace.includes('/mi')) return convertPaceToKm(pace);
+    if (clientDistanceUnit === 'mi' && pace.includes('/km')) return convertPaceToMi(pace);
+    return pace;
+  };
 
   const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
   const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
 
   const currentWeek = getWeekPlan(weekOffset);
-  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + (cw.miles || 0), 0) : 0;
+  const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + convertDist(cw.miles || 0, clientDistanceUnit, 'mi'), 0) : 0;
   // Convert all programmed miles to client's preferred unit before summing (run + walk only)
   const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
   const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
@@ -679,7 +686,7 @@ export default function DashboardPage() {
   const statsComplete = statsWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
   const statsPartial = statsWorkouts.filter(w => w.status === "partial");
   const statsSkipped = statsWorkouts.filter(w => w.status === "skipped");
-  const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + (cw.miles || 0), 0);
+  const clientMilesForStats = statsFilter === "thisWeek" ? clientMilesThisWeek : allClientWorkoutsMiles.reduce((s, cw) => s + convertDist(cw.miles || 0, clientDistanceUnit, 'mi'), 0);
   const statsMiles = statsComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => {
     if (w.log?.actualMiles) return s + convertDist(Number(w.log.actualMiles), clientDistanceUnit, 'mi');
     return s + convertDist(w.miles || 0, clientDistanceUnit, w.distanceUnit || 'mi');
@@ -1472,7 +1479,7 @@ export default function DashboardPage() {
                           {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
                             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                               {cw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{cw.duration}</span></span>}
-                              {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{cw.averagePace}</span></span>}
+                              {cw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{convertPace(cw.averagePace)}</span></span>}
                               {cw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{cw.avgHeartrate} bpm</span></span>}
                               {cw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{cw.maxHeartrate} bpm</span></span>}
                             </div>
@@ -1576,7 +1583,7 @@ export default function DashboardPage() {
                               {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                                   {cw.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{cw.duration}</span></span>}
-                                  {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{cw.averagePace}</span></span>}
+                                  {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{convertPace(cw.averagePace)}</span></span>}
                                   {cw.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{cw.avgHeartrate}</span></span>}
                                   {cw.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{cw.maxHeartrate}</span></span>}
                                 </div>
@@ -1820,7 +1827,7 @@ export default function DashboardPage() {
                                     {(scw.averagePace || scw.duration || scw.avgHeartrate) && (
                                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                                         {scw.duration && <span className="text-gray-400 text-xs">Duration: <span className="text-white">{scw.duration}</span></span>}
-                                        {scw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{scw.averagePace}</span></span>}
+                                        {scw.averagePace && <span className="text-gray-400 text-xs">Pace: <span className="text-white">{convertPace(scw.averagePace)}</span></span>}
                                         {scw.avgHeartrate && <span className="text-gray-400 text-xs">Avg HR: <span className="text-red-400">{scw.avgHeartrate} bpm</span></span>}
                                         {scw.maxHeartrate && <span className="text-gray-400 text-xs">Max HR: <span className="text-red-400">{scw.maxHeartrate} bpm</span></span>}
                                       </div>

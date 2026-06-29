@@ -1033,6 +1033,30 @@ export default function AdminPage() {
   const distUnitLabel = adminDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
 
+  // Pace conversion helpers
+  const convertPace = (pace: string | null | undefined): string => {
+    if (!pace) return '';
+    if (adminDistanceUnit === 'km' && pace.includes('/mi')) {
+      const match = pace.match(/^(\d+):(\d+)\/mi$/);
+      if (!match) return pace;
+      const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
+      const kmSeconds = Math.round(totalSeconds / 1.60934);
+      const mins = Math.floor(kmSeconds / 60);
+      const secs = kmSeconds % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}/km`;
+    }
+    if (adminDistanceUnit === 'mi' && pace.includes('/km')) {
+      const match = pace.match(/^(\d+):(\d+)\/km$/);
+      if (!match) return pace;
+      const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
+      const miSeconds = Math.round(totalSeconds * 1.60934);
+      const mins = Math.floor(miSeconds / 60);
+      const secs = miSeconds % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}/mi`;
+    }
+    return pace;
+  };
+
   // Global date formatter that respects saved date format preference
   // Always uses named months so dates are never ambiguous
   const fmtDate = (dateStr: string | null | undefined, options?: { includeYear?: boolean }) => {
@@ -2235,7 +2259,7 @@ export default function AdminPage() {
                               <div className="flex flex-wrap gap-1.5">
                                 {w.log.rpe && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">RPE</span> <span className="text-white font-medium">{w.log.rpe}/10</span></span>}
                                 {w.log.actualMiles && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">{distUnitShort}</span> <span className="text-white font-medium">{convertDist(Number(w.log.actualMiles))}</span></span>}
-                                {w.log.actualPace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{w.log.actualPace}</span></span>}
+                                {w.log.actualPace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{convertPace(w.log.actualPace)}</span></span>}
                                 {w.log.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{w.log.duration}</span></span>}
                                 {w.log.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{w.log.avgHeartrate}</span></span>}
                                 {w.log.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{w.log.maxHeartrate}</span></span>}
@@ -2335,7 +2359,7 @@ export default function AdminPage() {
                                 {(cw.averagePace || cw.duration || cw.avgHeartrate) && (
                                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                                     {cw.duration && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Dur</span> <span className="text-white font-medium">{cw.duration}</span></span>}
-                                    {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{cw.averagePace}</span></span>}
+                                    {cw.averagePace && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Pace</span> <span className="text-white font-medium">{convertPace(cw.averagePace)}</span></span>}
                                     {cw.avgHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">HR</span> <span className="text-red-400 font-medium">{cw.avgHeartrate}</span></span>}
                                     {cw.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{cw.maxHeartrate}</span></span>}
                                   </div>
@@ -2603,7 +2627,8 @@ export default function AdminPage() {
                           {wo.type === "run" && (
                             <>
                               <StructuredRunBuilder
-                                structure={(wo as any).structure || { warmUp: null, blocks: [{ blockType: "intervals", reps: "", work: { type: "distance", value: "", unit: "meters" }, intensity: "", recovery: { type: "distance", value: "", unit: "meters", recoveryType: "Jog" } }], coolDown: null }}
+                                structure={(wo as any).structure || { warmUp: null, blocks: [{ blockType: "intervals", reps: "", work: { type: "distance", value: "", unit: adminDistanceUnit === "km" ? "km" : "miles" }, intensity: "", recovery: { type: "distance", value: "", unit: adminDistanceUnit === "km" ? "km" : "miles", recoveryType: "Jog" } }], coolDown: null }}
+                                distanceUnit={adminDistanceUnit}
                                 onChange={(structure) => {
                                   const updated = [...weekPlan.days];
                                   const workouts = [...updated[i].workouts];

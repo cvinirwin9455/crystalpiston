@@ -62,13 +62,13 @@ const BLOCK_TYPES = [
   { value: "fartlek", label: "Fartlek" },
 ] as const;
 
-function emptyBlock(): WorkBlock {
+function emptyBlock(defaultUnit: DistanceUnit = "miles"): WorkBlock {
   return {
     blockType: "intervals",
     reps: "",
-    work: { type: "distance", value: "", unit: "meters" },
+    work: { type: "distance", value: "", unit: defaultUnit },
     intensity: "",
-    recovery: { type: "distance", value: "", unit: "meters", recoveryType: "Jog" },
+    recovery: { type: "distance", value: "", unit: defaultUnit, recoveryType: "Jog" },
     segments: undefined,
     fartlekRest: undefined,
   };
@@ -191,9 +191,11 @@ function formatBlock(block: WorkBlock): string {
 interface Props {
   structure: WorkoutStructure;
   onChange: (structure: WorkoutStructure) => void;
+  distanceUnit?: "mi" | "km"; // Coach's preferred distance unit
 }
 
-export default function StructuredRunBuilder({ structure, onChange }: Props) {
+export default function StructuredRunBuilder({ structure, onChange, distanceUnit = "mi" }: Props) {
+  const defaultDistUnit: DistanceUnit = distanceUnit === "km" ? "km" : "miles";
   const update = (changes: Partial<WorkoutStructure>) => {
     onChange({ ...structure, ...changes });
   };
@@ -207,6 +209,7 @@ export default function StructuredRunBuilder({ structure, onChange }: Props) {
         label="Warm-up"
         data={structure.warmUp}
         onChange={(warmUp) => update({ warmUp })}
+        defaultDistUnit={defaultDistUnit}
       />
 
       {/* MAIN SET BLOCKS */}
@@ -216,6 +219,7 @@ export default function StructuredRunBuilder({ structure, onChange }: Props) {
             key={idx}
             block={block}
             index={idx}
+            defaultDistUnit={defaultDistUnit}
             onChange={(updated) => {
               const blocks = [...structure.blocks];
               blocks[idx] = updated;
@@ -232,7 +236,7 @@ export default function StructuredRunBuilder({ structure, onChange }: Props) {
 
         <button
           type="button"
-          onClick={() => update({ blocks: [...structure.blocks, emptyBlock()] })}
+          onClick={() => update({ blocks: [...structure.blocks, emptyBlock(defaultDistUnit)] })}
           className="text-purple-400 text-xs hover:text-purple-300 flex items-center gap-1"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -245,6 +249,7 @@ export default function StructuredRunBuilder({ structure, onChange }: Props) {
         label="Cool-down"
         data={structure.coolDown}
         onChange={(coolDown) => update({ coolDown })}
+        defaultDistUnit={defaultDistUnit}
       />
 
       {/* PREVIEW */}
@@ -262,7 +267,7 @@ export default function StructuredRunBuilder({ structure, onChange }: Props) {
 
 // ===== SUB-COMPONENTS =====
 
-function WarmUpCoolDownSection({ label, data, onChange }: { label: string; data: WarmUpCoolDown | null; onChange: (d: WarmUpCoolDown | null) => void }) {
+function WarmUpCoolDownSection({ label, data, onChange, defaultDistUnit }: { label: string; data: WarmUpCoolDown | null; onChange: (d: WarmUpCoolDown | null) => void; defaultDistUnit: DistanceUnit }) {
   const [enabled, setEnabled] = useState(!!data?.value);
 
   const toggle = () => {
@@ -270,7 +275,7 @@ function WarmUpCoolDownSection({ label, data, onChange }: { label: string; data:
       onChange(null);
       setEnabled(false);
     } else {
-      onChange({ type: "distance", value: "", unit: "miles" });
+      onChange({ type: "distance", value: "", unit: defaultDistUnit });
       setEnabled(true);
     }
   };
@@ -284,7 +289,7 @@ function WarmUpCoolDownSection({ label, data, onChange }: { label: string; data:
       </button>
       {enabled && data && (
         <>
-          <select value={data.type} onChange={(e) => onChange({ ...data, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "minutes" : "miles" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
+          <select value={data.type} onChange={(e) => onChange({ ...data, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "minutes" : defaultDistUnit })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
             <option value="distance">Distance</option>
             <option value="time">Time</option>
           </select>
@@ -308,7 +313,7 @@ function WarmUpCoolDownSection({ label, data, onChange }: { label: string; data:
 }
 
 
-function BlockEditor({ block, index, onChange, onRemove, canRemove }: { block: WorkBlock; index: number; onChange: (b: WorkBlock) => void; onRemove: () => void; canRemove: boolean }) {
+function BlockEditor({ block, index, onChange, onRemove, canRemove, defaultDistUnit }: { block: WorkBlock; index: number; onChange: (b: WorkBlock) => void; onRemove: () => void; canRemove: boolean; defaultDistUnit: DistanceUnit }) {
   const updateBlock = (changes: Partial<WorkBlock>) => onChange({ ...block, ...changes });
 
   return (
@@ -349,14 +354,14 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
         <input type="text" value={block.reps} onChange={(e) => onChange({ ...block, reps: e.target.value })} className="w-10 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="#" />
         <span className="text-gray-400 text-xs">x</span>
         {/* Work */}
-        <select value={block.work.type} onChange={(e) => onChange({ ...block, work: { ...block.work, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+        <select value={block.work.type} onChange={(e) => onChange({ ...block, work: { ...block.work, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : defaultDistUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
           <option value="distance">Dist</option>
           <option value="time">Time</option>
         </select>
         <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.work.type === "distance" ? (
           <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as DistanceUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-            <option value="meters">m</option>
+            <option value="meters">meters</option>
             <option value="km">km</option>
             <option value="miles">mi</option>
           </select>
@@ -396,7 +401,7 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
         <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.recovery.type === "distance" ? (
           <select value={block.recovery.unit} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, unit: e.target.value as DistanceUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-            <option value="meters">m</option>
+            <option value="meters">meters</option>
             <option value="km">km</option>
             <option value="miles">mi</option>
           </select>
