@@ -9,6 +9,7 @@ const updates = [
   {
     date: "June 29, 2026",
     items: [
+      { area: "Admin", text: "Fixed: Toggling distance units (KM↔MI) no longer causes rounding errors — e.g. 5km stays as 5km after switching to miles and back (previously showed 5.01)" },
       { area: "Admin", text: "Fixed: Strava profile picture now shows correctly in the admin header when a client is selected" },
       { area: "Admin", text: "NEW: Purple dot indicator in the sidebar shows which clients have recent workout comments (last 14 days)" },
       { area: "Admin", text: "Fixed: Current week highlight (yellow border) now shows correctly in the date picker calendar" },
