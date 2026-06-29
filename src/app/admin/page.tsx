@@ -745,6 +745,7 @@ export default function AdminPage() {
             coachNotes: w.coachNotes || '',
             distanceUnit: w.distanceUnit || 'mi',
             structure: w.structure || undefined,
+            crossTrainingStructure: w.crossTrainingStructure || undefined,
           })),
         };
       });

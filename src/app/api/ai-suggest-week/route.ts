@@ -311,6 +311,8 @@ AVAILABLE WORKOUT TYPES (use ONLY these exact values):
 
 FOR RUN WORKOUTS: Include a "structure" field with warm-up, blocks (intervals/tempo/progression), and cool-down. This is how the client sees the workout breakdown.
 
+FOR CROSS TRAINING WORKOUTS: Include a "crossTrainingStructure" field with exercises. Each exercise has a name, measure (reps/time/distance), optional weight, sets, rest time, and optional notes. This is how the client sees the cross-training breakdown.
+
 RESPONSE FORMAT:
 You must respond with a valid JSON object with this exact structure:
 {
@@ -337,6 +339,23 @@ You must respond with a valid JSON object with this exact structure:
         }
       ]
     },
+    {
+      "day": "Friday",
+      "workouts": [
+        {
+          "type": "cross",
+          "title": "Full Body Strength",
+          "coachNotes": "Focus on controlled movements. Rest as needed between sets.",
+          "crossTrainingStructure": {
+            "exercises": [
+              { "name": "Barbell Squat", "measureType": "reps", "measureValue": "10", "weight": "60", "weightUnit": "kg", "sets": 3, "rest": "01:30", "notes": "Full depth, controlled tempo" },
+              { "name": "Romanian Deadlift", "measureType": "reps", "measureValue": "10", "weight": "50", "weightUnit": "kg", "sets": 3, "rest": "01:30", "notes": "" },
+              { "name": "Plank", "measureType": "time", "measureValue": "0:45", "weight": "", "weightUnit": "kg", "sets": 3, "rest": "00:30", "notes": "Engage core, neutral spine" }
+            ]
+          }
+        }
+      ]
+    },
     ... (all 7 days Monday-Sunday)
   ]
 }
@@ -354,6 +373,22 @@ STRUCTURE RULES FOR RUN WORKOUTS:
 - For "progression" blockType: use "segments" array instead of work: [{ value, unit, type, intensity }]
 - For simple easy runs: one block with blockType "tempo", work = full distance, intensity = "Easy"
 - The "miles" field should equal the total of warm-up + all blocks + cool-down
+
+STRUCTURE RULES FOR CROSS TRAINING WORKOUTS:
+- crossTrainingStructure.exercises: array of exercise objects
+- Each exercise has:
+  - name: string (exercise name, e.g. "Barbell Squat", "Push-ups", "Plank", "Lunges")
+  - measureType: "reps" | "time" | "distance"
+  - measureValue: string (e.g. "12" for reps, "0:45" for time, "400" for distance in meters)
+  - weight: string (number, or "" for bodyweight exercises)
+  - weightUnit: "kg" | "lbs"
+  - sets: number (e.g. 3)
+  - rest: string in mm:ss format (e.g. "01:00", "01:30", "00:30")
+  - notes: string (coaching cues, optional — e.g. "Controlled tempo", "Full depth")
+- Always include a "title" field for cross-training (e.g. "Full Body Strength", "Lower Body Power", "Core & Mobility")
+- Choose exercises appropriate for runners (glute strength, core stability, single-leg work, injury prevention)
+- Include 4-8 exercises per cross-training session
+- Use bodyweight exercises (weight: "") when appropriate (planks, push-ups, lunges, etc.)
 
 Each day MUST have at least one workout. Use "rest" type for rest days (no structure needed for rest). The "miles" field should be a string number.
 
@@ -445,7 +480,7 @@ Respond with ONLY the JSON object, no markdown formatting or code blocks.`
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.85,
-        max_tokens: 2500,
+        max_tokens: 4000,
       }),
     })
 
