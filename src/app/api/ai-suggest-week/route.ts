@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, dateRange, coachNotes } = body
+  const { clientId, dateRange, coachNotes, distanceUnit, weightUnit } = body
 
   if (!clientId) {
     return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
@@ -309,6 +309,10 @@ AVAILABLE WORKOUT TYPES (use ONLY these exact values):
 - "stretching" with subtypes: FoamRoll, Stretching, Yoga
 - "rest" with subtype: Rest
 
+UNIT PREFERENCES:
+- Distance unit: ${distanceUnit === 'km' ? 'KILOMETERS (km). All distances must be in km. Use "km" as the unit in structure fields. Pace targets should be in /km format (e.g. "5:30/km").' : 'MILES (mi). All distances must be in miles. Use "miles" as the unit in structure fields. Pace targets should be in /mi format (e.g. "9:00/mi").'}
+- Weight unit for cross-training: ${weightUnit === 'lbs' ? 'POUNDS (lbs). Use "lbs" as weightUnit.' : 'KILOGRAMS (kg). Use "kg" as weightUnit.'}
+
 FOR RUN WORKOUTS: Include a "structure" field with warm-up, blocks (intervals/tempo/progression), and cool-down. This is how the client sees the workout breakdown.
 
 FOR CROSS TRAINING WORKOUTS: Include a "crossTrainingStructure" field with exercises. Each exercise has a name, measure (reps/time/distance), optional weight, sets, rest time, and optional notes. This is how the client sees the cross-training breakdown.
@@ -361,7 +365,7 @@ You must respond with a valid JSON object with this exact structure:
 }
 
 STRUCTURE RULES FOR RUN WORKOUTS:
-- warmUp/coolDown: use "type": "distance" or "time", with appropriate "unit" (miles, km, meters, minutes, hours, seconds)
+- warmUp/coolDown: use "type": "distance" or "time", with appropriate "unit" (${distanceUnit === 'km' ? 'km' : 'miles'}, meters, minutes, hours, seconds)
 - blocks: array of workout blocks. Each block has:
   - blockType: "intervals" | "tempo" | "progression" | "strides" | "hillRepeats" | "fartlek"
   - reps: number of repetitions (as string)

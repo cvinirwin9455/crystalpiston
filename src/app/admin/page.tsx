@@ -713,6 +713,8 @@ export default function AdminPage() {
           clientId: client.clientId,
           dateRange: weekPlan.dateRange || null,
           coachNotes: aiCoachNotes || null,
+          distanceUnit: adminDistanceUnit,
+          weightUnit: adminWeightUnit,
         }),
       });
 
@@ -730,7 +732,7 @@ export default function AdminPage() {
       const mappedDays = dayNames.map(dayName => {
         const aiDay = suggestion.days.find((d: any) => d.day === dayName);
         if (!aiDay || !aiDay.workouts || aiDay.workouts.length === 0) {
-          return { day: dayName, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] };
+          return { day: dayName, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: adminDistanceUnit }] };
         }
         return {
           day: dayName,
@@ -743,7 +745,7 @@ export default function AdminPage() {
             paceTarget: w.paceTarget || '',
             location: w.location || '',
             coachNotes: w.coachNotes || '',
-            distanceUnit: w.distanceUnit || 'mi',
+            distanceUnit: w.distanceUnit || adminDistanceUnit,
             structure: w.structure || undefined,
             crossTrainingStructure: w.crossTrainingStructure || undefined,
           })),
