@@ -49,8 +49,25 @@ export async function POST(request: Request) {
   const accessToken = await getValidAccessToken(connection, adminClient)
 
   // Convert dates to Unix timestamps
-  const after = Math.floor(new Date(afterDate).getTime() / 1000)
-  const before = beforeDate ? Math.floor(new Date(beforeDate).getTime() / 1000) : Math.floor(Date.now() / 1000)
+  // If afterDate is a date-only string, use start of that day (00:00:00 UTC)
+  const afterDateObj = new Date(afterDate)
+  if (typeof afterDate === 'string' && afterDate.length === 10) {
+    afterDateObj.setUTCHours(0, 0, 0, 0)
+  }
+  const after = Math.floor(afterDateObj.getTime() / 1000)
+  // If beforeDate is a date-only string (YYYY-MM-DD), use end of that day (23:59:59 UTC)
+  // to ensure activities done in the evening (local time) aren't missed
+  let before: number
+  if (beforeDate) {
+    const beforeDateObj = new Date(beforeDate)
+    // If it looks like a date-only string (no time component), set to end of day
+    if (typeof beforeDate === 'string' && beforeDate.length === 10) {
+      beforeDateObj.setUTCHours(23, 59, 59, 999)
+    }
+    before = Math.floor(beforeDateObj.getTime() / 1000)
+  } else {
+    before = Math.floor(Date.now() / 1000)
+  }
 
   // Debug: log the conversion
   console.log('Strava import date conversion:', { afterDate, beforeDate, after, before, afterISO: new Date(after * 1000).toISOString(), beforeISO: new Date(before * 1000).toISOString() })
