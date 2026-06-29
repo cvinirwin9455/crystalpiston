@@ -80,13 +80,33 @@ function emptyProgressionSegment(defaultUnit: DistanceUnit = "miles") {
 }
 
 // Calculate total distance in miles from the structure
-export function calculateTotalDistance(structure: WorkoutStructure): number {
+export function calculateTotalDistance(structure: WorkoutStructure, targetUnit?: "mi" | "km"): number {
   if (!structure) return 0;
   let total = 0;
 
+  const toTargetUnit = (value: number, unit: string, type: string): number => {
+    if (type === "time") return 0;
+    if (targetUnit === "km") {
+      switch (unit) {
+        case "km": return value;
+        case "miles": return value * 1.60934;
+        case "meters": return value / 1000;
+        default: return 0;
+      }
+    } else {
+      // Default: miles
+      switch (unit) {
+        case "miles": return value;
+        case "km": return value * 0.621371;
+        case "meters": return value * 0.000621371;
+        default: return 0;
+      }
+    }
+  };
+
   // Warm-up
   if (structure.warmUp && structure.warmUp.value) {
-    total += toMiles(parseFloat(structure.warmUp.value) || 0, structure.warmUp.unit, structure.warmUp.type);
+    total += toTargetUnit(parseFloat(structure.warmUp.value) || 0, structure.warmUp.unit, structure.warmUp.type);
   }
 
   // Blocks
@@ -96,16 +116,16 @@ export function calculateTotalDistance(structure: WorkoutStructure): number {
 
       if (block.blockType === "progression" && block.segments) {
         for (const seg of block.segments) {
-          total += toMiles(parseFloat(seg.value) || 0, seg.unit, seg.type);
+          total += toTargetUnit(parseFloat(seg.value) || 0, seg.unit, seg.type);
         }
       } else if (block.blockType === "tempo") {
         if (block.work) {
-          total += toMiles(parseFloat(block.work.value) || 0, block.work.unit, block.work.type);
+          total += toTargetUnit(parseFloat(block.work.value) || 0, block.work.unit, block.work.type);
         }
       } else {
         // Intervals, strides, hill repeats, fartlek
-        const workDist = block.work ? toMiles(parseFloat(block.work.value) || 0, block.work.unit, block.work.type) : 0;
-        const recovDist = block.recovery ? toMiles(parseFloat(block.recovery.value) || 0, block.recovery.unit, block.recovery.type) : 0;
+        const workDist = block.work ? toTargetUnit(parseFloat(block.work.value) || 0, block.work.unit, block.work.type) : 0;
+        const recovDist = block.recovery ? toTargetUnit(parseFloat(block.recovery.value) || 0, block.recovery.unit, block.recovery.type) : 0;
         total += reps * (workDist + recovDist);
       }
     }
@@ -113,7 +133,7 @@ export function calculateTotalDistance(structure: WorkoutStructure): number {
 
   // Cool-down
   if (structure.coolDown && structure.coolDown.value) {
-    total += toMiles(parseFloat(structure.coolDown.value) || 0, structure.coolDown.unit, structure.coolDown.type);
+    total += toTargetUnit(parseFloat(structure.coolDown.value) || 0, structure.coolDown.unit, structure.coolDown.type);
   }
 
   return +total.toFixed(2);
@@ -257,7 +277,7 @@ export default function StructuredRunBuilder({ structure, onChange, distanceUnit
         <div className="bg-primary/50 border border-white/5 rounded-lg p-2 mt-2">
           <p className="text-gray-400 text-[10px] uppercase mb-1">Preview (client sees):</p>
           <p className="text-white text-xs whitespace-pre-line leading-relaxed">{formatStructureForDisplay(structure)}</p>
-          <p className="text-purple-300 text-[10px] mt-1">Auto-calculated: {distanceUnit === 'km' ? (calculateTotalDistance(structure) * 1.60934).toFixed(2) : calculateTotalDistance(structure)} {distanceUnit === 'km' ? 'km' : 'mi'}</p>
+          <p className="text-purple-300 text-[10px] mt-1">Auto-calculated: {calculateTotalDistance(structure, distanceUnit === 'km' ? 'km' : 'mi')} {distanceUnit === 'km' ? 'km' : 'mi'}</p>
         </div>
       )}
     </div>
@@ -296,7 +316,7 @@ function WarmUpCoolDownSection({ label, data, onChange, defaultDistUnit }: { lab
           </select>
           <input type="text" value={data.value} onChange={(e) => onChange({ ...data, value: e.target.value })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
           {data.type === "distance" ? (
-            <button type="button" onClick={() => onChange({ ...data, unit: data.unit === "meters" ? defaultDistUnit : "meters" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+            <button type="button" onClick={() => onChange({ ...data, unit: data.unit === "meters" ? defaultDistUnit : "meters", value: "" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
               {data.unit === "meters" ? "meters" : mainUnitLabel}
             </button>
           ) : (
@@ -360,7 +380,7 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
         </select>
         <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.work.type === "distance" ? (
-          <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+          <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters", value: "" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
             {block.work.unit === "meters" ? "meters" : mainUnitLabel}
           </button>
         ) : (
@@ -398,7 +418,7 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
         </select>
         <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.recovery.type === "distance" ? (
-          <button type="button" onClick={() => onChange({ ...block, recovery: { ...block.recovery!, unit: block.recovery!.unit === "meters" ? defaultDistUnit : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+          <button type="button" onClick={() => onChange({ ...block, recovery: { ...block.recovery!, unit: block.recovery!.unit === "meters" ? defaultDistUnit : "meters", value: "" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
             {block.recovery.unit === "meters" ? "meters" : mainUnitLabel}
           </button>
         ) : (
@@ -428,7 +448,7 @@ function TempoEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; o
       </select>
       <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
       {block.work.type === "distance" ? (
-        <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+        <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters", value: "" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
           {block.work.unit === "meters" ? "meters" : mainUnitLabel}
         </button>
       ) : (
@@ -465,7 +485,7 @@ function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBl
           <span className="text-gray-500 text-xs w-4">{idx + 1}.</span>
           <input type="text" value={seg.value} onChange={(e) => updateSegment(idx, { value: e.target.value })} className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
           {seg.type === "distance" ? (
-            <button type="button" onClick={() => updateSegment(idx, { unit: seg.unit === "meters" ? defaultDistUnit : "meters" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+            <button type="button" onClick={() => updateSegment(idx, { unit: seg.unit === "meters" ? defaultDistUnit : "meters", value: "" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
               {seg.unit === "meters" ? "meters" : mainUnitLabel}
             </button>
           ) : (

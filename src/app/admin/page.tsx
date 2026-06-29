@@ -2736,11 +2736,10 @@ export default function AdminPage() {
                                   const workouts = [...updated[i].workouts];
                                   (workouts[wi] as any).structure = structure;
                                   // Auto-calculate distance in the workout's unit
-                                  const autoMiles = calculateTotalDistance(structure);
-                                  if (autoMiles > 0) {
-                                    const unit = (workouts[wi] as any).distanceUnit || adminDistanceUnit;
-                                    const autoValue = unit === 'km' ? (autoMiles * 1.60934) : autoMiles;
-                                    (workouts[wi] as any).miles = autoValue.toFixed(2);
+                                  const woUnit = (workouts[wi] as any).distanceUnit || adminDistanceUnit;
+                                  const autoValue = calculateTotalDistance(structure, woUnit);
+                                  if (autoValue > 0) {
+                                    (workouts[wi] as any).miles = autoValue.toString();
                                   }
                                   updated[i] = { ...updated[i], workouts };
                                   setWeekPlan({ ...weekPlan, days: updated });
