@@ -180,6 +180,7 @@ export default function DashboardPage() {
   const [showNewBadge, setShowNewBadge] = useState(false);
   const [showUpdatesDropdown, setShowUpdatesDropdown] = useState(false);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
+  const [showClientMenu, setShowClientMenu] = useState(false);
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
 
   const clientUpdates = [
@@ -1082,12 +1083,36 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
-            <a href="/help" className="text-gray-400 hover:text-accent transition-colors" title="Help Center">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </a>
-            <a href="/auth/signout" className="text-gray-400 hover:text-accent transition-colors" title="Logout">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            </a>
+            <div className="relative">
+              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
+                  <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+                </div>
+                <span className="text-white text-xs font-medium hidden sm:block">{loggedInName || 'Account'}</span>
+                <svg className={`w-3 h-3 text-gray-400 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {showClientMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowClientMenu(false)} />
+                  <div className="absolute right-0 top-full mt-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[180px] overflow-hidden">
+                    <button onClick={() => { setActiveTab("account"); setShowClientMenu(false); }} className="w-full flex items-center gap-2.5 text-gray-400 hover:text-white text-xs py-2 px-3 hover:bg-white/5 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      Account Preferences
+                    </button>
+                    <a href="/help" className="w-full flex items-center gap-2.5 text-gray-400 hover:text-white text-xs py-2 px-3 hover:bg-white/5 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Help Center
+                    </a>
+                    <div className="border-t border-white/10 mt-1.5 pt-1.5">
+                      <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-gray-400 hover:text-accent text-xs py-2 px-3 hover:bg-white/5 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Logout
+                      </a>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>

@@ -34,6 +34,7 @@ export default function AdminPage() {
   const [showChangelog, setShowChangelog] = useState(false);
   const [showManageCoaches, setShowManageCoaches] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
 
@@ -2062,25 +2063,44 @@ export default function AdminPage() {
             );
           })()}
         </div>
-        <div className="p-3 border-t border-white/10 space-y-2">
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-            What&apos;s New
-            {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
-          </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-            Templates ({templates.length})
-          </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="w-full flex items-center gap-2 text-gray-400 hover:text-white text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            Account Preferences
-          </button>
-          <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); }} className={`w-full flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            Manage Coaches ({allCoaches.length})
-          </button>
-          <a href="/auth/signout" className="w-full flex items-center gap-2 text-gray-400 hover:text-accent text-xs py-1.5 px-2 rounded hover:bg-white/5 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>Logout</a>
+        <div className="p-3 border-t border-white/10">
+          <div className="relative">
+            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
+              <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
+                <span className="text-accent text-xs font-bold">{loggedInUser ? loggedInUser.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+              </div>
+              <span className="text-white text-xs font-medium truncate flex-1 text-left">{loggedInUser || 'Coach'}</span>
+              <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+              {showNewUpdatesBadge && <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full"></span>}
+            </button>
+            {showAdminMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  What&apos;s New
+                  {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                  Templates ({templates.length})
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showNotificationSettings && !selectedClient ? "text-accent" : "text-gray-400 hover:text-white"}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Account Preferences
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                  Manage Coaches ({allCoaches.length})
+                </button>
+                <div className="border-t border-white/10 mt-1.5 pt-1.5">
+                  <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-gray-400 hover:text-accent text-xs py-2 px-3 hover:bg-white/5 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Logout
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
