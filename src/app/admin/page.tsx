@@ -96,6 +96,21 @@ export default function AdminPage() {
     fetchAdminNotifPrefs();
   }, []);
 
+  // When admin preferences load, update the weekPlan distance defaults
+  useEffect(() => {
+    if (!adminNotifLoaded || weekPlan.dateRange) return; // Only update fresh/empty forms
+    setWeekPlan(prev => ({
+      ...prev,
+      days: prev.days.map(d => ({
+        ...d,
+        workouts: d.workouts.map(wo => ({
+          ...wo,
+          distanceUnit: wo.miles ? wo.distanceUnit : adminDistanceUnit,
+        })),
+      })),
+    }));
+  }, [adminNotifLoaded]);
+
   // Save admin notification preferences (called on every change)
   const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean, dateFormat?: string) => {
     try {
@@ -154,9 +169,91 @@ export default function AdminPage() {
     updated[dayIndex] = { ...updated[dayIndex], workouts };
     setWeekPlan({ ...weekPlan, days: updated });
   };
+
+  // Toggle distance unit for a workout: converts miles↔km (value, pace, structure)
+  const handleToggleDistanceUnit = (dayIndex: number, workoutIndex: number) => {
+    const updated = [...weekPlan.days];
+    const workouts = [...updated[dayIndex].workouts];
+    const wo = { ...workouts[workoutIndex] } as any;
+    const oldUnit = wo.distanceUnit || 'mi';
+    const newUnit = oldUnit === 'km' ? 'mi' : 'km';
+    const factor = oldUnit === 'mi' ? 1.60934 : (1 / 1.60934); // mi→km or km→mi
+
+    // Convert main distance
+    if (wo.miles && parseFloat(wo.miles) > 0) {
+      wo.miles = (parseFloat(wo.miles) * factor).toFixed(2);
+    }
+
+    // Convert pace (e.g. "10:00/mi" → "6:13/km")
+    if (wo.paceTarget) {
+      const paceMatch = wo.paceTarget.match(/^(\d+):(\d+)\/(mi|km)$/);
+      if (paceMatch) {
+        const totalSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2]);
+        const converted = newUnit === 'km' ? Math.round(totalSec / 1.60934) : Math.round(totalSec * 1.60934);
+        const mins = Math.floor(converted / 60);
+        const secs = converted % 60;
+        wo.paceTarget = `${mins}:${secs.toString().padStart(2, '0')}/${newUnit}`;
+      }
+    }
+
+    // Convert structure values (miles↔km, leave meters alone)
+    if (wo.structure) {
+      const convertStructUnit = (unit: string, value: string): { unit: string; value: string } => {
+        if (unit === 'meters') return { unit, value }; // Leave meters alone
+        if (oldUnit === 'mi' && unit === 'miles') return { unit: 'km', value: value && parseFloat(value) > 0 ? (parseFloat(value) * 1.60934).toFixed(2) : value };
+        if (oldUnit === 'km' && unit === 'km') return { unit: 'miles', value: value && parseFloat(value) > 0 ? (parseFloat(value) / 1.60934).toFixed(2) : value };
+        // If unit doesn't match the toggle direction, leave as-is
+        if (unit === 'miles' && oldUnit === 'km') return { unit: 'km', value: value && parseFloat(value) > 0 ? (parseFloat(value) * 1.60934).toFixed(2) : value };
+        if (unit === 'km' && oldUnit === 'mi') return { unit: 'miles', value: value && parseFloat(value) > 0 ? (parseFloat(value) / 1.60934).toFixed(2) : value };
+        return { unit, value };
+      };
+      const s = { ...wo.structure };
+      if (s.warmUp && s.warmUp.type === 'distance') {
+        const c = convertStructUnit(s.warmUp.unit, s.warmUp.value);
+        s.warmUp = { ...s.warmUp, unit: c.unit, value: c.value };
+      }
+      if (s.coolDown && s.coolDown.type === 'distance') {
+        const c = convertStructUnit(s.coolDown.unit, s.coolDown.value);
+        s.coolDown = { ...s.coolDown, unit: c.unit, value: c.value };
+      }
+      if (s.blocks) {
+        s.blocks = s.blocks.map((block: any) => {
+          const b = { ...block };
+          if (b.work && b.work.type === 'distance') {
+            const c = convertStructUnit(b.work.unit, b.work.value);
+            b.work = { ...b.work, unit: c.unit, value: c.value };
+          }
+          if (b.recovery && b.recovery.type === 'distance') {
+            const c = convertStructUnit(b.recovery.unit, b.recovery.value);
+            b.recovery = { ...b.recovery, unit: c.unit, value: c.value };
+          }
+          if (b.fartlekRest && b.fartlekRest.type === 'distance') {
+            const c = convertStructUnit(b.fartlekRest.unit, b.fartlekRest.value);
+            b.fartlekRest = { ...b.fartlekRest, unit: c.unit, value: c.value };
+          }
+          if (b.segments) {
+            b.segments = b.segments.map((seg: any) => {
+              if (seg.type === 'distance') {
+                const c = convertStructUnit(seg.unit, seg.value);
+                return { ...seg, unit: c.unit, value: c.value };
+              }
+              return seg;
+            });
+          }
+          return b;
+        });
+      }
+      wo.structure = s;
+    }
+
+    wo.distanceUnit = newUnit;
+    workouts[workoutIndex] = wo;
+    updated[dayIndex] = { ...updated[dayIndex], workouts };
+    setWeekPlan({ ...weekPlan, days: updated });
+  };
   const addWorkoutToDay = (dayIndex: number) => {
     const updated = [...weekPlan.days];
-    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] };
+    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] };
     setWeekPlan({ ...weekPlan, days: updated });
   };
   const removeWorkoutFromDay = (dayIndex: number, workoutIndex: number) => {
@@ -2600,7 +2697,7 @@ export default function AdminPage() {
                                 </select>
                                 <div className="flex items-center gap-1">
                                   <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
-                                  <button type="button" onClick={() => updateDayPlan(i, wi, "distanceUnit", wo.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
+                                  <button type="button" onClick={() => handleToggleDistanceUnit(i, wi)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
                                   <input type="text" value={wo.paceTarget} onChange={(e) => updateDayPlan(i, wi, "paceTarget", e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${wo.distanceUnit === "km" ? "km" : "mi"}`} />
                                 </div>
                               </>
@@ -2612,7 +2709,7 @@ export default function AdminPage() {
                                 </select>
                                 <div className="flex items-center gap-1">
                                   <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
-                                  <button type="button" onClick={() => updateDayPlan(i, wi, "distanceUnit", wo.distanceUnit === "km" ? "mi" : "km")} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
+                                  <button type="button" onClick={() => handleToggleDistanceUnit(i, wi)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
                                   <input type="text" value={wo.paceTarget} onChange={(e) => updateDayPlan(i, wi, "paceTarget", e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${wo.distanceUnit === "km" ? "km" : "mi"}`} />
                                 </div>
                               </>
