@@ -603,35 +603,64 @@ function getMonday(d: Date): Date {
   return date
 }
 
-// Helper: notify Crystal when a client confirms a Strava match
+// Helper: notify assigned coaches when a client confirms a Strava match
 async function notifyCrystalStravaMatch(adminClient: any, userId: string, stravaAct: any, workoutId: string, workoutType: string, request: Request) {
-  // Get the admin user
-  const { data: adminUsers } = await adminClient
-    .from('users')
-    .select('id, email')
-    .eq('role', 'admin')
-    .limit(1)
-  const adminUser = adminUsers?.[0]
-  if (!adminUser) return
+  // Get assigned coaches for this client via client_coaches
+  const { data: clientRecord } = await adminClient
+    .from('clients')
+    .select('id')
+    .eq('user_id', userId)
+    .single()
 
-  // Check admin's notification preferences
-  const { data: adminPrefs } = await adminClient
-    .from('notification_preferences')
-    .select('workout_completed, notification_emails')
-    .eq('user_id', adminUser.id)
-    .maybeSingle()
-
-  const pref = adminPrefs?.workout_completed || 'immediate'
-  if (pref !== 'immediate') return
-
-  // Get notification emails
   let notifEmails: string[] = []
-  if (adminPrefs?.notification_emails) {
-    notifEmails = adminPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+
+  if (clientRecord) {
+    const { data: coachAssignments } = await adminClient
+      .from('client_coaches')
+      .select('coach_id')
+      .eq('client_id', clientRecord.id)
+
+    if (coachAssignments && coachAssignments.length > 0) {
+      const coachIds = coachAssignments.map((ca: any) => ca.coach_id)
+      const { data: coachUsers } = await adminClient
+        .from('users')
+        .select('id, email')
+        .in('id', coachIds)
+
+      for (const coach of coachUsers || []) {
+        // Check each coach's notification preferences
+        const { data: coachPrefs } = await adminClient
+          .from('notification_preferences')
+          .select('workout_completed, notification_emails')
+          .eq('user_id', coach.id)
+          .maybeSingle()
+
+        const pref = coachPrefs?.workout_completed || 'immediate'
+        if (pref !== 'immediate') continue
+
+        // Use custom notification emails if set, otherwise coach's email
+        if (coachPrefs?.notification_emails) {
+          const emails = coachPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+          notifEmails.push(...emails)
+        } else if (coach.email) {
+          notifEmails.push(coach.email)
+        }
+      }
+    }
   }
-  if (notifEmails.length === 0 && adminUser.email) {
+
+  // Fallback: if no coach assignments found, use first admin
+  if (notifEmails.length === 0) {
+    const { data: adminUsers } = await adminClient
+      .from('users')
+      .select('id, email')
+      .eq('role', 'admin')
+      .limit(1)
+    const adminUser = adminUsers?.[0]
+    if (!adminUser?.email) return
     notifEmails = [adminUser.email]
   }
+
   if (notifEmails.length === 0) return
 
   // Get client name

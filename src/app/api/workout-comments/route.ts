@@ -168,7 +168,7 @@ export async function POST(request: Request) {
           let recipientName: string = ''
 
           if (isCoach) {
-            // Crystal commented → email the client
+            // Coach commented → email the client + other assigned coaches
             const { data: clientUser } = await adminClient
               .from('users')
               .select('email, name')
@@ -185,6 +185,51 @@ export async function POST(request: Request) {
             if (notifPrefs?.workout_comments_client !== false) {
               recipientEmail = clientUser?.email || null
               recipientName = clientUser?.name || 'there'
+            }
+
+            // Also notify OTHER assigned coaches (not the one who commented)
+            const { data: coachAssignments } = await adminClient
+              .from('client_coaches')
+              .select('coach_id')
+              .eq('client_id', week.client_id)
+
+            if (coachAssignments && coachAssignments.length > 0) {
+              const otherCoachIds = coachAssignments
+                .map((ca: any) => ca.coach_id)
+                .filter((id: string) => id !== user.id) // Exclude the commenting coach
+
+              if (otherCoachIds.length > 0) {
+                const { data: otherCoaches } = await adminClient
+                  .from('users')
+                  .select('id, email, name')
+                  .in('id', otherCoachIds)
+
+                const { sendEmail, buildWorkoutCommentEmail } = await import('@/lib/email')
+                for (const coach of otherCoaches || []) {
+                  const { data: coachPrefs } = await adminClient
+                    .from('notification_preferences')
+                    .select('client_message')
+                    .eq('user_id', coach.id)
+                    .maybeSingle()
+
+                  const shouldSend = !coachPrefs || coachPrefs.client_message !== 'off'
+                  if (shouldSend && coach.email) {
+                    const emailContent = buildWorkoutCommentEmail(
+                      coach.name?.split(' ')[0] || 'Coach',
+                      profile?.name?.split(' ')[0] || 'Someone',
+                      workout.day,
+                      workout.type,
+                      workout.title || '',
+                      workout.miles?.toString() || null,
+                      message.trim(),
+                      siteUrl,
+                      isCoach,
+                      profile?.name?.split(' ')[0] || undefined
+                    )
+                    sendEmail({ to: coach.email, ...emailContent }).catch(console.error)
+                  }
+                }
+              }
             }
           } else {
             // Client commented → email ALL assigned coaches
