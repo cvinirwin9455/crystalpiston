@@ -198,43 +198,48 @@ export default function AdminPage() {
 
     // Convert structure values (miles↔km, leave meters alone)
     if (wo.structure) {
-      const convertStructUnit = (unit: string, value: string): { unit: string; value: string } => {
-        if (unit === 'meters') return { unit, value }; // Leave meters alone
-        if (oldUnit === 'mi' && unit === 'miles') return { unit: 'km', value: value && parseFloat(value) > 0 ? (parseFloat(value) * 1.60934).toFixed(2) : value };
-        if (oldUnit === 'km' && unit === 'km') return { unit: 'miles', value: value && parseFloat(value) > 0 ? (parseFloat(value) / 1.60934).toFixed(2) : value };
-        // If unit doesn't match the toggle direction, leave as-is
-        if (unit === 'miles' && oldUnit === 'km') return { unit: 'km', value: value && parseFloat(value) > 0 ? (parseFloat(value) * 1.60934).toFixed(2) : value };
-        if (unit === 'km' && oldUnit === 'mi') return { unit: 'miles', value: value && parseFloat(value) > 0 ? (parseFloat(value) / 1.60934).toFixed(2) : value };
-        return { unit, value };
+      // Convert TO the newUnit: anything not already in newUnit gets converted
+      // meters always stay as meters
+      const convertToNewUnit = (unit: string, value: string): { unit: string; value: string } => {
+        if (unit === 'meters') return { unit, value }; // Never touch meters
+        if (newUnit === 'km') {
+          // Converting TO km: only 'miles' needs converting
+          if (unit === 'miles') return { unit: 'km', value: value && parseFloat(value) > 0 ? (parseFloat(value) * 1.60934).toFixed(2) : value };
+          return { unit, value }; // Already km or something else
+        } else {
+          // Converting TO mi: only 'km' needs converting
+          if (unit === 'km') return { unit: 'miles', value: value && parseFloat(value) > 0 ? (parseFloat(value) / 1.60934).toFixed(2) : value };
+          return { unit, value }; // Already miles or something else
+        }
       };
       const s = { ...wo.structure };
       if (s.warmUp && s.warmUp.type === 'distance') {
-        const c = convertStructUnit(s.warmUp.unit, s.warmUp.value);
+        const c = convertToNewUnit(s.warmUp.unit, s.warmUp.value);
         s.warmUp = { ...s.warmUp, unit: c.unit, value: c.value };
       }
       if (s.coolDown && s.coolDown.type === 'distance') {
-        const c = convertStructUnit(s.coolDown.unit, s.coolDown.value);
+        const c = convertToNewUnit(s.coolDown.unit, s.coolDown.value);
         s.coolDown = { ...s.coolDown, unit: c.unit, value: c.value };
       }
       if (s.blocks) {
         s.blocks = s.blocks.map((block: any) => {
           const b = { ...block };
           if (b.work && b.work.type === 'distance') {
-            const c = convertStructUnit(b.work.unit, b.work.value);
+            const c = convertToNewUnit(b.work.unit, b.work.value);
             b.work = { ...b.work, unit: c.unit, value: c.value };
           }
           if (b.recovery && b.recovery.type === 'distance') {
-            const c = convertStructUnit(b.recovery.unit, b.recovery.value);
+            const c = convertToNewUnit(b.recovery.unit, b.recovery.value);
             b.recovery = { ...b.recovery, unit: c.unit, value: c.value };
           }
           if (b.fartlekRest && b.fartlekRest.type === 'distance') {
-            const c = convertStructUnit(b.fartlekRest.unit, b.fartlekRest.value);
+            const c = convertToNewUnit(b.fartlekRest.unit, b.fartlekRest.value);
             b.fartlekRest = { ...b.fartlekRest, unit: c.unit, value: c.value };
           }
           if (b.segments) {
             b.segments = b.segments.map((seg: any) => {
               if (seg.type === 'distance') {
-                const c = convertStructUnit(seg.unit, seg.value);
+                const c = convertToNewUnit(seg.unit, seg.value);
                 return { ...seg, unit: c.unit, value: c.value };
               }
               return seg;

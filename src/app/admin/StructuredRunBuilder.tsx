@@ -75,8 +75,8 @@ function emptyBlock(defaultUnit: DistanceUnit = "miles"): WorkBlock {
 }
 
 
-function emptyProgressionSegment() {
-  return { value: "", unit: "miles" as DistanceUnit | TimeUnit, type: "distance" as MeasureType, intensity: "" };
+function emptyProgressionSegment(defaultUnit: DistanceUnit = "miles") {
+  return { value: "", unit: defaultUnit as DistanceUnit | TimeUnit, type: "distance" as MeasureType, intensity: "" };
 }
 
 // Calculate total distance in miles from the structure
@@ -323,7 +323,7 @@ function BlockEditor({ block, index, onChange, onRemove, canRemove, defaultDistU
         <select value={block.blockType} onChange={(e) => {
           const bt = e.target.value as WorkBlock["blockType"];
           const updated: Partial<WorkBlock> = { blockType: bt, segments: undefined, fartlekRest: undefined };
-          if (bt === "progression") updated.segments = [emptyProgressionSegment(), emptyProgressionSegment(), emptyProgressionSegment()];
+          if (bt === "progression") updated.segments = [emptyProgressionSegment(defaultDistUnit), emptyProgressionSegment(defaultDistUnit), emptyProgressionSegment(defaultDistUnit)];
           if (bt === "fartlek") updated.fartlekRest = { type: "time", value: "", unit: "minutes" };
           if (bt === "tempo") updated.reps = "1";
           onChange({ ...block, ...updated });
@@ -334,7 +334,7 @@ function BlockEditor({ block, index, onChange, onRemove, canRemove, defaultDistU
       </div>
 
       {block.blockType === "progression" ? (
-        <ProgressionEditor block={block} onChange={onChange} />
+        <ProgressionEditor block={block} onChange={onChange} defaultDistUnit={defaultDistUnit} />
       ) : block.blockType === "tempo" ? (
         <TempoEditor block={block} onChange={onChange} />
       ) : block.blockType === "fartlek" ? (
@@ -452,8 +452,8 @@ function TempoEditor({ block, onChange }: { block: WorkBlock; onChange: (b: Work
 }
 
 
-function ProgressionEditor({ block, onChange }: { block: WorkBlock; onChange: (b: WorkBlock) => void }) {
-  const segments = block.segments || [emptyProgressionSegment()];
+function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
+  const segments = block.segments || [emptyProgressionSegment(defaultDistUnit)];
 
   const updateSegment = (idx: number, changes: any) => {
     const updated = [...segments];
@@ -483,7 +483,7 @@ function ProgressionEditor({ block, onChange }: { block: WorkBlock; onChange: (b
           )}
         </div>
       ))}
-      <button type="button" onClick={() => onChange({ ...block, segments: [...segments, emptyProgressionSegment()] })} className="text-purple-400 text-xs hover:text-purple-300">+ Add segment</button>
+      <button type="button" onClick={() => onChange({ ...block, segments: [...segments, emptyProgressionSegment(defaultDistUnit)] })} className="text-purple-400 text-xs hover:text-purple-300">+ Add segment</button>
     </div>
   );
 }
