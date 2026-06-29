@@ -583,6 +583,26 @@ export default function DashboardPage() {
     fetchWeeks();
   }, []);
 
+  // On page load: check Strava for any missed activities in the last 24 hours
+  // Runs silently in background — if new activities are found, reloads the page
+  useEffect(() => {
+    const syncCheck = async () => {
+      try {
+        const res = await fetch('/api/strava/sync-check', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.synced > 0) {
+            // New activities were imported — reload to show them
+            window.location.reload();
+          }
+        }
+      } catch {} // Silent fail — don't disrupt the user experience
+    };
+    // Delay slightly so it doesn't compete with initial page load
+    const timer = setTimeout(syncCheck, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Distance conversion helpers
   const getWorkoutUnit = (workoutId: string) => workoutUnitOverrides[workoutId] || clientDistanceUnit;
   // Convert distance from one unit to the display unit
