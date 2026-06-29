@@ -322,7 +322,7 @@ You must respond with a valid JSON object with this exact structure:
 {
   "focus": "Brief 3-5 word focus for the week",
   "coachMessage": "A personalized motivational message for the client (1-2 sentences) that references their recent progress or the week's goals. Write in Crystal's voice - supportive, direct, and encouraging.",
-  "reasoning": "2-3 sentence explanation of why you chose this plan, referencing specific data points or Crystal's notes that influenced your decisions. This is for Crystal to review.",
+  "reasoning": "2-3 sentence explanation for Crystal (the coach) of why you chose this plan, referencing the CLIENT by name in third person (e.g. 'David's recent RPE suggests...'). Never use 'your' — Crystal is reading this, not the client. This is for Crystal to review.",
   "days": [
     {
       "day": "Monday",

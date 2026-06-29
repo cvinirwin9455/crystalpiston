@@ -1134,6 +1134,10 @@ export default function AdminPage() {
     setSelectedClient(clientId);
     setAdminWeekOffset(0);
     setClientTab("plan");
+    // Reset AI suggestion state when switching clients
+    setAiReasoning("");
+    setAiError("");
+    setAiCoachNotes("");
     setEditingWeek(false);
     setShowTemplatesView(false);
     setShowNotificationSettings(false);
