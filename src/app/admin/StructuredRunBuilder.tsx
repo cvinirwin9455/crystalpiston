@@ -269,6 +269,7 @@ export default function StructuredRunBuilder({ structure, onChange, distanceUnit
 
 function WarmUpCoolDownSection({ label, data, onChange, defaultDistUnit }: { label: string; data: WarmUpCoolDown | null; onChange: (d: WarmUpCoolDown | null) => void; defaultDistUnit: DistanceUnit }) {
   const [enabled, setEnabled] = useState(!!data?.value);
+  const mainUnitLabel = defaultDistUnit === "km" ? "km" : "miles";
 
   const toggle = () => {
     if (enabled) {
@@ -295,11 +296,9 @@ function WarmUpCoolDownSection({ label, data, onChange, defaultDistUnit }: { lab
           </select>
           <input type="text" value={data.value} onChange={(e) => onChange({ ...data, value: e.target.value })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
           {data.type === "distance" ? (
-            <select value={data.unit} onChange={(e) => onChange({ ...data, unit: e.target.value as DistanceUnit })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
-              <option value="miles">miles</option>
-              <option value="km">km</option>
-              <option value="meters">meters</option>
-            </select>
+            <button type="button" onClick={() => onChange({ ...data, unit: data.unit === "meters" ? defaultDistUnit : "meters" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+              {data.unit === "meters" ? "meters" : mainUnitLabel}
+            </button>
           ) : (
             <select value={data.unit} onChange={(e) => onChange({ ...data, unit: e.target.value as TimeUnit })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
               <option value="minutes">min</option>
@@ -336,18 +335,19 @@ function BlockEditor({ block, index, onChange, onRemove, canRemove, defaultDistU
       {block.blockType === "progression" ? (
         <ProgressionEditor block={block} onChange={onChange} defaultDistUnit={defaultDistUnit} />
       ) : block.blockType === "tempo" ? (
-        <TempoEditor block={block} onChange={onChange} />
+        <TempoEditor block={block} onChange={onChange} defaultDistUnit={defaultDistUnit} />
       ) : block.blockType === "fartlek" ? (
-        <FartlekEditor block={block} onChange={onChange} />
+        <FartlekEditor block={block} onChange={onChange} defaultDistUnit={defaultDistUnit} />
       ) : (
-        <IntervalsEditor block={block} onChange={onChange} />
+        <IntervalsEditor block={block} onChange={onChange} defaultDistUnit={defaultDistUnit} />
       )}
     </div>
   );
 }
 
 
-function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: WorkBlock) => void }) {
+function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
+  const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -360,11 +360,9 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
         </select>
         <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.work.type === "distance" ? (
-          <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as DistanceUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-            <option value="meters">meters</option>
-            <option value="km">km</option>
-            <option value="miles">mi</option>
-          </select>
+          <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+            {block.work.unit === "meters" ? "meters" : mainUnitLabel}
+          </button>
         ) : (
           <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
             <option value="seconds">sec</option>
@@ -383,35 +381,33 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
       {/* Recovery (optional) */}
       <div className="flex items-center gap-2 flex-wrap">
         <button type="button" onClick={() => {
-          const hasRecovery = block.recovery.value && parseFloat(block.recovery.value) > 0;
+          const hasRecovery = block.recovery?.value && parseFloat(block.recovery.value) > 0;
           if (hasRecovery) {
-            onChange({ ...block, recovery: { ...block.recovery, value: "", } });
+            onChange({ ...block, recovery: { ...block.recovery!, value: "" } });
           } else {
-            onChange({ ...block, recovery: { ...block.recovery, value: "200", unit: "meters" } });
+            onChange({ ...block, recovery: { type: "distance", value: "200", unit: "meters", recoveryType: "Jog" } });
           }
-        }} className={`text-xs px-2 py-0.5 rounded border transition-colors ${block.recovery.value && parseFloat(block.recovery.value) > 0 ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/10 text-gray-500 hover:text-white'}`}>
-          Recovery {block.recovery.value && parseFloat(block.recovery.value) > 0 ? '✓' : '(optional)'}
+        }} className={`text-xs px-2 py-0.5 rounded border transition-colors ${block.recovery?.value && parseFloat(block.recovery.value) > 0 ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/10 text-gray-500 hover:text-white'}`}>
+          Recovery {block.recovery?.value && parseFloat(block.recovery.value) > 0 ? '✓' : '(optional)'}
         </button>
-        {block.recovery.value && parseFloat(block.recovery.value) > 0 && (
+        {block.recovery?.value && parseFloat(block.recovery.value) > 0 && (
           <>
-        <select value={block.recovery.type} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+        <select value={block.recovery.type} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
           <option value="distance">Dist</option>
           <option value="time">Time</option>
         </select>
-        <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
+        <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.recovery.type === "distance" ? (
-          <select value={block.recovery.unit} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, unit: e.target.value as DistanceUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-            <option value="meters">meters</option>
-            <option value="km">km</option>
-            <option value="miles">mi</option>
-          </select>
+          <button type="button" onClick={() => onChange({ ...block, recovery: { ...block.recovery!, unit: block.recovery!.unit === "meters" ? defaultDistUnit : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+            {block.recovery.unit === "meters" ? "meters" : mainUnitLabel}
+          </button>
         ) : (
-          <select value={block.recovery.unit} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+          <select value={block.recovery.unit} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
             <option value="seconds">sec</option>
             <option value="minutes">min</option>
           </select>
         )}
-        <select value={block.recovery.recoveryType} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery, recoveryType: e.target.value as RecoveryType } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
+        <select value={block.recovery.recoveryType} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, recoveryType: e.target.value as RecoveryType } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
           {RECOVERY_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
           </>
@@ -422,20 +418,19 @@ function IntervalsEditor({ block, onChange }: { block: WorkBlock; onChange: (b: 
 }
 
 
-function TempoEditor({ block, onChange }: { block: WorkBlock; onChange: (b: WorkBlock) => void }) {
+function TempoEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
+  const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <select value={block.work.type} onChange={(e) => onChange({ ...block, work: { ...block.work, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "minutes" : "miles" } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+      <select value={block.work.type} onChange={(e) => onChange({ ...block, work: { ...block.work, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "minutes" : defaultDistUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
         <option value="distance">Distance</option>
         <option value="time">Time</option>
       </select>
       <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
       {block.work.type === "distance" ? (
-        <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as DistanceUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-          <option value="miles">miles</option>
-          <option value="km">km</option>
-          <option value="meters">m</option>
-        </select>
+        <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+          {block.work.unit === "meters" ? "meters" : mainUnitLabel}
+        </button>
       ) : (
         <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
           <option value="minutes">min</option>
@@ -453,6 +448,7 @@ function TempoEditor({ block, onChange }: { block: WorkBlock; onChange: (b: Work
 
 
 function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
+  const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
   const segments = block.segments || [emptyProgressionSegment(defaultDistUnit)];
 
   const updateSegment = (idx: number, changes: any) => {
@@ -468,12 +464,15 @@ function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBl
         <div key={idx} className="flex items-center gap-2 flex-wrap">
           <span className="text-gray-500 text-xs w-4">{idx + 1}.</span>
           <input type="text" value={seg.value} onChange={(e) => updateSegment(idx, { value: e.target.value })} className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
-          <select value={seg.unit} onChange={(e) => updateSegment(idx, { unit: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-            <option value="miles">mi</option>
-            <option value="km">km</option>
-            <option value="meters">m</option>
-            <option value="minutes">min</option>
-          </select>
+          {seg.type === "distance" ? (
+            <button type="button" onClick={() => updateSegment(idx, { unit: seg.unit === "meters" ? defaultDistUnit : "meters" })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+              {seg.unit === "meters" ? "meters" : mainUnitLabel}
+            </button>
+          ) : (
+            <button type="button" onClick={() => updateSegment(idx, { type: "distance", unit: defaultDistUnit })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+              min
+            </button>
+          )}
           <select value={seg.intensity} onChange={(e) => updateSegment(idx, { intensity: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
             <option value="">Intensity</option>
             {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
@@ -489,7 +488,8 @@ function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBl
 }
 
 
-function FartlekEditor({ block, onChange }: { block: WorkBlock; onChange: (b: WorkBlock) => void }) {
+function FartlekEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
+  const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
   const rest = block.fartlekRest || { type: "time" as MeasureType, value: "", unit: "minutes" as TimeUnit };
 
   return (
