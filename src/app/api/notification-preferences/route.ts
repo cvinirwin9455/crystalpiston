@@ -20,7 +20,7 @@ export async function GET() {
     .single()
 
   if (profile?.role === 'admin') {
-    // Admin (Crystal) - return all fields
+    // Admin - return all fields
     return NextResponse.json({
       workoutCompleted: prefs?.workout_completed || 'immediate',
       workoutSkipped: prefs?.workout_skipped || 'immediate',
@@ -30,6 +30,7 @@ export async function GET() {
       notificationEmails: prefs?.notification_emails || '',
       theme: prefs?.theme || 'dark',
       distanceUnit: prefs?.distance_unit || 'mi',
+      weightUnit: prefs?.weight_unit || 'kg',
       defaultExpanded: prefs?.default_expanded ?? true,
       dateFormat: prefs?.date_format || 'MM/DD/YYYY',
     })
@@ -43,6 +44,7 @@ export async function GET() {
     workoutComments: prefs?.workout_comments_client ?? true,
     theme: prefs?.theme || 'dark',
     distanceUnit: prefs?.distance_unit || 'mi',
+    weightUnit: prefs?.weight_unit || 'kg',
     defaultExpanded: prefs?.default_expanded ?? true,
     dateFormat: prefs?.date_format || 'MM/DD/YYYY',
   })
@@ -55,7 +57,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit, defaultExpanded, dateFormat } = body
+  const { planPublished, messages, workoutCompleted, workoutSkipped, workoutPartial, clientMessage, dailySummary, notificationEmails, theme, distanceUnit, defaultExpanded, dateFormat, weightUnit } = body
 
   // Build updates object
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
@@ -80,6 +82,7 @@ export async function PUT(request: Request) {
   // Shared fields
   if (theme !== undefined) updates.theme = theme
   if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
+  if (weightUnit !== undefined) updates.weight_unit = weightUnit
   if (defaultExpanded !== undefined) updates.default_expanded = defaultExpanded
   if (dateFormat !== undefined) updates.date_format = dateFormat
 

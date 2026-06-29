@@ -162,6 +162,7 @@ export default function DashboardPage() {
   const [loggedInName, setLoggedInName] = useState("");
   const [loggedInEmail, setLoggedInEmail] = useState("");
   const [clientDistanceUnit, setClientDistanceUnit] = useState<"mi" | "km">("mi");
+  const [clientWeightUnit, setClientWeightUnit] = useState<"kg" | "lbs">("kg");
   const [clientDateFormat, setClientDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
   const [workoutUnitOverrides, setWorkoutUnitOverrides] = useState<Record<string, "mi" | "km">>({});
 
@@ -369,6 +370,7 @@ export default function DashboardPage() {
           if (data.stravaSynced !== undefined) setNotifStravaSynced(data.stravaSynced);
           if (data.workoutComments !== undefined) setNotifWorkoutComments(data.workoutComments);
           if (data.distanceUnit) setClientDistanceUnit(data.distanceUnit);
+          if (data.weightUnit) setClientWeightUnit(data.weightUnit);
           if (data.dateFormat) setClientDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
         }
@@ -2224,6 +2226,16 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   <button onClick={() => saveDistanceUnit("mi")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                   <button onClick={() => saveDistanceUnit("km")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                </div>
+              </div>
+
+              {/* Weight Unit */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Weight Unit</p>
+                <p className="text-gray-300 text-xs mb-3">Choose how weights are displayed for cross-training exercises.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => { setClientWeightUnit("kg"); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weightUnit: 'kg' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientWeightUnit === "kg" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilograms (kg)</button>
+                  <button onClick={() => { setClientWeightUnit("lbs"); fetch('/api/notification-preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weightUnit: 'lbs' }) }); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${clientWeightUnit === "lbs" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Pounds (lbs)</button>
                 </div>
               </div>
 

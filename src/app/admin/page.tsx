@@ -66,6 +66,7 @@ export default function AdminPage() {
   });
   const [adminNotifLoaded, setAdminNotifLoaded] = useState(false);
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
+  const [adminWeightUnit, setAdminWeightUnit] = useState<"kg" | "lbs">("kg");
   const [adminDateFormat, setAdminDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
@@ -86,6 +87,7 @@ export default function AdminPage() {
           });
           setNotifEmail(data.notificationEmails || '');
           if (data.distanceUnit) setAdminDistanceUnit(data.distanceUnit);
+          if (data.weightUnit) setAdminWeightUnit(data.weightUnit);
           if (data.dateFormat) setAdminDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setAdminDefaultExpanded(data.defaultExpanded);
         }
@@ -114,7 +116,7 @@ export default function AdminPage() {
   }, [adminNotifLoaded]);
 
   // Save admin notification preferences (called on every change)
-  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean, dateFormat?: string) => {
+  const saveAdminNotifPrefs = async (updatedNotifs: typeof notifications, email?: string, unit?: string, expanded?: boolean, dateFormat?: string, weightUnit?: string) => {
     try {
       await fetch('/api/notification-preferences', {
         method: 'PUT',
@@ -129,6 +131,7 @@ export default function AdminPage() {
           ...(unit !== undefined ? { distanceUnit: unit } : {}),
           ...(expanded !== undefined ? { defaultExpanded: expanded } : {}),
           ...(dateFormat !== undefined ? { dateFormat } : {}),
+          ...(weightUnit !== undefined ? { weightUnit } : {}),
         }),
       });
     } catch (err) {
@@ -2773,7 +2776,7 @@ export default function AdminPage() {
                             </>
                           )}
                           {wo.type === "walk" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
-                          {wo.type === "cross" && (<><div className="mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: "kg", sets: 3, rest: "01:00", notes: "" }] }} weightUnit="kg" onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional — e.g. Focus on form, Increase weight if comfortable)" /></div></>)}
+                          {wo.type === "cross" && (<><div className="mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional — e.g. Focus on form, Increase weight if comfortable)" /></div></>)}
                           {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
                           {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div>}
                         </div>
@@ -2976,6 +2979,16 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDistanceUnit("mi"); saveAdminNotifPrefs(notifications, undefined, "mi"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "mi" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Miles (mi)</button>
                     <button onClick={() => { setAdminDistanceUnit("km"); saveAdminNotifPrefs(notifications, undefined, "km"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDistanceUnit === "km" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilometers (km)</button>
+                  </div>
+                </div>
+
+                {/* Weight Unit Preference */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Weight Unit</h3>
+                  <p className="text-gray-300 text-xs mb-4">Choose the default weight unit for cross-training exercises.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setAdminWeightUnit("kg"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "kg"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "kg" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilograms (kg)</button>
+                    <button onClick={() => { setAdminWeightUnit("lbs"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "lbs"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "lbs" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Pounds (lbs)</button>
                   </div>
                 </div>
 
