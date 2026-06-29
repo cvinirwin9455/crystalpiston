@@ -79,7 +79,7 @@ export async function GET(request: Request) {
   if (weekIds.length > 0) {
     const { data: stravaActivities } = await adminClient
       .from('strava_activities')
-      .select('id, matched_workout_id, match_status, activity_name, day, type, miles, average_pace, duration, avg_heartrate, max_heartrate, distance_meters, moving_time_seconds')
+      .select('id, week_id, matched_workout_id, match_status, activity_name, day, type, miles, average_pace, duration, avg_heartrate, max_heartrate, distance_meters, moving_time_seconds')
       .in('week_id', weekIds)
 
     allStravaActivities = stravaActivities || []
@@ -124,16 +124,16 @@ export async function GET(request: Request) {
     }
 
     // Also hide strava extras when there's a completed programmed workout of the same
-    // type on the same day — handles legacy data where match wasn't confirmed properly
+    // type on the same day IN THE SAME WEEK — handles legacy data where match wasn't confirmed properly
     for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue // already handled
       if (sa.match_status === 'dismissed') continue
       // Skip 0-mile distance-based activities (accidental start/stop) but allow stretching/strength/cross
       const distanceTypes = ['run', 'walk', 'cycling']
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
-      // Check if there's a completed programmed workout on the same day with same type
-      for (const [, wos] of workoutsByWeekId) {
-        for (const wo of wos) {
+      // Check if there's a completed programmed workout on the same day with same type IN THE SAME WEEK
+      const saWeekWorkouts = sa.week_id ? (workoutsByWeekId.get(sa.week_id) || []) : []
+      for (const wo of saWeekWorkouts) {
           if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
             // Try to get Strava data to backfill
             const existingLog = logsByWorkoutId.get(wo.id)
@@ -198,8 +198,7 @@ export async function GET(request: Request) {
             break
           }
         }
-        if (stravaMatchedActivityIds.has(sa.id)) break
-      }
+      if (stravaMatchedActivityIds.has(sa.id)) continue
     }
   }
 
