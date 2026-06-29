@@ -6,6 +6,8 @@ import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay } from "./StructuredRunBuilder";
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
+import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
+import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
@@ -1658,7 +1660,7 @@ export default function AdminPage() {
         location: w.location || null,
         coachNotes: w.coachNotes || null,
         distanceUnit: w.distanceUnit || 'mi',
-        structure: (w as any).structure || null,
+        structure: (w as any).crossTrainingStructure || (w as any).structure || null,
       }))
     );
 
@@ -1869,7 +1871,9 @@ export default function AdminPage() {
             paceTarget: w.paceTarget || '',
             location: w.location || '',
             coachNotes: w.coachNotes || '',
-            distanceUnit: 'mi',
+            distanceUnit: (w as any).distanceUnit || 'mi',
+            structure: (w as any).structure || undefined,
+            crossTrainingStructure: w.type === 'cross' && (w as any).structure ? (w as any).structure : undefined,
           })),
         };
       }),
@@ -2769,7 +2773,7 @@ export default function AdminPage() {
                             </>
                           )}
                           {wo.type === "walk" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
-                          {wo.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /></div><textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." /></>)}
+                          {wo.type === "cross" && (<><div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.location} onChange={(e) => updateDayPlan(i, wi, "location", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Location" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: "kg", sets: 3, rest: "01:00", notes: "" }] }} weightUnit="kg" onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional — e.g. Focus on form, Increase weight if comfortable)" /></div></>)}
                           {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
                           {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div>}
                         </div>

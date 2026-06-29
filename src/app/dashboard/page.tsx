@@ -11,6 +11,23 @@ type WeekData = { weekId: string; label: string; dateRange: string; focus: strin
 // Helper: format structured workout for display
 function formatWorkoutStructure(structure: any): string {
   if (!structure) return '';
+
+  // Cross-training structure (has exercises array)
+  if (structure.exercises && Array.isArray(structure.exercises)) {
+    return structure.exercises
+      .filter((ex: any) => ex.name)
+      .map((ex: any) => {
+        const measure = ex.measureType === 'reps' ? `${ex.measureValue} reps` : ex.measureType === 'time' ? ex.measureValue : `${ex.measureValue}m`;
+        const weight = ex.weight ? ` @ ${ex.weight}${ex.weightUnit || 'kg'}` : '';
+        const sets = ex.sets > 1 ? `${ex.sets} sets x ` : '';
+        const rest = ex.rest && ex.rest !== '00:00' ? ` | Rest: ${ex.rest}` : '';
+        const notes = ex.notes ? `\n   ${ex.notes}` : '';
+        return `${sets}${ex.name} \u2014 ${measure}${weight}${rest}${notes}`;
+      })
+      .join('\n');
+  }
+
+  // Run structure (has blocks array)
   const parts: string[] = [];
   const unitLabel = (u: string) => { switch (u) { case "meters": return "m"; case "km": return "km"; case "miles": return "mi"; case "minutes": return "min"; case "seconds": return "sec"; case "hours": return "hr"; default: return u; } };
 
