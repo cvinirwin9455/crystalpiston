@@ -1582,7 +1582,7 @@ export default function AdminPage() {
   const currentWeekClientMiles = selectedWeek ? (selectedWeek.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0) : 0;
 
   const displayWorkouts = adminStatsFilter === "currentWeek" ? currentWeekWorkouts.filter(w => w.type !== "rest") : adminStatsFilter === "currentPlan" ? planFilteredWorkouts.filter(w => w.type !== "rest") : allClientWorkouts.filter(w => w.type !== "rest");
-  const displayMarked = displayWorkouts.filter((w) => w.completed);
+  const displayMarked = displayWorkouts.filter((w) => w.completed && w.status !== "skipped");
   const displayComplete = displayWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
   const displayPartial = displayWorkouts.filter(w => w.status === "partial");
   const displayMilesCompleted = displayComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || convertDist(w.miles || 0, w.distanceUnit), "mi"), 0) + displayPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, "mi"), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);

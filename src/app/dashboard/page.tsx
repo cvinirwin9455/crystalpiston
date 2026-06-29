@@ -682,7 +682,7 @@ export default function DashboardPage() {
   const allClientWorkoutsMiles = weeks.flatMap((w) => w.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]);
 
   const statsWorkouts = statsFilter === "thisWeek" ? (currentWeek?.workouts || []).filter(w => w.type !== "rest") : allWorkouts.filter(w => w.type !== "rest");
-  const statsMarked = statsWorkouts.filter(w => w.completed);
+  const statsMarked = statsWorkouts.filter(w => w.completed && w.status !== "skipped");
   const statsComplete = statsWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
   const statsPartial = statsWorkouts.filter(w => w.status === "partial");
   const statsSkipped = statsWorkouts.filter(w => w.status === "skipped");
