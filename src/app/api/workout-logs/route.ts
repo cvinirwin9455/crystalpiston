@@ -137,6 +137,8 @@ async function notifyCrystalWorkoutLog(
       .select('coach_id')
       .eq('client_id', clientRecord.id)
 
+    console.log(`[WorkoutLog Notify] Client ${clientRecord.id}: found ${coachAssignments?.length || 0} coach assignments`)
+
     if (coachAssignments && coachAssignments.length > 0) {
       const coachIds = coachAssignments.map((ca: any) => ca.coach_id)
       const { data: coachUsers } = await adminClient
@@ -144,17 +146,27 @@ async function notifyCrystalWorkoutLog(
         .select('id, email')
         .in('id', coachIds)
 
+      console.log(`[WorkoutLog Notify] Coach users found: ${coachUsers?.map((c: any) => c.email).join(', ') || 'none'}`)
+
       for (const coach of coachUsers || []) {
         // Check each coach's notification preference
         const { data: coachPrefs } = await adminClient
           .from('notification_preferences')
-          .select(prefField)
+          .select('workout_completed, workout_skipped, workout_partial, notification_emails')
           .eq('user_id', coach.id)
           .maybeSingle()
 
         const coachPref = coachPrefs?.[prefField] || 'immediate'
-        if (coachPref === 'immediate' && coach.email) {
-          coachEmails.push({ email: coach.email, coachId: coach.id })
+        if (coachPref === 'immediate') {
+          // Use custom notification emails if set, otherwise coach's email
+          if (coachPrefs?.notification_emails) {
+            const emails = coachPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+            for (const em of emails) {
+              coachEmails.push({ email: em, coachId: coach.id })
+            }
+          } else if (coach.email) {
+            coachEmails.push({ email: coach.email, coachId: coach.id })
+          }
         }
       }
     }
