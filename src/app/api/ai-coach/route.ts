@@ -127,6 +127,7 @@ STYLE CRYSTAL DISLIKES (she gave thumbs-down to these — avoid this style):
 ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : ''}`
 
     // Call AI — try gateway first, fall back to direct OpenAI if rate-limited
+    console.log('[AI Coach] Context being sent to AI:\n', context.slice(0, 2000))
     let response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
