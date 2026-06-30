@@ -96,6 +96,8 @@ WHAT YOU DO:
 - Tell Crystal what to DO (message a client, adjust a plan, check in)
 - Spot patterns she might miss (e.g. "RPE trending up every week" or "always skips Thursdays")
 - Suggest specific conversations or plan changes
+- Be SPECIFIC — cite actual data points (days, workouts, skip reasons, RPE numbers)
+- If a workout was skipped, mention WHY (the skip reason is in the data)
 
 WHAT YOU NEVER DO:
 - Never repeat stats (X/Y workouts, miles, RPE numbers) — Crystal has those on her dashboard
@@ -378,7 +380,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     if (workoutIds.length > 0) {
       const { data: logsData } = await adminClient
         .from('workout_logs')
-        .select('workout_id, status, rpe, actual_miles, actual_pace, duration, sleep, notes, avg_heartrate, max_heartrate')
+        .select('workout_id, status, skip_reason, rpe, actual_miles, actual_pace, duration, sleep, notes, avg_heartrate, max_heartrate')
         .in('workout_id', workoutIds)
       logs = logsData || []
     }
@@ -388,7 +390,10 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     for (const week of weeks) {
       const weekWorkouts = (workouts || []).filter((w: any) => w.week_id === week.id)
       const completed = weekWorkouts.filter((w: any) => logMap.has(w.id))
-      const totalMiles = completed.reduce((s: number, w: any) => {
+      const totalMiles = completed.filter((w: any) => {
+        const log = logMap.get(w.id)
+        return log && log.status !== 'skipped'
+      }).reduce((s: number, w: any) => {
         const log = logMap.get(w.id)
         return s + (Number(log?.actual_miles) || Number(w.miles) || 0)
       }, 0)
@@ -404,10 +409,17 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       const relevantWorkouts = isCurrentWeek2
         ? weekWorkouts.filter((w: any) => dayNames2.indexOf(w.day) <= todayIdx2)
         : weekWorkouts
-      const relevantCompleted = relevantWorkouts.filter((w: any) => logMap.has(w.id))
+      const relevantCompleted = relevantWorkouts.filter((w: any) => {
+        const log = logMap.get(w.id)
+        return log && log.status !== 'skipped'
+      })
+      const relevantSkipped = relevantWorkouts.filter((w: any) => {
+        const log = logMap.get(w.id)
+        return log && log.status === 'skipped'
+      })
       const nonRestRelevant = relevantWorkouts.filter((w: any) => w.type !== 'rest')
       
-      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} workouts${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
+      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} workouts${relevantSkipped.length > 0 ? ` (${relevantSkipped.length} skipped)` : ''}${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
       workoutSummary += `  Miles: ${totalMiles.toFixed(1)}\n`
       workoutSummary += `  Avg RPE: ${avgRpe}\n`
 
@@ -423,7 +435,8 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
         const isFutureDay = isCurrentWeek && woIdx > todayIdx
 
         if (log) {
-          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${log.status} | ${log.actual_miles || wo.miles || '?'}mi | RPE ${log.rpe || '?'}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
+          const statusLabel = log.status === 'skipped' ? 'SKIPPED' : log.status === 'partial' ? 'PARTIAL' : 'complete'
+          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${statusLabel}${log.status === 'skipped' && log.skip_reason ? ' (' + log.skip_reason + ')' : ''} | ${log.status !== 'skipped' ? (log.actual_miles || wo.miles || '?') + 'mi | RPE ' + (log.rpe || '?') : ''}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
         } else if (isFutureDay) {
           workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: UPCOMING (hasn't happened yet)\n`
         } else {
