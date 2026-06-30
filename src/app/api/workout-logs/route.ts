@@ -186,6 +186,15 @@ async function notifyCrystalWorkoutLog(
 
   if (coachEmails.length === 0) return
 
+  // Deduplicate by email address (prevent same person getting multiple emails)
+  const seen = new Set<string>()
+  coachEmails = coachEmails.filter(({ email }) => {
+    const lower = email.toLowerCase()
+    if (seen.has(lower)) return false
+    seen.add(lower)
+    return true
+  })
+
   // Get client name
   const { data: clientUser } = await adminClient
     .from('users')
