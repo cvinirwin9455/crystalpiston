@@ -559,6 +559,7 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
 
       const workoutIds = (workouts || []).map((w: any) => w.id)
       let completedCount = 0
+      let skippedCount = 0
       let totalRpe = 0
       let rpeCount = 0
       if (workoutIds.length > 0) {
@@ -566,20 +567,12 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
           .from('workout_logs')
           .select('workout_id, status, rpe')
           .in('workout_id', workoutIds)
-        completedCount = (logs || []).length
+        completedCount = (logs || []).filter((l: any) => l.status === 'complete').length
+        skippedCount = (logs || []).filter((l: any) => l.status === 'skipped').length
         for (const log of logs || []) {
           if (log.rpe) { totalRpe += log.rpe; rpeCount++ }
         }
       }
-
-      // Also count client-created workouts that are completed this week
-      const { data: clientWorkouts } = await adminClient
-        .from('client_workouts')
-        .select('id, completed')
-        .eq('week_id', currentWeek.id)
-        .eq('user_id', client.user_id)
-        .eq('completed', true)
-      const clientCompletedCount = (clientWorkouts || []).length
 
       // Only count programmed non-rest workouts that are on days up to today
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -588,11 +581,10 @@ async function getAllClientsSummary(adminClient: any, activeClients: any[], dept
       const pastWorkouts = (workouts || []).filter((w: any) => w.type !== 'rest' && pastDays.includes(w.day))
 
       const totalSoFar = pastWorkouts.length
-      const totalCompleted = completedCount + clientCompletedCount
       if (totalSoFar === 0) {
-        thisWeekStatus = `${totalCompleted} completed (no programmed workouts due yet)`
+        thisWeekStatus = `No programmed workouts due yet this week`
       } else {
-        thisWeekStatus = `${totalCompleted} completed out of ${totalSoFar} due so far (${7 - todayIndex - 1} days remaining in week)`
+        thisWeekStatus = `${completedCount}/${totalSoFar} PROGRAMMED completed${skippedCount > 0 ? ` | ${skippedCount} SKIPPED` : ''} (${7 - todayIndex - 1} days remaining)`
       }
     }
 
