@@ -333,11 +333,22 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 
   const { data: client, error: clientError } = await adminClient
     .from('clients')
-    .select('id, user_id, goal, experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+    .select('id, user_id, goal')
     .eq('user_id', clientId)
     .maybeSingle()
 
   if (clientError || !client) return `Client not found (user_id: ${clientId}, error: ${clientError?.message || 'no record'}).`
+
+  // Try to get optional training profile fields (columns may not exist)
+  let trainingProfile: any = {}
+  try {
+    const { data } = await adminClient
+      .from('clients')
+      .select('experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+      .eq('user_id', clientId)
+      .maybeSingle()
+    trainingProfile = data || {}
+  } catch {}
 
   const { data: user } = await adminClient
     .from('users')
@@ -490,9 +501,9 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 Goal: ${plan?.goal || client.goal || 'Not set'}
 Plan: ${plan?.start_date || '?'} to ${plan?.end_date || '?'}
 Payment: ${plan?.owed ? `$${plan.owed} owed, $${plan.paid || 0} paid${(plan.owed - (plan.paid || 0)) > 0 ? ' — $' + (plan.owed - (plan.paid || 0)) + ' OUTSTANDING' : ' — Paid in full'}` : 'No payment info'}
-Profile: ${user?.gender || '?'} | Age: ${client.age || '?'} | Experience: ${client.experience_level || '?'} | Current MPW: ${client.current_mileage || '?'} | Days/wk: ${client.days_per_week || '?'}
-Target: ${client.target_distance || '?'} | Race Date: ${client.race_date || '?'} | Easy Pace: ${client.easy_pace || '?'} | Goal Pace: ${client.goal_pace || '?'}
-Injuries: ${client.injury_notes || 'None noted'}
+Profile: ${user?.gender || '?'} | Age: ${trainingProfile.age || '?'} | Experience: ${trainingProfile.experience_level || '?'} | Current MPW: ${trainingProfile.current_mileage || '?'} | Days/wk: ${trainingProfile.days_per_week || '?'}
+Target: ${trainingProfile.target_distance || '?'} | Race Date: ${trainingProfile.race_date || '?'} | Easy Pace: ${trainingProfile.easy_pace || '?'} | Goal Pace: ${trainingProfile.goal_pace || '?'}
+Injuries: ${trainingProfile.injury_notes || 'None noted'}
 
 TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo published weeks yet.'}${extraContext}`
   } catch (err: any) {
