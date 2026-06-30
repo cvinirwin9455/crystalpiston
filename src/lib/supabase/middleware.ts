@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/'))
 
   // API routes that must be publicly accessible (webhooks, internal processing, etc.)
-  const isPublicApi = pathname.startsWith('/api/strava/webhook') || pathname.startsWith('/api/strava/activities')
+  const isPublicApi = pathname.startsWith('/api/strava/webhook') || pathname.startsWith('/api/strava/activities') || pathname.startsWith('/api/inquiry')
 
   // If not logged in and trying to access protected route, redirect to login
   if (!user && !isPublicRoute && !isPublicApi) {
