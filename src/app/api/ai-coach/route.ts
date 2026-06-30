@@ -383,13 +383,16 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
   }).slice(0, weekLimit)
 
   let workoutSummary = ''
+  let allWorkouts: any[] = []
+  let logMap = new Map<string, any>()
   if (weeks && weeks.length > 0) {
     const { data: workouts } = await adminClient
       .from('workouts')
       .select('id, week_id, day, type, training_type, miles')
       .in('week_id', weeks.map((w: any) => w.id))
+    allWorkouts = workouts || []
 
-    const workoutIds = (workouts || []).map((w: any) => w.id)
+    const workoutIds = allWorkouts.map((w: any) => w.id)
     let logs: any[] = []
     if (workoutIds.length > 0) {
       const { data: logsData } = await adminClient
@@ -399,7 +402,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       logs = logsData || []
     }
 
-    const logMap = new Map(logs.map((l: any) => [l.workout_id, l]))
+    logMap = new Map(logs.map((l: any) => [l.workout_id, l]))
 
     for (const week of weeks) {
       const weekWorkouts = (workouts || []).filter((w: any) => w.week_id === week.id)
@@ -504,6 +507,53 @@ Payment: ${plan?.owed ? `$${plan.owed} owed, $${plan.paid || 0} paid${(plan.owed
 Profile: ${user?.gender || '?'} | Age: ${trainingProfile.age || '?'} | Experience: ${trainingProfile.experience_level || '?'} | Current MPW: ${trainingProfile.current_mileage || '?'} | Days/wk: ${trainingProfile.days_per_week || '?'}
 Target: ${trainingProfile.target_distance || '?'} | Race Date: ${trainingProfile.race_date || '?'} | Easy Pace: ${trainingProfile.easy_pace || '?'} | Goal Pace: ${trainingProfile.goal_pace || '?'}
 Injuries: ${trainingProfile.injury_notes || 'None noted'}
+
+${(() => {
+  // Compute progress trends from training history
+  if (!weeks || weeks.length < 2) return 'PROGRESS TRENDS: Not enough data (need 2+ weeks).'
+  
+  const weeklyStats = weeks.map((week: any) => {
+    const weekWorkouts = allWorkouts.filter((w: any) => w.week_id === week.id)
+    const weekLogs = weekWorkouts.filter((w: any) => logMap.has(w.id)).map((w: any) => logMap.get(w.id))
+    const completedLogs = weekLogs.filter((l: any) => l.status === 'complete')
+    const skippedLogs = weekLogs.filter((l: any) => l.status === 'skipped')
+    const nonRest = weekWorkouts.filter((w: any) => w.type !== 'rest')
+    const totalMiles = completedLogs.reduce((s: number, l: any) => s + (Number(l.actual_miles) || 0), 0)
+    const avgRpe = completedLogs.filter((l: any) => l.rpe).length > 0 
+      ? completedLogs.reduce((s: number, l: any) => s + (l.rpe || 0), 0) / completedLogs.filter((l: any) => l.rpe).length 
+      : null
+    const avgPace = completedLogs.filter((l: any) => l.actual_pace).map((l: any) => {
+      const match = l.actual_pace.match(/(\d+):(\d+)/)
+      return match ? parseInt(match[1]) * 60 + parseInt(match[2]) : null
+    }).filter(Boolean)
+    
+    return {
+      dateRange: week.date_range,
+      completed: completedLogs.length,
+      skipped: skippedLogs.length,
+      total: nonRest.length,
+      miles: Math.round(totalMiles * 10) / 10,
+      avgRpe,
+      avgPaceSec: avgPace.length > 0 ? Math.round(avgPace.reduce((a: number, b: number) => a + b, 0) / avgPace.length) : null,
+    }
+  }).reverse() // oldest first for trend analysis
+
+  let trends = 'PROGRESS TRENDS (oldest → newest):\n'
+  trends += weeklyStats.map((w: any) => {
+    const paceStr = w.avgPaceSec ? `${Math.floor(w.avgPaceSec / 60)}:${(w.avgPaceSec % 60).toString().padStart(2, '0')}/mi` : '?'
+    return `  ${w.dateRange}: ${w.completed}/${w.total} done (${w.skipped} skipped) | ${w.miles}mi | RPE ${w.avgRpe?.toFixed(1) || '?'} | Pace ${paceStr}`
+  }).join('\n')
+
+  // Calculate direction
+  if (weeklyStats.length >= 2) {
+    const recent = weeklyStats.slice(-2)
+    const milesTrend = recent[1].miles - recent[0].miles
+    const complianceTrend = (recent[1].completed / (recent[1].total || 1)) - (recent[0].completed / (recent[0].total || 1))
+    trends += `\n  DIRECTION: Miles ${milesTrend > 0 ? '↑' : milesTrend < 0 ? '↓' : '→'} (${milesTrend > 0 ? '+' : ''}${milesTrend.toFixed(1)}) | Compliance ${complianceTrend > 0 ? '↑' : complianceTrend < 0 ? '↓' : '→'}`
+  }
+  
+  return trends
+})()}
 
 TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo published weeks yet.'}${extraContext}`
   } catch (err: any) {
