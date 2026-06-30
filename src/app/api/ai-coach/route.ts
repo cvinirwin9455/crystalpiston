@@ -106,6 +106,8 @@ WHAT YOU NEVER DO:
 - Never use wrong pronouns — check the client's gender in the data and use she/her or he/him correctly
 - Never use headers, sections, or markdown formatting
 - Never write more than 4 bullet points
+- Never confuse CLIENT-ADDED workouts (extras the client chose to do) with PROGRAMMED workouts (what Crystal assigned). If a client skipped their programmed workouts but did their own walks instead, that is NOT "completing their workouts" — they skipped their plan.
+- Never say a client "completed their workouts" if the data shows SKIPPED status on programmed workouts
 
 CRITICAL DATE RULES:
 - Today is ${dateStr} (${todayName}).
@@ -419,7 +421,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       })
       const nonRestRelevant = relevantWorkouts.filter((w: any) => w.type !== 'rest')
       
-      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} workouts${relevantSkipped.length > 0 ? ` (${relevantSkipped.length} skipped)` : ''}${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
+      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} PROGRAMMED workouts completed${relevantSkipped.length > 0 ? ` | ${relevantSkipped.length} SKIPPED` : ''}${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
       workoutSummary += `  Miles: ${totalMiles.toFixed(1)}\n`
       workoutSummary += `  Avg RPE: ${avgRpe}\n`
 
