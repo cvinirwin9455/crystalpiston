@@ -159,13 +159,13 @@ export default function AdminPage() {
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
     days: [
-      { day: "Monday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Tuesday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Wednesday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Thursday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Friday", workouts: [{ type: "cross" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Saturday", workouts: [{ type: "run" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Sunday", workouts: [{ type: "rest" as string, trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Monday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Tuesday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Wednesday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Thursday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Friday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Saturday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Sunday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
     ],
   });
   const updateDayPlan = (dayIndex: number, workoutIndex: number, field: string, value: string) => {
@@ -282,7 +282,7 @@ export default function AdminPage() {
   };
   const addWorkoutToDay = (dayIndex: number) => {
     const updated = [...weekPlan.days];
-    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] };
+    updated[dayIndex] = { ...updated[dayIndex], workouts: [...updated[dayIndex].workouts, { type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] };
     setWeekPlan({ ...weekPlan, days: updated });
   };
   const removeWorkoutFromDay = (dayIndex: number, workoutIndex: number) => {
@@ -564,17 +564,17 @@ export default function AdminPage() {
   const [newWeekTemplateFocus, setNewWeekTemplateFocus] = useState("");
   const [newWeekTemplateCoachMessage, setNewWeekTemplateCoachMessage] = useState("");
   const [newWeekTemplateDays, setNewWeekTemplateDays] = useState([
-    { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-    { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-    { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-    { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-    { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-    { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-    { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+    { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
   ]);
   const [newDayTemplateName, setNewDayTemplateName] = useState("");
   const [newDayTemplateCategory, setNewDayTemplateCategory] = useState("");
-  const [newDayTemplateData, setNewDayTemplateData] = useState<any>({ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" });
+  const [newDayTemplateData, setNewDayTemplateData] = useState<any>({ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" });
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -889,13 +889,13 @@ export default function AdminPage() {
         setNewWeekTemplateFocus("");
         setNewWeekTemplateCoachMessage("");
         setNewWeekTemplateDays([
-          { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-          { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-          { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-          { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-          { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-          { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-          { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+          { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
         ]);
         fetchTemplates();
       }
@@ -925,7 +925,7 @@ export default function AdminPage() {
         setCreatingDayTemplate(false);
         setNewDayTemplateName("");
         setNewDayTemplateCategory("");
-        setNewDayTemplateData({ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" });
+        setNewDayTemplateData({ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" });
         fetchTemplates();
       }
     } catch (err) {
@@ -1698,13 +1698,13 @@ export default function AdminPage() {
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
           days: [
-            { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
           ],
         });
         setSelectedWeekStart(null);
@@ -2289,7 +2289,7 @@ export default function AdminPage() {
             {/* Tabs */}
             <div className="flex gap-1 flex-wrap">
               {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-                <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                   {tab.label}
                   {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
                     <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[selectedClient]}</span>
@@ -2847,7 +2847,7 @@ export default function AdminPage() {
                   <span className="text-gray-400 text-sm">Weekly Mileage Total:</span>
                   <span className="text-accent font-heading text-lg">{weekPlan.days.reduce((total, day) => total + day.workouts.reduce((dayTotal, wo) => dayTotal + (wo.miles && (wo.type === 'run' || wo.type === 'walk') ? parseFloat(wo.miles) || 0 : 0), 0), 0).toFixed(2)} {weekPlan.days.some(d => d.workouts.some(wo => wo.distanceUnit === 'km')) ? 'km' : 'mi'}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", workouts: [{ type: "cross", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", workouts: [{ type: "run", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
+                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
                 {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
