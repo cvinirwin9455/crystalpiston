@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-29T01:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-03T01:00:00Z";
 
 const updates = [
+  {
+    date: "July 3, 2026",
+    items: [
+      { area: "All", text: "Fixed: Pace display bug where runs near a whole-minute pace (e.g. 9:00/mi) would show as '8:60/mi' instead — now correctly rolls over to 9:00" },
+    ],
+  },
   {
     date: "June 29, 2026",
     items: [
