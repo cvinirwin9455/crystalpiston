@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
+import UserManual from "./UserManual";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay } from "./StructuredRunBuilder";
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
@@ -33,6 +34,7 @@ export default function AdminPage() {
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showManageCoaches, setShowManageCoaches] = useState(false);
+  const [showUserManual, setShowUserManual] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
@@ -2082,22 +2084,26 @@ export default function AdminPage() {
             </button>
             {showAdminMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowUserManual(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                   What&apos;s New
                   {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                 </button>
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowUserManual(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                   Templates ({templates.length})
                 </button>
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showNotificationSettings && !selectedClient ? "text-accent" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowUserManual(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showNotificationSettings && !selectedClient ? "text-accent" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   Account Preferences
                 </button>
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowUserManual(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                   Manage Coaches ({allCoaches.length})
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowUserManual(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showUserManual && !selectedClient ? "text-blue-400" : "text-gray-400 hover:text-white"}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  User Manual
                 </button>
                 <div className="border-t border-white/10 mt-1.5 pt-1.5">
                   <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-gray-400 hover:text-accent text-xs py-2 px-3 hover:bg-white/5 transition-colors">
@@ -3460,6 +3466,8 @@ export default function AdminPage() {
                   </p>
                 </div>
               </>
+            ) : showUserManual ? (
+              <UserManual />
             ) : (
               <>
                 <h2 className="font-heading text-2xl uppercase text-white">Dashboard</h2>
