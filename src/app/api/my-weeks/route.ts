@@ -103,8 +103,8 @@ export async function GET() {
           const calcMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
           const calcPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
             const m = sa.distance_meters / 1609.344
-            const ps = sa.moving_time_seconds / m
-            return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+            const ts = Math.round(sa.moving_time_seconds / m)
+            return `${Math.floor(ts / 60)}:${(ts % 60).toString().padStart(2, '0')}/mi`
           })() : null)
           const calcDuration = sa.duration || (sa.moving_time_seconds ? (() => {
             const h = Math.floor(sa.moving_time_seconds / 3600)
@@ -158,8 +158,8 @@ export async function GET() {
               if (calcMiles && !existingLog.actual_miles) {
                 existingLog.actual_miles = calcMiles
                 existingLog.actual_pace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
-                  const m = sa.distance_meters / 1609.344; const ps = sa.moving_time_seconds / m
-                  return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+                  const m = sa.distance_meters / 1609.344; const ts = Math.round(sa.moving_time_seconds / m)
+                  return `${Math.floor(ts / 60)}:${(ts % 60).toString().padStart(2, '0')}/mi`
                 })() : null) || existingLog.actual_pace
               }
               if (calcDuration && !existingLog.duration) existingLog.duration = calcDuration
@@ -255,8 +255,8 @@ export async function GET() {
         }
         const stravaMiles = stravaFallback ? (stravaFallback.miles || (stravaFallback.distance_meters ? +(stravaFallback.distance_meters / 1609.344).toFixed(2) : null)) : null
         const stravaPace = stravaFallback ? (stravaFallback.average_pace || (stravaFallback.moving_time_seconds && stravaFallback.distance_meters ? (() => {
-          const m = stravaFallback.distance_meters / 1609.344; const ps = stravaFallback.moving_time_seconds / m
-          return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
+          const m = stravaFallback.distance_meters / 1609.344; const ts = Math.round(stravaFallback.moving_time_seconds / m)
+          return `${Math.floor(ts / 60)}:${(ts % 60).toString().padStart(2, '0')}/mi`
         })() : null)) : null
         const stravaDur = stravaFallback ? (stravaFallback.duration || (stravaFallback.moving_time_seconds ? (() => {
           const h = Math.floor(stravaFallback.moving_time_seconds / 3600); const m = Math.round((stravaFallback.moving_time_seconds % 3600) / 60)
