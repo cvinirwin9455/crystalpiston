@@ -300,31 +300,24 @@ export default function AdminPage() {
   const [aiReasoning, setAiReasoning] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiCoachNotes, setAiCoachNotes] = useState("");
-  const [aiCredits, setAiCredits] = useState<{ used: number; total: number } | null>(null);
+  const [aiCredits, setAiCredits] = useState<{ used: number; total: number; queries: number; month: string } | null>(null);
 
-  // Fetch AI credit balance
-  useEffect(() => {
-    const fetchAiCredits = async () => {
-      try {
-        const res = await fetch('/api/ai-credits');
-        if (res.ok) {
-          const data = await res.json();
-          // Try multiple field names since we don't know exact API format
-          const used = data.used ?? (data.total != null && data.remaining != null ? data.total - data.remaining : null);
-          const total = data.total ?? 5.00;
-          if (used !== null && total !== null) {
-            setAiCredits({ used: parseFloat(used) || 0, total: parseFloat(total) || 5.00 });
-          } else if (data.remaining !== null && data.remaining !== undefined) {
-            // If we only have remaining, calculate used from $5 total
-            const t = parseFloat(data.total) || 5.00;
-            const r = parseFloat(data.remaining) || 0;
-            setAiCredits({ used: t - r, total: t });
-          }
-        }
-      } catch {}
-    };
-    fetchAiCredits();
-  }, [aiSuggesting]);
+  // Fetch AI credit balance (local tracking)
+  const fetchAiCredits = async () => {
+    try {
+      const res = await fetch('/api/ai-credits');
+      if (res.ok) {
+        const data = await res.json();
+        setAiCredits({
+          used: parseFloat(data.used) || 0,
+          total: parseFloat(data.total) || 5.00,
+          queries: data.queries || 0,
+          month: data.month || '',
+        });
+      }
+    } catch {}
+  };
+  useEffect(() => { fetchAiCredits(); }, [aiSuggesting]);
   const selectWeek = (monday: Date) => {
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
@@ -1258,6 +1251,8 @@ export default function AdminPage() {
         const data = await res.json();
         setAiResponse(data.response);
         setAiProvider(data.provider || null);
+        // Refresh credits after successful query
+        fetchAiCredits();
       } else {
         const err = await res.json().catch(() => ({}));
         if (err.isRateLimit) {
@@ -2662,7 +2657,7 @@ export default function AdminPage() {
                     {!weekPlan.dateRange && <span className="text-purple-300/60 text-xs">Select a week date range first</span>}
                     {weekPlan.dateRange && <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>}
                     {aiCredits && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                      <span title={`${aiCredits.month} — ${aiCredits.queries} queries`} className={`text-xs px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
                         ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)} used
                       </span>
                     )}
@@ -3585,7 +3580,7 @@ export default function AdminPage() {
                 AI Coach Assistant
               </h3>
               {aiCredits && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                <span title={`${aiCredits.month} — ${aiCredits.queries} queries`} className={`text-[10px] px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
                   ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)}
                 </span>
               )}
