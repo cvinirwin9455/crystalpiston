@@ -253,6 +253,17 @@ export async function GET() {
         if (stravaMatchedWorkoutIds.has(wo.id) && log && !log.actual_miles) {
           stravaFallback = allStravaActivities.find((sa: any) => sa.matched_workout_id === wo.id)
         }
+        // Always recalculate pace from raw strava data to avoid stored rounding bugs (e.g. "8:60")
+        const matchedStravaForPace = stravaMatchedWorkoutIds.has(wo.id)
+          ? allStravaActivities.find((sa: any) => sa.matched_workout_id === wo.id)
+          : null
+        const recalcPace = matchedStravaForPace?.moving_time_seconds && matchedStravaForPace?.distance_meters
+          ? (() => {
+              const m = matchedStravaForPace.distance_meters / 1609.344
+              const ts = Math.round(matchedStravaForPace.moving_time_seconds / m)
+              return `${Math.floor(ts / 60)}:${(ts % 60).toString().padStart(2, '0')}/mi`
+            })()
+          : null
         const stravaMiles = stravaFallback ? (stravaFallback.miles || (stravaFallback.distance_meters ? +(stravaFallback.distance_meters / 1609.344).toFixed(2) : null)) : null
         const stravaPace = stravaFallback ? (stravaFallback.average_pace || (stravaFallback.moving_time_seconds && stravaFallback.distance_meters ? (() => {
           const m = stravaFallback.distance_meters / 1609.344; const ts = Math.round(stravaFallback.moving_time_seconds / m)
@@ -293,7 +304,7 @@ export async function GET() {
             mood: log.mood?.toString() || '',
             hunger: log.hunger?.toString() || '',
             actualMiles: log.actual_miles?.toString() || (stravaMiles?.toString() || ''),
-            actualPace: log.actual_pace || stravaPace || '',
+            actualPace: recalcPace || log.actual_pace || stravaPace || '',
             onPeriod: log.on_period ? 'yes' : 'no',
             duration: log.duration || stravaDur || '',
             avgHeartrate: log.avg_heartrate || stravaFallback?.avg_heartrate || null,
