@@ -735,7 +735,7 @@ export default function DashboardPage() {
   const currentWeek = getWeekPlan(weekOffset);
   const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + convertDist(cw.miles || 0, clientDistanceUnit, 'mi'), 0) : 0;
   // Convert all programmed miles to client's preferred unit before summing (run + walk only)
-  const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
+  const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) : 0;
   const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
