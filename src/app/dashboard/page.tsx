@@ -682,6 +682,17 @@ export default function DashboardPage() {
 
   // Pace conversion helpers (e.g. "9:04/mi" → "5:38/km")
   const convertPaceToKm = (pace: string): string => {
+    // Handle pace ranges like "11:00-12:00/mi"
+    const rangeMatch = pace.match(/^(\d+):(\d+)\s*[-–]\s*(\d+):(\d+)\/mi$/);
+    if (rangeMatch) {
+      const ts1 = parseInt(rangeMatch[1]) * 60 + parseInt(rangeMatch[2]);
+      const ts2 = parseInt(rangeMatch[3]) * 60 + parseInt(rangeMatch[4]);
+      const km1 = Math.round(ts1 / 1.60934);
+      const km2 = Math.round(ts2 / 1.60934);
+      const m1 = Math.floor(km1 / 60); const s1 = km1 % 60;
+      const m2 = Math.floor(km2 / 60); const s2 = km2 % 60;
+      return `${m1}:${s1.toString().padStart(2, '0')}-${m2}:${s2.toString().padStart(2, '0')}/km`;
+    }
     const match = pace.match(/^(\d+):(\d+)\/mi$/);
     if (!match) return pace;
     const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
@@ -691,6 +702,17 @@ export default function DashboardPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}/km`;
   };
   const convertPaceToMi = (pace: string): string => {
+    // Handle pace ranges like "6:50-7:28/km"
+    const rangeMatch = pace.match(/^(\d+):(\d+)\s*[-–]\s*(\d+):(\d+)\/km$/);
+    if (rangeMatch) {
+      const ts1 = parseInt(rangeMatch[1]) * 60 + parseInt(rangeMatch[2]);
+      const ts2 = parseInt(rangeMatch[3]) * 60 + parseInt(rangeMatch[4]);
+      const mi1 = Math.round(ts1 * 1.60934);
+      const mi2 = Math.round(ts2 * 1.60934);
+      const m1 = Math.floor(mi1 / 60); const s1 = mi1 % 60;
+      const m2 = Math.floor(mi2 / 60); const s2 = mi2 % 60;
+      return `${m1}:${s1.toString().padStart(2, '0')}-${m2}:${s2.toString().padStart(2, '0')}/mi`;
+    }
     const match = pace.match(/^(\d+):(\d+)\/km$/);
     if (!match) return pace;
     const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
@@ -713,7 +735,7 @@ export default function DashboardPage() {
   const currentWeek = getWeekPlan(weekOffset);
   const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + convertDist(cw.miles || 0, clientDistanceUnit, 'mi'), 0) : 0;
   // Convert all programmed miles to client's preferred unit before summing (run + walk only)
-  const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
+  const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) : 0;
   const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
@@ -1452,7 +1474,7 @@ export default function DashboardPage() {
                       {(workout.type === "run" || workout.type === "walk") && (
                       <div className="grid md:grid-cols-3 gap-4 mb-4">
                         <div><label className="text-gray-400 text-xs block mb-1">Actual {distUnitLabel}</label><input type="text" value={workout.log?.actualMiles || ""} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateWorkoutLog(workout.id, "actualMiles", v); }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 7.20" /></div>
-                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 8:45/mi" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Average Pace</label><input type="text" value={workout.log?.actualPace || ""} onChange={(e) => updateWorkoutLog(workout.id, "actualPace", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={clientDistanceUnit === "km" ? "e.g. 5:30/km" : "e.g. 8:45/mi"} /></div>
                         <div><label className="text-gray-400 text-xs block mb-1">Stress Factors</label><input type="text" value={workout.log?.stress || ""} onChange={(e) => updateWorkoutLog(workout.id, "stress", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Travel, work, etc." /></div>
                       </div>
                       )}

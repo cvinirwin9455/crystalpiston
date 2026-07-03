@@ -3,9 +3,18 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-29T01:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-03T01:00:00Z";
 
 const updates = [
+  {
+    date: "July 3, 2026",
+    items: [
+      { area: "All", text: "Fixed: Pace display bug where runs near a whole-minute pace (e.g. 9:00/mi) would show as '8:60/mi' instead — now correctly rolls over to 9:00" },
+      { area: "Client", text: "Fixed: Target Pace ranges (e.g. '11:00-12:00/mi') now correctly convert to KM when your account is set to kilometers" },
+      { area: "Client", text: "Fixed: Average Pace placeholder in the workout log form now shows '/km' when your account is set to kilometers" },
+      { area: "Client", text: "Fixed: Weekly total in the header now matches the stats denominator — no longer inflated by counting Strava/client workouts twice" },
+    ],
+  },
   {
     date: "June 29, 2026",
     items: [

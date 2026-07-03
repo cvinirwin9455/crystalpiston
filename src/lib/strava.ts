@@ -178,9 +178,9 @@ export function metersToMiles(meters: number): number {
 export function secondsToMilePace(movingTimeSeconds: number, distanceMeters: number): string {
   if (!distanceMeters || distanceMeters === 0) return ''
   const miles = distanceMeters / 1609.344
-  const paceSeconds = movingTimeSeconds / miles
-  const minutes = Math.floor(paceSeconds / 60)
-  const seconds = Math.round(paceSeconds % 60)
+  const totalSeconds = Math.round(movingTimeSeconds / miles)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}/mi`
 }
 
