@@ -185,11 +185,34 @@ ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : 
 
     const data = await response.json()
     const aiResponse = data.choices?.[0]?.message?.content || 'No response generated.'
+    const tokensUsed = data.usage?.total_tokens || 0
+    const provider = baseUrl.includes('vercel') ? 'Vercel AI Gateway' : 'OpenAI Direct'
+
+    // Log usage to ai_usage_log for local monthly tracking
+    // gpt-4o-mini pricing: ~$0.15/1M input + $0.60/1M output tokens
+    // Simplified: use ~$0.30/1M average (blended input/output estimate)
+    const estimatedCost = tokensUsed * 0.0000003 // $0.30 per 1M tokens blended
+    try {
+      await adminClient.from('ai_usage_log').insert({
+        user_id: user.id,
+        client_id: clientId || null,
+        data_depth: dataDepth || 'standard',
+        prompt_preview: prompt?.slice(0, 100) || '',
+        tokens_used: tokensUsed,
+        estimated_cost: estimatedCost,
+        provider,
+        model: modelName,
+      })
+    } catch (logErr) {
+      // Don't fail the request if logging fails
+      console.error('[AI Coach] Failed to log usage:', logErr)
+    }
 
     return NextResponse.json({
       response: aiResponse,
-      tokensUsed: data.usage?.total_tokens || 0,
-      provider: baseUrl.includes('vercel') ? 'Vercel AI Gateway' : 'OpenAI Direct',
+      tokensUsed,
+      estimatedCost,
+      provider,
     })
   } catch (err: any) {
     console.error('AI Coach error:', err)
