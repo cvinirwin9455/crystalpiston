@@ -202,6 +202,12 @@ export default function DashboardPage() {
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
 
   const clientUpdates = [
+    { date: "July 5, 2026", items: [
+      "Your profile photo (or a person icon) now appears on the right side of the header — cleaner look",
+      "Fixed: The weekly distance shown under the week name now matches the stats section correctly",
+      "Fixed: Unit preference buttons (Miles/KM, Pounds/KG) now line up consistently",
+      "Fixed: App now loads the latest content when opened from your home screen icon",
+    ]},
     { date: "June 25, 2026", items: [
       "New Help Center — tap the ? icon in the header to search guides on how to use every feature",
       "Strava auto-synced workouts now show a reminder to add your RPE & Sleep — tap 'Add' to fill them in",
