@@ -1049,11 +1049,7 @@ export default function DashboardPage() {
       <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {stravaConnection?.connected && stravaConnection.athleteProfile ? (
-              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            ) : (
-              <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
-            )}
+            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={40} height={40} />
             <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
           <div className="flex items-center gap-4">
@@ -1103,10 +1099,13 @@ export default function DashboardPage() {
             </div>
             <div className="relative">
               <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
-                  <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
-                </div>
-                <span className="text-white text-xs font-medium hidden sm:block">{loggedInName || 'Account'}</span>
+                {stravaConnection?.connected && stravaConnection.athleteProfile ? (
+                  <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-8 h-8 rounded-full object-cover border border-white/20" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  </div>
+                )}
                 <svg className={`w-3 h-3 text-gray-400 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {showClientMenu && (
