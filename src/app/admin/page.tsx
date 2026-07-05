@@ -1919,19 +1919,19 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-primary md:flex">
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center gap-3 mb-3">
+      <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-80 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
+        <div className="px-5 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3 mb-4">
             <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full" />
-            <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
+            <div><p className="text-white font-heading text-base uppercase">Coach Admin</p><p className="text-gold text-sm">{loggedInUser || "Loading..."}</p></div>
           </div>
-          <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent mb-2" />
-          <div className="flex gap-1 mb-2">
+          <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent mb-3" />
+          <div className="flex gap-1.5 mb-3">
             {[{ key: "active", label: "Active" }, { key: "archived", label: "Archived" }, { key: "all", label: "All" }].map((f) => (
-              <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-2 py-1 rounded text-xs transition-colors flex-1 ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
+              <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-3 py-2 rounded-lg text-sm transition-colors flex-1 min-h-[40px] ${clientFilter === f.key ? "bg-accent/20 text-accent font-medium" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
             ))}
           </div>
-          <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent text-xs font-bold py-2.5 rounded-lg transition-colors">+ New Client</button>
+          <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent text-sm font-bold py-3 rounded-xl transition-colors">+ New Client</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {/* Primary clients (this coach is the default) */}
@@ -1943,30 +1943,30 @@ export default function AdminPage() {
             return (
               <>
                 {primaryClients.length > 0 && (
-                  <div className="px-4 py-2.5 bg-primary/30 border-b border-white/5">
-                    <p className="text-gold text-[11px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                  <div className="px-5 py-3 bg-primary/30 border-b border-white/5">
+                    <p className="text-gold text-xs font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
                   </div>
                 )}
                 {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all border-b border-white/5 min-h-[56px] ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-3 border-l-accent" : "hover:bg-white/5"}`}>
+                <div className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
                   {client.stravaProfileUrl ? (
-                    <img src={client.stravaProfileUrl} alt={client.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                    <img src={client.stravaProfileUrl} alt={client.name} className="w-11 h-11 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                   ) : null}
                   {client.gender === "female" ? (
-                    <svg className={`w-10 h-10 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-11 h-11 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className={`w-10 h-10 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-11 h-11 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-white text-sm font-medium truncate">{client.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-white text-[15px] font-medium truncate">{client.name}</p>
                     {client.stravaConnected && <svg className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
                   </div>
-                  <p className="text-gray-400 text-xs truncate mt-0.5">
+                  <p className="text-gray-400 text-sm truncate mt-0.5">
                     {client.inviteStatus !== "accepted" 
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                       : client.goal 
@@ -1980,7 +1980,7 @@ export default function AdminPage() {
                     <span className="w-3 h-3 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
                   )}
                   {unreadByClient[client.id] > 0 && (
-                    <span className="bg-accent text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
+                    <span className="bg-accent text-white text-[11px] font-bold w-6 h-6 rounded-full flex items-center justify-center">{unreadByClient[client.id]}</span>
                   )}
                 </div>
               </button>
@@ -1988,8 +1988,8 @@ export default function AdminPage() {
           })}
                 {showSecondary && secondaryClients.length > 0 && (
                   <>
-                    <div className="px-4 py-2.5 bg-primary/30 border-b border-white/5 mt-1">
-                      <p className="text-purple-400 text-[11px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
+                    <div className="px-5 py-3 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-purple-400 text-xs font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
                     </div>
                     {secondaryClients.map((client) => {
                       const isSelected = selectedClient === client.id;
@@ -2032,8 +2032,8 @@ export default function AdminPage() {
                 )}
                 {showSecondary && otherClients.length > 0 && (
                   <>
-                    <div className="px-4 py-2.5 bg-primary/30 border-b border-white/5 mt-1">
-                      <p className="text-gray-500 text-[11px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
+                    <div className="px-5 py-3 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-gray-500 text-xs font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
                     </div>
                     {otherClients.map((client) => {
                       const isSelected = selectedClient === client.id;
