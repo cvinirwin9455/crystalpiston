@@ -1144,7 +1144,7 @@ export default function DashboardPage() {
       <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[73px] md:top-[65px] z-30 overflow-visible">
         <div className="max-w-7xl mx-auto px-5 md:px-6 flex gap-0 md:gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-5 py-4 md:px-6 md:py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-5 py-4 md:px-6 md:py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${tab.key === "account" ? "hidden md:block" : ""} ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
                 <span className="absolute top-2 -right-1 md:-top-1 md:-right-2 bg-accent text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
@@ -1229,10 +1229,10 @@ export default function DashboardPage() {
 
             {/* Coach Message */}
             {currentWeek.coachMessage && (
-              <div className="bg-secondary/50 border border-gold/30 rounded-xl p-4">
+              <div className="bg-secondary/50 border border-gold/30 rounded-xl p-5 md:p-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
-                  <div><p className="text-gold text-xs font-heading uppercase mb-1">Message from {coachName}</p><p className="text-gray-300 text-sm leading-relaxed">{currentWeek.coachMessage}</p></div>
+                  <div className="w-8 h-8 md:w-7 md:h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg className="w-4 h-4 md:w-3.5 md:h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
+                  <div><p className="text-gold text-xs font-heading uppercase mb-1.5 md:mb-1">Weekly Message</p><p className="text-gray-200 md:text-gray-300 text-sm leading-relaxed">{currentWeek.coachMessage}</p></div>
                 </div>
               </div>
             )}
@@ -1240,9 +1240,9 @@ export default function DashboardPage() {
             {/* Workout Cards - Grouped by Day (Collapsible) */}
             <div className="space-y-3">
               {/* Expand/Collapse All */}
-              <div className="flex justify-end mb-2">
-                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
-                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+              <div className="flex justify-end gap-3 md:gap-2 mb-2">
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-sm md:text-xs py-1">Expand All</button>
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-sm md:text-xs py-1">Collapse All</button>
               </div>
 
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
@@ -1271,15 +1271,15 @@ export default function DashboardPage() {
                         <span className="text-gray-400 text-xs ml-2">{dayDateStr}</span>
                         {!isExpanded && <span className="text-gray-400 text-xs ml-2 md:ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3 md:gap-2">
                         <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
-                        <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        <svg aria-hidden="true" className={`w-5 h-5 md:w-4 md:h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </div>
                     </button>
 
                     {/* Day Content - only when expanded */}
                     {isExpanded && (
-                      <div className="p-4 space-y-3">
+                      <div className="p-4 space-y-4 md:space-y-3">
                     {/* Coach's programmed workouts for this day — with Strava suggestions attached */}
                     {dayWorkouts.map((workout) => {
                       // Find Strava imports that suggest matching to THIS workout
@@ -1293,25 +1293,23 @@ export default function DashboardPage() {
                       return (
                 <div key={workout.id}>
                 <div className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
-                  <div className="p-5">
+                  <div className="p-4 md:p-5">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         {/* Completion Status Indicator */}
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${workout.status === "complete" ? "bg-green-500 border-green-500" : workout.status === "partial" ? "bg-yellow-500 border-yellow-500" : workout.status === "skipped" ? "bg-red-500 border-red-500" : "border-gray-500"}`}>
-                          {workout.status === "complete" && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        <div className={`w-7 h-7 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${workout.status === "complete" ? "bg-green-500 border-green-500" : workout.status === "partial" ? "bg-yellow-500 border-yellow-500" : workout.status === "skipped" ? "bg-red-500 border-red-500" : "border-gray-500"}`}>
+                          {workout.status === "complete" && <svg className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                           {workout.status === "partial" && <span className="text-white text-xs font-bold">½</span>}
-                          {workout.status === "skipped" && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>}
+                          {workout.status === "skipped" && <svg className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-white font-heading uppercase text-sm">{workout.day}</span>
-                            <span className="text-gray-300 text-xs">{workout.date}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1.5 md:mb-1">
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Programmed</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
                           </div>
-                          <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
+                          <h3 className={`font-bold text-base md:text-sm mb-1 md:mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
                             <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure, getWorkoutUnit(workout.id), workout.distanceUnit)}</div>
                           ) : workout.description ? (
@@ -2346,16 +2344,12 @@ export default function DashboardPage() {
                     <button onClick={() => { setNotifMessages("immediate"); saveNotifPrefs(notifPlanPublished, "immediate"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Send immediately
                     </button>
-                    <button onClick={() => { setNotifMessages("daily"); saveNotifPrefs(notifPlanPublished, "daily"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
-                      Daily summary
-                    </button>
                     <button onClick={() => { setNotifMessages("off"); saveNotifPrefs(notifPlanPublished, "off"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Off
                     </button>
                   </div>
                   <p className="text-gray-400 text-xs mt-2">
                     {notifMessages === "immediate" && `You'll receive an email each time ${coachName} sends you a message.`}
-                    {notifMessages === "daily" && `You'll receive one email per day summarising any messages from ${coachName}.`}
                     {notifMessages === "off" && "You won't receive email notifications for messages. Check the app to read them."}
                   </p>
                 </div>
