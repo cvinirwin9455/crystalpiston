@@ -2218,7 +2218,7 @@ export default function AdminPage() {
                   <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
                   {/* Coaches badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {selectedClientData.coaches.map(coach => (
+                    {[...selectedClientData.coaches].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map(coach => (
                       <span key={coach.coachId} className={`text-xs px-2 py-0.5 rounded-full border ${coach.isDefault ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
                         {coach.coachName.split(' ')[0]}{coach.isDefault ? ' ★' : ''}
                       </span>
