@@ -1931,7 +1931,7 @@ export default function AdminPage() {
               <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-2 py-1 rounded text-xs transition-colors flex-1 ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
             ))}
           </div>
-          <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg transition-colors">+ New Client</button>
+          <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent text-xs font-bold py-2.5 rounded-lg transition-colors">+ New Client</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {/* Primary clients (this coach is the default) */}
@@ -1943,30 +1943,30 @@ export default function AdminPage() {
             return (
               <>
                 {primaryClients.length > 0 && (
-                  <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
-                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                  <div className="px-4 py-2.5 bg-primary/30 border-b border-white/5">
+                    <p className="text-gold text-[11px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
                   </div>
                 )}
                 {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all border-b border-white/5 min-h-[56px] ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
                   {client.stravaProfileUrl ? (
-                    <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                    <img src={client.stravaProfileUrl} alt={client.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                   ) : null}
                   {client.gender === "female" ? (
-                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-10 h-10 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-10 h-10 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-white text-xs font-medium truncate">{client.name}</p>
-                    {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
+                    <p className="text-white text-sm font-medium truncate">{client.name}</p>
+                    {client.stravaConnected && <svg className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
                   </div>
-                  <p className="text-gray-300 text-xs truncate">
+                  <p className="text-gray-400 text-xs truncate mt-0.5">
                     {client.inviteStatus !== "accepted" 
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                       : client.goal 
@@ -1977,10 +1977,10 @@ export default function AdminPage() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   {clientsWithComments.has(client.id) && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
+                    <span className="w-3 h-3 rounded-full bg-purple-500 inline-block mb-0.5" title="New workout comment" />
                   )}
                   {unreadByClient[client.id] > 0 && (
-                    <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
+                    <span className="bg-accent text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center mb-0.5">{unreadByClient[client.id]}</span>
                   )}
                 </div>
               </button>
@@ -1988,8 +1988,8 @@ export default function AdminPage() {
           })}
                 {showSecondary && secondaryClients.length > 0 && (
                   <>
-                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
-                      <p className="text-purple-400 text-[10px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
+                    <div className="px-4 py-2.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-purple-400 text-[11px] font-heading uppercase tracking-wider">Secondary Coach ({secondaryClients.length})</p>
                     </div>
                     {secondaryClients.map((client) => {
                       const isSelected = selectedClient === client.id;
@@ -2032,8 +2032,8 @@ export default function AdminPage() {
                 )}
                 {showSecondary && otherClients.length > 0 && (
                   <>
-                    <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
-                      <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
+                    <div className="px-4 py-2.5 bg-primary/30 border-b border-white/5 mt-1">
+                      <p className="text-gray-500 text-[11px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
                     </div>
                     {otherClients.map((client) => {
                       const isSelected = selectedClient === client.id;
@@ -2363,19 +2363,21 @@ export default function AdminPage() {
                     const adminDayDateStr = adminDayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                     return (
                       <div key={day} className="border border-white/10 rounded-xl overflow-hidden">
-                        <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
-                          <div>
-                            <span className="text-white font-heading uppercase text-sm">{day}</span>
-                            <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
-                            {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${convertDist(dayMiles).toFixed(1)} ${distUnitShort}` : ''}</span>}
+                        <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between px-4 py-3.5 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left min-h-[52px]">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-white font-heading uppercase text-sm">{day}</span>
+                              <span className="text-gray-400 text-xs">{adminDayDateStr}</span>
+                            </div>
+                            {!isAdminDayExpanded && <p className="text-gray-400 text-xs mt-0.5 truncate">{daySummary}{dayMiles > 0 ? ` • ${convertDist(dayMiles).toFixed(1)} ${distUnitShort}` : ''}</p>}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
-                            <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                            <span className="text-gray-300 text-xs">{totalWorkouts}</span>
+                            <svg aria-hidden="true" className={`w-5 h-5 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </div>
                         </button>
                         {isAdminDayExpanded && (
-                        <div className="p-3 space-y-3">
+                        <div className="px-4 py-3 space-y-3">
                         {dayWorkouts.map((w, wi) => (
                     <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
                       {(!editingWeek || w.completed) ? (
