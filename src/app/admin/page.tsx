@@ -3061,8 +3061,8 @@ export default function AdminPage() {
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Weight Unit</h3>
                   <p className="text-gray-300 text-xs mb-4">Choose the default weight unit for cross-training exercises.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => { setAdminWeightUnit("kg"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "kg"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "kg" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilograms (kg)</button>
                     <button onClick={() => { setAdminWeightUnit("lbs"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "lbs"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "lbs" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Pounds (lbs)</button>
+                    <button onClick={() => { setAdminWeightUnit("kg"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "kg"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "kg" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilograms (kg)</button>
                   </div>
                 </div>
 
