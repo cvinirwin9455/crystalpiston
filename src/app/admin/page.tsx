@@ -2111,7 +2111,7 @@ export default function AdminPage() {
             );
           })()}
         </div>
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 hidden md:block">
           <div className="relative">
             <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
               <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
