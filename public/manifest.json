@@ -1,6 +1,8 @@
 {
   "name": "Pistol Performance Coaching",
   "short_name": "Pistol Performance",
+  "start_url": "/",
+  "id": "/",
   "icons": [
     {
       "src": "/icon.png",
@@ -15,5 +17,6 @@
   ],
   "theme_color": "#1a1a2e",
   "background_color": "#1a1a2e",
-  "display": "standalone"
+  "display": "standalone",
+  "scope": "/"
 }
