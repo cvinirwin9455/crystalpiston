@@ -1055,10 +1055,17 @@ export default function DashboardPage() {
       <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-5 py-4 md:px-6 md:py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={40} height={40} />
+            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={40} height={40} className="hidden md:block" />
             <div><h1 className="font-heading text-xl md:text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-1 md:gap-4">
+            {/* Messages icon - mobile only */}
+            <button onClick={() => { if (activeTab === "messages") { setActiveTab("training"); } else { setActiveTab("messages"); setUnreadCount(0); } }} className="relative text-gray-400 hover:text-white transition-colors p-2 md:hidden" title="Messages">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              {unreadCount > 0 && <span className="absolute top-1 right-1 bg-accent text-white text-[9px] font-bold min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center">{unreadCount}</span>}
+              {activeTab === "messages" && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent"></span>}
+            </button>
+            {/* Bell icon */}
             <div className="relative">
               <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); } else { setShowUpdatesDropdown(true); } }} className="relative text-gray-400 hover:text-white transition-colors p-2 -m-2 md:p-0 md:m-0" title="What's New">
                 <svg className="w-6 h-6 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
@@ -1141,10 +1148,11 @@ export default function DashboardPage() {
       </header>
 
       {/* Tabs — sticky below header */}
-      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[73px] md:top-[65px] z-30 overflow-visible">
+      {/* Tabs — desktop only (mobile uses header icons) */}
+      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[73px] md:top-[65px] z-30 overflow-visible hidden md:block">
         <div className="max-w-7xl mx-auto px-5 md:px-6 flex gap-0 md:gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-5 py-4 md:px-6 md:py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${tab.key === "account" ? "hidden md:block" : ""} ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-5 py-4 md:px-6 md:py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
                 <span className="absolute top-2 -right-1 md:-top-1 md:-right-2 bg-accent text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
@@ -2027,7 +2035,12 @@ export default function DashboardPage() {
 
         {/* MESSAGES TAB - Chat Style */}
         {activeTab === "messages" && (
-          <div className="flex flex-col h-[calc(100vh-200px)] bg-secondary/20 border border-white/10 rounded-2xl overflow-hidden">
+          <div className="flex flex-col h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] bg-secondary/20 border border-white/10 rounded-2xl overflow-hidden">
+            {/* Mobile back button */}
+            <button onClick={() => setActiveTab("training")} className="flex items-center gap-2 px-4 py-3 border-b border-white/10 text-gray-400 hover:text-white md:hidden">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              <span className="text-sm">Back to Training</span>
+            </button>
             {/* Chat Header */}
             <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
               <div className="flex items-center gap-3">
