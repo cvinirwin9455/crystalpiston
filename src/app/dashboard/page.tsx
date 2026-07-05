@@ -1046,21 +1046,21 @@ export default function DashboardPage() {
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm">Skip to main content</a>
       {/* Header — sticky */}
-      <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
+      <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-5 py-4 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             {stravaConnection?.connected && stravaConnection.athleteProfile ? (
-              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-11 h-11 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             ) : (
               <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
             )}
-            <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
+            <div><h1 className="font-heading text-xl uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <div className="relative">
-              <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); } else { setShowUpdatesDropdown(true); } }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                {(showNewBadge && !showUpdatesDropdown) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent" />}
+              <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); } else { setShowUpdatesDropdown(true); } }} className="relative text-gray-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="What's New">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                {(showNewBadge && !showUpdatesDropdown) && <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-accent" />}
               </button>
 
               {/* Updates Dropdown */}
@@ -1136,20 +1136,20 @@ export default function DashboardPage() {
       </header>
 
       {/* Tabs — sticky below header */}
-      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[65px] z-30 overflow-visible">
-        <div className="max-w-7xl mx-auto px-6 flex gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
+      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[73px] z-30 overflow-visible">
+        <div className="max-w-7xl mx-auto px-5 flex gap-0 overflow-visible" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-5 py-4 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible min-h-[48px] ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-accent text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
+                <span className="absolute top-2 -right-1 bg-accent text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1.5 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
               )}
             </button>
           ))}
         </div>
       </nav>
 
-      <main id="main-content" className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6">
         {/* TRAINING TAB (merged with dashboard stats) */}
         {activeTab === "training" && (
           <>
@@ -1174,12 +1174,12 @@ export default function DashboardPage() {
 
             {/* Week Navigation */}
             <div className="flex items-center justify-between">
-              <button onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week" disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+              <button onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week" disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed min-h-[44px] min-w-[44px] flex items-center justify-center"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
               <div className="text-center">
-                <h2 className="font-heading text-2xl uppercase text-white">{getWeekLabel(weekOffset)}</h2>
-                {currentWeek && <p className="text-gray-400 text-sm">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotalConverted.toFixed(2)} {distUnitShort}</span></p>}
+                <h2 className="font-heading text-xl sm:text-2xl uppercase text-white">{getWeekLabel(weekOffset)}</h2>
+                {currentWeek && <p className="text-gray-400 text-sm mt-1">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotalConverted.toFixed(2)} {distUnitShort}</span></p>}
               </div>
-              <button onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week" disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+              <button onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week" disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed min-h-[44px] min-w-[44px] flex items-center justify-center"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             {/* No plan for this week */}
@@ -1192,18 +1192,18 @@ export default function DashboardPage() {
 
             {/* Has a plan — show stats + workouts */}
             {currentWeek && (<>
-            <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-secondary/30 border border-white/10 rounded-xl p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
                 <div className="flex gap-1">
-                  <button onClick={() => setStatsFilter("thisWeek")} className={`px-3 py-1 rounded text-xs ${statsFilter === "thisWeek" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>This Week</button>
-                  <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
+                  <button onClick={() => setStatsFilter("thisWeek")} className={`px-3 py-1.5 rounded-lg text-xs min-h-[36px] ${statsFilter === "thisWeek" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>This Week</button>
+                  <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1.5 rounded-lg text-xs min-h-[36px] ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(2)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(() => {
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                <div className="text-center py-2"><p className="font-heading text-2xl text-accent">{statsMiles.toFixed(1)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(1)}</span></p><p className="text-gray-300 text-xs mt-1">{distUnitLabel}</p></div>
+                <div className="text-center py-2"><p className="font-heading text-2xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs mt-1">Programmed</p></div>
+                <div className="text-center py-2"><p className="font-heading text-2xl text-cyan-400">{(() => {
                   const cws = (currentWeek?.clientWorkouts || []);
                   // Count: client-created + Strava standalone (decided or already persisted as standalone)
                   const yourWorkouts = cws.filter(cw => {
@@ -1216,18 +1216,18 @@ export default function DashboardPage() {
                   });
                   const completedYours = yourWorkouts.filter(cw => cw.source === 'strava' || completedClientWorkouts[cw.id]);
                   return `${completedYours.length}/${yourWorkouts.length}`;
-                })()}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
+                })()}</p><p className="text-gray-300 text-xs mt-1">Your Workouts</p></div>
+                <div className="text-center py-2"><p className="font-heading text-2xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs mt-1">Avg Effort</p></div>
+                <div className="text-center py-2"><p className="font-heading text-2xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs mt-1">Completion</p></div>
               </div>
             </div>
 
             {/* Coach Message */}
             {currentWeek.coachMessage && (
-              <div className="bg-secondary/50 border border-gold/30 rounded-xl p-4">
+              <div className="bg-secondary/50 border border-gold/30 rounded-xl p-5">
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
-                  <div><p className="text-gold text-xs font-heading uppercase mb-1">Message from {coachName}</p><p className="text-gray-300 text-sm leading-relaxed">{currentWeek.coachMessage}</p></div>
+                  <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
+                  <div><p className="text-gold text-xs font-heading uppercase mb-1.5">Message from {coachName}</p><p className="text-gray-200 text-sm leading-relaxed">{currentWeek.coachMessage}</p></div>
                 </div>
               </div>
             )}
@@ -1235,9 +1235,9 @@ export default function DashboardPage() {
             {/* Workout Cards - Grouped by Day (Collapsible) */}
             <div className="space-y-3">
               {/* Expand/Collapse All */}
-              <div className="flex justify-end mb-2">
-                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
-                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+              <div className="flex justify-end mb-1 gap-3">
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs py-2 px-3 min-h-[36px]">Expand All</button>
+                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs py-2 px-3 min-h-[36px]">Collapse All</button>
               </div>
 
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
@@ -1260,21 +1260,23 @@ export default function DashboardPage() {
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
                     {/* Day Header - always visible */}
-                    <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
-                      <div>
-                        <span className="text-white font-heading uppercase text-sm">{day}</span>
-                        <span className="text-gray-300 text-xs ml-2">{dayDateStr}</span>
-                        {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                    <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between px-4 py-4 sm:px-5 sm:py-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left min-h-[56px]">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-white font-heading uppercase text-base">{day}</span>
+                          <span className="text-gray-400 text-xs">{dayDateStr}</span>
+                        </div>
+                        {!isExpanded && <p className="text-gray-400 text-xs mt-0.5 truncate">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</p>}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
-                        <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                        <span className="text-gray-300 text-xs">{totalWorkouts}</span>
+                        <svg aria-hidden="true" className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </div>
                     </button>
 
                     {/* Day Content - only when expanded */}
                     {isExpanded && (
-                      <div className="p-4 space-y-3">
+                      <div className="px-4 py-4 sm:px-5 space-y-4">
                     {/* Coach's programmed workouts for this day — with Strava suggestions attached */}
                     {dayWorkouts.map((workout) => {
                       // Find Strava imports that suggest matching to THIS workout
@@ -1288,25 +1290,23 @@ export default function DashboardPage() {
                       return (
                 <div key={workout.id}>
                 <div className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
-                  <div className="p-5">
+                  <div className="p-4 sm:p-5">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         {/* Completion Status Indicator */}
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${workout.status === "complete" ? "bg-green-500 border-green-500" : workout.status === "partial" ? "bg-yellow-500 border-yellow-500" : workout.status === "skipped" ? "bg-red-500 border-red-500" : "border-gray-500"}`}>
-                          {workout.status === "complete" && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${workout.status === "complete" ? "bg-green-500 border-green-500" : workout.status === "partial" ? "bg-yellow-500 border-yellow-500" : workout.status === "skipped" ? "bg-red-500 border-red-500" : "border-gray-500"}`}>
+                          {workout.status === "complete" && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                           {workout.status === "partial" && <span className="text-white text-xs font-bold">½</span>}
-                          {workout.status === "skipped" && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>}
+                          {workout.status === "skipped" && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>}
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-white font-heading uppercase text-sm">{workout.day}</span>
-                            <span className="text-gray-300 text-xs">{workout.date}</span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Programmed</span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
-                            {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
-                            {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Programmed</span>
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
+                            {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
+                            {workout.stravaSynced && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
                           </div>
-                          <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
+                          <h3 className={`font-bold text-base mb-1 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
                             <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure, getWorkoutUnit(workout.id), workout.distanceUnit)}</div>
                           ) : workout.description ? (
@@ -1343,17 +1343,17 @@ export default function DashboardPage() {
                         ) : (
                           /* Run/Cross: full options */
                           <>
-                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("skipped"); /* reuse skipType to track which form to show */ }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("skipped"); /* reuse skipType to track which form to show */ }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-xl text-sm transition-colors flex items-center gap-2 min-h-[44px]">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                               I Did This
                             </button>
-                            <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">I Skipped This</button>
+                            <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-3 px-5 rounded-xl text-sm transition-colors min-h-[44px]">I Skipped This</button>
                           </>
                         )}
                       </div>
                     )}
                     {expandedWorkout === workout.id && !workout.completed && (
-                      <div className="mt-2 ml-9"><button onClick={() => { setExpandedWorkout(null); setEditingWorkoutLog(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-xs">Cancel</button></div>
+                      <div className="mt-3 ml-10"><button onClick={() => { setExpandedWorkout(null); setEditingWorkoutLog(null); setSkipReason(""); }} className="text-gray-400 hover:text-white text-sm py-2">Cancel</button></div>
                     )}
                     {workout.status === "skipped" && workout.skipReason && (
                       <div className="mt-2 ml-9 bg-red-500/10 border border-red-500/20 rounded-lg p-2"><p className="text-red-400 text-xs"><span className="font-medium">Skipped:</span> {workout.skipReason}</p></div>

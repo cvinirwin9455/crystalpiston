@@ -5,6 +5,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-primary text-white;
@@ -20,5 +21,20 @@
   }
   .btn-secondary {
     @apply inline-block border-2 border-gold text-gold hover:bg-gold hover:text-primary font-bold py-3 px-8 rounded-full transition-all duration-300;
+  }
+
+  /* Mobile UX: Minimum touch target size (44x44px per Apple HIG) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+
+  /* Mobile UX: Better button sizing for primary actions */
+  .btn-action {
+    @apply py-3 px-5 text-sm font-bold rounded-xl min-h-[44px] transition-colors;
+  }
+
+  /* Mobile UX: Comfortable card padding */
+  .card-mobile {
+    @apply p-5 sm:p-6;
   }
 }
