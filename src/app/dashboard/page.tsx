@@ -1052,16 +1052,16 @@ export default function DashboardPage() {
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm">Skip to main content</a>
       {/* Header — sticky */}
-      <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
+      <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-5 py-4 md:px-6 md:py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={40} height={40} />
-            <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
+            <div><h1 className="font-heading text-xl md:text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             <div className="relative">
-              <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); } else { setShowUpdatesDropdown(true); } }} className="relative text-gray-400 hover:text-white transition-colors" title="What's New">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+              <button onClick={() => { if (showUpdatesDropdown) { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); } else { setShowUpdatesDropdown(true); } }} className="relative text-gray-400 hover:text-white transition-colors p-2 -m-2 md:p-0 md:m-0" title="What's New">
+                <svg className="w-6 h-6 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                 {(showNewBadge && !showUpdatesDropdown) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent" />}
               </button>
 
@@ -1104,12 +1104,12 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="relative">
-              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors p-1 -m-1 md:p-0 md:m-0">
                 {stravaConnection?.connected && stravaConnection.athleteProfile ? (
-                  <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-8 h-8 rounded-full object-cover border border-white/20" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-9 h-9 md:w-8 md:h-8 rounded-full object-cover border border-white/20" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  <div className="w-9 h-9 md:w-8 md:h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 md:w-4 md:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                   </div>
                 )}
                 <svg className={`w-3 h-3 text-gray-400 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -1141,20 +1141,20 @@ export default function DashboardPage() {
       </header>
 
       {/* Tabs — sticky below header */}
-      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[65px] z-30 overflow-visible">
-        <div className="max-w-7xl mx-auto px-6 flex gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
+      <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[73px] md:top-[65px] z-30 overflow-visible">
+        <div className="max-w-7xl mx-auto px-5 md:px-6 flex gap-0 md:gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
           {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-5 py-4 md:px-6 md:py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-accent text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
+                <span className="absolute top-2 -right-1 md:-top-1 md:-right-2 bg-accent text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">{unreadCount}</span>
               )}
             </button>
           ))}
         </div>
       </nav>
 
-      <main id="main-content" className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-5 md:space-y-6">
         {/* TRAINING TAB (merged with dashboard stats) */}
         {activeTab === "training" && (
           <>
@@ -1179,12 +1179,12 @@ export default function DashboardPage() {
 
             {/* Week Navigation */}
             <div className="flex items-center justify-between">
-              <button onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week" disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+              <button onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week" disabled={weekOffset <= minOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed p-2 -ml-2 md:p-0 md:ml-0"><svg className="w-7 h-7 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
               <div className="text-center">
                 <h2 className="font-heading text-2xl uppercase text-white">{getWeekLabel(weekOffset)}</h2>
-                {currentWeek && <p className="text-gray-400 text-sm">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotalConverted.toFixed(2)} {distUnitShort}</span></p>}
+                {currentWeek && <p className="text-gray-400 text-sm mt-1">{currentWeek.focus}{currentWeek.focus && ' — '}<span className="text-white font-medium">{weeklyTotalConverted.toFixed(2)} {distUnitShort}</span></p>}
               </div>
-              <button onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week" disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+              <button onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week" disabled={weekOffset >= maxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed p-2 -mr-2 md:p-0 md:mr-0"><svg className="w-7 h-7 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
             </div>
 
             {/* No plan for this week */}
@@ -1197,17 +1197,17 @@ export default function DashboardPage() {
 
             {/* Has a plan — show stats + workouts */}
             {currentWeek && (<>
-            <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-secondary/30 border border-white/10 rounded-xl p-5 md:p-4">
+              <div className="flex items-center justify-between mb-4 md:mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
                 <div className="flex gap-1">
-                  <button onClick={() => setStatsFilter("thisWeek")} className={`px-3 py-1 rounded text-xs ${statsFilter === "thisWeek" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>This Week</button>
-                  <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1 rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
+                  <button onClick={() => setStatsFilter("thisWeek")} className={`px-3 py-1.5 md:py-1 rounded-lg md:rounded text-xs ${statsFilter === "thisWeek" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>This Week</button>
+                  <button onClick={() => setStatsFilter("allTime")} className={`px-3 py-1.5 md:py-1 rounded-lg md:rounded text-xs ${statsFilter === "allTime" ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>All Time</button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                <div className="text-center"><p className="font-heading text-xl text-accent">{statsMiles.toFixed(2)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(2)}</span></p><p className="text-gray-300 text-xs">{distUnitLabel}</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs">Programmed Workouts</p></div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-3">
+                <div className="text-center py-2 md:py-0"><p className="font-heading text-2xl md:text-xl text-accent">{statsMiles.toFixed(1)}<span className="text-gray-300 text-sm">/{statsProgrammedMiles.toFixed(1)}</span></p><p className="text-gray-300 text-xs mt-1">{distUnitLabel}</p></div>
+                <div className="text-center py-2 md:py-0"><p className="font-heading text-2xl md:text-xl text-white">{statsMarked.length}/{statsWorkouts.length}</p><p className="text-gray-300 text-xs mt-1">Programmed Workouts</p></div>
                 <div className="text-center"><p className="font-heading text-xl text-cyan-400">{(() => {
                   const cws = (currentWeek?.clientWorkouts || []);
                   // Count: client-created + Strava standalone (decided or already persisted as standalone)
@@ -1221,9 +1221,9 @@ export default function DashboardPage() {
                   });
                   const completedYours = yourWorkouts.filter(cw => cw.source === 'strava' || completedClientWorkouts[cw.id]);
                   return `${completedYours.length}/${yourWorkouts.length}`;
-                })()}</p><p className="text-gray-300 text-xs">Your Workouts</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs">Avg Effort</p></div>
-                <div className="text-center"><p className="font-heading text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
+                })()}</p><p className="text-gray-300 text-xs mt-1">Your Workouts</p></div>
+                <div className="text-center py-2 md:py-0"><p className="font-heading text-2xl md:text-xl text-gold">{statsAvgRpe()}</p><p className="text-gray-300 text-xs mt-1">Avg Effort</p></div>
+                <div className="text-center py-2 md:py-0"><p className="font-heading text-2xl md:text-xl text-green-400">{statsWeightedCompletion}%</p><p className="text-gray-300 text-xs mt-1">Completion</p></div>
               </div>
             </div>
 
@@ -1265,11 +1265,11 @@ export default function DashboardPage() {
                 return (
                   <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
                     {/* Day Header - always visible */}
-                    <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
-                      <div>
-                        <span className="text-white font-heading uppercase text-sm">{day}</span>
-                        <span className="text-gray-300 text-xs ml-2">{dayDateStr}</span>
-                        {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                    <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 md:p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left min-h-[56px] md:min-h-0">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white font-heading uppercase text-base md:text-sm">{day}</span>
+                        <span className="text-gray-400 text-xs ml-2">{dayDateStr}</span>
+                        {!isExpanded && <span className="text-gray-400 text-xs ml-2 md:ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
@@ -1348,11 +1348,11 @@ export default function DashboardPage() {
                         ) : (
                           /* Run/Cross: full options */
                           <>
-                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("skipped"); /* reuse skipType to track which form to show */ }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            <button onClick={() => { setExpandedWorkout(workout.id); setSkipType("skipped"); /* reuse skipType to track which form to show */ }} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 md:py-2 md:px-4 rounded-xl md:rounded-lg text-sm md:text-xs transition-colors flex items-center gap-2 md:gap-1.5">
+                              <svg className="w-4 h-4 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                               I Did This
                             </button>
-                            <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded-lg text-xs transition-colors">I Skipped This</button>
+                            <button onClick={() => { setShowSkipDialog(workout.id); setSkipType("skipped"); }} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold py-3 px-5 md:py-2 md:px-4 rounded-xl md:rounded-lg text-sm md:text-xs transition-colors">I Skipped This</button>
                           </>
                         )}
                       </div>
