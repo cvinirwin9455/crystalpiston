@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import AvatarUpload from "@/components/AvatarUpload";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
@@ -109,7 +108,7 @@ export default function DashboardPage() {
 
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
-  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; fromName?: string; message: string}[]>([]);
+  const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; fromName?: string; fromAvatarUrl?: string | null; message: string}[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -173,6 +172,7 @@ export default function DashboardPage() {
   const [trainingProfile, setTrainingProfile] = useState<{birthday?: string | null} | null>(null);
   const [coachName, setCoachName] = useState<string>("your coach");
   const [coachAvatarUrl, setCoachAvatarUrl] = useState<string | null>(null);
+  const [coachStravaUrl, setCoachStravaUrl] = useState<string | null>(null);
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifStravaSynced, setNotifStravaSynced] = useState(true);
@@ -471,6 +471,7 @@ export default function DashboardPage() {
             setTrainingProfile(data.trainingProfile || null);
             if (data.coachName) setCoachName(data.coachName);
             if (data.coachAvatarUrl) setCoachAvatarUrl(data.coachAvatarUrl);
+            if (data.coachStravaUrl) setCoachStravaUrl(data.coachStravaUrl);
           }
         }
       } catch (err) {
@@ -1060,8 +1061,14 @@ export default function DashboardPage() {
       <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
-            <div><h1 className="font-heading text-lg uppercase text-white">Pistol Performance</h1><p className="text-gray-400 text-xs">Coaching</p></div>
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
+              {(coachAvatarUrl || coachStravaUrl) ? (
+                <img src={(coachAvatarUrl || coachStravaUrl)!} alt={coachName} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
+              )}
+            </div>
+            <div><h1 className="font-heading text-lg uppercase text-white">{coachName}</h1><p className="text-gray-400 text-xs">Coach</p></div>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -1109,8 +1116,15 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="relative">
-              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={loggedInName || 'Profile'} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+                  )}
+                </div>
+                <span className="text-white text-xs font-medium hidden sm:block">{loggedInName || 'Account'}</span>
                 <svg className={`w-3 h-3 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {showClientMenu && (
@@ -2053,13 +2067,13 @@ export default function DashboardPage() {
               )}
               {clientMessages.map((msg) => (
                 <div key={msg.id} className={`flex items-end gap-2 ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
-                  {/* Coach avatar — left side */}
+                  {/* Coach avatar — left side (use per-message avatar) */}
                   {msg.from !== "client" && (
                     <div className="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {coachAvatarUrl ? (
-                        <img src={coachAvatarUrl} alt={coachName} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      {msg.fromAvatarUrl ? (
+                        <img src={msg.fromAvatarUrl} alt={msg.fromName || coachName} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
-                        <span className="text-gold text-[10px] font-bold">{coachName.charAt(0)}</span>
+                        <span className="text-gold text-[10px] font-bold">{(msg.fromName || coachName).charAt(0)}</span>
                       )}
                     </div>
                   )}

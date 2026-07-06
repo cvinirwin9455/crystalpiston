@@ -43,12 +43,13 @@ export async function GET() {
   }
 
   if (!client) {
-    return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: null, coachName: null, coachAvatarUrl: null })
+    return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: null, coachName: null, coachAvatarUrl: null, coachStravaUrl: null })
   }
 
   // Fetch the default coach name for this client
   let coachName: string | null = null
   let coachAvatarUrl: string | null = null
+  let coachStravaUrl: string | null = null
   try {
     const { data: coachAssignment } = await adminClient
       .from('client_coaches')
@@ -65,18 +66,41 @@ export async function GET() {
         .single()
       coachName = coachUser?.name?.split(' ')[0] || null
       coachAvatarUrl = coachUser?.avatar_url || null
+
+      // Also get Strava profile for fallback
+      if (!coachAvatarUrl) {
+        const { data: strava } = await adminClient
+          .from('strava_connections')
+          .select('athlete_profile')
+          .eq('user_id', coachAssignment.coach_id)
+          .maybeSingle()
+        if (strava?.athlete_profile) {
+          coachStravaUrl = strava.athlete_profile.replace(/^http:\/\//i, 'https://')
+        }
+      }
     }
   } catch {
     // Table may not exist yet - fallback to first admin
     try {
       const { data: adminUsers } = await adminClient
         .from('users')
-        .select('name, avatar_url')
+        .select('id, name, avatar_url')
         .eq('role', 'admin')
         .order('created_at', { ascending: true })
         .limit(1)
       coachName = adminUsers?.[0]?.name?.split(' ')[0] || null
       coachAvatarUrl = adminUsers?.[0]?.avatar_url || null
+
+      if (!coachAvatarUrl && adminUsers?.[0]?.id) {
+        const { data: strava } = await adminClient
+          .from('strava_connections')
+          .select('athlete_profile')
+          .eq('user_id', adminUsers[0].id)
+          .maybeSingle()
+        if (strava?.athlete_profile) {
+          coachStravaUrl = strava.athlete_profile.replace(/^http:\/\//i, 'https://')
+        }
+      }
     } catch {}
   }
 
@@ -102,7 +126,7 @@ export async function GET() {
   if (!plans || plans.length === 0) {
     return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: {
       birthday: client.birthday || null,
-    }, coachName, coachAvatarUrl })
+    }, coachName, coachAvatarUrl, coachStravaUrl })
   }
 
   const formatted = plans.map(p => ({
@@ -129,5 +153,6 @@ export async function GET() {
     },
     coachName,
     coachAvatarUrl,
+    coachStravaUrl,
   })
 }

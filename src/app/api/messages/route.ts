@@ -142,13 +142,28 @@ export async function GET(request: Request) {
   // Get coach names for messages sent by coaches
   const coachSenderIds = [...new Set((messages || []).filter(m => m.from_user_id !== user.id).map(m => m.from_user_id))]
   const coachNameMap: Record<string, string> = {}
+  const coachAvatarMap: Record<string, string | null> = {}
   if (coachSenderIds.length > 0) {
     const { data: coachUsers } = await adminClient
       .from('users')
-      .select('id, name')
+      .select('id, name, avatar_url')
       .in('id', coachSenderIds)
     for (const cu of coachUsers || []) {
       coachNameMap[cu.id] = cu.name?.split(' ')[0] || 'Coach'
+      coachAvatarMap[cu.id] = cu.avatar_url || null
+    }
+    // Also try to get Strava profile photos for coaches without uploaded avatars
+    const coachesWithoutAvatar = coachSenderIds.filter(id => !coachAvatarMap[id])
+    if (coachesWithoutAvatar.length > 0) {
+      const { data: stravaConns } = await adminClient
+        .from('strava_connections')
+        .select('user_id, athlete_profile')
+        .in('user_id', coachesWithoutAvatar)
+      for (const sc of stravaConns || []) {
+        if (sc.athlete_profile && !coachAvatarMap[sc.user_id]) {
+          coachAvatarMap[sc.user_id] = sc.athlete_profile.replace(/^http:\/\//i, 'https://')
+        }
+      }
     }
   }
 
@@ -157,6 +172,7 @@ export async function GET(request: Request) {
     from: m.from_user_id === user.id ? 'client' : 'crystal',
     fromUserId: m.from_user_id,
     fromName: m.from_user_id !== user.id ? (coachNameMap[m.from_user_id] || 'Coach') : undefined,
+    fromAvatarUrl: m.from_user_id !== user.id ? (coachAvatarMap[m.from_user_id] || null) : undefined,
     toUserId: m.to_user_id,
     message: m.message,
     read: m.read,
