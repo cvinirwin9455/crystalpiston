@@ -106,17 +106,23 @@ ${clientName ? `Crystal is asking about: ${clientName}. Answer specifically abou
 
 WHAT YOU DO:
 - Give 3-4 bullet points max
+- Be BALANCED — always mention what the client IS doing (including client-added workouts and Strava activity) before noting concerns
 - Tell Crystal what to DO (message a client, adjust a plan, check in)
 - Spot patterns she might miss (e.g. "RPE trending up every week" or "always skips Thursdays")
 - Suggest specific conversations or plan changes
 - Be SPECIFIC — cite actual data points (days, workouts, skip reasons, RPE numbers)
 - If a workout was skipped, mention WHY (the skip reason is in the data)
+- Always include CLIENT-ADDED workout data — if a client skipped programmed workouts but did their own runs/walks, MENTION IT. They are still being active.
+- Use the distance amounts from the data when referencing what clients have done
 
 WHAT YOU NEVER DO:
 - Never repeat stats (X/Y workouts, miles, RPE numbers) — Crystal has those on her dashboard
 - Never mention days that haven't happened yet — they're in the future
-- Never flag workouts as "missed" if they're on a day that hasn't occurred yet this week
+- Never flag workouts as "missed" or "skipped" if they're on a day that hasn't occurred yet this week
+- NEVER say "skipped all workouts this week" if it's only Monday or Tuesday — the week JUST STARTED. Only days that have passed count.
 - Never use wrong pronouns — check the client's gender in the data and use she/her or he/him correctly
+- Never be overly negative — if a client is doing ANYTHING (client-added workouts, Strava activities, partial completions), acknowledge it positively before raising concerns
+- Never ignore client-added workouts when assessing activity levels — a client who skips programmed workouts but does their own 5km runs is NOT inactive
 - Never use headers, sections, or markdown formatting
 - Never write more than 4 bullet points
 - Never confuse CLIENT-ADDED workouts (extras the client chose to do) with PROGRAMMED workouts (what Crystal assigned). If a client skipped their programmed workouts but did their own walks instead, that is NOT "completing their workouts" — they skipped their plan.
@@ -126,9 +132,10 @@ CRITICAL DATE RULES:
 - Today is ${dateStr} (${todayName}).
 - The week runs Monday to Sunday.
 - Only Monday through ${todayName} have happened so far this week.
-- ${todayName === 'Monday' ? 'Only Monday has happened.' : todayName === 'Tuesday' ? 'Only Mon-Tue have happened.' : todayName === 'Wednesday' ? 'Only Mon-Wed have happened.' : todayName === 'Thursday' ? 'Only Mon-Thu have happened.' : todayName === 'Friday' ? 'Only Mon-Fri have happened.' : todayName === 'Saturday' ? 'Only Mon-Sat have happened.' : 'The full week has happened.'}
+- ${todayName === 'Monday' ? 'ONLY Monday has happened. Do NOT judge the week yet — it literally just started today. A client cannot have "skipped all week" if only Monday has passed.' : todayName === 'Tuesday' ? 'Only Mon-Tue have happened. The week JUST started — do not draw weekly conclusions from 1-2 days.' : todayName === 'Wednesday' ? 'Only Mon-Wed have happened.' : todayName === 'Thursday' ? 'Only Mon-Thu have happened.' : todayName === 'Friday' ? 'Only Mon-Fri have happened.' : todayName === 'Saturday' ? 'Only Mon-Sat have happened.' : 'The full week has happened.'}
 - Do NOT count Thursday, Friday, Saturday, or Sunday as missed if today is Wednesday or earlier.
 - A client who logged 3 workouts Mon-Wed out of 3 programmed Mon-Wed is at 100% for the week so far.
+- NEVER say "has not completed any workouts this week" if it's Monday — the first workout of the week may not even be due yet or may be later today.
 
 CLIENT DATA:
 ${context}${goodExamples && goodExamples.length > 0 ? `
@@ -500,14 +507,13 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       .from('client_workouts')
       .select('week_id, day, type, training_type, miles, notes, completed, source, activity_name')
       .in('week_id', weeks.map((w: any) => w.id))
-      .eq('user_id', clientId)
-      .neq('source', 'strava')
     
     if (clientWorkouts && clientWorkouts.length > 0) {
-      extraContext += '\n\nCLIENT-ADDED WORKOUTS (extra training they chose to do):\n'
+      extraContext += '\n\nCLIENT-ADDED & STRAVA WORKOUTS (actual activity the client DID — this IS training they completed on their own):\n'
       for (const cw of clientWorkouts) {
         const cwDist = cw.miles ? (distanceUnit === 'km' ? (Number(cw.miles) * 1.60934).toFixed(1) : Number(cw.miles).toFixed(1)) : '?'
-        extraContext += `  ${cw.day} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}: ${cwDist}${distanceUnit} ${cw.completed ? '(done)' : '(planned)'} ${cw.notes || ''}\n`
+        const sourceLabel = cw.source === 'strava' ? '[Strava]' : '[Client-Added]'
+        extraContext += `  ${cw.day} ${sourceLabel} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}${cw.activity_name ? ' "' + cw.activity_name + '"' : ''}: ${cwDist}${distanceUnit} ${cw.completed ? '(completed)' : '(planned)'} ${cw.notes || ''}\n`
       }
     }
 
