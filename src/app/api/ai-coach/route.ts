@@ -128,6 +128,8 @@ WHAT YOU NEVER DO:
 - NEVER FABRICATE DATA. If a workout shows "NOT LOGGED" or "UPCOMING" in the data, it has NOT been completed. Do not say a client "completed" a workout unless the data explicitly shows status: complete/partial.
 - NEVER invent distances, RPE numbers, or completion status. Only cite data points that are EXPLICITLY in the CLIENT DATA section below.
 - If the data shows 0 completed workouts for the current week, say "no workouts logged yet this week" — do NOT invent a completion.
+- "NOT LOGGED" means the workout exists and is DUE but the client hasn't recorded whether they did it or skipped it yet. This is DIFFERENT from "no workout programmed". Do NOT say "first workout is on Wednesday" if Monday shows "NOT LOGGED" — that means Monday HAS a workout, it just hasn't been logged yet.
+- When summarizing the current week, look at EACH DAY's status. If Monday shows "NOT LOGGED", say "Monday's [type] workout hasn't been logged yet" — don't skip over it.
 - Never use headers, sections, or markdown formatting
 - Never write more than 4 bullet points
 - Never confuse CLIENT-ADDED workouts (extras the client chose to do) with PROGRAMMED workouts (what Crystal assigned). If a client skipped their programmed workouts but did their own walks instead, that is NOT "completing their workouts" — they skipped their plan.
@@ -473,7 +475,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
         ? (completed.reduce((s: number, w: any) => s + (logMap.get(w.id)?.rpe || 0), 0) / completed.filter((w: any) => logMap.get(w.id)?.rpe).length).toFixed(1)
         : 'N/A'
 
-      workoutSummary += `\nWeek ${week.date_range} (${week.focus || 'no focus'}):\n`
+      workoutSummary += `\nWeek ${week.date_range} (${week.focus || 'no focus'})${isCurrentWeek2 ? ' [THIS IS THE CURRENT WEEK - only through ' + dayNames2[todayIdx2] + ']' : ''}:\n`
       // For current week, only count workouts on days that have happened
       const dayNames2 = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
       const todayIdx2 = today.getDay() === 0 ? 6 : today.getDay() - 1
@@ -491,7 +493,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       })
       const nonRestRelevant = relevantWorkouts.filter((w: any) => w.type !== 'rest')
       
-      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} PROGRAMMED workouts completed${relevantSkipped.length > 0 ? ` | ${relevantSkipped.length} SKIPPED` : ''}${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
+      workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} PROGRAMMED non-rest workouts completed${relevantSkipped.length > 0 ? ` | ${relevantSkipped.length} SKIPPED` : ''}${nonRestRelevant.length === 0 ? ' (no non-rest workouts due yet for days that have passed)' : ''}${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ' only)' : ''}\n`
       workoutSummary += `  Distance: ${totalDist.toFixed(1)} ${unitLabel}${clientAddedMilesMi > 0 ? ` (includes ${(distanceUnit === 'km' ? clientAddedMilesMi * 1.60934 : clientAddedMilesMi).toFixed(1)} ${unitLabel} from client-added workouts)` : ''}\n`
       workoutSummary += `  Avg RPE: ${avgRpe}\n`
 
