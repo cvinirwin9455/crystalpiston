@@ -1934,45 +1934,52 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-primary md:flex">
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
+      {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
+      <aside className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
-            <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full" />
+            {/* Mobile: coach photo. Desktop: Pistol logo */}
+            <div className="md:hidden w-14 h-14 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
+              {adminAvatarUrl ? (
+                <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-14 h-14 rounded-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <svg className="w-14 h-14" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
+              )}
+            </div>
+            <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full hidden md:block" />
             <div className="flex-1"><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
-            {/* Mobile-only menu button (top-right) */}
+            {/* Mobile-only gear menu button (top-right) */}
             <div className="relative md:hidden">
-              <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center overflow-hidden">
-                {adminAvatarUrl ? (
-                  <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                )}
-                {showNewUpdatesBadge && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-accent rounded-full border border-secondary"></span>}
+              <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <svg className={`w-3 h-3 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                {showNewUpdatesBadge && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-accent rounded-full border border-secondary"></span>}
               </button>
               {showAdminMenu && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
-                  <div className="absolute right-0 top-full mt-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[200px] overflow-hidden">
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2.5 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowAdminMenu(false)} />
+                  <div className="fixed left-4 right-4 top-20 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
+                    <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider px-4 pb-2 border-b border-white/5 mb-1">Settings</p>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2.5 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       Templates
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2.5 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2.5 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
-                    <div className="border-t border-white/10 mt-1.5 pt-1.5">
-                      <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-xs py-2.5 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-accent">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    <div className="border-t border-white/10 mt-1 pt-1">
+                      <a href="/auth/signout" className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-red-400 active:bg-white/10">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Logout
                       </a>
                     </div>
@@ -2172,12 +2179,19 @@ export default function AdminPage() {
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             <span className="text-sm">Back to Dashboard</span>
+          </button>
+        )}
+        {/* Mobile back button for settings views */}
+        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches) && (
+          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors md:hidden">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <span className="text-sm">Back to Clients</span>
           </button>
         )}
         {/* Create Client Modal */}
