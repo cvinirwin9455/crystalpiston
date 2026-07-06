@@ -17,13 +17,14 @@ export async function GET() {
   )
 
   // Get the client record for this user
-  const { data: client } = await adminClient
+  const { data: client, error: clientError } = await adminClient
     .from('clients')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
   if (!client) {
+    console.error(`[my-weeks] Client not found for user ${user.id}. Error: ${clientError?.message}`)
     return NextResponse.json({ error: 'Client record not found' }, { status: 404 })
   }
 
@@ -35,7 +36,10 @@ export async function GET() {
     .eq('status', 'published')
     .order('date_range', { ascending: true })
 
+  console.log(`[my-weeks] User ${user.id}, clients.id=${client.id}, published weeks: ${weeks?.length || 0}`)
+
   if (weeksError) {
+    console.error(`[my-weeks] Weeks query error: ${weeksError.message}`)
     return NextResponse.json({ error: weeksError.message }, { status: 500 })
   }
 
