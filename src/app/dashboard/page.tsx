@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import AvatarUpload from "@/components/AvatarUpload";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
@@ -171,6 +172,7 @@ export default function DashboardPage() {
   const [clientGender, setClientGender] = useState<string | null>(null);
   const [trainingProfile, setTrainingProfile] = useState<{birthday?: string | null} | null>(null);
   const [coachName, setCoachName] = useState<string>("your coach");
+  const [coachAvatarUrl, setCoachAvatarUrl] = useState<string | null>(null);
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifStravaSynced, setNotifStravaSynced] = useState(true);
@@ -179,6 +181,7 @@ export default function DashboardPage() {
   const [notifSaving, setNotifSaving] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
   const [loggedInEmail, setLoggedInEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [clientDistanceUnit, setClientDistanceUnit] = useState<"mi" | "km">("mi");
   const [clientWeightUnit, setClientWeightUnit] = useState<"kg" | "lbs">("kg");
   const [clientDateFormat, setClientDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
@@ -202,6 +205,12 @@ export default function DashboardPage() {
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
 
   const clientUpdates = [
+    { date: "July 6, 2026", items: [
+      "NEW: Profile Photo Upload — tap your avatar in Account to upload a profile photo",
+      "Your photo shows in the header and anywhere your name appears",
+      "Priority: uploaded photo first, then Strava photo (if connected), then initials",
+      "Coach's profile photo now shows in the Messages chat header",
+    ]},
     { date: "June 25, 2026", items: [
       "New Help Center — tap the ? icon in the header to search guides on how to use every feature",
       "Strava auto-synced workouts now show a reminder to add your RPE & Sleep — tap 'Add' to fill them in",
@@ -368,9 +377,10 @@ export default function DashboardPage() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
+          const { data: profile } = await supabase.from('users').select('name, avatar_url').eq('id', user.id).single();
           setLoggedInName(profile?.name || user.email || '');
           setLoggedInEmail(user.email || '');
+          if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
         }
       } catch (err) { console.error(err); }
     };
@@ -460,6 +470,7 @@ export default function DashboardPage() {
             setClientGender(data.gender || null);
             setTrainingProfile(data.trainingProfile || null);
             if (data.coachName) setCoachName(data.coachName);
+            if (data.coachAvatarUrl) setCoachAvatarUrl(data.coachAvatarUrl);
           }
         }
       } catch (err) {
@@ -1103,8 +1114,12 @@ export default function DashboardPage() {
             </div>
             <div className="relative">
               <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
-                  <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+                <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={loggedInName || 'Profile'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+                  )}
                 </div>
                 <span className="text-white text-xs font-medium hidden sm:block">{loggedInName || 'Account'}</span>
                 <svg className={`w-3 h-3 text-gray-400 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -2028,7 +2043,13 @@ export default function DashboardPage() {
             {/* Chat Header */}
             <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-bold">{coachName.charAt(0)}</span></div>
+                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center overflow-hidden">
+                  {coachAvatarUrl ? (
+                    <img src={coachAvatarUrl} alt={coachName} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-gold text-xs font-bold">{coachName.charAt(0)}</span>
+                  )}
+                </div>
                 <div><p className="text-white text-sm font-medium">{coachName}</p><p className="text-gray-300 text-xs">Coach</p></div>
               </div>
             </div>
@@ -2084,31 +2105,42 @@ export default function DashboardPage() {
             {/* Profile (read-only) */}
             <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
               <h2 className="font-heading text-xl uppercase text-accent mb-4">Your Profile</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {loggedInName && (
-                  <div>
-                    <p className="text-gray-400 text-xs mb-1">Name</p>
-                    <p className="text-white">{loggedInName}</p>
-                  </div>
-                )}
-                {loggedInEmail && (
-                  <div>
-                    <p className="text-gray-400 text-xs mb-1">Email</p>
-                    <p className="text-white">{loggedInEmail}</p>
-                  </div>
-                )}
-                {clientGender && (
-                  <div>
-                    <p className="text-gray-400 text-xs mb-1">Gender</p>
-                    <p className="text-white capitalize">{clientGender}</p>
-                  </div>
-                )}
-                {trainingProfile?.birthday && (
-                  <div>
-                    <p className="text-gray-400 text-xs mb-1">Birthday</p>
-                    <p className="text-white">{new Date(trainingProfile.birthday + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                  </div>
-                )}
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                {/* Avatar Upload */}
+                <AvatarUpload
+                  currentAvatarUrl={avatarUrl}
+                  userName={loggedInName}
+                  size="lg"
+                  onUploadComplete={(url) => setAvatarUrl(url)}
+                  onRemove={() => setAvatarUrl(null)}
+                />
+                {/* Profile details */}
+                <div className="grid grid-cols-2 gap-4 text-sm flex-1">
+                  {loggedInName && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Name</p>
+                      <p className="text-white">{loggedInName}</p>
+                    </div>
+                  )}
+                  {loggedInEmail && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Email</p>
+                      <p className="text-white">{loggedInEmail}</p>
+                    </div>
+                  )}
+                  {clientGender && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Gender</p>
+                      <p className="text-white capitalize">{clientGender}</p>
+                    </div>
+                  )}
+                  {trainingProfile?.birthday && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Birthday</p>
+                      <p className="text-white">{new Date(trainingProfile.birthday + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

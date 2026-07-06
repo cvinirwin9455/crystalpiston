@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import AvatarUpload from "@/components/AvatarUpload";
 
 type Plan = {
   id: string;
@@ -27,6 +28,7 @@ type ClientData = {
   goal: string;
   status: string;
   birthday?: string | null;
+  avatarUrl?: string | null;
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
@@ -234,22 +236,33 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         {!editing ? (
           /* View Mode */
           <div className="space-y-4">
-            <div className="grid md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Name</p>
-                <p className="text-white text-sm">{name || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Email</p>
-                <p className="text-white text-sm">{email || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Gender</p>
-                <p className="text-white text-sm capitalize">{gender || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Birthday</p>
-                <p className="text-white text-sm">{birthday ? `${formatDate(birthday)} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
+            <div className="flex items-start gap-5">
+              {/* Avatar Upload (admin can change client photo) */}
+              <AvatarUpload
+                currentAvatarUrl={clientData.avatarUrl}
+                userName={clientData.name}
+                userId={clientData.id}
+                size="md"
+                onUploadComplete={() => onSave()}
+                onRemove={() => onSave()}
+              />
+              <div className="grid md:grid-cols-4 gap-4 flex-1">
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Name</p>
+                  <p className="text-white text-sm">{name || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Email</p>
+                  <p className="text-white text-sm">{email || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Gender</p>
+                  <p className="text-white text-sm capitalize">{gender || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Birthday</p>
+                  <p className="text-white text-sm">{birthday ? `${formatDate(birthday)} (age ${Math.floor((Date.now() - new Date(birthday + 'T00:00:00').getTime()) / (365.25 * 24 * 60 * 60 * 1000))})` : "—"}</p>
+                </div>
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay } from "./StructuredRunBuilder";
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
+import AvatarUpload from "@/components/AvatarUpload";
 import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
@@ -15,7 +16,7 @@ type ClientWorkout = { id: string; day: string; type: string; trainingType: stri
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -366,6 +367,7 @@ export default function AdminPage() {
   const [loadingClients, setLoadingClients] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState<string>("");
   const [loggedInUserId, setLoggedInUserId] = useState<string>("");
+  const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null);
 
   // All coaches in the system (for multi-coach dropdown)
   type CoachOption = { id: string; name: string; email: string };
@@ -524,9 +526,10 @@ export default function AdminPage() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: profile } = await supabase.from('users').select('name').eq('id', user.id).single();
+          const { data: profile } = await supabase.from('users').select('name, avatar_url').eq('id', user.id).single();
           setLoggedInUser(profile?.name || user.email || '');
           setLoggedInUserId(user.id);
+          if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
         }
       } catch (err) { console.error(err); }
     };
@@ -994,6 +997,7 @@ export default function AdminPage() {
           inviteStatus: c.inviteStatus || 'accepted',
           stravaProfileUrl: c.stravaProfileUrl || null,
           stravaConnected: c.stravaConnected || false,
+          avatarUrl: c.avatarUrl || null,
           weeks: [],
           messages: [],
           birthday: c.birthday || null,
@@ -1952,13 +1956,13 @@ export default function AdminPage() {
             return (
               <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                 <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
-                  {client.stravaProfileUrl ? (
-                    <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                  {(client.avatarUrl || client.stravaProfileUrl) ? (
+                    <img src={(client.avatarUrl || client.stravaProfileUrl)!} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                   ) : null}
                   {client.gender === "female" ? (
-                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-8 h-8 ${(client.avatarUrl || client.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-8 h-8 ${(client.avatarUrl || client.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -2073,8 +2077,12 @@ export default function AdminPage() {
         <div className="p-3 border-t border-white/10">
           <div className="relative">
             <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
-              <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
-                <span className="text-accent text-xs font-bold">{loggedInUser ? loggedInUser.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+              <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {adminAvatarUrl ? (
+                  <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="text-accent text-xs font-bold">{loggedInUser ? loggedInUser.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+                )}
               </div>
               <span className="text-white text-xs font-medium truncate flex-1 text-left">{loggedInUser || 'Coach'}</span>
               <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
@@ -2157,13 +2165,13 @@ export default function AdminPage() {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-secondary flex items-center justify-center">
-                  {selectedClientData.stravaProfileUrl ? (
-                    <img src={selectedClientData.stravaProfileUrl} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                  {(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl) ? (
+                    <img src={(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl)!} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                   ) : null}
                   {selectedClientData.gender === "female" ? (
-                    <svg className={`w-10 h-10 ${selectedClientData.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-10 h-10 ${(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className={`w-10 h-10 ${selectedClientData.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-10 h-10 ${(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
                 </div>
                 <div>
@@ -2957,6 +2965,20 @@ export default function AdminPage() {
                 </div>
 
                 <p className="text-gray-400 text-sm">Choose how often you want to be notified for each type of activity. Changes save automatically.</p>
+
+                {/* Coach Profile Photo */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-4">Your Profile Photo</h3>
+                  <p className="text-gray-300 text-xs mb-4">This photo appears next to your messages and in your clients&apos; dashboards.</p>
+                  <AvatarUpload
+                    currentAvatarUrl={adminAvatarUrl}
+                    userName={loggedInUser}
+                    size="lg"
+                    onUploadComplete={(url) => setAdminAvatarUrl(url)}
+                    onRemove={() => setAdminAvatarUrl(null)}
+                  />
+                </div>
+
                 <div className="bg-primary/30 border border-white/5 rounded-lg p-3 mb-2">
                   <p className="text-gray-400 text-xs"><strong className="text-white">Immediately</strong> — You get an individual email each time any client triggers this event.</p>
                   <p className="text-gray-400 text-xs mt-1"><strong className="text-white">Off</strong> — No emails. You&apos;ll only see this activity when you log in to the dashboard.</p>

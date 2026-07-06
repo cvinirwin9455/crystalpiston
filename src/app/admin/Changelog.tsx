@@ -3,9 +3,23 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-29T01:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-06T01:00:00Z";
 
 const updates = [
+  {
+    date: "July 6, 2026",
+    items: [
+      { area: "All", text: "NEW: Profile Photo Upload — coaches and clients can now upload a profile photo that appears everywhere in the app" },
+      { area: "Client", text: "Your Account tab now shows a profile photo uploader — tap the circle to choose a photo, hover to change or remove it" },
+      { area: "Admin", text: "Your Account Preferences now has a 'Your Profile Photo' section — this photo shows next to your messages in clients' dashboards" },
+      { area: "Admin", text: "You can upload a photo for any client from their Account tab — hover over the avatar circle next to their details" },
+      { area: "All", text: "Photo priority: uploaded photo shows first, then Strava profile picture (if connected), then the colored avatar placeholder" },
+      { area: "Client", text: "Your profile photo now appears in the header (top-right) instead of just initials" },
+      { area: "Admin", text: "Your profile photo now appears in the sidebar (bottom-left) instead of just initials" },
+      { area: "Admin", text: "Client photos (uploaded or Strava) now show in the sidebar list and client header with the new priority system" },
+      { area: "Client", text: "Coach's profile photo now shows in the Messages chat header instead of just the first initial" },
+    ],
+  },
   {
     date: "June 29, 2026",
     items: [

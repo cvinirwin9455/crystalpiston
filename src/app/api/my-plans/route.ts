@@ -43,11 +43,12 @@ export async function GET() {
   }
 
   if (!client) {
-    return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: null, coachName: null })
+    return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: null, coachName: null, coachAvatarUrl: null })
   }
 
   // Fetch the default coach name for this client
   let coachName: string | null = null
+  let coachAvatarUrl: string | null = null
   try {
     const { data: coachAssignment } = await adminClient
       .from('client_coaches')
@@ -59,21 +60,23 @@ export async function GET() {
     if (coachAssignment) {
       const { data: coachUser } = await adminClient
         .from('users')
-        .select('name')
+        .select('name, avatar_url')
         .eq('id', coachAssignment.coach_id)
         .single()
       coachName = coachUser?.name?.split(' ')[0] || null
+      coachAvatarUrl = coachUser?.avatar_url || null
     }
   } catch {
     // Table may not exist yet - fallback to first admin
     try {
       const { data: adminUsers } = await adminClient
         .from('users')
-        .select('name')
+        .select('name, avatar_url')
         .eq('role', 'admin')
         .order('created_at', { ascending: true })
         .limit(1)
       coachName = adminUsers?.[0]?.name?.split(' ')[0] || null
+      coachAvatarUrl = adminUsers?.[0]?.avatar_url || null
     } catch {}
   }
 
@@ -99,7 +102,7 @@ export async function GET() {
   if (!plans || plans.length === 0) {
     return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: {
       birthday: client.birthday || null,
-    }, coachName })
+    }, coachName, coachAvatarUrl })
   }
 
   const formatted = plans.map(p => ({
@@ -125,5 +128,6 @@ export async function GET() {
       birthday: client.birthday || null,
     },
     coachName,
+    coachAvatarUrl,
   })
 }
