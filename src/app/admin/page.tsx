@@ -1960,27 +1960,27 @@ export default function AdminPage() {
               )}
             </div>
             {/* Desktop: coach photo replacing pistol logo */}
-            <div className="hidden md:flex w-10 h-10 rounded-full overflow-hidden bg-secondary items-center justify-center flex-shrink-0">
-              {adminAvatarUrl ? (
-                <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
-              <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
-            </div>
-            {/* Desktop-only dropdown caret (triggers the bottom menu) */}
+            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity cursor-pointer">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
+                {adminAvatarUrl ? (
+                  <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
+                <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
+              </div>
+              <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              {showNewUpdatesBadge && <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full"></span>}
+            </button>
+            {/* Desktop-only dropdown */}
             <div className="hidden md:block relative">
-              <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="flex items-center text-gray-400 hover:text-white transition-colors">
-                <svg className={`w-3.5 h-3.5 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                {showNewUpdatesBadge && <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full"></span>}
-              </button>
               {showAdminMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
-                  <div className="absolute left-0 top-full mt-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[200px] overflow-hidden">
+                  <div className="absolute left-0 top-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[200px] overflow-hidden">
                     <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
@@ -2001,6 +2001,11 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
+            </div>
+            {/* Mobile-only text */}
+            <div className="flex-1 md:hidden">
+              <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
+              <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
             </div>
             {/* Mobile-only gear menu button (top-right) */}
             <div className="relative md:hidden">
@@ -2490,7 +2495,7 @@ export default function AdminPage() {
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                 {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{w.stravaActivityName || 'Synced'}</span>}
                               </div>
-                              <p className="text-gray-300 text-sm mt-0.5">{(w as any).structure ? formatStructureForDisplay((w as any).structure) : `${w.title || ''}${w.description ? ` — ${w.description}` : ''}`}</p>
+                              <p className="text-gray-300 text-sm mt-0.5">{(w as any).structure ? formatStructureForDisplay((w as any).structure).split('\n').map((line, li) => <span key={li}>{adminDistanceUnit === 'km' ? line.replace(/(\d+:\d+)(?:-(\d+:\d+))?\/mi/g, (match, p1, p2) => { const conv = (p: string) => { const [m, s] = p.split(':').map(Number); const totalSec = m * 60 + s; const kmSec = Math.round(totalSec / 1.60934); return `${Math.floor(kmSec / 60)}:${(kmSec % 60).toString().padStart(2, '0')}`; }; return p2 ? `${conv(p1)}-${conv(p2)}/km` : `${conv(p1)}/km`; }).replace(/(\d+(?:\.\d+)?)\s*(?:miles|mi)\b/g, (match, v) => `${(parseFloat(v) * 1.60934).toFixed(2).replace(/\.?0+$/, '')} km`) : adminDistanceUnit === 'mi' ? line.replace(/(\d+:\d+)(?:-(\d+:\d+))?\/km/g, (match, p1, p2) => { const conv = (p: string) => { const [m, s] = p.split(':').map(Number); const totalSec = m * 60 + s; const miSec = Math.round(totalSec * 1.60934); return `${Math.floor(miSec / 60)}:${(miSec % 60).toString().padStart(2, '0')}`; }; return p2 ? `${conv(p1)}-${conv(p2)}/mi` : `${conv(p1)}/mi`; }).replace(/(\d+(?:\.\d+)?)\s*km\b/g, (match, v) => `${(parseFloat(v) / 1.60934).toFixed(2).replace(/\.?0+$/, '')} mi`) : line}{li < formatStructureForDisplay((w as any).structure).split('\n').length - 1 ? <br /> : null}</span>) : `${w.title || ''}${w.description ? ` — ${w.description}` : ''}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{convertPace(w.paceTarget)}</p>}
                             </div>
                             {w.miles && <div className="flex items-baseline gap-1.5 flex-shrink-0">
