@@ -136,6 +136,9 @@ CRITICAL DATE RULES:
 - Do NOT count Thursday, Friday, Saturday, or Sunday as missed if today is Wednesday or earlier.
 - A client who logged 3 workouts Mon-Wed out of 3 programmed Mon-Wed is at 100% for the week so far.
 - NEVER say "has not completed any workouts this week" if it's Monday — the first workout of the week may not even be due yet or may be later today.
+- NEVER comment on "0 distance this week" or "no distance logged this week" if it's early in the week (Mon-Wed) and no RUN or distance workout was programmed for the days that have passed. If Monday was a Rest day and today is Monday, the client has done exactly what was asked.
+- NEVER compare current week distance to past weeks if the current week has barely started. A "drop from 99km to 0km" is meaningless if it's only Monday and the runs are scheduled for later in the week.
+- Only flag distance concerns if a distance workout was PROGRAMMED for a day that HAS PASSED and the client didn't do it.
 
 CLIENT DATA:
 ${context}${goodExamples && goodExamples.length > 0 ? `
