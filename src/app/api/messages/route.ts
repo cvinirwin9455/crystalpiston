@@ -71,13 +71,47 @@ export async function GET(request: Request) {
     // Get names for all coach senders (from_user_id where from !== client)
     const coachSenderIds = [...new Set(messages.filter(m => m.from_user_id !== withUserId).map(m => m.from_user_id))]
     const coachNameMap: Record<string, string> = {}
+    const coachAvatarMap: Record<string, string | null> = {}
     if (coachSenderIds.length > 0) {
       const { data: coachUsers } = await adminClient
         .from('users')
-        .select('id, name')
+        .select('id, name, avatar_url')
         .in('id', coachSenderIds)
       for (const cu of coachUsers || []) {
         coachNameMap[cu.id] = cu.name?.split(' ')[0] || 'Coach'
+        coachAvatarMap[cu.id] = cu.avatar_url || null
+      }
+      // Strava fallback for coaches without uploaded avatars
+      const coachesWithoutAvatar = coachSenderIds.filter(id => !coachAvatarMap[id])
+      if (coachesWithoutAvatar.length > 0) {
+        const { data: stravaConns } = await adminClient
+          .from('strava_connections')
+          .select('user_id, athlete_profile')
+          .in('user_id', coachesWithoutAvatar)
+        for (const sc of stravaConns || []) {
+          if (sc.athlete_profile && !coachAvatarMap[sc.user_id]) {
+            coachAvatarMap[sc.user_id] = sc.athlete_profile.replace(/^http:\/\//i, 'https://')
+          }
+        }
+      }
+    }
+
+    // Get client's avatar info
+    let clientAvatarUrl: string | null = null
+    const { data: clientUser } = await adminClient
+      .from('users')
+      .select('avatar_url')
+      .eq('id', withUserId)
+      .single()
+    clientAvatarUrl = clientUser?.avatar_url || null
+    if (!clientAvatarUrl) {
+      const { data: clientStrava } = await adminClient
+        .from('strava_connections')
+        .select('athlete_profile')
+        .eq('user_id', withUserId)
+        .maybeSingle()
+      if (clientStrava?.athlete_profile) {
+        clientAvatarUrl = clientStrava.athlete_profile.replace(/^http:\/\//i, 'https://')
       }
     }
 
@@ -86,6 +120,7 @@ export async function GET(request: Request) {
       from: m.from_user_id === withUserId ? 'client' : 'crystal',
       fromUserId: m.from_user_id,
       fromName: m.from_user_id !== withUserId ? (coachNameMap[m.from_user_id] || 'Coach') : undefined,
+      fromAvatarUrl: m.from_user_id !== withUserId ? (coachAvatarMap[m.from_user_id] || null) : clientAvatarUrl,
       toUserId: m.to_user_id,
       message: m.message,
       read: m.read,

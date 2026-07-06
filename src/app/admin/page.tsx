@@ -1229,7 +1229,7 @@ export default function AdminPage() {
   const completedWorkouts = allClientWorkouts.filter((w) => w.completed);
   const totalMilesCompleted = allClientWorkouts.filter(w => w.log && (w.type === 'run' || w.type === 'walk')).reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || convertDist(w.miles || 0, w.distanceUnit), "mi"), 0);
   const totalMilesProgrammed = allClientWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(w.miles || 0, w.distanceUnit), 0);
-  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string; fromName?: string}[]>([]);
+  const [adminMessages, setAdminMessages] = useState<{id: string; date: string; from: string; message: string; fromName?: string; fromAvatarUrl?: string | null}[]>([]);
   const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
   const adminMessagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -1326,6 +1326,7 @@ export default function AdminPage() {
           from: 'crystal',
           message: newMessage.trim(),
           fromName: loggedInUser?.split(' ')[0] || 'Coach',
+          fromAvatarUrl: adminAvatarUrl,
         }]);
         setNewMessage("");
         setShowMessageForm(false);
@@ -2883,7 +2884,13 @@ export default function AdminPage() {
                 {/* Chat Header */}
                 <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><span className="text-white text-xs font-bold">{selectedClientData.name.charAt(0)}</span></div>
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                      {(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl) ? (
+                        <img src={(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl)!} alt={selectedClientData.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="text-white text-xs font-bold">{selectedClientData.name.charAt(0)}</span>
+                      )}
+                    </div>
                     <div><p className="text-white text-sm font-medium">{selectedClientData.name}</p><p className="text-gray-300 text-xs">{selectedClientData.goal || "No active plan"}</p></div>
                   </div>
                 </div>
@@ -2897,7 +2904,19 @@ export default function AdminPage() {
                     </div>
                   )}
                   {adminMessages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.from === "crystal" ? "justify-end" : "justify-start"}`}>
+                    <div key={msg.id} className={`flex items-end gap-2 ${msg.from === "crystal" ? "justify-end" : "justify-start"}`}>
+                      {/* Client avatar — left side */}
+                      {msg.from !== "crystal" && (
+                        <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {msg.fromAvatarUrl ? (
+                            <img src={msg.fromAvatarUrl} alt={selectedClientData.name} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl) ? (
+                            <img src={(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl)!} alt={selectedClientData.name} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="text-white text-[10px] font-bold">{selectedClientData.name.charAt(0)}</span>
+                          )}
+                        </div>
+                      )}
                       <div className={`max-w-[75%] ${msg.from === "crystal" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
                         {msg.from === "crystal" && msg.fromName && (
                           <p className="text-white/70 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
@@ -2905,6 +2924,16 @@ export default function AdminPage() {
                         <p className={`text-sm ${msg.from === "crystal" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                         <p className={`text-xs mt-1 ${msg.from === "crystal" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                       </div>
+                      {/* Coach avatar — right side */}
+                      {msg.from === "crystal" && (
+                        <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {msg.fromAvatarUrl ? (
+                            <img src={msg.fromAvatarUrl} alt={msg.fromName || 'Coach'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="text-accent text-[10px] font-bold">{(msg.fromName || 'C').charAt(0)}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div ref={adminMessagesEndRef} />
