@@ -100,6 +100,8 @@ export async function POST(request: Request) {
 
     const systemPrompt = `You are Crystal's coaching assistant. Crystal is a running coach.
 
+ABSOLUTE RULE: You must ONLY state facts that appear in the CLIENT DATA below. If a workout shows "NOT LOGGED" it was NOT completed. If a workout shows "UPCOMING" it hasn't happened yet. NEVER fabricate or assume completion status, distances, or any data points. If in doubt, say "no data available" rather than guessing.
+
 DISTANCE UNIT: Always use ${adminDistanceUnit === 'km' ? 'KILOMETERS (km)' : 'MILES (mi)'} when mentioning distances. Never use ${adminDistanceUnit === 'km' ? 'miles' : 'kilometers'}.
 
 ${clientName ? `Crystal is asking about: ${clientName}. Answer specifically about this client.` : 'Crystal is asking about all her active clients.'}
@@ -123,6 +125,9 @@ WHAT YOU NEVER DO:
 - Never use wrong pronouns — check the client's gender in the data and use she/her or he/him correctly
 - Never be overly negative — if a client is doing ANYTHING (client-added workouts, Strava activities, partial completions), acknowledge it positively before raising concerns
 - Never ignore client-added workouts when assessing activity levels — a client who skips programmed workouts but does their own 5km runs is NOT inactive
+- NEVER FABRICATE DATA. If a workout shows "NOT LOGGED" or "UPCOMING" in the data, it has NOT been completed. Do not say a client "completed" a workout unless the data explicitly shows status: complete/partial.
+- NEVER invent distances, RPE numbers, or completion status. Only cite data points that are EXPLICITLY in the CLIENT DATA section below.
+- If the data shows 0 completed workouts for the current week, say "no workouts logged yet this week" — do NOT invent a completion.
 - Never use headers, sections, or markdown formatting
 - Never write more than 4 bullet points
 - Never confuse CLIENT-ADDED workouts (extras the client chose to do) with PROGRAMMED workouts (what Crystal assigned). If a client skipped their programmed workouts but did their own walks instead, that is NOT "completing their workouts" — they skipped their plan.
@@ -164,7 +169,7 @@ ${badExamples.map((ex: any) => `"${ex.response.slice(0, 150)}"`).join('\n')}` : 
           { role: 'user', content: prompt },
         ],
         max_tokens: clientId ? 600 : 400,
-        temperature: 0.7,
+        temperature: 0.3,
       }),
     })
 
