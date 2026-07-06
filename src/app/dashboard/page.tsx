@@ -2431,9 +2431,6 @@ export default function DashboardPage() {
                     <button onClick={() => { setNotifMessages("immediate"); saveNotifPrefs(notifPlanPublished, "immediate"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "immediate" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Send immediately
                     </button>
-                    <button onClick={() => { setNotifMessages("daily"); saveNotifPrefs(notifPlanPublished, "daily"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "daily" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
-                      Daily summary
-                    </button>
                     <button onClick={() => { setNotifMessages("off"); saveNotifPrefs(notifPlanPublished, "off"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${notifMessages === "off" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
                       Off
                     </button>

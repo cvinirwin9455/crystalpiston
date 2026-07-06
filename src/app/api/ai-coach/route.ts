@@ -52,6 +52,17 @@ export async function POST(request: Request) {
     let context = ''
     const activeClients = await getActiveClients(adminClient)
 
+    // Fetch admin's distance unit preference
+    let adminDistanceUnit = 'mi'
+    try {
+      const { data: notifPrefs } = await adminClient
+        .from('notification_preferences')
+        .select('distance_unit')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (notifPrefs?.distance_unit) adminDistanceUnit = notifPrefs.distance_unit
+    } catch {}
+
     // Fetch recent positive feedback to learn from
     const { data: goodExamples } = await adminClient
       .from('ai_coach_feedback')
@@ -71,11 +82,11 @@ export async function POST(request: Request) {
     if (clientId) {
       // Single client context — always use at least 'standard' depth for better insights
       const effectiveDepth = dataDepth === 'light' ? 'standard' : (dataDepth || 'standard')
-      const clientData = await getClientContext(adminClient, clientId, effectiveDepth)
+      const clientData = await getClientContext(adminClient, clientId, effectiveDepth, adminDistanceUnit)
       context = clientData
     } else {
       // All clients summary
-      const summaryData = await getAllClientsSummary(adminClient, activeClients, dataDepth || 'light')
+      const summaryData = await getAllClientsSummary(adminClient, activeClients, dataDepth || 'light', adminDistanceUnit)
       context = summaryData
     }
 
@@ -88,6 +99,8 @@ export async function POST(request: Request) {
     const clientName = clientId ? (activeClients.find((c: any) => c.user_id === clientId)?.name || 'this client') : null
 
     const systemPrompt = `You are Crystal's coaching assistant. Crystal is a running coach.
+
+DISTANCE UNIT: Always use ${adminDistanceUnit === 'km' ? 'KILOMETERS (km)' : 'MILES (mi)'} when mentioning distances. Never use ${adminDistanceUnit === 'km' ? 'miles' : 'kilometers'}.
 
 ${clientName ? `Crystal is asking about: ${clientName}. Answer specifically about this client.` : 'Crystal is asking about all her active clients.'}
 
@@ -327,7 +340,7 @@ async function getActiveClients(adminClient: any) {
 }
 
 // Helper: get single client context
-async function getClientContext(adminClient: any, clientId: string, depth: string): Promise<string> {
+async function getClientContext(adminClient: any, clientId: string, depth: string, distanceUnit: string = 'mi'): Promise<string> {
   try {
   const weekLimit = depth === 'light' ? 2 : depth === 'standard' ? 4 : 99
 
@@ -407,13 +420,28 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     for (const week of weeks) {
       const weekWorkouts = (workouts || []).filter((w: any) => w.week_id === week.id)
       const completed = weekWorkouts.filter((w: any) => logMap.has(w.id))
-      const totalMiles = completed.filter((w: any) => {
+      const totalMilesMi = completed.filter((w: any) => {
         const log = logMap.get(w.id)
         return log && log.status !== 'skipped'
       }).reduce((s: number, w: any) => {
         const log = logMap.get(w.id)
         return s + (Number(log?.actual_miles) || Number(w.miles) || 0)
       }, 0)
+
+      // Also include client-added workout miles for this week
+      let clientAddedMilesMi = 0
+      try {
+        const { data: cwData } = await adminClient
+          .from('client_workouts')
+          .select('miles, completed')
+          .eq('week_id', week.id)
+        clientAddedMilesMi = (cwData || []).filter((cw: any) => cw.completed && cw.miles).reduce((s: number, cw: any) => s + (Number(cw.miles) || 0), 0)
+      } catch {}
+
+      const totalMilesWithExtras = totalMilesMi + clientAddedMilesMi
+      // Convert to admin's preferred unit
+      const totalDist = distanceUnit === 'km' ? totalMilesWithExtras * 1.60934 : totalMilesWithExtras
+      const unitLabel = distanceUnit === 'km' ? 'km' : 'mi'
       const avgRpe = completed.filter((w: any) => logMap.get(w.id)?.rpe).length > 0
         ? (completed.reduce((s: number, w: any) => s + (logMap.get(w.id)?.rpe || 0), 0) / completed.filter((w: any) => logMap.get(w.id)?.rpe).length).toFixed(1)
         : 'N/A'
@@ -437,7 +465,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       const nonRestRelevant = relevantWorkouts.filter((w: any) => w.type !== 'rest')
       
       workoutSummary += `  Completion: ${relevantCompleted.length}/${nonRestRelevant.length} PROGRAMMED workouts completed${relevantSkipped.length > 0 ? ` | ${relevantSkipped.length} SKIPPED` : ''}${isCurrentWeek2 ? ' (through ' + dayNames2[todayIdx2] + ')' : ''}\n`
-      workoutSummary += `  Miles: ${totalMiles.toFixed(1)}\n`
+      workoutSummary += `  Distance: ${totalDist.toFixed(1)} ${unitLabel}${clientAddedMilesMi > 0 ? ` (includes ${(distanceUnit === 'km' ? clientAddedMilesMi * 1.60934 : clientAddedMilesMi).toFixed(1)} ${unitLabel} from client-added workouts)` : ''}\n`
       workoutSummary += `  Avg RPE: ${avgRpe}\n`
 
       // Always include per-workout detail for single-client queries
@@ -453,7 +481,9 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 
         if (log) {
           const statusLabel = log.status === 'skipped' ? 'SKIPPED' : log.status === 'partial' ? 'PARTIAL' : 'complete'
-          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${statusLabel}${log.status === 'skipped' && log.skip_reason ? ' (' + log.skip_reason + ')' : ''} | ${log.status !== 'skipped' ? (log.actual_miles || wo.miles || '?') + 'mi | RPE ' + (log.rpe || '?') : ''}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
+          const logMiles = Number(log?.actual_miles) || Number(wo.miles) || 0
+          const logDist = distanceUnit === 'km' ? (logMiles * 1.60934).toFixed(1) : logMiles.toFixed(1)
+          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${statusLabel}${log.status === 'skipped' && log.skip_reason ? ' (' + log.skip_reason + ')' : ''} | ${log.status !== 'skipped' ? logDist + unitLabel + ' | RPE ' + (log.rpe || '?') : ''}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
         } else if (isFutureDay) {
           workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: UPCOMING (hasn't happened yet)\n`
         } else {
@@ -476,7 +506,8 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     if (clientWorkouts && clientWorkouts.length > 0) {
       extraContext += '\n\nCLIENT-ADDED WORKOUTS (extra training they chose to do):\n'
       for (const cw of clientWorkouts) {
-        extraContext += `  ${cw.day} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}: ${cw.miles || '?'}mi ${cw.completed ? '(done)' : '(planned)'} ${cw.notes || ''}\n`
+        const cwDist = cw.miles ? (distanceUnit === 'km' ? (Number(cw.miles) * 1.60934).toFixed(1) : Number(cw.miles).toFixed(1)) : '?'
+        extraContext += `  ${cw.day} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}: ${cwDist}${distanceUnit} ${cw.completed ? '(done)' : '(planned)'} ${cw.notes || ''}\n`
       }
     }
 
@@ -518,7 +549,8 @@ ${(() => {
     const completedLogs = weekLogs.filter((l: any) => l.status === 'complete')
     const skippedLogs = weekLogs.filter((l: any) => l.status === 'skipped')
     const nonRest = weekWorkouts.filter((w: any) => w.type !== 'rest')
-    const totalMiles = completedLogs.reduce((s: number, l: any) => s + (Number(l.actual_miles) || 0), 0)
+    const totalMilesMi = completedLogs.reduce((s: number, l: any) => s + (Number(l.actual_miles) || 0), 0)
+    const totalDist2 = distanceUnit === 'km' ? totalMilesMi * 1.60934 : totalMilesMi
     const avgRpe = completedLogs.filter((l: any) => l.rpe).length > 0 
       ? completedLogs.reduce((s: number, l: any) => s + (l.rpe || 0), 0) / completedLogs.filter((l: any) => l.rpe).length 
       : null
@@ -532,7 +564,7 @@ ${(() => {
       completed: completedLogs.length,
       skipped: skippedLogs.length,
       total: nonRest.length,
-      miles: Math.round(totalMiles * 10) / 10,
+      dist: Math.round(totalDist2 * 10) / 10,
       avgRpe,
       avgPaceSec: avgPace.length > 0 ? Math.round(avgPace.reduce((a: number, b: number) => a + b, 0) / avgPace.length) : null,
     }
@@ -540,16 +572,16 @@ ${(() => {
 
   let trends = 'PROGRESS TRENDS (oldest → newest):\n'
   trends += weeklyStats.map((w: any) => {
-    const paceStr = w.avgPaceSec ? `${Math.floor(w.avgPaceSec / 60)}:${(w.avgPaceSec % 60).toString().padStart(2, '0')}/mi` : '?'
-    return `  ${w.dateRange}: ${w.completed}/${w.total} done (${w.skipped} skipped) | ${w.miles}mi | RPE ${w.avgRpe?.toFixed(1) || '?'} | Pace ${paceStr}`
+    const paceStr = w.avgPaceSec ? `${Math.floor(w.avgPaceSec / 60)}:${(w.avgPaceSec % 60).toString().padStart(2, '0')}/${distanceUnit}` : '?'
+    return `  ${w.dateRange}: ${w.completed}/${w.total} done (${w.skipped} skipped) | ${w.dist}${distanceUnit} | RPE ${w.avgRpe?.toFixed(1) || '?'} | Pace ${paceStr}`
   }).join('\n')
 
   // Calculate direction
   if (weeklyStats.length >= 2) {
     const recent = weeklyStats.slice(-2)
-    const milesTrend = recent[1].miles - recent[0].miles
+    const distTrend = recent[1].dist - recent[0].dist
     const complianceTrend = (recent[1].completed / (recent[1].total || 1)) - (recent[0].completed / (recent[0].total || 1))
-    trends += `\n  DIRECTION: Miles ${milesTrend > 0 ? '↑' : milesTrend < 0 ? '↓' : '→'} (${milesTrend > 0 ? '+' : ''}${milesTrend.toFixed(1)}) | Compliance ${complianceTrend > 0 ? '↑' : complianceTrend < 0 ? '↓' : '→'}`
+    trends += `\n  DIRECTION: Distance ${distTrend > 0 ? '↑' : distTrend < 0 ? '↓' : '→'} (${distTrend > 0 ? '+' : ''}${distTrend.toFixed(1)}${distanceUnit}) | Compliance ${complianceTrend > 0 ? '↑' : complianceTrend < 0 ? '↓' : '→'}`
   }
   
   return trends
@@ -562,7 +594,7 @@ TRAINING HISTORY (last ${weeks?.length || 0} weeks):${workoutSummary || '\nNo pu
 }
 
 // Helper: get all clients summary
-async function getAllClientsSummary(adminClient: any, activeClients: any[], depth: string): Promise<string> {
+async function getAllClientsSummary(adminClient: any, activeClients: any[], depth: string, distanceUnit: string = 'mi'): Promise<string> {
   let summary = `ACTIVE CLIENTS (${activeClients.length}):\n\n`
 
   // Determine current week's Monday
