@@ -398,7 +398,7 @@ export async function POST(request: Request) {
 
     const messagesPref = notifPrefs?.messages || 'immediate'
 
-    if (messagesPref === 'immediate' && recipientProfile.email) {
+    if ((messagesPref === 'immediate' || messagesPref === 'daily') && recipientProfile.email) {
       const { sendEmail, buildNewMessageEmail, getProductionUrl } = await import('@/lib/email')
       const siteUrl = getProductionUrl(request.url)
       const emailContent = buildNewMessageEmail(recipientProfile.name?.split(' ')[0] || 'there', message.trim(), siteUrl, senderProfile?.name?.split(' ')[0] || undefined)
