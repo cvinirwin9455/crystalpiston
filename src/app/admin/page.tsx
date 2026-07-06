@@ -1960,7 +1960,7 @@ export default function AdminPage() {
               )}
             </div>
             {/* Desktop: coach photo replacing pistol logo */}
-            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity cursor-pointer">
+            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity cursor-pointer text-left">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
                 {adminAvatarUrl ? (
                   <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -1968,7 +1968,7 @@ export default function AdminPage() {
                   <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
                 )}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 text-left">
                 <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
                 <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
               </div>
