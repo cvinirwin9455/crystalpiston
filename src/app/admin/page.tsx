@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay } from "./StructuredRunBuilder";
@@ -371,14 +370,16 @@ export default function AdminPage() {
   const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null);
 
   // All coaches in the system (for multi-coach dropdown)
-  type CoachOption = { id: string; name: string; email: string };
+  type CoachOption = { id: string; name: string; email: string; accessLevel?: string };
   const [allCoaches, setAllCoaches] = useState<CoachOption[]>([]);
   const [showCoachDropdown, setShowCoachDropdown] = useState(false);
   const [coachAssigning, setCoachAssigning] = useState(false);
 
   // Manage coaches state
-  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "" });
+  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients" });
   const [creatingCoach, setCreatingCoach] = useState(false);
+  const [editingCoachId, setEditingCoachId] = useState<string | null>(null);
+  const [editCoachForm, setEditCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients" });
   const [createCoachError, setCreateCoachError] = useState("");
   const [createCoachSuccess, setCreateCoachSuccess] = useState("");
   const [deletingCoachId, setDeletingCoachId] = useState<string | null>(null);
@@ -390,7 +391,7 @@ export default function AdminPage() {
         const res = await fetch('/api/coaches');
         if (res.ok) {
           const data = await res.json();
-          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients' })));
         }
       } catch (err) { console.error('Failed to fetch coaches:', err); }
     };
@@ -401,6 +402,19 @@ export default function AdminPage() {
   const handleAssignCoach = async (coachId: string) => {
     const client = clients.find(c => c.id === selectedClient);
     if (!client?.clientId) return;
+
+    // Check access level restriction
+    const coachToAssign = allCoaches.find(c => c.id === coachId);
+    if (coachToAssign?.accessLevel === 'own_clients') {
+      // Check if this coach is already assigned to this client
+      const alreadyAssigned = client.coaches.some(cc => cc.coachId === coachId);
+      if (!alreadyAssigned) {
+        alert(`${coachToAssign.name} has "Own Clients Only" access and cannot be added to clients they don't already manage. Change their access level in Manage Coaches to "Access All Clients" first.`);
+        setShowCoachDropdown(false);
+        return;
+      }
+    }
+
     setCoachAssigning(true);
     try {
       const isFirst = client.coaches.length === 0;
@@ -472,19 +486,19 @@ export default function AdminPage() {
       const res = await fetch('/api/coaches/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim() }),
+        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim(), accessLevel: newCoachForm.accessLevel }),
       });
       const data = await res.json();
       if (!res.ok) {
         setCreateCoachError(data.error || 'Failed to invite coach');
       } else {
         setCreateCoachSuccess(`Invite sent to ${newCoachForm.email}!`);
-        setNewCoachForm({ name: "", email: "" });
+        setNewCoachForm({ name: "", email: "", accessLevel: "all_clients" });
         // Refresh the coaches list
         const coachRes = await fetch('/api/coaches');
         if (coachRes.ok) {
           const coachData = await coachRes.json();
-          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
+          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients' })));
         }
         setTimeout(() => setCreateCoachSuccess(""), 5000);
       }
@@ -1934,11 +1948,10 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-primary md:flex">
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
       <aside className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
-            {/* Mobile: coach photo. Desktop: Pistol logo */}
+            {/* Mobile: coach photo */}
             <div className="md:hidden w-14 h-14 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
               {adminAvatarUrl ? (
                 <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-14 h-14 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -1946,8 +1959,22 @@ export default function AdminPage() {
                 <svg className="w-14 h-14" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
               )}
             </div>
-            <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full hidden md:block" />
-            <div className="flex-1"><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
+            {/* Desktop: coach photo replacing pistol logo */}
+            <div className="hidden md:flex w-10 h-10 rounded-full overflow-hidden bg-secondary items-center justify-center flex-shrink-0">
+              {adminAvatarUrl ? (
+                <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
+              <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
+            </div>
+            {/* Desktop-only dropdown caret (triggers the bottom menu) */}
+            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center text-gray-400 hover:text-white transition-colors">
+              <svg className={`w-3.5 h-3.5 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
             {/* Mobile-only gear menu button (top-right) */}
             <div className="relative md:hidden">
               <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors">
@@ -2189,7 +2216,7 @@ export default function AdminPage() {
         )}
         {/* Mobile back button for settings views */}
         {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches) && (
-          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors md:hidden">
+          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             <span className="text-sm">Back to Clients</span>
           </button>
@@ -2245,7 +2272,7 @@ export default function AdminPage() {
                   <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
                   {/* Coaches badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {selectedClientData.coaches.map(coach => (
+                    {[...selectedClientData.coaches].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map(coach => (
                       <span key={coach.coachId} className={`text-xs px-2 py-0.5 rounded-full border ${coach.isDefault ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
                         {coach.coachName.split(' ')[0]}{coach.isDefault ? ' ★' : ''}
                       </span>
@@ -2307,7 +2334,7 @@ export default function AdminPage() {
                 </p>
               </div>
               </div>
-              {draftWeeks.length > 0 && <div className="text-center"><p className="text-yellow-400 font-heading text-xl">{draftWeeks.length}</p><p className="text-gray-300 text-xs">Drafts</p></div>}
+              {/* Draft count removed for cleaner UI */}
             </div>
 
             {/* Stats Card (mirrors client dashboard layout) */}
@@ -3073,7 +3100,6 @@ export default function AdminPage() {
               <>
                 <div className="flex items-center justify-between">
                   <h2 className="font-heading text-2xl uppercase text-white">Account Preferences</h2>
-                  <button onClick={() => setShowNotificationSettings(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
                 </div>
 
                 <p className="text-gray-400 text-sm">Choose how often you want to be notified for each type of activity. Changes save automatically.</p>
@@ -3185,7 +3211,6 @@ export default function AdminPage() {
               <>
                 <div className="flex items-center justify-between">
                   <h2 className="font-heading text-2xl uppercase text-white">Training Templates</h2>
-                  <button onClick={() => setShowTemplatesView(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
                 </div>
 
                 <p className="text-gray-400 text-sm">Save and reuse workout plans. Load templates when creating a week for any client.</p>
@@ -3517,7 +3542,6 @@ export default function AdminPage() {
               <>
                 <div className="flex items-center justify-between">
                   <h2 className="font-heading text-2xl uppercase text-white">Manage Coaches</h2>
-                  <button onClick={() => setShowManageCoaches(false)} className="text-gray-400 hover:text-white text-sm">Back to Dashboard</button>
                 </div>
 
                 <p className="text-gray-400 text-sm">Add new coaches and manage who has admin access to the platform.</p>
@@ -3535,6 +3559,18 @@ export default function AdminPage() {
                       <label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label>
                       <input type="email" value={newCoachForm.email} onChange={(e) => setNewCoachForm({ ...newCoachForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="coach@email.com" />
                     </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs block mb-2">Client Access</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setNewCoachForm({ ...newCoachForm, accessLevel: "all_clients" })} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${newCoachForm.accessLevel === "all_clients" ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                        Access All Clients
+                      </button>
+                      <button type="button" onClick={() => setNewCoachForm({ ...newCoachForm, accessLevel: "own_clients" })} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${newCoachForm.accessLevel === "own_clients" ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                        Own Clients Only
+                      </button>
+                    </div>
+                    <p className="text-gray-500 text-[10px] mt-1.5">{newCoachForm.accessLevel === "all_clients" ? "This coach will be able to view and manage all clients in the system." : "This coach can only see clients they are directly assigned to."}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button onClick={handleInviteCoach} disabled={creatingCoach || !newCoachForm.name.trim() || !newCoachForm.email.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 transition-colors">{creatingCoach ? "Sending Invite..." : "Send Invite"}</button>
@@ -3554,31 +3590,70 @@ export default function AdminPage() {
                         const isYou = coach.id === loggedInUserId;
                         const clientCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id)).length;
                         const defaultCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id && cc.isDefault)).length;
+                        const coachAccessLevel = (coach as any).accessLevel || 'all_clients';
+                        const isEditing = editingCoachId === coach.id;
                         return (
-                          <div key={coach.id} className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                                <span className="text-purple-400 font-bold text-sm">{coach.name.charAt(0).toUpperCase()}</span>
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="text-white text-sm font-medium">{coach.name}</p>
-                                  {isYou && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">You</span>}
+                          <div key={coach.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
+                            {isEditing ? (
+                              /* Edit mode */
+                              <div className="space-y-3">
+                                <p className="text-purple-400 text-xs font-heading uppercase">Edit Coach</p>
+                                <div className="grid md:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-gray-500 text-xs block mb-1">Name</label>
+                                    <input type="text" value={editCoachForm.name} onChange={(e) => setEditCoachForm({ ...editCoachForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                                  </div>
+                                  <div>
+                                    <label className="text-gray-500 text-xs block mb-1">Email</label>
+                                    <input type="email" value={editCoachForm.email} onChange={(e) => setEditCoachForm({ ...editCoachForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                                  </div>
                                 </div>
-                                <p className="text-gray-400 text-xs">{coach.email}</p>
-                                <p className="text-gray-500 text-xs mt-0.5">
-                                  {clientCount > 0 ? `${clientCount} client${clientCount !== 1 ? 's' : ''} assigned` : 'No clients assigned'}
-                                  {defaultCount > 0 && ` (${defaultCount} as default)`}
-                                </p>
+                                <div>
+                                  <label className="text-gray-500 text-xs block mb-2">Client Access</label>
+                                  <div className="flex gap-2">
+                                    <button type="button" onClick={() => setEditCoachForm({ ...editCoachForm, accessLevel: "all_clients" })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${editCoachForm.accessLevel === "all_clients" ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Access All Clients</button>
+                                    <button type="button" onClick={() => setEditCoachForm({ ...editCoachForm, accessLevel: "own_clients" })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${editCoachForm.accessLevel === "own_clients" ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Own Clients Only</button>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <button onClick={async () => { try { const res = await fetch('/api/coaches/invite', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coachId: coach.id, name: editCoachForm.name, email: editCoachForm.email, accessLevel: editCoachForm.accessLevel }) }); if (res.ok) { setAllCoaches(prev => prev.map(c => c.id === coach.id ? { ...c, name: editCoachForm.name, email: editCoachForm.email, accessLevel: editCoachForm.accessLevel } : c)); setEditingCoachId(null); } else { const d = await res.json().catch(() => ({})); alert(d.error || 'Failed to update coach'); } } catch { alert('Network error'); } }} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors">Save</button>
+                                  <button onClick={() => setEditingCoachId(null)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {!isYou && (
-                                <button onClick={() => handleDeleteCoach(coach.id)} disabled={deletingCoachId === coach.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
-                                  {deletingCoachId === coach.id ? "Removing..." : "Remove"}
-                                </button>
-                              )}
-                            </div>
+                            ) : (
+                              /* View mode */
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                    <span className="text-purple-400 font-bold text-sm">{coach.name.charAt(0).toUpperCase()}</span>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-white text-sm font-medium">{coach.name}</p>
+                                      {isYou && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">You</span>}
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${coachAccessLevel === 'all_clients' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'}`}>
+                                        {coachAccessLevel === 'all_clients' ? 'All Clients' : 'Own Only'}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-400 text-xs">{coach.email}</p>
+                                    <p className="text-gray-500 text-xs mt-0.5">
+                                      {clientCount > 0 ? `${clientCount} client${clientCount !== 1 ? 's' : ''} assigned` : 'No clients assigned'}
+                                      {defaultCount > 0 && ` (${defaultCount} as default)`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => { setEditingCoachId(coach.id); setEditCoachForm({ name: coach.name, email: coach.email, accessLevel: coachAccessLevel }); }} className="text-xs text-gray-400 hover:text-purple-400 border border-white/10 hover:border-purple-500/30 px-3 py-1.5 rounded-lg transition-colors">
+                                    Edit
+                                  </button>
+                                  {!isYou && (
+                                    <button onClick={() => handleDeleteCoach(coach.id)} disabled={deletingCoachId === coach.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                                      {deletingCoachId === coach.id ? "Removing..." : "Remove"}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}

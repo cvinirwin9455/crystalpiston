@@ -68,7 +68,7 @@ export async function GET(request: Request) {
   // List all coaches (admin users)
   const { data: coaches, error } = await adminClient
     .from('users')
-    .select('id, name, email, created_at')
+    .select('id, name, email, access_level, created_at')
     .eq('role', 'admin')
     .order('name')
 
@@ -78,6 +78,7 @@ export async function GET(request: Request) {
     id: c.id,
     name: c.name || c.email || 'Unknown',
     email: c.email,
+    accessLevel: c.access_level || 'all_clients',
     createdAt: c.created_at,
   })))
 }

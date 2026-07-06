@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email } = body
+  const { name, email, accessLevel } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -69,10 +69,10 @@ export async function POST(request: Request) {
 
   const newUserId = inviteData.user.id
 
-  // Update the auto-created users row to set role to admin
+  // Update the auto-created users row to set role to admin and access level
   await adminClient
     .from('users')
-    .update({ role: 'admin', name })
+    .update({ role: 'admin', name, access_level: accessLevel || 'all_clients' })
     .eq('id', newUserId)
 
   return NextResponse.json({
@@ -80,6 +80,54 @@ export async function POST(request: Request) {
     userId: newUserId,
     message: `Coach invite sent to ${email}`,
   })
+}
+
+// PATCH /api/coaches/invite - Edit an existing coach's details
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const { coachId, name, email, accessLevel } = body
+
+  if (!coachId) {
+    return NextResponse.json({ error: 'coachId is required' }, { status: 400 })
+  }
+
+  const adminClient = await getAdminClient()
+
+  const updates: Record<string, any> = {}
+  if (name) updates.name = name
+  if (email) updates.email = email
+  if (accessLevel) updates.access_level = accessLevel
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+  }
+
+  const { error } = await adminClient
+    .from('users')
+    .update(updates)
+    .eq('id', coachId)
+    .eq('role', 'admin')
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }
 
 // DELETE /api/coaches/invite - Remove a coach (downgrade to inactive, remove from all client assignments)
