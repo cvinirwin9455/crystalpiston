@@ -3,9 +3,22 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-06-29T01:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-05T18:00:00Z";
 
 const updates = [
+  {
+    date: "July 5, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Hamburger menu (☰) in the top-right corner on mobile — tap to access Account Preferences, Templates, Manage Coaches, and more" },
+      { area: "Admin", text: "Settings and preferences now open properly on mobile in portrait mode — no more needing to rotate your phone" },
+      { area: "Admin", text: "Back button appears at the top of settings pages on mobile so you can easily return to your client list" },
+      { area: "Admin", text: "Bottom menu bar hidden on mobile (was being covered by the AI assistant button)" },
+      { area: "Client", text: "Removed the initials circle from the header — your Strava photo (or a person icon) now appears on the right side instead" },
+      { area: "Client", text: "Fixed: The weekly distance total in the header now matches the stats section (previously showed inflated number including client-added workouts)" },
+      { area: "All", text: "Fixed: Unit preference buttons now align consistently — Miles/Pounds on the left, Kilometers/Kilograms on the right" },
+      { area: "All", text: "Fixed: App now loads fresh content when opened from the home screen icon (was showing stale/cached pages)" },
+    ],
+  },
   {
     date: "June 29, 2026",
     items: [
