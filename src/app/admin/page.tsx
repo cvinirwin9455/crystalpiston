@@ -10,7 +10,7 @@ import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from ".
 import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; structure?: any; crossTrainingStructure?: any; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
@@ -21,7 +21,7 @@ export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account">("plan");
   const [editingWeek, setEditingWeek] = useState(false);
-  const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
+  const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string; crossTrainingStructure?: any }>>({});
   const [editDistanceUnits, setEditDistanceUnits] = useState<Record<string, "mi" | "km">>({});
   const [editedCoachMessage, setEditedCoachMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -1787,6 +1787,7 @@ export default function AdminPage() {
         paceTarget: w.paceTarget || '',
         location: w.location || '',
         coachNotes: w.coachNotes || '',
+        crossTrainingStructure: (w as any).crossTrainingStructure || undefined,
       };
       unitEdits[w.id] = w.distanceUnit || 'mi';
     }
@@ -1841,6 +1842,7 @@ export default function AdminPage() {
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
             distanceUnit: editDistanceUnits[w.id] || 'mi',
+            structure: edited.type === 'cross' ? (edited.crossTrainingStructure || null) : undefined,
           }),
         });
       });
@@ -2531,7 +2533,7 @@ export default function AdminPage() {
                               <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" />
                             </div>
                           )}
-                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
+                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <><div className="mt-2"><input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={editedWorkouts[w.id]?.crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} onChange={(crossTrainingStructure) => { setEditedWorkouts(prev => ({ ...prev, [w.id]: { ...prev[w.id], crossTrainingStructure, description: formatCrossTrainingForDisplay(crossTrainingStructure) } })); }} /><div className="mt-2"><input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div></>}
                         </div>
                       )}
                     </div>

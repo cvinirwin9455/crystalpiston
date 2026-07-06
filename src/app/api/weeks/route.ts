@@ -296,7 +296,8 @@ export async function GET(request: Request) {
           location: wo.location,
           coachNotes: wo.coach_notes,
           sortOrder: wo.sort_order,
-          structure: wo.structure || null,
+          structure: wo.type === 'cross' ? null : (wo.structure || null),
+          crossTrainingStructure: wo.type === 'cross' ? (wo.structure || null) : null,
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,
@@ -393,7 +394,7 @@ export async function POST(request: Request) {
       coach_notes: w.coachNotes || null,
       sort_order: index,
       distance_unit: w.distanceUnit || 'mi',
-      structure: w.structure || null,
+      structure: w.structure || w.crossTrainingStructure || null,
     }))
 
     const { error: workoutsError } = await adminClient
