@@ -61,8 +61,8 @@ export default function About() {
                 <p className="text-gray-400 text-sm">Title Boxing &amp; Kickboxing</p>
               </div>
               <div className="bg-primary/50 rounded-xl p-4 border border-white/5">
-                <p className="text-accent font-heading text-lg">Roads &amp; Trails</p>
-                <p className="text-gray-400 text-sm">Runner &amp; Coach</p>
+                <p className="text-accent font-heading text-lg">Race Strategy</p>
+                <p className="text-gray-400 text-sm">5K to Ultra Training Plans</p>
               </div>
             </div>
           </div>
