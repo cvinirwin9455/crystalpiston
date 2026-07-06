@@ -216,9 +216,8 @@ async function notifyCrystalWorkoutLog(
   const workoutMiles = workout?.miles ? `${workout.miles} mi` : ''
 
   // Build email content based on status
-  const { sendEmail } = await import('@/lib/email')
-  const url = new URL(request.url)
-  const siteUrl = `${url.protocol}//${url.host}`
+  const { sendEmail, getProductionUrl } = await import('@/lib/email')
+  const siteUrl = getProductionUrl(request.url)
 
   let subject: string
   let statusLabel: string

@@ -176,8 +176,8 @@ export async function POST(request: Request) {
 
         if (client) {
           const isCoach = profile?.role === 'admin'
-          const url = new URL(request.url)
-          const siteUrl = `${url.protocol}//${url.host}`
+          const { getProductionUrl } = await import('@/lib/email')
+          const siteUrl = getProductionUrl(request.url)
 
           let recipientEmail: string | null = null
           let recipientName: string = ''

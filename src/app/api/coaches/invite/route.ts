@@ -52,8 +52,8 @@ export async function POST(request: Request) {
   }
 
   // Invite the user via Supabase Auth
-  const url = new URL(request.url)
-  const siteUrl = `${url.protocol}//${url.host}`
+  const { getProductionUrl } = await import('@/lib/email')
+  const siteUrl = getProductionUrl(request.url)
 
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: {

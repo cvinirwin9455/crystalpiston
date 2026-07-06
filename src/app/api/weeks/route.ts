@@ -451,9 +451,8 @@ export async function POST(request: Request) {
               .eq('id', user.id)
               .single()
 
-            const { sendEmail, buildPlanPublishedEmail } = await import('@/lib/email')
-            const url = new URL(request.url)
-            const siteUrl = `${url.protocol}//${url.host}`
+            const { sendEmail, buildPlanPublishedEmail, getProductionUrl } = await import('@/lib/email')
+            const siteUrl = getProductionUrl(request.url)
             const emailContent = buildPlanPublishedEmail(
               clientUser.name?.split(' ')[0] || 'there',
               dateRange,

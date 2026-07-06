@@ -1,5 +1,19 @@
 // Email utility for sending notifications via Resend
 
+// Helper: get the production site URL (never use preview deployment URLs in emails)
+export function getProductionUrl(requestUrl?: string): string {
+  // Always prefer the configured production URL
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  }
+  // Fallback to request URL (for local dev)
+  if (requestUrl) {
+    const url = new URL(requestUrl)
+    return `${url.protocol}//${url.host}`
+  }
+  return 'https://www.crystalpistolperformance.com'
+}
+
 interface SendEmailParams {
   to: string
   subject: string

@@ -256,9 +256,8 @@ async function notifyCrystalClientWorkout(userId: string, workoutId: string, req
   const workoutDay = workout.day || ''
   const workoutMiles = workout.miles ? `${workout.miles} mi` : ''
 
-  const { sendEmail } = await import('@/lib/email')
-  const url = new URL(request.url)
-  const siteUrl = `${url.protocol}//${url.host}`
+  const { sendEmail, getProductionUrl } = await import('@/lib/email')
+  const siteUrl = getProductionUrl(request.url)
 
   const subject = `${clientName} completed: ${workoutTitle}${isStrava ? ' (Strava)' : ''}`
   const statusColor = '#22c55e'

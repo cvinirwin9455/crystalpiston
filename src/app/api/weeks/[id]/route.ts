@@ -98,9 +98,8 @@ export async function PATCH(
               .single()
 
             if (clientUser?.email) {
-              const { sendEmail, buildPlanPublishedEmail } = await import('@/lib/email')
-              const url = new URL(request.url)
-              const siteUrl = `${url.protocol}//${url.host}`
+              const { sendEmail, buildPlanPublishedEmail, getProductionUrl } = await import('@/lib/email')
+              const siteUrl = getProductionUrl(request.url)
               const emailContent = buildPlanPublishedEmail(
                 clientUser.name || 'there',
                 week.date_range || dateRange || '',
