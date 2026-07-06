@@ -104,6 +104,86 @@ export default function DashboardPage() {
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Pull-to-refresh (for PWA standalone mode) + auto-refresh on app focus
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  useEffect(() => {
+    // Auto-refresh: when user switches back to the app, reload data
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Only reload if it's been more than 30 seconds since last focus
+        const lastFocus = sessionStorage.getItem('lastFocusTime');
+        const now = Date.now();
+        if (!lastFocus || now - parseInt(lastFocus) > 30000) {
+          window.location.reload();
+        }
+        sessionStorage.setItem('lastFocusTime', now.toString());
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Pull-to-refresh: custom gesture for standalone PWA
+    let touchStartY = 0;
+    let touchCurrentY = 0;
+    let isPulling = false;
+    const pullIndicator = document.createElement('div');
+    pullIndicator.id = 'pull-refresh-indicator';
+    pullIndicator.style.cssText = 'position:fixed;top:0;left:0;right:0;height:0;display:flex;align-items:center;justify-content:center;background:rgba(22,33,62,0.95);z-index:9999;overflow:hidden;transition:height 0.2s ease;';
+    pullIndicator.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><svg style="width:20px;height:20px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="#e94560" stroke-width="2"><path d="M12 2v4m0 12v4m-8-10H2m20 0h-4m-2.93-6.07L15.66 7.34m-7.32 9.32l-1.41 1.41m0-12.14l1.41 1.41m9.32 9.32l1.41 1.41"/></svg><span style="color:#e94560;font-size:13px;font-weight:600;">Refreshing...</span></div>';
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+    document.body.appendChild(pullIndicator);
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        touchStartY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isPulling) return;
+      touchCurrentY = e.touches[0].clientY;
+      const pullDistance = touchCurrentY - touchStartY;
+      if (pullDistance > 0 && window.scrollY === 0) {
+        const height = Math.min(pullDistance * 0.4, 60);
+        pullIndicator.style.height = height + 'px';
+      }
+    };
+    const handleTouchEnd = () => {
+      if (!isPulling) return;
+      const pullDistance = touchCurrentY - touchStartY;
+      if (pullDistance > 80 && window.scrollY === 0) {
+        pullIndicator.style.height = '50px';
+        setPullRefreshing(true);
+        setTimeout(() => window.location.reload(), 300);
+      } else {
+        pullIndicator.style.height = '0px';
+      }
+      isPulling = false;
+      touchStartY = 0;
+      touchCurrentY = 0;
+    };
+
+    // Only attach pull-to-refresh in standalone mode or always on mobile
+    if (isStandalone || window.innerWidth < 768) {
+      document.addEventListener('touchstart', handleTouchStart, { passive: true });
+      document.addEventListener('touchmove', handleTouchMove, { passive: true });
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      pullIndicator.remove();
+      style.remove();
+    };
+  }, []);
+
   const [showMessageForm, setShowMessageForm] = useState(false);
 
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
