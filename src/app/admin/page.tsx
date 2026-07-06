@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [editingWeek, setEditingWeek] = useState(false);
   const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
   const [editDistanceUnits, setEditDistanceUnits] = useState<Record<string, "mi" | "km">>({});
+  const [editCrossTrainingStructures, setEditCrossTrainingStructures] = useState<Record<string, CrossTrainingStructure>>({});
   const [editedCoachMessage, setEditedCoachMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
@@ -1781,6 +1782,7 @@ export default function AdminPage() {
     if (!selectedWeek) return;
     const workoutEdits: Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }> = {};
     const unitEdits: Record<string, "mi" | "km"> = {};
+    const crossStructEdits: Record<string, CrossTrainingStructure> = {};
     for (const w of selectedWeek.workouts) {
       workoutEdits[w.id] = {
         type: w.type,
@@ -1793,9 +1795,14 @@ export default function AdminPage() {
         coachNotes: w.coachNotes || '',
       };
       unitEdits[w.id] = w.distanceUnit || 'mi';
+      // Extract cross-training structure from the workout's structure field
+      if (w.type === 'cross' && (w as any).structure?.exercises) {
+        crossStructEdits[w.id] = (w as any).structure;
+      }
     }
     setEditedWorkouts(workoutEdits);
     setEditDistanceUnits(unitEdits);
+    setEditCrossTrainingStructures(crossStructEdits);
     setEditedCoachMessage(selectedWeek.coachMessage || '');
     setEditingWeek(true);
   };
@@ -1832,6 +1839,7 @@ export default function AdminPage() {
       const promises = selectedWeek.workouts.map((w) => {
         const edited = editedWorkouts[w.id];
         if (!edited) return Promise.resolve();
+        const crossStruct = editCrossTrainingStructures[w.id] || null;
         return fetch(`/api/workouts/${w.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -1845,6 +1853,7 @@ export default function AdminPage() {
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
             distanceUnit: editDistanceUnits[w.id] || 'mi',
+            structure: edited.type === 'cross' && crossStruct ? crossStruct : undefined,
           }),
         });
       });
@@ -1857,6 +1866,7 @@ export default function AdminPage() {
       }
       setEditingWeek(false);
       setEditedWorkouts({});
+      setEditCrossTrainingStructures({});
     } catch (err) {
       console.error('Failed to save week edits:', err);
     } finally {
@@ -2326,7 +2336,7 @@ export default function AdminPage() {
                     {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
                   </div>
                   <div className="flex items-center gap-2">
-                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
+                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); setEditCrossTrainingStructures({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
                     {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-400 text-xs italic">Past week (locked)</span>}
                     <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} aria-label="Next week" disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
@@ -2493,7 +2503,25 @@ export default function AdminPage() {
                               <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" />
                             </div>
                           )}
-                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
+                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && (
+                            <>
+                              <div className="mt-1">
+                                <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" />
+                              </div>
+                              <StructuredCrossTrainingBuilder
+                                structure={editCrossTrainingStructures[w.id] || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
+                                weightUnit={adminWeightUnit}
+                                onChange={(crossTrainingStructure) => {
+                                  setEditCrossTrainingStructures(prev => ({ ...prev, [w.id]: crossTrainingStructure }));
+                                  const desc = formatCrossTrainingForDisplay(crossTrainingStructure);
+                                  updateEditedWorkout(w.id, 'description', desc);
+                                }}
+                              />
+                              <div className="mt-2">
+                                <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" />
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2563,7 +2591,7 @@ export default function AdminPage() {
                     );
                   })}
                 </div>
-                {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { setEditingWeek(false); setEditedWorkouts({}); setEditDistanceUnits({}); }} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg text-sm">Cancel</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button>{adminWeekOffset > 0 && selectedWeek && !selectedWeek.workouts.some(w => w.completed) && (<button onClick={async () => { if (!selectedWeek) return; if (!confirm('Are you sure you want to permanently delete this entire week plan? This cannot be undone.')) return; try { const res = await fetch(`/api/weeks/${selectedWeek.weekId}`, { method: 'DELETE' }); if (res.ok) { const client = clients.find(c => c.id === selectedClient); if (client?.clientId) await fetchWeeks(client.clientId, true); setEditingWeek(false); } } catch (err) { console.error('Failed to delete week:', err); } }} className="border border-red-500/30 text-red-400 hover:text-red-300 py-2 px-4 rounded-lg text-sm">Delete Week</button>)}</div>}
+                {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { setEditingWeek(false); setEditedWorkouts({}); setEditDistanceUnits({}); setEditCrossTrainingStructures({}); }} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg text-sm">Cancel</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button>{adminWeekOffset > 0 && selectedWeek && !selectedWeek.workouts.some(w => w.completed) && (<button onClick={async () => { if (!selectedWeek) return; if (!confirm('Are you sure you want to permanently delete this entire week plan? This cannot be undone.')) return; try { const res = await fetch(`/api/weeks/${selectedWeek.weekId}`, { method: 'DELETE' }); if (res.ok) { const client = clients.find(c => c.id === selectedClient); if (client?.clientId) await fetchWeeks(client.clientId, true); setEditingWeek(false); } } catch (err) { console.error('Failed to delete week:', err); } }} className="border border-red-500/30 text-red-400 hover:text-red-300 py-2 px-4 rounded-lg text-sm">Delete Week</button>)}</div>}
                 </>)}
               </div>
             )}
