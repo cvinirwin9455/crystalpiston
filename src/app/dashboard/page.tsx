@@ -1127,8 +1127,8 @@ export default function DashboardPage() {
             <div className="relative">
               <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
                 <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt={loggedInName || 'Profile'} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  {(avatarUrl || (stravaConnection?.connected && stravaConnection?.athleteProfile)) ? (
+                    <img src={(avatarUrl || stravaConnection?.athleteProfile)!} alt={loggedInName || 'Profile'} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
                   )}
@@ -2122,8 +2122,8 @@ export default function DashboardPage() {
                   {/* Client avatar — right side */}
                   {msg.from === "client" && (
                     <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt={loggedInName || 'Me'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      {(avatarUrl || (stravaConnection?.connected && stravaConnection?.athleteProfile)) ? (
+                        <img src={(avatarUrl || stravaConnection?.athleteProfile)!} alt={loggedInName || 'Me'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <span className="text-accent text-[10px] font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
                       )}
