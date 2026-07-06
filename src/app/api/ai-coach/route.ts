@@ -399,6 +399,8 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     .eq('client_id', client.id)
     .eq('status', 'published')
 
+  console.log(`[AI Coach] Client ${clientId}: clients.id=${client.id}, published weeks found: ${allPublishedWeeks?.length || 0}`)
+
   // Filter to only weeks that have started (not future weeks)
   const today = new Date()
   const weeks = (allPublishedWeeks || []).filter((w: any) => {
@@ -435,16 +437,17 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       // Batch in groups of 50 to avoid Supabase URL length limits on .in() queries
       for (let i = 0; i < workoutIds.length; i += 50) {
         const batch = workoutIds.slice(i, i + 50)
-        const { data: logsData } = await adminClient
+        const { data: logsData, error: logsError } = await adminClient
           .from('workout_logs')
           .select('workout_id, status, skip_reason, rpe, actual_miles, actual_pace, duration, sleep, notes, avg_heartrate, max_heartrate')
           .in('workout_id', batch)
+        if (logsError) console.error('[AI Coach] Logs query error:', logsError.message)
         if (logsData) logs = [...logs, ...logsData]
       }
     }
 
     logMap = new Map(logs.map((l: any) => [l.workout_id, l]))
-    console.log(`[AI Coach] Found ${allWorkouts.length} workouts and ${logs.length} logs for ${weeks.length} weeks`)
+    console.log(`[AI Coach] Client ${clientId}: Found ${weeks.length} weeks (IDs: ${weeks.map((w:any) => w.id).join(',')}), ${allWorkouts.length} workouts, ${logs.length} logs. Current week: ${weeks[0]?.date_range}`)
 
     for (const week of weeks) {
       const weekWorkouts = allWorkouts.filter((w: any) => w.week_id === week.id)
