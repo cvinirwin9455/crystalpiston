@@ -66,13 +66,26 @@ export async function GET(request: Request) {
   }
 
   // List all coaches (admin users)
-  const { data: coaches, error } = await adminClient
+  // Try with access_level column, fall back if it doesn't exist yet
+  let coaches: any[] | null = null
+  const fullResult = await adminClient
     .from('users')
     .select('id, name, email, access_level, created_at')
     .eq('role', 'admin')
     .order('name')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (fullResult.error) {
+    // Column may not exist yet — fall back to base fields
+    const fallback = await adminClient
+      .from('users')
+      .select('id, name, email, created_at')
+      .eq('role', 'admin')
+      .order('name')
+    if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    coaches = fallback.data
+  } else {
+    coaches = fullResult.data
+  }
 
   return NextResponse.json((coaches || []).map(c => ({
     id: c.id,

@@ -72,8 +72,18 @@ export async function POST(request: Request) {
   // Update the auto-created users row to set role to admin and access level
   await adminClient
     .from('users')
-    .update({ role: 'admin', name, access_level: accessLevel || 'all_clients' })
+    .update({ role: 'admin', name })
     .eq('id', newUserId)
+
+  // Try to set access_level (column may not exist yet)
+  if (accessLevel && accessLevel !== 'all_clients') {
+    try {
+      await adminClient
+        .from('users')
+        .update({ access_level: accessLevel })
+        .eq('id', newUserId)
+    } catch {}
+  }
 
   return NextResponse.json({
     success: true,
@@ -111,20 +121,31 @@ export async function PATCH(request: Request) {
   const updates: Record<string, any> = {}
   if (name) updates.name = name
   if (email) updates.email = email
-  if (accessLevel) updates.access_level = accessLevel
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && !accessLevel) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
 
-  const { error } = await adminClient
-    .from('users')
-    .update(updates)
-    .eq('id', coachId)
-    .eq('role', 'admin')
+  if (Object.keys(updates).length > 0) {
+    const { error } = await adminClient
+      .from('users')
+      .update(updates)
+      .eq('id', coachId)
+      .eq('role', 'admin')
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+  }
+
+  // Try to update access_level separately (column may not exist yet)
+  if (accessLevel) {
+    try {
+      await adminClient
+        .from('users')
+        .update({ access_level: accessLevel })
+        .eq('id', coachId)
+    } catch {}
   }
 
   return NextResponse.json({ success: true })
