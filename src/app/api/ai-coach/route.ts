@@ -409,26 +409,38 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
   let allWorkouts: any[] = []
   let logMap = new Map<string, any>()
   if (weeks && weeks.length > 0) {
-    const { data: workouts } = await adminClient
-      .from('workouts')
-      .select('id, week_id, day, type, training_type, miles')
-      .in('week_id', weeks.map((w: any) => w.id))
-    allWorkouts = workouts || []
+    const weekIds = weeks.map((w: any) => w.id)
+    let workoutsData: any[] = []
+    // Batch week IDs to avoid query limits
+    for (let i = 0; i < weekIds.length; i += 20) {
+      const batch = weekIds.slice(i, i + 20)
+      const { data } = await adminClient
+        .from('workouts')
+        .select('id, week_id, day, type, training_type, miles')
+        .in('week_id', batch)
+      if (data) workoutsData = [...workoutsData, ...data]
+    }
+    allWorkouts = workoutsData
 
     const workoutIds = allWorkouts.map((w: any) => w.id)
     let logs: any[] = []
     if (workoutIds.length > 0) {
-      const { data: logsData } = await adminClient
-        .from('workout_logs')
-        .select('workout_id, status, skip_reason, rpe, actual_miles, actual_pace, duration, sleep, notes, avg_heartrate, max_heartrate')
-        .in('workout_id', workoutIds)
-      logs = logsData || []
+      // Batch in groups of 50 to avoid Supabase URL length limits on .in() queries
+      for (let i = 0; i < workoutIds.length; i += 50) {
+        const batch = workoutIds.slice(i, i + 50)
+        const { data: logsData } = await adminClient
+          .from('workout_logs')
+          .select('workout_id, status, skip_reason, rpe, actual_miles, actual_pace, duration, sleep, notes, avg_heartrate, max_heartrate')
+          .in('workout_id', batch)
+        if (logsData) logs = [...logs, ...logsData]
+      }
     }
 
     logMap = new Map(logs.map((l: any) => [l.workout_id, l]))
+    console.log(`[AI Coach] Found ${allWorkouts.length} workouts and ${logs.length} logs for ${weeks.length} weeks`)
 
     for (const week of weeks) {
-      const weekWorkouts = (workouts || []).filter((w: any) => w.week_id === week.id)
+      const weekWorkouts = allWorkouts.filter((w: any) => w.week_id === week.id)
       const completed = weekWorkouts.filter((w: any) => logMap.has(w.id))
       const totalMilesMi = completed.filter((w: any) => {
         const log = logMap.get(w.id)
