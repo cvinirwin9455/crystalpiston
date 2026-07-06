@@ -10,7 +10,7 @@ import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from ".
 import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; structure?: any; crossTrainingStructure?: any; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
@@ -21,7 +21,7 @@ export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account">("plan");
   const [editingWeek, setEditingWeek] = useState(false);
-  const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
+  const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string; crossTrainingStructure?: any }>>({});
   const [editDistanceUnits, setEditDistanceUnits] = useState<Record<string, "mi" | "km">>({});
   const [editedCoachMessage, setEditedCoachMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -35,6 +35,7 @@ export default function AdminPage() {
   const [showManageCoaches, setShowManageCoaches] = useState(false);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [showMobileSettingsView, setShowMobileSettingsView] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
 
@@ -52,7 +53,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-06-29T01:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-07-05T18:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -1786,6 +1787,7 @@ export default function AdminPage() {
         paceTarget: w.paceTarget || '',
         location: w.location || '',
         coachNotes: w.coachNotes || '',
+        crossTrainingStructure: (w as any).crossTrainingStructure || undefined,
       };
       unitEdits[w.id] = w.distanceUnit || 'mi';
     }
@@ -1840,6 +1842,7 @@ export default function AdminPage() {
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
             distanceUnit: editDistanceUnits[w.id] || 'mi',
+            structure: edited.type === 'cross' ? (edited.crossTrainingStructure || null) : undefined,
           }),
         });
       });
@@ -1918,20 +1921,60 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-primary md:flex">
+      {/* Mobile-only: Settings menu button fixed to top-right corner */}
+      {!selectedClient && !showMobileSettingsView && (
+        <div className="fixed top-4 right-4 z-50 md:hidden">
+          <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="w-11 h-11 rounded-full bg-secondary border border-white/20 flex items-center justify-center shadow-lg">
+            <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            {showNewUpdatesBadge && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent rounded-full border-2 border-secondary"></span>}
+          </button>
+          {showAdminMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
+              <div className="absolute top-full right-0 mt-2 w-56 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 py-2">
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowMobileSettingsView(true); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 text-gray-300 hover:text-white hover:bg-white/5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  What&apos;s New
+                  {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowMobileSettingsView(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 text-gray-300 hover:text-white hover:bg-white/5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                  Templates ({templates.length})
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowMobileSettingsView(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 text-gray-300 hover:text-white hover:bg-white/5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Account Preferences
+                </button>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowMobileSettingsView(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 text-gray-300 hover:text-white hover:bg-white/5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                  Manage Coaches
+                </button>
+                <div className="border-t border-white/10 mt-2 pt-2">
+                  <a href="/auth/signout" className="w-full flex items-center gap-3 text-sm py-3 px-4 text-gray-400 hover:text-accent hover:bg-white/5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Logout
+                  </a>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside className={`${selectedClient ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
+      <aside className={`${(selectedClient || showMobileSettingsView) ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
             <Image src="/IMG_5861.PNG" alt="Logo" width={56} height={56} className="rounded-full" />
-            <div><p className="text-white font-heading text-sm uppercase">Coach Admin</p><p className="text-gold text-xs">{loggedInUser || "Loading..."}</p></div>
+            <div><p className="text-white font-heading text-base md:text-sm uppercase">Coach Admin</p><p className="text-gold text-sm md:text-xs">{loggedInUser || "Loading..."}</p></div>
           </div>
-          <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent mb-2" />
-          <div className="flex gap-1 mb-2">
+          <input type="text" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..." className="w-full bg-primary/50 border border-white/10 rounded-xl md:rounded-lg px-4 md:px-3 py-3 md:py-2 text-white text-sm md:text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent mb-3 md:mb-2" />
+          <div className="flex gap-1.5 md:gap-1 mb-3 md:mb-2">
             {[{ key: "active", label: "Active" }, { key: "archived", label: "Archived" }, { key: "all", label: "All" }].map((f) => (
-              <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-2 py-1 rounded text-xs transition-colors flex-1 ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
+              <button key={f.key} onClick={() => setClientFilter(f.key as "active" | "archived" | "all")} className={`px-3 md:px-2 py-2 md:py-1 rounded-lg md:rounded text-sm md:text-xs transition-colors flex-1 ${clientFilter === f.key ? "bg-accent/20 text-accent" : "text-gray-500 hover:text-white"}`}>{f.label}</button>
             ))}
           </div>
-          <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg transition-colors">+ New Client</button>
+          <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-red-700 text-white text-sm md:text-xs font-bold py-3 md:py-2 rounded-xl md:rounded-lg transition-colors">+ New Client</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {/* Primary clients (this coach is the default) */}
@@ -1943,27 +1986,27 @@ export default function AdminPage() {
             return (
               <>
                 {primaryClients.length > 0 && (
-                  <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
-                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                  <div className="px-5 md:px-4 py-2.5 md:py-1.5 bg-primary/30 border-b border-white/5">
+                    <p className="text-gold text-xs md:text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
                   </div>
                 )}
                 {primaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
-              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
-                <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
+              <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-4 md:gap-3 px-5 md:px-4 py-4 md:py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
+                <div className="w-11 h-11 md:w-8 md:h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
                   {client.stravaProfileUrl ? (
-                    <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                    <img src={client.stravaProfileUrl} alt={client.name} className="w-11 h-11 md:w-8 md:h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                   ) : null}
                   {client.gender === "female" ? (
-                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                    <svg className={`w-11 h-11 md:w-8 md:h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                   ) : (
-                    <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                    <svg className={`w-11 h-11 md:w-8 md:h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-white text-xs font-medium truncate">{client.name}</p>
+                    <p className="text-white text-sm md:text-xs font-medium truncate">{client.name}</p>
                     {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
                   </div>
                   <p className="text-gray-300 text-xs truncate">
@@ -2070,7 +2113,7 @@ export default function AdminPage() {
             );
           })()}
         </div>
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 hidden md:block">
           <div className="relative">
             <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
               <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0">
@@ -2082,20 +2125,20 @@ export default function AdminPage() {
             </button>
             {showAdminMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowMobileSettingsView(true); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showChangelog && !selectedClient ? "text-green-400" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                   What&apos;s New
                   {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                 </button>
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowMobileSettingsView(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showTemplatesView && !selectedClient ? "text-gold" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                   Templates ({templates.length})
                 </button>
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showNotificationSettings && !selectedClient ? "text-accent" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowMobileSettingsView(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showNotificationSettings && !selectedClient ? "text-accent" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   Account Preferences
                 </button>
-                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
+                <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowMobileSettingsView(true); setShowAdminMenu(false); }} className={`w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors ${showManageCoaches && !selectedClient ? "text-purple-400" : "text-gray-400 hover:text-white"}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                   Manage Coaches ({allCoaches.length})
                 </button>
@@ -2111,11 +2154,17 @@ export default function AdminPage() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
+      {/* MAIN CONTENT (full screen on mobile when client selected or settings view active) */}
+      <main className={`${(!selectedClient && !showMobileSettingsView) ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
         {/* Back to Dashboard Button */}
+        {(selectedClient || showMobileSettingsView) && (
+          <button onClick={() => { setSelectedClient(null); setShowMobileSettingsView(false); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors md:hidden">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <span className="text-sm">Back</span>
+          </button>
+        )}
         {selectedClient && (
-          <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
+          <button onClick={() => setSelectedClient(null)} className="hidden md:flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             <span className="text-sm">Back to Dashboard</span>
           </button>
@@ -2171,7 +2220,7 @@ export default function AdminPage() {
                   <h2 className="font-heading text-2xl uppercase text-white">{selectedClientData.name}</h2>
                   {/* Coaches badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {selectedClientData.coaches.map(coach => (
+                    {[...selectedClientData.coaches].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map(coach => (
                       <span key={coach.coachId} className={`text-xs px-2 py-0.5 rounded-full border ${coach.isDefault ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
                         {coach.coachName.split(' ')[0]}{coach.isDefault ? ' ★' : ''}
                       </span>
@@ -2484,7 +2533,7 @@ export default function AdminPage() {
                               <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" />
                             </div>
                           )}
-                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />}
+                          {(editedWorkouts[w.id]?.type || w.type) === "cross" && <><div className="mt-2"><input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={editedWorkouts[w.id]?.crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} onChange={(crossTrainingStructure) => { setEditedWorkouts(prev => ({ ...prev, [w.id]: { ...prev[w.id], crossTrainingStructure, description: formatCrossTrainingForDisplay(crossTrainingStructure) } })); }} /><div className="mt-2"><input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div></>}
                         </div>
                       )}
                     </div>
@@ -3014,8 +3063,8 @@ export default function AdminPage() {
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Weight Unit</h3>
                   <p className="text-gray-300 text-xs mb-4">Choose the default weight unit for cross-training exercises.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => { setAdminWeightUnit("kg"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "kg"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "kg" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilograms (kg)</button>
                     <button onClick={() => { setAdminWeightUnit("lbs"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "lbs"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "lbs" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Pounds (lbs)</button>
+                    <button onClick={() => { setAdminWeightUnit("kg"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, undefined, "kg"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminWeightUnit === "kg" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Kilograms (kg)</button>
                   </div>
                 </div>
 
