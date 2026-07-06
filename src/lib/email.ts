@@ -115,7 +115,7 @@ export function buildNewMessageEmail(clientName: string, messagePreview: string,
       <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
         <tr>
           <td align="center">
-            <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
+            <a href="${siteUrl}/dashboard?tab=messages" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
           </td>
         </tr>
       </table>

@@ -78,6 +78,15 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
+
+  // Check URL params for tab navigation (e.g. from email links)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'messages' || tab === 'account') {
+      setActiveTab(tab);
+    }
+  }, []);
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [editingWorkoutLog, setEditingWorkoutLog] = useState<string | null>(null);
   const [showLinkOptions, setShowLinkOptions] = useState<string | null>(null);
