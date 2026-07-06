@@ -136,12 +136,27 @@ export async function POST(request: Request) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Get the workout details
-    const { data: workout } = await adminClient
+    // Get the workout details (try programmed workouts first, then client_workouts)
+    let workout: any = null
+    const { data: programmedWorkout } = await adminClient
       .from('workouts')
       .select('id, day, type, training_type, title, miles, week_id')
       .eq('id', workoutId)
       .single()
+
+    if (programmedWorkout) {
+      workout = programmedWorkout
+    } else {
+      // Try client_workouts table
+      const { data: clientWorkout } = await adminClient
+        .from('client_workouts')
+        .select('id, day, type, training_type, miles, week_id')
+        .eq('id', workoutId)
+        .single()
+      if (clientWorkout) {
+        workout = { ...clientWorkout, title: clientWorkout.type || 'Workout' }
+      }
+    }
 
     if (workout) {
       // Get the week to find the client

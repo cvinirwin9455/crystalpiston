@@ -140,10 +140,37 @@ export async function POST(request: Request) {
     if (weekIds.length > 0) {
       const { data } = await adminClient
         .from('client_workouts')
-        .select('week_id, day, type, training_type, miles, notes, completed, source, duration, average_pace, activity_name, avg_heartrate, max_heartrate')
+        .select('id, week_id, day, type, training_type, miles, notes, completed, source, duration, average_pace, activity_name, avg_heartrate, max_heartrate')
         .in('week_id', weekIds)
         .order('created_at', { ascending: true })
       clientWorkouts = data || []
+
+      // Also get comments on client workouts
+      const clientWorkoutIds = clientWorkouts.map(cw => cw.id)
+      if (clientWorkoutIds.length > 0) {
+        const { data: cwComments } = await adminClient
+          .from('workout_comments')
+          .select('workout_id, message, created_at, user_id')
+          .in('workout_id', clientWorkoutIds)
+          .order('created_at', { ascending: true })
+        if (cwComments && cwComments.length > 0) {
+          // Add to the main comments array with user info
+          const cwCommentUserIds = [...new Set(cwComments.map(c => c.user_id))]
+          if (cwCommentUserIds.length > 0) {
+            const { data: commentUsers } = await adminClient
+              .from('users')
+              .select('id, name, role')
+              .in('id', cwCommentUserIds)
+            const userMap = new Map((commentUsers || []).map(u => [u.id, u]))
+            const enriched = cwComments.map(c => ({
+              ...c,
+              userName: userMap.get(c.user_id)?.name || 'Unknown',
+              isCoach: userMap.get(c.user_id)?.role === 'admin',
+            }))
+            workoutComments = [...workoutComments, ...enriched]
+          }
+        }
+      }
     }
 
     // 8. Get Strava activities for context
