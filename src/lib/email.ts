@@ -6,12 +6,8 @@ export function getProductionUrl(requestUrl?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
   }
-  // Fallback to request URL (for local dev)
-  if (requestUrl) {
-    const url = new URL(requestUrl)
-    return `${url.protocol}//${url.host}`
-  }
-  return 'https://www.crystalpistolperformance.com'
+  // Hardcoded production URL as fallback (prevents preview deployment links in emails)
+  return 'https://crystalpiston.vercel.app'
 }
 
 interface SendEmailParams {

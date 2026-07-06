@@ -58,6 +58,8 @@ export async function GET() {
       .eq('is_default', true)
       .single()
 
+    console.log(`[my-plans] Client ${user.id}, clients.id=${client.id}, default coach assignment:`, coachAssignment)
+
     if (coachAssignment) {
       const { data: coachUser } = await adminClient
         .from('users')
