@@ -1060,12 +1060,8 @@ export default function DashboardPage() {
       <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {stravaConnection?.connected && stravaConnection.athleteProfile ? (
-              <img src={stravaConnection.athleteProfile} alt={loggedInName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            ) : (
-              <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
-            )}
-            <div><h1 className="font-heading text-lg uppercase text-white">{loggedInName || "My Training"}</h1><p className="text-gray-400 text-xs">Pistol Performance Coaching</p></div>
+            <Image src="/IMG_5861.PNG" alt="Pistol Performance Coaching" width={50} height={50} />
+            <div><h1 className="font-heading text-lg uppercase text-white">Pistol Performance</h1><p className="text-gray-400 text-xs">Coaching</p></div>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -1113,16 +1109,9 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="relative">
-              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt={loggedInName || 'Profile'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <span className="text-accent text-xs font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
-                  )}
-                </div>
-                <span className="text-white text-xs font-medium hidden sm:block">{loggedInName || 'Account'}</span>
-                <svg className={`w-3 h-3 text-gray-400 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              <button onClick={() => setShowClientMenu(!showClientMenu)} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <svg className={`w-3 h-3 transition-transform ${showClientMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {showClientMenu && (
                 <>
@@ -1153,7 +1142,7 @@ export default function DashboardPage() {
       {/* Tabs — sticky below header */}
       <nav aria-label="Dashboard tabs" className="border-b border-white/10 bg-secondary/95 backdrop-blur-sm sticky top-[65px] z-30 overflow-visible">
         <div className="max-w-7xl mx-auto px-6 flex gap-1 overflow-visible" role="tablist" aria-label="Dashboard navigation">
-          {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
+          {[{ key: "training", label: "Training" }, { key: "messages", label: "Messages" }].map((tab) => (
             <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`panel-${tab.key}`} onClick={() => { setActiveTab(tab.key as typeof activeTab); if (tab.key === "messages") setUnreadCount(0); }} className={`px-6 py-3 font-heading uppercase text-sm tracking-wider transition-colors relative overflow-visible ${activeTab === tab.key ? "text-accent border-b-2 border-accent" : "text-gray-400 hover:text-white"}`}>
               {tab.label}
               {tab.key === "messages" && unreadCount > 0 && (
@@ -2063,7 +2052,17 @@ export default function DashboardPage() {
                 </div>
               )}
               {clientMessages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
+                <div key={msg.id} className={`flex items-end gap-2 ${msg.from === "client" ? "justify-end" : "justify-start"}`}>
+                  {/* Coach avatar — left side */}
+                  {msg.from !== "client" && (
+                    <div className="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {coachAvatarUrl ? (
+                        <img src={coachAvatarUrl} alt={coachName} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="text-gold text-[10px] font-bold">{coachName.charAt(0)}</span>
+                      )}
+                    </div>
+                  )}
                   <div className={`max-w-[75%] ${msg.from === "client" ? "bg-accent rounded-2xl rounded-br-md" : "bg-secondary/80 border border-white/10 rounded-2xl rounded-bl-md"} px-4 py-2.5`}>
                     {msg.from !== "client" && msg.fromName && (
                       <p className="text-purple-300 text-[10px] font-medium mb-0.5">{msg.fromName}</p>
@@ -2071,6 +2070,16 @@ export default function DashboardPage() {
                     <p className={`text-sm ${msg.from === "client" ? "text-white" : "text-gray-200"}`}>{msg.message}</p>
                     <p className={`text-xs mt-1 ${msg.from === "client" ? "text-white/60" : "text-gray-500"}`}>{msg.date}</p>
                   </div>
+                  {/* Client avatar — right side */}
+                  {msg.from === "client" && (
+                    <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={loggedInName || 'Me'} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="text-accent text-[10px] font-bold">{loggedInName ? loggedInName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               <div ref={messagesEndRef} />
