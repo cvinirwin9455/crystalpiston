@@ -1924,14 +1924,21 @@ export default function AdminPage() {
 
   // Delete a draft week
   const handleDeleteDraft = async (weekId: string) => {
+    if (!confirm('Are you sure you want to delete this draft week? This cannot be undone.')) return;
     setDeletingWeekId(weekId);
     try {
       const res = await fetch(`/api/weeks/${weekId}`, { method: 'DELETE' });
       if (res.ok) {
+        // Optimistically remove from local state immediately
+        setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: c.weeks.filter(w => w.weekId !== weekId) } : c));
+        // Then re-fetch to ensure server consistency
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) {
           await fetchWeeks(client.clientId);
         }
+      } else {
+        const data = await res.json();
+        alert(`Failed to delete draft: ${data.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Failed to delete week:', err);

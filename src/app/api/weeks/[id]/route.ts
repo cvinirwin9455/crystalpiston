@@ -130,7 +130,16 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
+  // Use service role to bypass RLS for admin operations
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Check role using service role client
+  const { data: profile } = await adminClient
     .from('users')
     .select('role')
     .eq('id', user.id)
@@ -142,8 +151,19 @@ export async function DELETE(
 
   const weekId = params.id
 
+  // Verify the week exists before deleting
+  const { data: week } = await adminClient
+    .from('weeks')
+    .select('id')
+    .eq('id', weekId)
+    .single()
+
+  if (!week) {
+    return NextResponse.json({ error: 'Week not found' }, { status: 404 })
+  }
+
   // Workouts will be cascade deleted due to FK constraint
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('weeks')
     .delete()
     .eq('id', weekId)
