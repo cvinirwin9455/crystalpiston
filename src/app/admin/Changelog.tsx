@@ -3,9 +3,23 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-06T01:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-07T01:00:00Z";
 
 const updates = [
+  {
+    date: "July 7, 2026",
+    items: [
+      { area: "Client", text: "Coach's full name now shows in the dashboard header — previously only showed first name" },
+      { area: "Admin", text: "Fixed: Deleting one draft week no longer affects other drafts — added confirmation dialog and improved reliability" },
+      { area: "Client", text: "Banner notifications you dismiss now stay dismissed across all your devices — no more seeing the same banner again on a different phone/computer" },
+      { area: "Admin", text: "NEW: Pace targets are now per-block — set different target paces for warm-up blocks, tempo blocks, intervals, etc. instead of one pace for the whole workout" },
+      { area: "Client", text: "Target pace now shows inline with each workout block (e.g. '3 mi @ Tempo (7:30/mi)') instead of a separate line" },
+      { area: "All", text: "Fixed: Pace conversion now handles ranges like '7:00-7:30/mi' — toggle between MI and KM works correctly for range paces" },
+      { area: "All", text: "Fixed: Paces entered without a unit (just '7:00') now automatically get the correct '/mi' or '/km' label" },
+      { area: "Admin", text: "Fixed: Toggling MI↔KM now also converts block-level paces — previously only converted the workout-level pace" },
+      { area: "Admin", text: "Fixed: Editing a published run now shows the full Structured Run Builder — previously showed old-style Title/Description/Pace text boxes" },
+    ],
+  },
   {
     date: "July 6, 2026",
     items: [
