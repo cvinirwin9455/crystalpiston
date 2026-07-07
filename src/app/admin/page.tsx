@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
   const [editDistanceUnits, setEditDistanceUnits] = useState<Record<string, "mi" | "km">>({});
   const [editCrossTrainingStructures, setEditCrossTrainingStructures] = useState<Record<string, CrossTrainingStructure>>({});
+  const [editRunStructures, setEditRunStructures] = useState<Record<string, WorkoutStructure>>({});
   const [editedCoachMessage, setEditedCoachMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
@@ -1914,6 +1915,7 @@ export default function AdminPage() {
     const workoutEdits: Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }> = {};
     const unitEdits: Record<string, "mi" | "km"> = {};
     const crossStructEdits: Record<string, CrossTrainingStructure> = {};
+    const runStructEdits: Record<string, WorkoutStructure> = {};
     for (const w of selectedWeek.workouts) {
       workoutEdits[w.id] = {
         type: w.type,
@@ -1930,10 +1932,15 @@ export default function AdminPage() {
       if (w.type === 'cross' && (w as any).structure?.exercises) {
         crossStructEdits[w.id] = (w as any).structure;
       }
+      // Extract run structure from the workout's structure field
+      if (w.type === 'run' && (w as any).structure?.blocks) {
+        runStructEdits[w.id] = (w as any).structure;
+      }
     }
     setEditedWorkouts(workoutEdits);
     setEditDistanceUnits(unitEdits);
     setEditCrossTrainingStructures(crossStructEdits);
+    setEditRunStructures(runStructEdits);
     setEditedCoachMessage(selectedWeek.coachMessage || '');
     setEditingWeek(true);
   };
@@ -1971,6 +1978,7 @@ export default function AdminPage() {
         const edited = editedWorkouts[w.id];
         if (!edited) return Promise.resolve();
         const crossStruct = editCrossTrainingStructures[w.id] || null;
+        const runStruct = editRunStructures[w.id] || null;
         return fetch(`/api/workouts/${w.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -1984,7 +1992,7 @@ export default function AdminPage() {
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
             distanceUnit: editDistanceUnits[w.id] || 'mi',
-            structure: edited.type === 'cross' && crossStruct ? crossStruct : undefined,
+            structure: edited.type === 'cross' && crossStruct ? crossStruct : edited.type === 'run' && runStruct ? runStruct : undefined,
           }),
         });
       });
@@ -1998,6 +2006,7 @@ export default function AdminPage() {
       setEditingWeek(false);
       setEditedWorkouts({});
       setEditCrossTrainingStructures({});
+      setEditRunStructures({});
     } catch (err) {
       console.error('Failed to save week edits:', err);
     } finally {
@@ -2542,7 +2551,7 @@ export default function AdminPage() {
                     {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
                   </div>
                   <div className="flex items-center gap-2">
-                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); setEditCrossTrainingStructures({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
+                    {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); setEditCrossTrainingStructures({}); setEditRunStructures({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
                     {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-400 text-xs italic">Past week (locked)</span>}
                     <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} aria-label="Next week" disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
@@ -2697,11 +2706,29 @@ export default function AdminPage() {
                               </>
                             )}
                           </div>
-                          {(editedWorkouts[w.id]?.type || w.type) !== "rest" && (
+                          {(editedWorkouts[w.id]?.type || w.type) !== "rest" && (editedWorkouts[w.id]?.type || w.type) !== "run" && (editedWorkouts[w.id]?.type || w.type) !== "cross" && (
                             <div className="grid md:grid-cols-2 gap-2">
                               <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" />
                               <input type="text" value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Description" />
                             </div>
+                          )}
+                          {(editedWorkouts[w.id]?.type || w.type) === "run" && (
+                            <>
+                              <div className="grid md:grid-cols-2 gap-2">
+                                <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" />
+                              </div>
+                              <StructuredRunBuilder
+                                structure={editRunStructures[w.id] || { warmUp: null, blocks: [{ blockType: "intervals", reps: "", work: { type: "distance", value: "", unit: (editDistanceUnits[w.id] || adminDistanceUnit) === "km" ? "km" : "miles" }, intensity: "", recovery: { type: "distance", value: "", unit: (editDistanceUnits[w.id] || adminDistanceUnit) === "km" ? "km" : "miles", recoveryType: "Jog" } }], coolDown: null }}
+                                distanceUnit={editDistanceUnits[w.id] || adminDistanceUnit}
+                                onChange={(structure) => {
+                                  setEditRunStructures(prev => ({ ...prev, [w.id]: structure }));
+                                  const totalDist = calculateTotalDistance(structure, (editDistanceUnits[w.id] || adminDistanceUnit) === 'km' ? 'km' : 'mi');
+                                  if (totalDist > 0) {
+                                    updateEditedWorkout(w.id, 'miles', totalDist.toString());
+                                  }
+                                }}
+                              />
+                            </>
                           )}
                           {((editedWorkouts[w.id]?.type || w.type) === "run" || (editedWorkouts[w.id]?.type || w.type) === "walk") && (
                             <div className="grid md:grid-cols-2 gap-2">
