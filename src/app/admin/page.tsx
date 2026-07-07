@@ -2095,7 +2095,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-primary md:flex">
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0`}>
+      <aside className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
             {/* Mobile: coach photo */}
