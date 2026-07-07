@@ -23,13 +23,15 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, access_level')
     .eq('id', user.id)
     .single()
 
   if (profile?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const accessLevel = profile?.access_level || 'all_clients'
 
   const adminClient = await createAdminClient()
 
@@ -133,9 +135,29 @@ export async function GET() {
     }
   }
 
+  // If this coach has "own_clients" access, only show clients they are assigned to
+  let allowedUserIds: Set<string> | null = null
+  if (accessLevel === 'own_clients') {
+    // Find all client_ids this coach is assigned to
+    const myClientIds = new Set(
+      coachAssignments
+        .filter(ca => ca.coach_id === user.id)
+        .map(ca => ca.client_id)
+    )
+    // Map client_ids back to user_ids
+    allowedUserIds = new Set<string>()
+    for (const cr of clientRecords || []) {
+      if (myClientIds.has(cr.id)) {
+        allowedUserIds.add(cr.user_id)
+      }
+    }
+  }
+
   // Build response, auto-create missing client records
   const formatted = []
   for (const u of clientUsers || []) {
+    // Skip clients this coach is not assigned to (if own_clients access)
+    if (allowedUserIds && !allowedUserIds.has(u.id)) continue
     let clientRecord = clientMap.get(u.id) || null
 
     if (!clientRecord) {
@@ -198,7 +220,9 @@ export async function GET() {
     })
   }
 
-  return NextResponse.json(formatted)
+  return NextResponse.json(formatted, {
+    headers: { 'X-Access-Level': accessLevel },
+  })
 }
 
 // POST /api/clients - Create a new client (invite via email)

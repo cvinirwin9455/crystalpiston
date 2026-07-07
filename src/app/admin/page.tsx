@@ -460,6 +460,7 @@ export default function AdminPage() {
   const [loggedInUser, setLoggedInUser] = useState<string>("");
   const [loggedInUserId, setLoggedInUserId] = useState<string>("");
   const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null);
+  const [myAccessLevel, setMyAccessLevel] = useState<string>("all_clients");
 
   // All coaches in the system (for multi-coach dropdown)
   type CoachOption = { id: string; name: string; email: string; accessLevel?: string };
@@ -633,10 +634,11 @@ export default function AdminPage() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: profile } = await supabase.from('users').select('name, avatar_url').eq('id', user.id).single();
+          const { data: profile } = await supabase.from('users').select('name, avatar_url, access_level').eq('id', user.id).single();
           setLoggedInUser(profile?.name || user.email || '');
           setLoggedInUserId(user.id);
           if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
+          if (profile?.access_level) setMyAccessLevel(profile.access_level);
         }
       } catch (err) { console.error(err); }
     };
@@ -2209,6 +2211,7 @@ export default function AdminPage() {
             const secondaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && !cc.isDefault));
             const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
             const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
+            const hideOtherClients = myAccessLevel === 'own_clients';
             return (
               <>
                 {primaryClients.length > 0 && (
@@ -2299,7 +2302,7 @@ export default function AdminPage() {
                     })}
                   </>
                 )}
-                {showSecondary && otherClients.length > 0 && (
+                {showSecondary && !hideOtherClients && otherClients.length > 0 && (
                   <>
                     <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5 mt-1">
                       <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider">Other Clients ({otherClients.length})</p>
