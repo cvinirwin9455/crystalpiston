@@ -28,6 +28,9 @@ export default function AdminPage() {
   const [editedCoachMessage, setEditedCoachMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
+  const [adminHeaderScrolled, setAdminHeaderScrolled] = useState(false);
+  const [weeklyMessageExpanded, setWeeklyMessageExpanded] = useState(true);
+  const mainContentRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState("");
   const [messageIndex, setMessageIndex] = useState(0);
   const [showCreateClient, setShowCreateClient] = useState(false);
@@ -1375,6 +1378,17 @@ export default function AdminPage() {
   useEffect(() => {
     adminMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [adminMessages]);
+
+  // Detect scroll for sticky header condensed mode
+  useEffect(() => {
+    const el = mainContentRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      setAdminHeaderScrolled(el.scrollTop > 120);
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [selectedClient]);
   // AI Coach handler
   const handleAiQuery = async (prompt: string) => {
     setAiLoading(true);
@@ -2336,7 +2350,7 @@ export default function AdminPage() {
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
+      <main ref={mainContentRef} className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -2383,10 +2397,13 @@ export default function AdminPage() {
         )}
 
         {selectedClientData ? (
-          <div className="p-6 space-y-6">
-            {/* Client Header */}
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
+          <div className="flex flex-col h-full">
+            {/* STICKY HEADER: Client name + condensed stats + tabs */}
+            <div className={`sticky top-0 z-30 bg-primary transition-shadow ${adminHeaderScrolled ? 'shadow-lg shadow-black/30 border-b border-white/10' : ''}`}>
+              {/* Full client header (shown when not scrolled) */}
+              <div className={`px-6 pt-5 pb-3 transition-all ${adminHeaderScrolled ? 'hidden' : ''}`}>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-secondary flex items-center justify-center">
                   {(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl) ? (
                     <img src={(selectedClientData.avatarUrl || selectedClientData.stravaProfileUrl)!} alt={selectedClientData.name} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
@@ -2469,8 +2486,37 @@ export default function AdminPage() {
               </div>
               {/* Draft count removed for cleaner UI */}
             </div>
+              </div>
 
-            {/* Stats Card (mirrors client dashboard layout) */}
+              {/* Condensed header (shown when scrolled) */}
+              <div className={`px-6 py-2.5 transition-all ${adminHeaderScrolled ? 'flex items-center gap-4' : 'hidden'}`}>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h2 className="font-heading text-sm uppercase text-white truncate">{selectedClientData.name}</h2>
+                  <span className="text-gray-500 text-xs hidden sm:inline">—</span>
+                  <span className="text-gray-400 text-xs hidden sm:inline truncate">
+                    {displayMilesCompleted.toFixed(1)}/{displayMilesProgrammed.toFixed(1)} {distUnitShort} · {displayMarked.length}/{displayWorkouts.length} workouts · {displayCompletion}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Tabs (always in sticky area) */}
+              <div className="px-6 pb-2 flex gap-1 flex-wrap">
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
+                  <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                    {tab.label}
+                    {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[selectedClient]}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* END STICKY HEADER */}
+
+            {/* SCROLLABLE CONTENT */}
+            <div className="p-6 space-y-6">
+
+            {/* Stats Card */}
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
@@ -2520,18 +2566,6 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Tabs */}
-            <div className="flex gap-1 flex-wrap">
-              {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
-                <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
-                  {tab.label}
-                  {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[selectedClient]}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
             {/* TRAINING & LOGS */}
             {clientTab === "plan" && (
               <div className="space-y-6">
@@ -2543,17 +2577,20 @@ export default function AdminPage() {
                 )}
 
                 {/* Week Navigation */}
-                <div className="flex items-center justify-between">
-                  <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} aria-label="Previous week" disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                <div className="flex items-center justify-between bg-secondary/30 border border-white/10 rounded-xl px-4 py-3">
+                  <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} aria-label="Previous week" disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed p-1.5 rounded-lg hover:bg-white/5 transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                   <div className="text-center">
-                    {adminWeekOffset === 0 && <span className="inline-block bg-accent/10 border border-accent/30 rounded py-0.5 px-3 text-accent font-heading text-xs uppercase mb-1">Current Week</span>}
+                    {adminWeekOffset === 0 && <span className="inline-block bg-accent/10 border border-accent/30 rounded py-0.5 px-3 text-accent font-heading text-[10px] uppercase mb-0.5">Current Week</span>}
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
-                    {selectedWeek && <p className="text-gray-400 text-xs">{selectedWeek.focus}{selectedWeek.focus && ' — '}<span className="text-white font-medium">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>}
+                    <div className="flex items-center justify-center gap-2 mt-0.5">
+                      {selectedWeek && <span className="text-gray-400 text-xs">{selectedWeek.focus}</span>}
+                      {selectedWeek && <span className="text-white text-xs font-medium bg-white/5 px-2 py-0.5 rounded">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(1)} {distUnitShort}</span>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); setEditCrossTrainingStructures({}); setEditRunStructures({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
                     {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-400 text-xs italic">Past week (locked)</span>}
-                    <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} aria-label="Next week" disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+                    <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} aria-label="Next week" disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed p-1.5 rounded-lg hover:bg-white/5 transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
 
@@ -2569,10 +2606,20 @@ export default function AdminPage() {
                 {selectedWeek && (
                   <>
 
-                {/* Coach Message */}
-                <div className="bg-gold/5 border border-gold/20 rounded-xl p-4">
-                  <p className="text-gold text-xs font-heading uppercase mb-1">Weekly Message</p>
-                  {editingWeek ? <textarea value={editedCoachMessage} onChange={(e) => setEditedCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} /> : <p className="text-gray-300 text-sm">{selectedWeek?.coachMessage || <span className="text-gray-600 italic">No message</span>}</p>}
+                {/* Coach Message — slim collapsible banner */}
+                <div className="border border-gold/20 rounded-lg overflow-hidden">
+                  <button onClick={() => setWeeklyMessageExpanded(!weeklyMessageExpanded)} className="w-full flex items-center justify-between px-4 py-2 bg-gold/5 hover:bg-gold/10 transition-colors text-left">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-gold text-xs font-heading uppercase flex-shrink-0">Weekly Message</span>
+                      {!weeklyMessageExpanded && <span className="text-gray-400 text-xs truncate">{selectedWeek?.coachMessage || 'No message'}</span>}
+                    </div>
+                    <svg className={`w-3.5 h-3.5 text-gold/60 flex-shrink-0 transition-transform ${weeklyMessageExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  {weeklyMessageExpanded && (
+                    <div className="px-4 py-2.5 border-t border-gold/10">
+                      {editingWeek ? <textarea value={editedCoachMessage} onChange={(e) => setEditedCoachMessage(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} /> : <p className="text-gray-300 text-sm">{selectedWeek?.coachMessage || <span className="text-gray-600 italic">No message</span>}</p>}
+                    </div>
+                  )}
                 </div>
 
                 {/* Workouts */}
@@ -3247,6 +3294,7 @@ export default function AdminPage() {
                 dateFormat={adminDateFormat}
               />
             )}
+          </div>
           </div>
         ) : (
           /* COACH DASHBOARD or SETTINGS */
