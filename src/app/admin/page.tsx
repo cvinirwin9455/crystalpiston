@@ -2521,9 +2521,10 @@ export default function AdminPage() {
             {/* END STICKY HEADER */}
 
             {/* SCROLLABLE CONTENT */}
-            <div ref={mainContentRef} className="flex-1 overflow-y-auto p-6 pb-20 space-y-6">
+            <div ref={mainContentRef} className={`flex-1 overflow-y-auto p-6 ${clientTab === 'messages' ? 'pb-6 flex flex-col' : 'pb-20 space-y-6'}`}>
 
-            {/* Stats Card */}
+            {/* Stats Card (hidden on Messages/Account tabs) */}
+            {clientTab !== "messages" && clientTab !== "account" && (
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
@@ -2541,6 +2542,7 @@ export default function AdminPage() {
                 <div className="text-center"><p className="font-heading text-xl text-green-400">{displayCompletion}%</p><p className="text-gray-300 text-xs">Completion</p></div>
               </div>
             </div>
+            )}
 
             {/* Invite Status Banner */}
             {selectedClientData.inviteStatus !== "accepted" && (
@@ -3199,7 +3201,7 @@ export default function AdminPage() {
 
             {/* MESSAGES - Chat Style */}
             {clientTab === "messages" && (
-              <div className="flex flex-col h-[calc(100vh-280px)] bg-secondary/20 border border-white/10 rounded-2xl overflow-hidden">
+              <div className="flex flex-col flex-1 min-h-0 bg-secondary/20 border border-white/10 rounded-2xl overflow-hidden">
                 {/* Chat Header */}
                 <div className="px-5 py-3 border-b border-white/10 bg-secondary/50">
                   <div className="flex items-center gap-3">
