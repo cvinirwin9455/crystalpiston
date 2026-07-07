@@ -2497,6 +2497,13 @@ export default function AdminPage() {
                     {displayMilesCompleted.toFixed(1)}/{displayMilesProgrammed.toFixed(1)} {distUnitShort} · {displayMarked.length}/{displayWorkouts.length} workouts · {displayCompletion}%
                   </span>
                 </div>
+                {clientTab === "plan" && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => setAdminWeekOffset(adminWeekOffset - 1)} disabled={adminWeekOffset <= adminMinOffset} className="text-gray-400 hover:text-white disabled:opacity-20 p-0.5"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                    <span className="text-white text-xs font-heading uppercase">{getAdminWeekLabel(adminWeekOffset)}</span>
+                    <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 p-0.5"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
+                  </div>
+                )}
               </div>
 
               {/* Tabs (always in sticky area) */}
