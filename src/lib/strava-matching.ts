@@ -75,9 +75,21 @@ export function findBestMatch(
         reasons.push(`Distance differs (${stravaMiles.toFixed(1)} vs ${candidate.miles.toFixed(1)} mi)`);
       }
     } else if (!candidate.miles && stravaMiles > 0) {
-      // No programmed miles (e.g. cross training) — partial match by type alone
-      score += 10;
-      reasons.push('No distance programmed to compare');
+      // No programmed miles (e.g. cross training) but Strava has distance
+      // For non-distance types (cross/strength/stretching), this is still a good match
+      const nonDistanceTypes = ['cross', 'strength', 'stretching'];
+      if (nonDistanceTypes.includes(candidate.workoutType)) {
+        score += 20;
+        reasons.push('Non-distance workout type — distance irrelevant');
+      } else {
+        score += 10;
+        reasons.push('No distance programmed to compare');
+      }
+    } else if (!candidate.miles && stravaMiles === 0) {
+      // No distance on either side (non-distance types like strength/cross/stretching)
+      // This is expected — give stronger credit since type match is all we have
+      score += 20;
+      reasons.push('Non-distance workout type matched');
     }
 
     // 3. Training type match — up to 20 points
