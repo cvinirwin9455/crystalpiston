@@ -32,9 +32,10 @@ export type WorkBlock = {
   reps: string;
   work: { type: MeasureType; value: string; unit: DistanceUnit | TimeUnit };
   intensity: string;
+  pace?: string; // Target pace for this block (e.g. "7:00/mi", "5:30-6:00/km")
   recovery?: Recovery;
   // For progression runs: multiple segments
-  segments?: { value: string; unit: DistanceUnit | TimeUnit; type: MeasureType; intensity: string }[];
+  segments?: { value: string; unit: DistanceUnit | TimeUnit; type: MeasureType; intensity: string; pace?: string }[];
   // For fartlek: work and rest alternate
   fartlekRest?: { type: MeasureType; value: string; unit: DistanceUnit | TimeUnit };
 };
@@ -182,28 +183,31 @@ function formatBlock(block: WorkBlock): string {
     switch (u) { case "meters": return "m"; case "km": return "km"; case "miles": return "mi"; case "minutes": return "min"; case "seconds": return "sec"; case "hours": return "hr"; default: return u; }
   };
 
+  const paceStr = block.pace ? ` @ ${block.pace}` : '';
+
   if (block.blockType === "tempo") {
     const w = block.work ? `${block.work.value} ${unitLabel(block.work.unit)}` : "";
-    return `${w}${block.intensity ? ` @ ${block.intensity}` : ''}`;
+    return `${w}${block.intensity ? ` @ ${block.intensity}` : ''}${!block.intensity && paceStr ? paceStr : (block.pace ? ` (${block.pace})` : '')}`;
   }
 
   if (block.blockType === "progression" && block.segments && block.segments.length > 0) {
-    return block.segments.map(s => `${s.value} ${unitLabel(s.unit)}${s.intensity ? ` ${s.intensity}` : ''}`).join(" + ");
+    return block.segments.map(s => `${s.value} ${unitLabel(s.unit)}${s.intensity ? ` ${s.intensity}` : ''}${s.pace ? ` @ ${s.pace}` : ''}`).join(" + ");
   }
 
   if (block.blockType === "fartlek") {
     const reps = block.reps || "?";
     const w = block.work ? `${block.work.value} ${unitLabel(block.work.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'}` : "hard";
     const r = block.fartlekRest ? `${block.fartlekRest.value} ${unitLabel(block.fartlekRest.unit)} easy` : (block.recovery ? `${block.recovery.value} ${unitLabel(block.recovery.unit)} easy` : "easy");
-    return `${reps} x (${w} / ${r})`;
+    return `${reps} x (${w} / ${r})${paceStr}`;
   }
 
   // Intervals, strides, hill repeats
   const reps = block.reps || "?";
   const w = block.work ? `${block.work.value}${unitLabel(block.work.unit)}` : "";
   const intensity = block.intensity ? ` @ ${block.intensity}` : "";
+  const pace = !block.intensity && paceStr ? paceStr : (block.pace && block.intensity ? ` (${block.pace})` : '');
   const recov = (block.recovery && block.recovery.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : "";
-  return `${reps} x ${w}${intensity}${recov}`;
+  return `${reps} x ${w}${intensity}${pace}${recov}`;
 }
 
 
@@ -368,6 +372,7 @@ function BlockEditor({ block, index, onChange, onRemove, canRemove, defaultDistU
 
 function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
   const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
+  const paceUnitLabel = defaultDistUnit === "km" ? "/km" : "/mi";
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -390,13 +395,14 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
           </select>
         )}
       </div>
-      {/* Intensity */}
+      {/* Intensity + Pace */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-gray-500 text-xs">@</span>
         <select value={block.intensity} onChange={(e) => onChange({ ...block, intensity: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
           <option value="">Intensity (optional)</option>
           {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
         </select>
+        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
       </div>
       {/* Recovery (optional) */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -440,28 +446,35 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
 
 function TempoEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
   const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
+  const paceUnitLabel = defaultDistUnit === "km" ? "/km" : "/mi";
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <select value={block.work.type} onChange={(e) => onChange({ ...block, work: { ...block.work, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "minutes" : defaultDistUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-        <option value="distance">Distance</option>
-        <option value="time">Time</option>
-      </select>
-      <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
-      {block.work.type === "distance" ? (
-        <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters", value: "" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
-          {block.work.unit === "meters" ? "meters" : mainUnitLabel}
-        </button>
-      ) : (
-        <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
-          <option value="minutes">min</option>
-          <option value="hours">hr</option>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <select value={block.work.type} onChange={(e) => onChange({ ...block, work: { ...block.work, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "minutes" : defaultDistUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+          <option value="distance">Distance</option>
+          <option value="time">Time</option>
         </select>
-      )}
-      <span className="text-gray-500 text-xs">@</span>
-      <select value={block.intensity} onChange={(e) => onChange({ ...block, intensity: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
-        <option value="">Intensity</option>
-        {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
-      </select>
+        <input type="text" value={block.work.value} onChange={(e) => onChange({ ...block, work: { ...block.work, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
+        {block.work.type === "distance" ? (
+          <button type="button" onClick={() => onChange({ ...block, work: { ...block.work, unit: block.work.unit === "meters" ? defaultDistUnit : "meters", value: "" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+            {block.work.unit === "meters" ? "meters" : mainUnitLabel}
+          </button>
+        ) : (
+          <select value={block.work.unit} onChange={(e) => onChange({ ...block, work: { ...block.work, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+            <option value="minutes">min</option>
+            <option value="hours">hr</option>
+          </select>
+        )}
+        <span className="text-gray-500 text-xs">@</span>
+        <select value={block.intensity} onChange={(e) => onChange({ ...block, intensity: e.target.value })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs">
+          <option value="">Intensity</option>
+          {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
+        </select>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-gray-500 text-xs">Target Pace:</span>
+        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} className="w-28 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`e.g. 7:30${paceUnitLabel}`} />
+      </div>
     </div>
   );
 }
@@ -469,6 +482,7 @@ function TempoEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; o
 
 function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
   const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
+  const paceUnitLabel = defaultDistUnit === "km" ? "/km" : "/mi";
   const segments = block.segments || [emptyProgressionSegment(defaultDistUnit)];
 
   const updateSegment = (idx: number, changes: any) => {
@@ -497,6 +511,7 @@ function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBl
             <option value="">Intensity</option>
             {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
+          <input type="text" value={(seg as any).pace || ''} onChange={(e) => updateSegment(idx, { pace: e.target.value })} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
           {segments.length > 2 && (
             <button type="button" onClick={() => { const s = segments.filter((_, i) => i !== idx); onChange({ ...block, segments: s }); }} className="text-red-400 text-xs">x</button>
           )}
@@ -510,6 +525,7 @@ function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBl
 
 function FartlekEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
   const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
+  const paceUnitLabel = defaultDistUnit === "km" ? "/km" : "/mi";
   const rest = block.fartlekRest || { type: "time" as MeasureType, value: "", unit: "minutes" as TimeUnit };
 
   return (
@@ -536,6 +552,7 @@ function FartlekEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock;
           <option value="minutes">min</option>
         </select>
         <span className="text-gray-400 text-xs">easy )</span>
+        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
       </div>
     </div>
   );

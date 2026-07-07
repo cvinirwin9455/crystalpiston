@@ -44,6 +44,42 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
   const parts: string[] = [];
   const unitLabel = (u: string) => { switch (u) { case "meters": return "m"; case "km": return "km"; case "miles": return "mi"; case "minutes": return "min"; case "seconds": return "sec"; case "hours": return "hr"; default: return u; } };
 
+  // Helper to convert pace between /mi and /km
+  const convertPace = (pace: string): string => {
+    if (!pace || !targetUnit) return pace;
+    // Handle range paces like "7:00-7:30/mi"
+    const rangeMatch = pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/(mi|km)$/);
+    if (rangeMatch) {
+      const [_, p1, p2, unit] = rangeMatch;
+      if (unit === 'mi' && targetUnit === 'km') {
+        return `${convertSinglePace(p1, 'toKm')}-${convertSinglePace(p2, 'toKm')}/km`;
+      } else if (unit === 'km' && targetUnit === 'mi') {
+        return `${convertSinglePace(p1, 'toMi')}-${convertSinglePace(p2, 'toMi')}/mi`;
+      }
+      return pace;
+    }
+    // Single pace like "7:00/mi"
+    const singleMatch = pace.match(/^(\d+:\d+)\/(mi|km)$/);
+    if (singleMatch) {
+      const [_, p, unit] = singleMatch;
+      if (unit === 'mi' && targetUnit === 'km') {
+        return `${convertSinglePace(p, 'toKm')}/km`;
+      } else if (unit === 'km' && targetUnit === 'mi') {
+        return `${convertSinglePace(p, 'toMi')}/mi`;
+      }
+    }
+    return pace;
+  };
+
+  const convertSinglePace = (pace: string, direction: 'toKm' | 'toMi'): string => {
+    const [mins, secs] = pace.split(':').map(Number);
+    const totalSecs = mins * 60 + secs;
+    const converted = direction === 'toKm' ? totalSecs / 1.60934 : totalSecs * 1.60934;
+    const newMins = Math.floor(converted / 60);
+    const newSecs = Math.round(converted % 60);
+    return `${newMins}:${newSecs.toString().padStart(2, '0')}`;
+  };
+
   if (structure.warmUp?.value) {
     const c = convertVal(structure.warmUp.value, structure.warmUp.unit);
     const u = unitLabel(c.unit);
@@ -51,19 +87,21 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
   }
 
   for (const block of structure.blocks || []) {
+    const paceStr = block.pace ? ` @ ${convertPace(block.pace)}` : '';
+    
     if (block.blockType === "tempo" && block.work?.value) {
       const c = convertVal(block.work.value, block.work.unit);
-      parts.push(`${c.value} ${unitLabel(c.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}`);
+      parts.push(`${c.value} ${unitLabel(c.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${block.pace ? (block.intensity ? ` (${convertPace(block.pace)})` : paceStr) : ''}`);
     } else if (block.blockType === "progression" && block.segments?.length) {
-      parts.push(block.segments.map((s: any) => { const c = convertVal(s.value, s.unit); return `${c.value} ${unitLabel(c.unit)}${s.intensity ? ` ${s.intensity}` : ''}`; }).join(' + '));
+      parts.push(block.segments.map((s: any) => { const c = convertVal(s.value, s.unit); const sPace = s.pace ? ` @ ${convertPace(s.pace)}` : ''; return `${c.value} ${unitLabel(c.unit)}${s.intensity ? ` ${s.intensity}` : ''}${sPace}`; }).join(' + '));
     } else if (block.blockType === "fartlek" && block.work?.value) {
       const rest = block.fartlekRest;
       const cw = convertVal(block.work.value, block.work.unit);
-      parts.push(`${block.reps || '?'} x (${cw.value} ${unitLabel(cw.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)`);
+      parts.push(`${block.reps || '?'} x (${cw.value} ${unitLabel(cw.unit)}${block.intensity ? ` ${block.intensity}` : ' hard'} / ${rest?.value || '?'} ${unitLabel(rest?.unit || 'minutes')} easy)${paceStr}`);
     } else if (block.work?.value) {
       const cw = convertVal(block.work.value, block.work.unit);
       const recov = (block.recovery?.value && parseFloat(block.recovery.value) > 0) ? (() => { const cr = convertVal(block.recovery.value, block.recovery.unit); return ` w/ ${cr.value}${unitLabel(cr.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}`; })() : '';
-      parts.push(`${block.reps || '?'} x ${cw.value}${unitLabel(cw.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${recov}`);
+      parts.push(`${block.reps || '?'} x ${cw.value}${unitLabel(cw.unit)}${block.intensity ? ` @ ${block.intensity}` : ''}${!block.intensity && paceStr ? paceStr : (block.pace && block.intensity ? ` (${convertPace(block.pace)})` : '')}${recov}`);
     }
   }
 
@@ -1395,7 +1433,7 @@ export default function DashboardPage() {
                           ) : workout.description ? (
                             <p className="text-gray-400 text-sm">{workout.description}</p>
                           ) : null}
-                          {workout.paceTarget && <p className="text-accent text-xs mt-0.5">Target Pace: {getWorkoutUnit(workout.id) === "km" && workout.paceTarget.includes("/mi") ? convertPaceToKm(workout.paceTarget) : getWorkoutUnit(workout.id) === "mi" && workout.paceTarget.includes("/km") ? convertPaceToMi(workout.paceTarget) : workout.paceTarget}{!workout.paceTarget.includes("/") ? `/${getWorkoutUnit(workout.id)}` : ""}</p>}
+                          {workout.paceTarget && !workout.structure && <p className="text-accent text-xs mt-0.5">Target Pace: {getWorkoutUnit(workout.id) === "km" && workout.paceTarget.includes("/mi") ? convertPaceToKm(workout.paceTarget) : getWorkoutUnit(workout.id) === "mi" && workout.paceTarget.includes("/km") ? convertPaceToMi(workout.paceTarget) : workout.paceTarget}{!workout.paceTarget.includes("/") ? `/${getWorkoutUnit(workout.id)}` : ""}</p>}
                           {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>

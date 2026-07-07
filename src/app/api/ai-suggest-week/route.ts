@@ -358,12 +358,12 @@ You must respond with a valid JSON object with this exact structure:
           "type": "run",
           "trainingType": "Easy",
           "miles": "5",
-          "paceTarget": "10:00-10:30/mi",
+          "paceTarget": "",
           "coachNotes": "Keep effort conversational. Stay in Zone 2.",
           "structure": {
             "warmUp": { "type": "distance", "value": "1", "unit": "miles" },
             "blocks": [
-              { "blockType": "tempo", "reps": "1", "work": { "type": "distance", "value": "3", "unit": "miles" }, "intensity": "Easy", "recovery": { "type": "distance", "value": "", "unit": "meters", "recoveryType": "Jog" } }
+              { "blockType": "tempo", "reps": "1", "work": { "type": "distance", "value": "3", "unit": "miles" }, "intensity": "Easy", "pace": "10:00-10:30/mi", "recovery": { "type": "distance", "value": "", "unit": "meters", "recoveryType": "Jog" } }
             ],
             "coolDown": { "type": "distance", "value": "1", "unit": "miles" }
           }
@@ -398,12 +398,14 @@ STRUCTURE RULES FOR RUN WORKOUTS:
   - reps: number of repetitions (as string)
   - work: { type, value, unit } — the work interval
   - intensity: "Easy" | "Moderate" | "Marathon Pace" | "Threshold" | "Tempo" | "10K Pace" | "5K Pace" | "VO2 Max" | "Sprint" | "" (optional)
+  - pace: target pace for this block (e.g. "${distanceUnit === 'km' ? '5:30/km' : '8:00/mi'}" or "${distanceUnit === 'km' ? '4:30-5:00/km' : '7:00-7:30/mi'}") — ALWAYS include for speed/tempo/race pace blocks
   - recovery: { type, value, unit, recoveryType } — recovery between reps (use empty value "" for no recovery)
   - recoveryType: "Walk" | "Jog" | "Standing" | "Easy Run" | "Custom"
-- For "tempo" blockType: no reps needed (set to "1"), just work distance/time + intensity
-- For "progression" blockType: use "segments" array instead of work: [{ value, unit, type, intensity }]
-- For simple easy runs: one block with blockType "tempo", work = full distance, intensity = "Easy"
+- For "tempo" blockType: no reps needed (set to "1"), just work distance/time + intensity + pace
+- For "progression" blockType: use "segments" array instead of work: [{ value, unit, type, intensity, pace }] — include pace per segment
+- For simple easy runs: one block with blockType "tempo", work = full distance, intensity = "Easy", pace = easy pace
 - The "miles" field should equal the total of warm-up + all blocks + cool-down
+- IMPORTANT: Put pace targets in each block's "pace" field, NOT in the workout-level "paceTarget" field. The "paceTarget" field is deprecated.
 
 STRUCTURE RULES FOR CROSS TRAINING WORKOUTS:
 - crossTrainingStructure.exercises: array of exercise objects
