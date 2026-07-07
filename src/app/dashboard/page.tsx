@@ -758,32 +758,61 @@ export default function DashboardPage() {
   const fmtDateFull = (dateStr: string | null | undefined) => fmtDate(dateStr, { includeYear: true });
   const distUnitShort = clientDistanceUnit === "km" ? "km" : "mi";
 
-  // Pace conversion helpers (e.g. "9:04/mi" → "5:38/km")
-  const convertPaceToKm = (pace: string): string => {
-    const match = pace.match(/^(\d+):(\d+)\/mi$/);
-    if (!match) return pace;
+  // Pace conversion helpers (e.g. "9:04/mi" → "5:38/km", "7:00-7:30/mi" → "4:21-4:40/km")
+  const convertSinglePaceValue = (p: string, direction: 'toKm' | 'toMi'): string => {
+    const match = p.match(/^(\d+):(\d+)$/);
+    if (!match) return p;
     const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
-    const kmSeconds = Math.round(totalSeconds / 1.60934);
-    const mins = Math.floor(kmSeconds / 60);
-    const secs = kmSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}/km`;
+    const converted = direction === 'toKm' ? Math.round(totalSeconds / 1.60934) : Math.round(totalSeconds * 1.60934);
+    const mins = Math.floor(converted / 60);
+    const secs = converted % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  const convertPaceToKm = (pace: string): string => {
+    // Handle range: "7:00-7:30/mi"
+    const rangeMatch = pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/mi$/);
+    if (rangeMatch) {
+      return `${convertSinglePaceValue(rangeMatch[1], 'toKm')}-${convertSinglePaceValue(rangeMatch[2], 'toKm')}/km`;
+    }
+    // Handle single: "7:00/mi"
+    const match = pace.match(/^(\d+:\d+)\/mi$/);
+    if (match) {
+      return `${convertSinglePaceValue(match[1], 'toKm')}/km`;
+    }
+    return pace;
   };
   const convertPaceToMi = (pace: string): string => {
-    const match = pace.match(/^(\d+):(\d+)\/km$/);
-    if (!match) return pace;
-    const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
-    const miSeconds = Math.round(totalSeconds * 1.60934);
-    const mins = Math.floor(miSeconds / 60);
-    const secs = miSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}/mi`;
+    // Handle range: "4:21-4:40/km"
+    const rangeMatch = pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/km$/);
+    if (rangeMatch) {
+      return `${convertSinglePaceValue(rangeMatch[1], 'toMi')}-${convertSinglePaceValue(rangeMatch[2], 'toMi')}/mi`;
+    }
+    // Handle single: "5:00/km"
+    const match = pace.match(/^(\d+:\d+)\/km$/);
+    if (match) {
+      return `${convertSinglePaceValue(match[1], 'toMi')}/mi`;
+    }
+    return pace;
   };
   // Universal pace converter based on current preference
-  const convertPace = (pace: string | null | undefined): string => {
+  const convertPaceDisplay = (pace: string | null | undefined): string => {
     if (!pace) return '';
+    // If pace has no unit (e.g. "7:00" or "7:00-7:30"), append current unit
+    const hasUnit = pace.includes('/mi') || pace.includes('/km');
+    if (!hasUnit) {
+      const bareRange = pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)$/);
+      const bareSingle = pace.match(/^(\d+:\d+)$/);
+      if (bareRange || bareSingle) {
+        return `${pace}/${clientDistanceUnit}`;
+      }
+      return pace;
+    }
     if (clientDistanceUnit === 'km' && pace.includes('/mi')) return convertPaceToKm(pace);
     if (clientDistanceUnit === 'mi' && pace.includes('/km')) return convertPaceToMi(pace);
     return pace;
   };
+  // Keep the old name as alias for backward compat
+  const convertPace = convertPaceDisplay;
 
   const [completedClientWorkouts, setCompletedClientWorkouts] = useState<Record<string, boolean>>({});
   const [clientWorkoutNotes, setClientWorkoutNotes] = useState<Record<string, string>>({});
@@ -1433,7 +1462,7 @@ export default function DashboardPage() {
                           ) : workout.description ? (
                             <p className="text-gray-400 text-sm">{workout.description}</p>
                           ) : null}
-                          {workout.paceTarget && !workout.structure && <p className="text-accent text-xs mt-0.5">Target Pace: {getWorkoutUnit(workout.id) === "km" && workout.paceTarget.includes("/mi") ? convertPaceToKm(workout.paceTarget) : getWorkoutUnit(workout.id) === "mi" && workout.paceTarget.includes("/km") ? convertPaceToMi(workout.paceTarget) : workout.paceTarget}{!workout.paceTarget.includes("/") ? `/${getWorkoutUnit(workout.id)}` : ""}</p>}
+                          {workout.paceTarget && !workout.structure && <p className="text-accent text-xs mt-0.5">Target Pace: {convertPaceDisplay(workout.paceTarget)}</p>}
                           {workout.location && <p className="text-gray-300 text-xs mt-0.5">{workout.location}</p>}
                           {workout.coachNotes && <div className="mt-2 bg-primary/50 border border-white/5 rounded-lg p-3"><p className="text-gold text-xs font-heading uppercase mb-1">Coach Notes</p><p className="text-gray-300 text-xs leading-relaxed">{workout.coachNotes}</p></div>}
                         </div>

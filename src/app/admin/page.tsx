@@ -209,15 +209,49 @@ export default function AdminPage() {
       wo.miles = smartRound(parseFloat(wo.miles) * factor);
     }
 
-    // Convert pace (e.g. "10:00/mi" → "6:13/km")
+    // Convert pace (e.g. "10:00/mi" → "6:13/km", "7:00-7:30/mi" → "4:21-4:40/km")
     if (wo.paceTarget) {
-      const paceMatch = wo.paceTarget.match(/^(\d+):(\d+)\/(mi|km)$/);
-      if (paceMatch) {
-        const totalSec = parseInt(paceMatch[1]) * 60 + parseInt(paceMatch[2]);
-        const converted = newUnit === 'km' ? Math.round(totalSec / 1.60934) : Math.round(totalSec * 1.60934);
-        const mins = Math.floor(converted / 60);
-        const secs = converted % 60;
-        wo.paceTarget = `${mins}:${secs.toString().padStart(2, '0')}/${newUnit}`;
+      const convertSinglePace = (p: string, direction: 'toKm' | 'toMi'): string => {
+        const m = p.match(/^(\d+):(\d+)$/);
+        if (!m) return p;
+        const totalSec = parseInt(m[1]) * 60 + parseInt(m[2]);
+        const converted = direction === 'toKm' ? Math.round(totalSec / 1.60934) : Math.round(totalSec * 1.60934);
+        return `${Math.floor(converted / 60)}:${(converted % 60).toString().padStart(2, '0')}`;
+      };
+
+      // Range pace with unit: "7:00-7:30/mi"
+      const rangeMatch = wo.paceTarget.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/(mi|km)$/);
+      if (rangeMatch) {
+        const [_, p1, p2, unit] = rangeMatch;
+        if (unit !== newUnit) {
+          const dir = newUnit === 'km' ? 'toKm' : 'toMi';
+          wo.paceTarget = `${convertSinglePace(p1, dir)}-${convertSinglePace(p2, dir)}/${newUnit}`;
+        }
+      } else {
+        // Single pace with unit: "7:00/mi"
+        const paceMatch = wo.paceTarget.match(/^(\d+:\d+)\/(mi|km)$/);
+        if (paceMatch) {
+          const [_, p, unit] = paceMatch;
+          if (unit !== newUnit) {
+            const dir = newUnit === 'km' ? 'toKm' : 'toMi';
+            wo.paceTarget = `${convertSinglePace(p, dir)}/${newUnit}`;
+          }
+        } else {
+          // Bare range: "7:00-7:30" (no unit) — convert and add unit
+          const bareRange = wo.paceTarget.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)$/);
+          if (bareRange) {
+            // Assume it was entered in the OLD unit, convert to new
+            const dir = newUnit === 'km' ? 'toKm' : 'toMi';
+            wo.paceTarget = `${convertSinglePace(bareRange[1], dir)}-${convertSinglePace(bareRange[2], dir)}/${newUnit}`;
+          } else {
+            // Bare single: "7:00" (no unit) — convert and add unit
+            const bareSingle = wo.paceTarget.match(/^(\d+:\d+)$/);
+            if (bareSingle) {
+              const dir = newUnit === 'km' ? 'toKm' : 'toMi';
+              wo.paceTarget = `${convertSinglePace(bareSingle[1], dir)}/${newUnit}`;
+            }
+          }
+        }
       }
     }
 
@@ -261,11 +295,65 @@ export default function AdminPage() {
             const c = convertToNewUnit(b.fartlekRest.unit, b.fartlekRest.value);
             b.fartlekRest = { ...b.fartlekRest, unit: c.unit, value: c.value };
           }
+          // Convert block-level pace
+          if (b.pace) {
+            const convertBlockPace = (p: string): string => {
+              const dir = newUnit === 'km' ? 'toKm' : 'toMi';
+              const convP = (val: string): string => {
+                const m = val.match(/^(\d+):(\d+)$/);
+                if (!m) return val;
+                const ts = parseInt(m[1]) * 60 + parseInt(m[2]);
+                const cv = dir === 'toKm' ? Math.round(ts / 1.60934) : Math.round(ts * 1.60934);
+                return `${Math.floor(cv / 60)}:${(cv % 60).toString().padStart(2, '0')}`;
+              };
+              // Range with unit
+              const rm = p.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/(mi|km)$/);
+              if (rm && rm[3] !== newUnit) return `${convP(rm[1])}-${convP(rm[2])}/${newUnit}`;
+              if (rm) return p;
+              // Single with unit
+              const sm = p.match(/^(\d+:\d+)\/(mi|km)$/);
+              if (sm && sm[2] !== newUnit) return `${convP(sm[1])}/${newUnit}`;
+              if (sm) return p;
+              // Bare range
+              const br = p.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)$/);
+              if (br) return `${convP(br[1])}-${convP(br[2])}/${newUnit}`;
+              // Bare single
+              const bs = p.match(/^(\d+:\d+)$/);
+              if (bs) return `${convP(bs[1])}/${newUnit}`;
+              return p;
+            };
+            b.pace = convertBlockPace(b.pace);
+          }
           if (b.segments) {
             b.segments = b.segments.map((seg: any) => {
               if (seg.type === 'distance') {
                 const c = convertToNewUnit(seg.unit, seg.value);
-                return { ...seg, unit: c.unit, value: c.value };
+                seg = { ...seg, unit: c.unit, value: c.value };
+              }
+              // Convert segment-level pace
+              if (seg.pace) {
+                const dir = newUnit === 'km' ? 'toKm' : 'toMi';
+                const convP = (val: string): string => {
+                  const m = val.match(/^(\d+):(\d+)$/);
+                  if (!m) return val;
+                  const ts = parseInt(m[1]) * 60 + parseInt(m[2]);
+                  const cv = dir === 'toKm' ? Math.round(ts / 1.60934) : Math.round(ts * 1.60934);
+                  return `${Math.floor(cv / 60)}:${(cv % 60).toString().padStart(2, '0')}`;
+                };
+                const rm = seg.pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/(mi|km)$/);
+                if (rm && rm[3] !== newUnit) seg.pace = `${convP(rm[1])}-${convP(rm[2])}/${newUnit}`;
+                else {
+                  const sm = seg.pace.match(/^(\d+:\d+)\/(mi|km)$/);
+                  if (sm && sm[2] !== newUnit) seg.pace = `${convP(sm[1])}/${newUnit}`;
+                  else {
+                    const br = seg.pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)$/);
+                    if (br) seg.pace = `${convP(br[1])}-${convP(br[2])}/${newUnit}`;
+                    else {
+                      const bs = seg.pace.match(/^(\d+:\d+)$/);
+                      if (bs) seg.pace = `${convP(bs[1])}/${newUnit}`;
+                    }
+                  }
+                }
               }
               return seg;
             });
@@ -1188,24 +1276,53 @@ export default function AdminPage() {
   // Pace conversion helpers
   const convertPace = (pace: string | null | undefined): string => {
     if (!pace) return '';
-    if (adminDistanceUnit === 'km' && pace.includes('/mi')) {
-      const match = pace.match(/^(\d+):(\d+)\/mi$/);
-      if (!match) return pace;
+    
+    // Helper to convert a single pace value (mm:ss)
+    const convertSingle = (p: string, direction: 'toKm' | 'toMi'): string => {
+      const match = p.match(/^(\d+):(\d+)$/);
+      if (!match) return p;
       const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
-      const kmSeconds = Math.round(totalSeconds / 1.60934);
-      const mins = Math.floor(kmSeconds / 60);
-      const secs = kmSeconds % 60;
-      return `${mins}:${secs.toString().padStart(2, '0')}/km`;
+      const converted = direction === 'toKm' ? Math.round(totalSeconds / 1.60934) : Math.round(totalSeconds * 1.60934);
+      const mins = Math.floor(converted / 60);
+      const secs = converted % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // Handle range paces like "7:00-7:30/mi" or "7:00-7:30/km"
+    const rangeMatch = pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)\/(mi|km)$/);
+    if (rangeMatch) {
+      const [_, p1, p2, unit] = rangeMatch;
+      if (adminDistanceUnit === 'km' && unit === 'mi') {
+        return `${convertSingle(p1, 'toKm')}-${convertSingle(p2, 'toKm')}/km`;
+      } else if (adminDistanceUnit === 'mi' && unit === 'km') {
+        return `${convertSingle(p1, 'toMi')}-${convertSingle(p2, 'toMi')}/mi`;
+      }
+      return pace;
     }
-    if (adminDistanceUnit === 'mi' && pace.includes('/km')) {
-      const match = pace.match(/^(\d+):(\d+)\/km$/);
-      if (!match) return pace;
-      const totalSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
-      const miSeconds = Math.round(totalSeconds * 1.60934);
-      const mins = Math.floor(miSeconds / 60);
-      const secs = miSeconds % 60;
-      return `${mins}:${secs.toString().padStart(2, '0')}/mi`;
+
+    // Handle single pace with unit like "7:00/mi" or "5:00/km"
+    const singleMatch = pace.match(/^(\d+:\d+)\/(mi|km)$/);
+    if (singleMatch) {
+      const [_, p, unit] = singleMatch;
+      if (adminDistanceUnit === 'km' && unit === 'mi') {
+        return `${convertSingle(p, 'toKm')}/km`;
+      } else if (adminDistanceUnit === 'mi' && unit === 'km') {
+        return `${convertSingle(p, 'toMi')}/mi`;
+      }
+      return pace;
     }
+
+    // Handle pace without unit like "7:00" or "7:00-7:30" — assume it's in the admin's current unit already
+    // Just append the unit label for display
+    const bareRangeMatch = pace.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)$/);
+    if (bareRangeMatch) {
+      return `${pace}/${adminDistanceUnit}`;
+    }
+    const bareMatch = pace.match(/^(\d+:\d+)$/);
+    if (bareMatch) {
+      return `${pace}/${adminDistanceUnit}`;
+    }
+
     return pace;
   };
 
