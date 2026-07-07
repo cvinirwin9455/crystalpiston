@@ -2399,7 +2399,7 @@ export default function AdminPage() {
         {selectedClientData ? (
           <div className="flex flex-col h-full">
             {/* FIXED HEADER: Client name + condensed stats + tabs */}
-            <div className={`flex-shrink-0 bg-primary z-30 transition-shadow ${adminHeaderScrolled ? 'shadow-lg shadow-black/30 border-b border-white/10' : 'border-b border-white/5'}`}>
+            <div className={`flex-shrink-0 bg-primary transition-shadow ${adminHeaderScrolled ? 'shadow-lg shadow-black/30 border-b border-white/10' : 'border-b border-white/5'}`}>
               {/* Full client header (shown when not scrolled) */}
               <div className={`px-6 pt-5 pb-3 transition-all ${adminHeaderScrolled ? 'hidden' : ''}`}>
                 <div className="flex items-center justify-between flex-wrap gap-4">
