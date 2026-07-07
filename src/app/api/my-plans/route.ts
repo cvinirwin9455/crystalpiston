@@ -66,7 +66,7 @@ export async function GET() {
         .select('name, avatar_url')
         .eq('id', coachAssignment.coach_id)
         .single()
-      coachName = coachUser?.name?.split(' ')[0] || null
+      coachName = coachUser?.name || null
       coachAvatarUrl = coachUser?.avatar_url || null
 
       // Also get Strava profile for fallback
@@ -90,7 +90,7 @@ export async function GET() {
         .eq('role', 'admin')
         .order('created_at', { ascending: true })
         .limit(1)
-      coachName = adminUsers?.[0]?.name?.split(' ')[0] || null
+      coachName = adminUsers?.[0]?.name || null
       coachAvatarUrl = adminUsers?.[0]?.avatar_url || null
 
       if (!coachAvatarUrl && adminUsers?.[0]?.id) {
