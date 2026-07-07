@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, coach_level')
     .eq('id', user.id)
     .single()
 
@@ -27,8 +27,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Only account coaches can invite new coaches
+  if (profile?.coach_level === 'coach') {
+    return NextResponse.json({ error: 'Only Account Coaches can invite new coaches.' }, { status: 403 })
+  }
+
   const body = await request.json()
-  const { name, email, accessLevel } = body
+  const { name, email, accessLevel, coachLevel } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -85,6 +90,16 @@ export async function POST(request: Request) {
     } catch {}
   }
 
+  // Try to set coach_level (column may not exist yet)
+  if (coachLevel) {
+    try {
+      await adminClient
+        .from('users')
+        .update({ coach_level: coachLevel })
+        .eq('id', newUserId)
+    } catch {}
+  }
+
   return NextResponse.json({
     success: true,
     userId: newUserId,
@@ -101,7 +116,7 @@ export async function PATCH(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, coach_level')
     .eq('id', user.id)
     .single()
 
@@ -109,8 +124,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Only account coaches can edit other coaches
+  if (profile?.coach_level === 'coach') {
+    return NextResponse.json({ error: 'Only Account Coaches can manage coaches.' }, { status: 403 })
+  }
+
   const body = await request.json()
-  const { coachId, name, email, accessLevel } = body
+  const { coachId, name, email, accessLevel, coachLevel } = body
 
   if (!coachId) {
     return NextResponse.json({ error: 'coachId is required' }, { status: 400 })
@@ -122,7 +142,7 @@ export async function PATCH(request: Request) {
   if (name) updates.name = name
   if (email) updates.email = email
 
-  if (Object.keys(updates).length === 0 && !accessLevel) {
+  if (Object.keys(updates).length === 0 && !accessLevel && !coachLevel) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
 
@@ -148,6 +168,16 @@ export async function PATCH(request: Request) {
     } catch {}
   }
 
+  // Try to update coach_level separately (column may not exist yet)
+  if (coachLevel) {
+    try {
+      await adminClient
+        .from('users')
+        .update({ coach_level: coachLevel })
+        .eq('id', coachId)
+    } catch {}
+  }
+
   return NextResponse.json({ success: true })
 }
 
@@ -160,12 +190,17 @@ export async function DELETE(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, coach_level')
     .eq('id', user.id)
     .single()
 
   if (profile?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Only account coaches can remove other coaches
+  if (profile?.coach_level === 'coach') {
+    return NextResponse.json({ error: 'Only Account Coaches can remove coaches.' }, { status: 403 })
   }
 
   const body = await request.json()

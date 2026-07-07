@@ -66,23 +66,34 @@ export async function GET(request: Request) {
   }
 
   // List all coaches (admin users)
-  // Try with access_level column, fall back if it doesn't exist yet
+  // Try with access_level and coach_level columns, fall back if they don't exist yet
   let coaches: any[] | null = null
   const fullResult = await adminClient
     .from('users')
-    .select('id, name, email, access_level, created_at')
+    .select('id, name, email, access_level, coach_level, created_at')
     .eq('role', 'admin')
     .order('name')
 
   if (fullResult.error) {
-    // Column may not exist yet — fall back to base fields
-    const fallback = await adminClient
+    // Columns may not exist yet — try without coach_level
+    const midResult = await adminClient
       .from('users')
-      .select('id, name, email, created_at')
+      .select('id, name, email, access_level, created_at')
       .eq('role', 'admin')
       .order('name')
-    if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 })
-    coaches = fallback.data
+
+    if (midResult.error) {
+      // Fall back to base fields
+      const fallback = await adminClient
+        .from('users')
+        .select('id, name, email, created_at')
+        .eq('role', 'admin')
+        .order('name')
+      if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+      coaches = fallback.data
+    } else {
+      coaches = midResult.data
+    }
   } else {
     coaches = fullResult.data
   }
@@ -92,6 +103,7 @@ export async function GET(request: Request) {
     name: c.name || c.email || 'Unknown',
     email: c.email,
     accessLevel: c.access_level || 'all_clients',
+    coachLevel: c.coach_level || 'account_coach',
     createdAt: c.created_at,
   })))
 }

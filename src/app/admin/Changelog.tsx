@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-07T14:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-07T16:00:00Z";
 
 const updates = [
   {
     date: "July 7, 2026",
     items: [
+      { area: "Admin", text: "NEW: Coach roles — Account Coaches can invite, edit, and remove coaches. Regular Coaches can only manage clients and cannot access the Manage Coaches section" },
       { area: "Admin", text: "Fixed: Profile photos now show in the Drafts, Outstanding Payments, and Unread Messages dashboard cards — previously just showed the first initial letter" },
       { area: "Admin", text: "Fixed: Uploaded profile photos now show correctly for secondary and other coaches' clients in the sidebar — previously only Strava pics showed" },
       { area: "Admin", text: "Fixed: Coaches with 'Own Clients Only' access can now only see clients they are assigned to — previously they could still see all clients in the sidebar" },

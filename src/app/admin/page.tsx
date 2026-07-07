@@ -461,18 +461,19 @@ export default function AdminPage() {
   const [loggedInUserId, setLoggedInUserId] = useState<string>("");
   const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null);
   const [myAccessLevel, setMyAccessLevel] = useState<string>("all_clients");
+  const [myCoachLevel, setMyCoachLevel] = useState<string>("account_coach");
 
   // All coaches in the system (for multi-coach dropdown)
-  type CoachOption = { id: string; name: string; email: string; accessLevel?: string };
+  type CoachOption = { id: string; name: string; email: string; accessLevel?: string; coachLevel?: string };
   const [allCoaches, setAllCoaches] = useState<CoachOption[]>([]);
   const [showCoachDropdown, setShowCoachDropdown] = useState(false);
   const [coachAssigning, setCoachAssigning] = useState(false);
 
   // Manage coaches state
-  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients" });
+  const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients", coachLevel: "coach" as "account_coach" | "coach" });
   const [creatingCoach, setCreatingCoach] = useState(false);
   const [editingCoachId, setEditingCoachId] = useState<string | null>(null);
-  const [editCoachForm, setEditCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients" });
+  const [editCoachForm, setEditCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients", coachLevel: "account_coach" as "account_coach" | "coach" });
   const [createCoachError, setCreateCoachError] = useState("");
   const [createCoachSuccess, setCreateCoachSuccess] = useState("");
   const [deletingCoachId, setDeletingCoachId] = useState<string | null>(null);
@@ -484,7 +485,7 @@ export default function AdminPage() {
         const res = await fetch('/api/coaches');
         if (res.ok) {
           const data = await res.json();
-          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients' })));
+          setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients', coachLevel: c.coachLevel || 'account_coach' })));
         }
       } catch (err) { console.error('Failed to fetch coaches:', err); }
     };
@@ -579,19 +580,19 @@ export default function AdminPage() {
       const res = await fetch('/api/coaches/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim(), accessLevel: newCoachForm.accessLevel }),
+        body: JSON.stringify({ name: newCoachForm.name.trim(), email: newCoachForm.email.trim(), accessLevel: newCoachForm.accessLevel, coachLevel: newCoachForm.coachLevel }),
       });
       const data = await res.json();
       if (!res.ok) {
         setCreateCoachError(data.error || 'Failed to invite coach');
       } else {
         setCreateCoachSuccess(`Invite sent to ${newCoachForm.email}!`);
-        setNewCoachForm({ name: "", email: "", accessLevel: "all_clients" });
+        setNewCoachForm({ name: "", email: "", accessLevel: "all_clients", coachLevel: "coach" });
         // Refresh the coaches list
         const coachRes = await fetch('/api/coaches');
         if (coachRes.ok) {
           const coachData = await coachRes.json();
-          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients' })));
+          setAllCoaches(coachData.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients', coachLevel: c.coachLevel || 'account_coach' })));
         }
         setTimeout(() => setCreateCoachSuccess(""), 5000);
       }
@@ -634,11 +635,12 @@ export default function AdminPage() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: profile } = await supabase.from('users').select('name, avatar_url, access_level').eq('id', user.id).single();
+          const { data: profile } = await supabase.from('users').select('name, avatar_url, access_level, coach_level').eq('id', user.id).single();
           setLoggedInUser(profile?.name || user.email || '');
           setLoggedInUserId(user.id);
           if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
           if (profile?.access_level) setMyAccessLevel(profile.access_level);
+          if (profile?.coach_level) setMyCoachLevel(profile.coach_level);
         }
       } catch (err) { console.error(err); }
     };
@@ -2143,10 +2145,12 @@ export default function AdminPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
+                    {myCoachLevel !== 'coach' && (
                     <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
+                    )}
                   </div>
                 </>
               )}
@@ -2181,10 +2185,12 @@ export default function AdminPage() {
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
+                    {myCoachLevel !== 'coach' && (
                     <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
+                    )}
                     <div className="border-t border-white/10 mt-1 pt-1">
                       <a href="/auth/signout" className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-red-400 active:bg-white/10">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -3787,6 +3793,18 @@ export default function AdminPage() {
                     </div>
                     <p className="text-gray-500 text-[10px] mt-1.5">{newCoachForm.accessLevel === "all_clients" ? "This coach will be able to view and manage all clients in the system." : "This coach can only see clients they are directly assigned to."}</p>
                   </div>
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs block mb-2">Coach Role</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setNewCoachForm({ ...newCoachForm, coachLevel: "account_coach" })} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${newCoachForm.coachLevel === "account_coach" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                        Account Coach
+                      </button>
+                      <button type="button" onClick={() => setNewCoachForm({ ...newCoachForm, coachLevel: "coach" })} className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors ${newCoachForm.coachLevel === "coach" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                        Coach
+                      </button>
+                    </div>
+                    <p className="text-gray-500 text-[10px] mt-1.5">{newCoachForm.coachLevel === "account_coach" ? "Account Coaches can invite, edit, and remove other coaches." : "Coaches can only manage clients — they cannot access Manage Coaches."}</p>
+                  </div>
                   <div className="flex items-center gap-3">
                     <button onClick={handleInviteCoach} disabled={creatingCoach || !newCoachForm.name.trim() || !newCoachForm.email.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 transition-colors">{creatingCoach ? "Sending Invite..." : "Send Invite"}</button>
                     {createCoachError && <p className="text-red-400 text-xs">{createCoachError}</p>}
@@ -3806,6 +3824,7 @@ export default function AdminPage() {
                         const clientCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id)).length;
                         const defaultCount = clients.filter(c => c.coaches.some(cc => cc.coachId === coach.id && cc.isDefault)).length;
                         const coachAccessLevel = (coach as any).accessLevel || 'all_clients';
+                        const coachCoachLevel = (coach as any).coachLevel || 'account_coach';
                         const isEditing = editingCoachId === coach.id;
                         return (
                           <div key={coach.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
@@ -3830,8 +3849,15 @@ export default function AdminPage() {
                                     <button type="button" onClick={() => setEditCoachForm({ ...editCoachForm, accessLevel: "own_clients" })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${editCoachForm.accessLevel === "own_clients" ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Own Clients Only</button>
                                   </div>
                                 </div>
+                                <div>
+                                  <label className="text-gray-500 text-xs block mb-2">Coach Role</label>
+                                  <div className="flex gap-2">
+                                    <button type="button" onClick={() => setEditCoachForm({ ...editCoachForm, coachLevel: "account_coach" })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${editCoachForm.coachLevel === "account_coach" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Account Coach</button>
+                                    <button type="button" onClick={() => setEditCoachForm({ ...editCoachForm, coachLevel: "coach" })} className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${editCoachForm.coachLevel === "coach" ? "bg-gold/20 border border-gold/40 text-gold" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Coach</button>
+                                  </div>
+                                </div>
                                 <div className="flex items-center gap-3">
-                                  <button onClick={async () => { try { const res = await fetch('/api/coaches/invite', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coachId: coach.id, name: editCoachForm.name, email: editCoachForm.email, accessLevel: editCoachForm.accessLevel }) }); if (res.ok) { setAllCoaches(prev => prev.map(c => c.id === coach.id ? { ...c, name: editCoachForm.name, email: editCoachForm.email, accessLevel: editCoachForm.accessLevel } : c)); setEditingCoachId(null); } else { const d = await res.json().catch(() => ({})); alert(d.error || 'Failed to update coach'); } } catch { alert('Network error'); } }} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors">Save</button>
+                                  <button onClick={async () => { try { const res = await fetch('/api/coaches/invite', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coachId: coach.id, name: editCoachForm.name, email: editCoachForm.email, accessLevel: editCoachForm.accessLevel, coachLevel: editCoachForm.coachLevel }) }); if (res.ok) { setAllCoaches(prev => prev.map(c => c.id === coach.id ? { ...c, name: editCoachForm.name, email: editCoachForm.email, accessLevel: editCoachForm.accessLevel, coachLevel: editCoachForm.coachLevel } : c)); setEditingCoachId(null); } else { const d = await res.json().catch(() => ({})); alert(d.error || 'Failed to update coach'); } } catch { alert('Network error'); } }} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors">Save</button>
                                   <button onClick={() => setEditingCoachId(null)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
                                 </div>
                               </div>
@@ -3849,6 +3875,9 @@ export default function AdminPage() {
                                       <span className={`text-[10px] px-2 py-0.5 rounded-full border ${coachAccessLevel === 'all_clients' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'}`}>
                                         {coachAccessLevel === 'all_clients' ? 'All Clients' : 'Own Only'}
                                       </span>
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${coachCoachLevel === 'account_coach' ? 'bg-gold/10 border-gold/30 text-gold' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
+                                        {coachCoachLevel === 'account_coach' ? 'Account Coach' : 'Coach'}
+                                      </span>
                                     </div>
                                     <p className="text-gray-400 text-xs">{coach.email}</p>
                                     <p className="text-gray-500 text-xs mt-0.5">
@@ -3858,7 +3887,7 @@ export default function AdminPage() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <button onClick={() => { setEditingCoachId(coach.id); setEditCoachForm({ name: coach.name, email: coach.email, accessLevel: coachAccessLevel }); }} className="text-xs text-gray-400 hover:text-purple-400 border border-white/10 hover:border-purple-500/30 px-3 py-1.5 rounded-lg transition-colors">
+                                  <button onClick={() => { setEditingCoachId(coach.id); setEditCoachForm({ name: coach.name, email: coach.email, accessLevel: coachAccessLevel, coachLevel: coachCoachLevel }); }} className="text-xs text-gray-400 hover:text-purple-400 border border-white/10 hover:border-purple-500/30 px-3 py-1.5 rounded-lg transition-colors">
                                     Edit
                                   </button>
                                   {!isYou && (
