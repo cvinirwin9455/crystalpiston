@@ -47,6 +47,7 @@ export async function GET() {
     weightUnit: prefs?.weight_unit || 'kg',
     defaultExpanded: prefs?.default_expanded ?? true,
     dateFormat: prefs?.date_format || 'MM/DD/YYYY',
+    dismissedBanners: prefs?.dismissed_banners || [],
   })
 }
 
@@ -67,9 +68,10 @@ export async function PUT(request: Request) {
   if (messages !== undefined) updates.messages = messages
   
   // Client notification toggles
-  const { stravaSynced, workoutComments: workoutCommentsClient } = body
+  const { stravaSynced, workoutComments: workoutCommentsClient, dismissedBanners } = body
   if (stravaSynced !== undefined) updates.strava_synced = stravaSynced
   if (workoutCommentsClient !== undefined) updates.workout_comments_client = workoutCommentsClient
+  if (dismissedBanners !== undefined) updates.dismissed_banners = dismissedBanners
   
   // Admin fields
   if (workoutCompleted !== undefined) updates.workout_completed = workoutCompleted

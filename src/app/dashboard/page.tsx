@@ -213,8 +213,10 @@ export default function DashboardPage() {
   const [showClientMenu, setShowClientMenu] = useState(false);
   const [lastSeenUpdates, setLastSeenUpdates] = useState<string>("");
   const [showPhotoBanner, setShowPhotoBanner] = useState(false);
+  const [dismissedBanners, setDismissedBanners] = useState<string[]>([]);
 
   // Check if we should show the profile photo banner (one-time)
+  // Initially show based on localStorage (instant), then API data overrides once loaded
   useEffect(() => {
     const dismissed = localStorage.getItem("photo_banner_dismissed");
     if (!dismissed) {
@@ -420,6 +422,14 @@ export default function DashboardPage() {
           if (data.weightUnit) setClientWeightUnit(data.weightUnit);
           if (data.dateFormat) setClientDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setDefaultExpanded(data.defaultExpanded);
+          if (data.dismissedBanners) {
+            setDismissedBanners(data.dismissedBanners);
+            // If photo banner was dismissed on another device, hide it here too
+            if (data.dismissedBanners.includes('photo_upload')) {
+              setShowPhotoBanner(false);
+              localStorage.setItem("photo_banner_dismissed", "true");
+            }
+          }
         }
       } catch (err) {
         console.error('Failed to fetch notification prefs:', err);
@@ -1205,7 +1215,18 @@ export default function DashboardPage() {
               </div>
             </div>
             <button
-              onClick={() => { setShowPhotoBanner(false); localStorage.setItem("photo_banner_dismissed", "true"); }}
+              onClick={() => { 
+                setShowPhotoBanner(false); 
+                localStorage.setItem("photo_banner_dismissed", "true");
+                // Persist to DB so it persists across devices
+                const newDismissed = [...dismissedBanners, 'photo_upload'];
+                setDismissedBanners(newDismissed);
+                fetch('/api/notification-preferences', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ dismissedBanners: newDismissed }),
+                }).catch(() => {});
+              }}
               className="w-full bg-accent hover:bg-red-700 text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-colors"
             >
               OK, don&apos;t show again
