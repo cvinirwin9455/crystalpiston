@@ -2268,13 +2268,13 @@ export default function AdminPage() {
                       return (
                         <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
                           <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
-                            {client.stravaProfileUrl ? (
-                              <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                            {(client.avatarUrl || client.stravaProfileUrl) ? (
+                              <img src={(client.avatarUrl || client.stravaProfileUrl)!} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                             ) : null}
                             {client.gender === "female" ? (
-                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                              <svg className={`w-8 h-8 ${(client.avatarUrl || client.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                             ) : (
-                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                              <svg className={`w-8 h-8 ${(client.avatarUrl || client.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -2312,13 +2312,13 @@ export default function AdminPage() {
                       return (
                         <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 opacity-60 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent opacity-100" : "hover:bg-white/5"}`}>
                           <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-secondary flex items-center justify-center">
-                            {client.stravaProfileUrl ? (
-                              <img src={client.stravaProfileUrl} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
+                            {(client.avatarUrl || client.stravaProfileUrl) ? (
+                              <img src={(client.avatarUrl || client.stravaProfileUrl)!} alt={client.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'block'); }} />
                             ) : null}
                             {client.gender === "female" ? (
-                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
+                              <svg className={`w-8 h-8 ${(client.avatarUrl || client.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4a3060"/><circle cx="18" cy="13" r="6" fill="#d4a0c0"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#d4a0c0"/><circle cx="18" cy="13" r="4.5" fill="#f0d0e0"/><path d="M13.5 10c0 0 1-3 4.5-3s4.5 3 4.5 3" stroke="#4a3060" strokeWidth="1.5" fill="none"/></svg>
                             ) : (
-                              <svg className={`w-8 h-8 ${client.stravaProfileUrl ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
+                              <svg className={`w-8 h-8 ${(client.avatarUrl || client.stravaProfileUrl) ? 'hidden' : ''}`} viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/><path d="M12 11h12v2c0 1-2 2-6 2s-6-1-6-2v-2z" fill="#2d4a5a" opacity="0.5"/></svg>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -3917,7 +3917,12 @@ export default function AdminPage() {
                         {(showAllDrafts ? allDrafts : allDrafts.slice(0, 3)).map((item, i) => (
                           <div key={i} className="flex items-center justify-between bg-primary/30 rounded-lg p-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{item.client.name.charAt(0)}</div>
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400 overflow-hidden flex-shrink-0">
+                                {(item.client.avatarUrl || item.client.stravaProfileUrl) ? (
+                                  <img src={(item.client.avatarUrl || item.client.stravaProfileUrl)!} alt={item.client.name} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'flex'); }} />
+                                ) : null}
+                                <span className={`${(item.client.avatarUrl || item.client.stravaProfileUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>{item.client.name.charAt(0)}</span>
+                              </div>
                               <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
@@ -3946,7 +3951,12 @@ export default function AdminPage() {
                         {clients.filter(c => unreadByClient[c.id] > 0).map((c) => (
                           <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("messages"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
                             <div className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-xs font-bold text-accent">{c.name.charAt(0)}</div>
+                              <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-xs font-bold text-accent overflow-hidden flex-shrink-0">
+                                {(c.avatarUrl || c.stravaProfileUrl) ? (
+                                  <img src={(c.avatarUrl || c.stravaProfileUrl)!} alt={c.name} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'flex'); }} />
+                                ) : null}
+                                <span className={`${(c.avatarUrl || c.stravaProfileUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>{c.name.charAt(0)}</span>
+                              </div>
                               <p className="text-white text-sm">{c.name}</p>
                             </div>
                             <span className="bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[c.id]}</span>
@@ -3964,7 +3974,12 @@ export default function AdminPage() {
                         {(showAllPayments ? unpaidClients : unpaidClients.slice(0, 3)).map((c) => (
                           <button key={c.id} onClick={() => { setSelectedClient(c.id); setClientTab("account"); }} className="w-full flex items-center justify-between bg-primary/30 rounded-lg p-3 hover:bg-white/5 transition-colors text-left">
                             <div className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">{c.name.charAt(0)}</div>
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400 overflow-hidden flex-shrink-0">
+                                {(c.avatarUrl || c.stravaProfileUrl) ? (
+                                  <img src={(c.avatarUrl || c.stravaProfileUrl)!} alt={c.name} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" onError={(e) => { const el = e.target as HTMLImageElement; el.style.display = 'none'; el.nextElementSibling && ((el.nextElementSibling as HTMLElement).style.display = 'flex'); }} />
+                                ) : null}
+                                <span className={`${(c.avatarUrl || c.stravaProfileUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>{c.name.charAt(0)}</span>
+                              </div>
                               <p className="text-white text-sm">{c.name}</p>
                             </div>
                             <div className="text-right"><p className="text-white text-sm font-medium">${(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-300 text-xs">${c.paid}/${c.owed} paid</p></div>
