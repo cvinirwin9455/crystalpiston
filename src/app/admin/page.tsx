@@ -2350,7 +2350,7 @@ export default function AdminPage() {
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main ref={mainContentRef} className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches ? "hidden md:block" : "block"} flex-1 min-h-screen overflow-y-auto pb-20`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto pb-20'}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -2398,8 +2398,8 @@ export default function AdminPage() {
 
         {selectedClientData ? (
           <div className="flex flex-col h-full">
-            {/* STICKY HEADER: Client name + condensed stats + tabs */}
-            <div className={`sticky top-0 z-30 bg-primary transition-shadow ${adminHeaderScrolled ? 'shadow-lg shadow-black/30 border-b border-white/10' : ''}`}>
+            {/* FIXED HEADER: Client name + condensed stats + tabs */}
+            <div className={`flex-shrink-0 bg-primary z-30 transition-shadow ${adminHeaderScrolled ? 'shadow-lg shadow-black/30 border-b border-white/10' : 'border-b border-white/5'}`}>
               {/* Full client header (shown when not scrolled) */}
               <div className={`px-6 pt-5 pb-3 transition-all ${adminHeaderScrolled ? 'hidden' : ''}`}>
                 <div className="flex items-center justify-between flex-wrap gap-4">
@@ -2514,7 +2514,7 @@ export default function AdminPage() {
             {/* END STICKY HEADER */}
 
             {/* SCROLLABLE CONTENT */}
-            <div className="p-6 space-y-6">
+            <div ref={mainContentRef} className="flex-1 overflow-y-auto p-6 pb-20 space-y-6">
 
             {/* Stats Card */}
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
