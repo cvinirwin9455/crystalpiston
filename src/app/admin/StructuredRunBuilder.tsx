@@ -151,17 +151,27 @@ export function getPaceRangeFromStructure(structure: WorkoutStructure, distanceU
   
   const parsePaceToSeconds = (pace: string): number[] => {
     if (!pace) return [];
-    // Handle range: "7:00-7:30/mi" or "7:00-7:30"
+    // Handle range: "7:00-7:30/mi" or "7:00-7:30" or "7-8"
     const rangeMatch = pace.match(/^(\d+):(\d+)\s*[-–]\s*(\d+):(\d+)/);
     if (rangeMatch) {
       const sec1 = parseInt(rangeMatch[1]) * 60 + parseInt(rangeMatch[2]);
       const sec2 = parseInt(rangeMatch[3]) * 60 + parseInt(rangeMatch[4]);
       return [sec1, sec2];
     }
-    // Handle single: "7:00/mi" or "7:00"
+    // Range with bare numbers: "7-8" or "12-15"
+    const bareRangeMatch = pace.match(/^(\d+)\s*[-–]\s*(\d+)/);
+    if (bareRangeMatch) {
+      return [parseInt(bareRangeMatch[1]) * 60, parseInt(bareRangeMatch[2]) * 60];
+    }
+    // Handle single: "7:00/mi" or "7:00" 
     const singleMatch = pace.match(/^(\d+):(\d+)/);
     if (singleMatch) {
       return [parseInt(singleMatch[1]) * 60 + parseInt(singleMatch[2])];
+    }
+    // Handle bare number: "7" or "12"
+    const bareMatch = pace.match(/^(\d+)$/);
+    if (bareMatch) {
+      return [parseInt(bareMatch[1]) * 60];
     }
     return [];
   };
@@ -268,6 +278,54 @@ function formatBlock(block: WorkBlock): string {
   const pace = !block.intensity && paceStr ? paceStr : (block.pace && block.intensity ? ` (${block.pace})` : '');
   const recov = (block.recovery && block.recovery.value && parseFloat(block.recovery.value) > 0) ? ` w/ ${block.recovery.value}${unitLabel(block.recovery.unit)} ${(block.recovery.recoveryType || 'jog').toLowerCase()}` : "";
   return `${reps} x ${w}${intensity}${pace}${recov}`;
+}
+
+
+// ===== PACE AUTO-FORMAT HELPER =====
+// Auto-formats pace input on blur:
+// "7" → "7:00", "12" → "12:00", "7:3" → "7:30", "7:00-8" → "7:00-8:00"
+// Handles ranges like "7-8" → "7:00-8:00", "12:00-15" → "12:00-15:00"
+function formatPaceOnBlur(value: string): string {
+  if (!value) return value;
+  
+  // Check if it's a range (contains - or –)
+  const rangeSeparator = value.includes('–') ? '–' : '-';
+  if (value.includes('-') || value.includes('–')) {
+    // Might be a range but could also be part of the pace unit like "/mi"
+    // Only treat as range if there's no "/" before the dash
+    const parts = value.split(/\/(?:mi|km)$/);
+    const paceOnly = parts[0];
+    const unitSuffix = value.includes('/') ? value.slice(paceOnly.length) : '';
+    
+    if (paceOnly.includes('-') || paceOnly.includes('–')) {
+      const sep = paceOnly.includes('–') ? '–' : '-';
+      const [p1, p2] = paceOnly.split(sep).map(p => p.trim());
+      const formatted1 = formatSinglePace(p1);
+      const formatted2 = formatSinglePace(p2);
+      if (formatted1 && formatted2) {
+        return `${formatted1}-${formatted2}${unitSuffix}`;
+      }
+    }
+  }
+  
+  // Single pace with potential unit suffix
+  const unitMatch = value.match(/(\/(?:mi|km))$/);
+  const unitSuffix = unitMatch ? unitMatch[1] : '';
+  const paceOnly = unitSuffix ? value.slice(0, -unitSuffix.length) : value;
+  const formatted = formatSinglePace(paceOnly);
+  return formatted ? `${formatted}${unitSuffix}` : value;
+}
+
+function formatSinglePace(value: string): string {
+  if (!value) return '';
+  // Already properly formatted: "7:00", "12:30"
+  if (/^\d+:\d{2}$/.test(value)) return value;
+  // Has colon but single digit seconds: "7:3" → "7:30"
+  const colonMatch = value.match(/^(\d+):(\d)$/);
+  if (colonMatch) return `${colonMatch[1]}:${colonMatch[2]}0`;
+  // Just a number: "7" → "7:00", "12" → "12:00"
+  if (/^\d+$/.test(value)) return `${value}:00`;
+  return value;
 }
 
 
@@ -462,7 +520,7 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
           <option value="">Intensity (optional)</option>
           {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
         </select>
-        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
+        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} onBlur={(e) => { const formatted = formatPaceOnBlur(e.target.value); if (formatted !== e.target.value) onChange({ ...block, pace: formatted }); }} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
       </div>
       {/* Recovery (optional) */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -533,7 +591,7 @@ function TempoEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; o
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-gray-500 text-xs">Target Pace:</span>
-        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} className="w-28 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`e.g. 7:30${paceUnitLabel}`} />
+        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} onBlur={(e) => { const formatted = formatPaceOnBlur(e.target.value); if (formatted !== e.target.value) onChange({ ...block, pace: formatted }); }} className="w-28 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`e.g. 7:30${paceUnitLabel}`} />
       </div>
     </div>
   );
@@ -571,7 +629,7 @@ function ProgressionEditor({ block, onChange, defaultDistUnit }: { block: WorkBl
             <option value="">Intensity</option>
             {INTENSITIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
-          <input type="text" value={(seg as any).pace || ''} onChange={(e) => updateSegment(idx, { pace: e.target.value })} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
+          <input type="text" value={(seg as any).pace || ''} onChange={(e) => updateSegment(idx, { pace: e.target.value })} onBlur={(e) => { const formatted = formatPaceOnBlur(e.target.value); if (formatted !== e.target.value) updateSegment(idx, { pace: formatted }); }} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
           {segments.length > 2 && (
             <button type="button" onClick={() => { const s = segments.filter((_, i) => i !== idx); onChange({ ...block, segments: s }); }} className="text-red-400 text-xs">x</button>
           )}
@@ -612,7 +670,7 @@ function FartlekEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock;
           <option value="minutes">min</option>
         </select>
         <span className="text-gray-400 text-xs">easy )</span>
-        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
+        <input type="text" value={block.pace || ''} onChange={(e) => onChange({ ...block, pace: e.target.value })} onBlur={(e) => { const formatted = formatPaceOnBlur(e.target.value); if (formatted !== e.target.value) onChange({ ...block, pace: formatted }); }} className="w-24 bg-primary/50 border border-accent/30 rounded px-2 py-1 text-accent text-xs text-center focus:outline-none focus:ring-1 focus:ring-accent" placeholder={`Pace ${paceUnitLabel}`} />
       </div>
     </div>
   );
