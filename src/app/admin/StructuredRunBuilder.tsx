@@ -141,6 +141,66 @@ export function calculateTotalDistance(structure: WorkoutStructure, targetUnit?:
 }
 
 
+// Extract pace range from structure blocks
+// Returns a display string like "7:00/mi", "6:30-8:00/mi", or "" if no paces
+export function getPaceRangeFromStructure(structure: WorkoutStructure, distanceUnit: "mi" | "km" = "mi"): string {
+  if (!structure || !structure.blocks) return '';
+  
+  const paceUnit = `/${distanceUnit}`;
+  const allPaces: number[] = []; // Store all paces as total seconds for comparison
+  
+  const parsePaceToSeconds = (pace: string): number[] => {
+    if (!pace) return [];
+    // Handle range: "7:00-7:30/mi" or "7:00-7:30"
+    const rangeMatch = pace.match(/^(\d+):(\d+)\s*[-–]\s*(\d+):(\d+)/);
+    if (rangeMatch) {
+      const sec1 = parseInt(rangeMatch[1]) * 60 + parseInt(rangeMatch[2]);
+      const sec2 = parseInt(rangeMatch[3]) * 60 + parseInt(rangeMatch[4]);
+      return [sec1, sec2];
+    }
+    // Handle single: "7:00/mi" or "7:00"
+    const singleMatch = pace.match(/^(\d+):(\d+)/);
+    if (singleMatch) {
+      return [parseInt(singleMatch[1]) * 60 + parseInt(singleMatch[2])];
+    }
+    return [];
+  };
+
+  for (const block of structure.blocks) {
+    if (block.pace) {
+      allPaces.push(...parsePaceToSeconds(block.pace));
+    }
+    // Also check progression segments
+    if (block.segments) {
+      for (const seg of block.segments) {
+        if ((seg as any).pace) {
+          allPaces.push(...parsePaceToSeconds((seg as any).pace));
+        }
+      }
+    }
+  }
+
+  if (allPaces.length === 0) return '';
+
+  const minSec = Math.min(...allPaces);
+  const maxSec = Math.max(...allPaces);
+
+  const formatPace = (totalSec: number): string => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (minSec === maxSec) {
+    // Single pace
+    return `${formatPace(minSec)}${paceUnit}`;
+  } else {
+    // Range: fastest (lowest number) to slowest (highest number)
+    return `${formatPace(minSec)}-${formatPace(maxSec)}${paceUnit}`;
+  }
+}
+
+
 function toMiles(value: number, unit: DistanceUnit | TimeUnit, type: MeasureType): number {
   if (type === "time") return 0; // Can't convert time to distance without pace
   switch (unit) {

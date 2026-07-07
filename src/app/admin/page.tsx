@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import AccountTab from "./AccountTab";
 import Changelog from "./Changelog";
-import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay } from "./StructuredRunBuilder";
+import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay, getPaceRangeFromStructure } from "./StructuredRunBuilder";
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
 import AvatarUpload from "@/components/AvatarUpload";
@@ -2694,7 +2694,11 @@ export default function AdminPage() {
                                 <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
                                   <option value="" disabled>Select Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed Workout - Road</option><option value="SpeedTrack">Speed Workout - Track</option><option value="Trail">Trail</option>
                                 </select>
-                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button><input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${(editDistanceUnits[w.id] || "mi")}`} /></div>
+                                <div className="flex items-center gap-1">
+                                  <span className={`w-14 bg-primary/30 border border-white/5 rounded px-2 py-1 text-xs text-center ${editedWorkouts[w.id]?.miles ? 'text-white' : 'text-gray-500'}`}>{editedWorkouts[w.id]?.miles || '—'}</span>
+                                  <button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button>
+                                  {(() => { const paceDisplay = getPaceRangeFromStructure(editRunStructures[w.id], (editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"); return paceDisplay ? <span className="text-accent text-xs px-2 py-1 bg-primary/30 border border-accent/20 rounded">{paceDisplay}</span> : null; })()}
+                                </div>
                               </>
                             )}
                             {(editedWorkouts[w.id]?.type || w.type) === "walk" && (
@@ -3023,9 +3027,9 @@ export default function AdminPage() {
                                   <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                 </select>
                                 <div className="flex items-center gap-1">
-                                  <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-14 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Dist *" />
+                                  <span className={`w-14 bg-primary/30 border border-white/5 rounded px-2 py-1 text-xs text-center ${wo.miles ? 'text-white' : 'text-gray-500'}`}>{wo.miles || '—'}</span>
                                   <button type="button" onClick={() => handleToggleDistanceUnit(i, wi)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
-                                  <input type="text" value={wo.paceTarget} onChange={(e) => updateDayPlan(i, wi, "paceTarget", e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${wo.distanceUnit === "km" ? "km" : "mi"}`} />
+                                  {(() => { const paceDisplay = getPaceRangeFromStructure((wo as any).structure, wo.distanceUnit === "km" ? "km" : "mi"); return paceDisplay ? <span className="text-accent text-xs px-2 py-1 bg-primary/30 border border-accent/20 rounded">{paceDisplay}</span> : null; })()}
                                 </div>
                               </>
                             )}
