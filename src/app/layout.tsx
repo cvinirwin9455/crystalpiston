@@ -79,7 +79,7 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: brand.ogUrl },
     icons: {
       icon: [
-        { url: "/favicon.ico", sizes: "48x48" },
+        { url: "/crystal-favicon.ico", sizes: "48x48" },
         { url: "/icon.png", sizes: "192x192", type: "image/png" },
       ],
       apple: [

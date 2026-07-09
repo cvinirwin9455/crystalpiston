@@ -46,7 +46,7 @@ const BRANDS: Record<string, BrandConfig> = {
     faviconUrl: '/firstmile/favicon.png',
     primaryColor: '#f26522',
     orgId: '1eb9b481-b6b6-455c-b733-fee789803a17',
-    title: 'First Mile Coach — The $1/month platform for new coaches',
+    title: 'First Mile Coach',
     description: 'Launch your coaching business for just $1 a month. Built for new running coaches and personal trainers getting their first clients.',
     ogUrl: 'https://firstmilecoach.com',
     loginHeading: 'Coach Login',
