@@ -13,6 +13,11 @@ async function getAdminClient() {
 }
 
 export async function POST(request: Request) {
+  // Verify required env vars
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: 'Server misconfigured: missing Supabase credentials' }, { status: 500 })
+  }
+
   const body = await request.json()
   const { full_name, email, coaching_type, expected_clients, agreed_to_terms, consent_ip, consent_user_agent, consent_terms_version } = body
 
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
   const adminClient = await getAdminClient()
 
   // Insert into beta_signups
-  const { error } = await adminClient
+  const { data: inserted, error } = await adminClient
     .from('beta_signups')
     .insert({
       organization_id: FIRST_MILE_ORG_ID,
@@ -37,13 +42,19 @@ export async function POST(request: Request) {
       consent_user_agent: consent_user_agent || 'unknown',
       consent_terms_version: consent_terms_version || 'v1-july-2026',
     })
+    .select()
+    .single()
 
   if (error) {
     if (error.code === '23505') {
       return NextResponse.json({ duplicate: true, message: "You've already signed up! We'll be in touch soon." })
     }
     console.error('Beta signup insert error:', error)
-    return NextResponse.json({ error: `Failed to save signup: ${error.message}` }, { status: 500 })
+    return NextResponse.json({ error: `Failed to save signup: ${error.code} - ${error.message}` }, { status: 500 })
+  }
+
+  if (!inserted) {
+    return NextResponse.json({ error: 'Insert returned no data — check Supabase configuration' }, { status: 500 })
   }
 
   // Send emails (fire and forget — don't fail the signup if email fails)
