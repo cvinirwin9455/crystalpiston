@@ -73,7 +73,7 @@ async function sendAdminNotification(
   apiKey: string,
   data: { full_name: string; email: string; coaching_type: string; expected_clients: string }
 ) {
-  const senderEmail = process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
+  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -120,7 +120,7 @@ async function sendCoachConfirmation(
   apiKey: string,
   data: { full_name: string; email: string }
 ) {
-  const senderEmail = process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
+  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
   const firstName = data.full_name.split(' ')[0]
 
   await fetch('https://api.resend.com/emails', {
