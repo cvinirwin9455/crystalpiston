@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-07T16:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-09T17:00:00Z";
 
 const updates = [
+  {
+    date: "July 9, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Coaches with a 'Coach' role now automatically only see their own assigned clients — previously they could still see all clients if their access level wasn't manually changed" },
+    ],
+  },
   {
     date: "July 7, 2026",
     items: [
