@@ -53,7 +53,7 @@ export default function BetaSignupForm() {
         if (error.code === '23505') {
           setMessage({ text: "You've already signed up! We'll be in touch soon.", type: 'info' })
         } else {
-          setMessage({ text: `DB error ${error.code}: ${error.message}`, type: 'error' })
+          throw error
         }
       } else {
         setMessage({ text: "You're in! We'll be in touch with next steps soon.", type: 'success' })
@@ -63,10 +63,9 @@ export default function BetaSignupForm() {
         setExpectedClients('')
         setAgreeTerms(false)
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Submission error:', err)
-      const detail = err?.message || err?.error_description || JSON.stringify(err)
-      setMessage({ text: `Error: ${detail}`, type: 'error' })
+      setMessage({ text: 'Something went wrong. Please try again or email us directly.', type: 'error' })
     } finally {
       setLoading(false)
     }

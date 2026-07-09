@@ -3,12 +3,17 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-09T17:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-09T19:30:00Z";
 
 const updates = [
   {
     date: "July 9, 2026",
     items: [
+      { area: "All", text: "NEW: First Mile Coach — the platform now supports multiple brands from the same app. firstmilecoach.com shows its own marketing page, login, and beta signup form while Crystal's site stays exactly the same" },
+      { area: "All", text: "NEW: Beta signup form on firstmilecoach.com — coaches can apply for the beta program and their info goes straight to the database" },
+      { area: "All", text: "NEW: Terms & Conditions page for First Mile Coach beta testers at firstmilecoach.com/terms" },
+      { area: "All", text: "NEW: Login page shows different branding depending on which domain you're on — orange/light theme for First Mile, dark theme for Crystal" },
+      { area: "Admin", text: "Database: Added organizations table, organization tracking for all users, and super-admin flag for Curtis" },
       { area: "Admin", text: "Fixed: Coaches with a 'Coach' role now automatically only see their own assigned clients — previously they could still see all clients if their access level wasn't manually changed" },
     ],
   },
