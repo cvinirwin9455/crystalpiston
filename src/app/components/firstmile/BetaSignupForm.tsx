@@ -151,7 +151,8 @@ export default function BetaSignupForm() {
 
         {message && (
           <div className={`fmc-form-message fmc-form-message-${message.type}`}>
-            {message.text}
+            <strong>{message.type === 'success' ? '✓ ' : message.type === 'error' ? '✗ ' : 'ℹ '}</strong>
+            {message.text || 'Response received but no message text'}
           </div>
         )}
       </form>
