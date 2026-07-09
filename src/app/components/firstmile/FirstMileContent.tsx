@@ -318,9 +318,7 @@ export default function FirstMileContent() {
       {/* Footer */}
       <footer className="fmc-footer">
         <div className="fmc-container">
-          <div className="fmc-footer-brand">
-            <Image src="/firstmile/logo.png" alt="First Mile Coach" width={120} height={50} className="fmc-footer-logo" />
-          </div>
+          <p className="fmc-footer-brand-text">First Mile Coach</p>
           <p className="fmc-footer-tagline">The cheapest, simplest way to start coaching. <PricePerMonth amount={1} /> per 10 active clients.</p>
           <p className="fmc-footer-copy">&copy; 2026 First Mile Coach</p>
         </div>

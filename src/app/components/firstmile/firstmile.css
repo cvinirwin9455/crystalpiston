@@ -777,8 +777,13 @@
   text-align: center;
   border-top: 1px solid rgba(255,255,255,0.05);
 }
-.fmc-footer-brand { margin-bottom: 12px; }
-.fmc-footer-logo { height: 50px; width: auto; border-radius: 8px; }
+.fmc-footer-brand-text {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--fmc-color-white);
+  margin-bottom: 12px;
+  letter-spacing: -0.3px;
+}
 .fmc-footer-tagline { font-size: 0.9rem; opacity: 0.5; margin-bottom: 12px; }
 .fmc-footer-copy { font-size: 0.75rem; opacity: 0.3; }
 
