@@ -8,6 +8,15 @@ export default function FirstMilePage() {
     <div className="fmc">
       <FirstMileAnimations />
 
+      {/* Sticky Beta Banner */}
+      <div className="fmc-beta-banner">
+        <div className="fmc-beta-banner-content">
+          <span className="fmc-beta-banner-badge">BETA</span>
+          <span className="fmc-beta-banner-text">Now accepting the first 50 coaches — free until June 30, 2027</span>
+          <a href="#beta" className="fmc-beta-banner-link">Apply Now &rarr;</a>
+        </div>
+      </div>
+
       {/* Hero */}
       <section className="fmc-hero">
         <div className="fmc-hero-bg" />
@@ -276,13 +285,14 @@ export default function FirstMilePage() {
             <span className="fmc-beta-badge">Beta Program</span>
             <h2>Join the Beta — Free Until June 30, 2027</h2>
             <p className="fmc-beta-intro">
-              We&apos;re opening First Mile Coach to a small group of coaches and personal trainers for beta testing. Get full access to the platform — completely free, unlimited clients — and help shape what it becomes.
+              We&apos;re opening First Mile Coach to the <strong>first 50 coaches</strong> who sign up. Get full access to the platform — completely free, unlimited clients — and help shape what it becomes.
             </p>
           </div>
 
           <div className="fmc-beta-terms fmc-fade-in">
             <h3>What you&apos;re signing up for:</h3>
             <ul className="fmc-beta-terms-list">
+              <li><strong>Limited to the first 50 coaches.</strong> Once 50 spots are filled, signups close. If you&apos;re in, you&apos;re in for the full beta period.</li>
               <li><strong>Free until June 30, 2027 — unlimited clients.</strong> The beta has a fixed end date. No matter when you join, beta access ends June 30, 2027. You pay nothing during this time.</li>
               <li><strong>After beta: earn 30 free clients/month for life.</strong> To qualify, you must: sign up at least 10 clients, remain active for at least 3 months, and provide at least 3 feedback responses on how to improve the platform.</li>
               <li><strong>Don&apos;t qualify? Standard pricing applies.</strong> If you don&apos;t meet the criteria above, you&apos;ll move to our standard pricing ($1/month per 10 active clients) when the beta ends. We&apos;ll email you before the transition.</li>

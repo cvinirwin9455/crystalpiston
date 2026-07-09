@@ -25,6 +25,67 @@
   overflow-x: hidden;
 }
 
+/* === Sticky Beta Banner === */
+.fmc-beta-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: linear-gradient(135deg, #2d3436 0%, #3d4447 100%);
+  border-bottom: 2px solid var(--fmc-color-primary);
+  padding: 12px 24px;
+}
+
+.fmc-beta-banner-content {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fmc-beta-banner-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 50px;
+  background: var(--fmc-color-primary);
+  color: var(--fmc-color-white);
+}
+
+.fmc-beta-banner-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--fmc-color-white);
+}
+
+.fmc-beta-banner-link {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--fmc-color-primary);
+  text-decoration: none;
+  padding: 5px 14px;
+  border: 1.5px solid var(--fmc-color-primary);
+  border-radius: 50px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.fmc-beta-banner-link:hover {
+  background: var(--fmc-color-primary);
+  color: var(--fmc-color-white);
+}
+
+/* Push hero down to account for fixed banner */
+.fmc-hero {
+  padding-top: 48px;
+}
+
 
 .fmc-container {
   max-width: 900px;
@@ -711,6 +772,10 @@
   .fmc-beta-signup { padding: 70px 20px; }
   .fmc-beta-terms { padding: 28px 20px; }
   .fmc-beta-form-wrapper { padding: 32px 24px; }
+  .fmc-beta-banner { padding: 10px 16px; }
+  .fmc-beta-banner-content { gap: 8px; }
+  .fmc-beta-banner-text { font-size: 0.8rem; }
+  .fmc-beta-banner-link { font-size: 0.8rem; padding: 4px 12px; }
 }
 
 @media (max-width: 480px) {
