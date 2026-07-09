@@ -81,6 +81,41 @@
   color: var(--fmc-color-white);
 }
 
+.fmc-banner-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 4px;
+}
+
+.fmc-region-select {
+  padding: 5px 28px 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fmc-color-white);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.fmc-region-select:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.fmc-region-select option {
+  color: var(--fmc-color-dark);
+  background: var(--fmc-color-white);
+}
+
 /* Push hero down to account for fixed banner */
 .fmc-hero {
   padding-top: 48px;
