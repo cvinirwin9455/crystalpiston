@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getOrgIdForUser } from '@/lib/org'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -65,14 +66,20 @@ export async function GET(request: Request) {
     })))
   }
 
-  // List all coaches (admin users)
+  // List all coaches (admin users) scoped to this org
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+
   // Try with access_level and coach_level columns, fall back if they don't exist yet
   let coaches: any[] | null = null
-  const fullResult = await adminClient
+  let fullQuery = adminClient
     .from('users')
     .select('id, name, email, access_level, coach_level, created_at')
     .eq('role', 'admin')
     .order('name')
+
+  if (orgId) fullQuery = fullQuery.eq('organization_id', orgId)
+
+  const fullResult = await fullQuery
 
   if (fullResult.error) {
     // Columns may not exist yet — try without coach_level

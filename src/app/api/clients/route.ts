@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getOrgIdForUser } from '@/lib/org'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -36,12 +37,22 @@ export async function GET() {
 
   const adminClient = await createAdminClient()
 
+  // Get org scope for this user
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+
   // Query users and clients separately to avoid join issues
-  const { data: clientUsers, error: usersError } = await adminClient
+  let clientQuery = adminClient
     .from('users')
     .select('id, email, name, gender, status, avatar_url, created_at')
     .eq('role', 'client')
     .order('name')
+
+  // Scope to organization if the user belongs to one
+  if (orgId) {
+    clientQuery = clientQuery.eq('organization_id', orgId)
+  }
+
+  const { data: clientUsers, error: usersError } = await clientQuery
 
   if (usersError) {
     return NextResponse.json({ error: usersError.message }, { status: 500 })
@@ -255,6 +266,9 @@ export async function POST(request: Request) {
 
   const adminClient = await createAdminClient()
 
+  // Get org scope for this coach
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: {
       name,
@@ -269,11 +283,14 @@ export async function POST(request: Request) {
 
   const newUserId = inviteData.user.id
 
-  // Update gender on the auto-created users row
-  if (gender) {
+  // Update gender on the auto-created users row and set organization_id
+  const userUpdates: Record<string, any> = {}
+  if (gender) userUpdates.gender = gender
+  if (orgId) userUpdates.organization_id = orgId
+  if (Object.keys(userUpdates).length > 0) {
     await adminClient
       .from('users')
-      .update({ gender })
+      .update(userUpdates)
       .eq('id', newUserId)
   }
 

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getOrgIdForUser } from '@/lib/org'
 
 // POST /api/ai-coach - AI coaching assistant for Crystal
 export async function POST(request: Request) {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
   try {
     // Gather context data based on scope
     let context = ''
-    const activeClients = await getActiveClients(adminClient)
+    const activeClients = await getActiveClients(adminClient, await getOrgIdForUser(adminClient, user.id))
 
     // Fetch admin's distance unit preference
     let adminDistanceUnit = 'mi'
@@ -274,11 +275,14 @@ export async function GET() {
   }
 
   // Get active clients with data counts
-  const { data: clientUsers } = await adminClient
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+  let clientQuery = adminClient
     .from('users')
     .select('id, name')
     .eq('role', 'client')
     .neq('status', 'inactive')
+  if (orgId) clientQuery = clientQuery.eq('organization_id', orgId)
+  const { data: clientUsers } = await clientQuery
 
   const { data: clients } = await adminClient
     .from('clients')
@@ -337,13 +341,15 @@ export async function GET() {
 }
 
 // Helper: get active clients
-async function getActiveClients(adminClient: any) {
+async function getActiveClients(adminClient: any, orgId?: string | null) {
   // Active clients are determined by users.status (not clients table)
-  const { data: clientUsers } = await adminClient
+  let query = adminClient
     .from('users')
     .select('id, name')
     .eq('role', 'client')
     .neq('status', 'inactive')
+  if (orgId) query = query.eq('organization_id', orgId)
+  const { data: clientUsers } = await query
 
   const { data: clients } = await adminClient
     .from('clients')

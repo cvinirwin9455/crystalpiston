@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getOrgIdForUser } from '@/lib/org'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -34,11 +35,14 @@ export async function GET(request: Request) {
     let queryError: any = null
 
     if (profile?.role === 'admin') {
-      // Get all admin IDs
-      const { data: allAdmins } = await adminClient
+      // Get all admin IDs in this org
+      const orgId = await getOrgIdForUser(adminClient, user.id)
+      let adminQuery = adminClient
         .from('users')
         .select('id')
         .eq('role', 'admin')
+      if (orgId) adminQuery = adminQuery.eq('organization_id', orgId)
+      const { data: allAdmins } = await adminQuery
 
       const adminIds = (allAdmins || []).map(a => a.id)
 
@@ -140,10 +144,13 @@ export async function GET(request: Request) {
   }
 
   // No with_user_id: client fetching their own messages with any admin/coach
-  const { data: allAdminUsers } = await adminClient
+  const clientOrgId = await getOrgIdForUser(adminClient, user.id)
+  let allAdminQuery = adminClient
     .from('users')
     .select('id')
     .eq('role', 'admin')
+  if (clientOrgId) allAdminQuery = allAdminQuery.eq('organization_id', clientOrgId)
+  const { data: allAdminUsers } = await allAdminQuery
 
   const adminIds = (allAdminUsers || []).map(a => a.id)
 
@@ -261,13 +268,16 @@ export async function POST(request: Request) {
     if (defaultCoachId) {
       recipientId = defaultCoachId
     } else {
-      // Fallback: first admin (for clients without coach assignments yet)
-      const { data: adminUsers } = await adminClient
+      // Fallback: first admin in this org (for clients without coach assignments yet)
+      const senderOrgId = await getOrgIdForUser(adminClient, user.id)
+      let fallbackQuery = adminClient
         .from('users')
         .select('id')
         .eq('role', 'admin')
         .order('created_at', { ascending: true })
         .limit(1)
+      if (senderOrgId) fallbackQuery = fallbackQuery.eq('organization_id', senderOrgId)
+      const { data: adminUsers } = await fallbackQuery
       
       const adminUser = adminUsers?.[0]
       if (!adminUser) {

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getOrgIdForUser } from '@/lib/org'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -74,10 +75,15 @@ export async function POST(request: Request) {
 
   const newUserId = inviteData.user.id
 
-  // Update the auto-created users row to set role to admin and access level
+  // Get org scope from the inviting coach and set it on the new user
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+
+  // Update the auto-created users row to set role to admin, name, and org
+  const userUpdate: Record<string, any> = { role: 'admin', name }
+  if (orgId) userUpdate.organization_id = orgId
   await adminClient
     .from('users')
-    .update({ role: 'admin', name })
+    .update(userUpdate)
     .eq('id', newUserId)
 
   // Try to set access_level (column may not exist yet)
