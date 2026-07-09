@@ -42,10 +42,15 @@ export default function BetaSignupForm() {
         }),
       })
 
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch {
+        data = { error: `Server returned ${res.status} ${res.statusText}` }
+      }
 
       if (!res.ok) {
-        setMessage({ text: data.error || 'Something went wrong. Please try again or email us directly.', type: 'error' })
+        setMessage({ text: data.error || `Server error: ${res.status}`, type: 'error' })
       } else if (data.duplicate) {
         setMessage({ text: data.message, type: 'info' })
       } else {
@@ -56,9 +61,9 @@ export default function BetaSignupForm() {
         setExpectedClients('')
         setAgreeTerms(false)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Submission error:', err)
-      setMessage({ text: 'Something went wrong. Please try again or email us directly.', type: 'error' })
+      setMessage({ text: `Network error: ${err?.message || 'Failed to reach server'}`, type: 'error' })
     } finally {
       setLoading(false)
     }
