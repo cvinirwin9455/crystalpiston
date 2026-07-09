@@ -1,9 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-
-const FIRST_MILE_ORG_ID = '1eb9b481-b6b6-455c-b733-fee789803a17'
 
 export default function BetaSignupForm() {
   const [fullName, setFullName] = useState('')
@@ -13,8 +10,6 @@ export default function BetaSignupForm() {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null)
-
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,32 +26,30 @@ export default function BetaSignupForm() {
       // IP detection failed — still submit
     }
 
-    const formData = {
-      organization_id: FIRST_MILE_ORG_ID,
-      full_name: fullName.trim(),
-      email: email.trim(),
-      coaching_type: coachingType,
-      expected_clients: parseInt(expectedClients),
-      agreed_to_terms: agreeTerms,
-      signed_up_at: new Date().toISOString(),
-      consent_ip: userIp,
-      consent_user_agent: navigator.userAgent,
-      consent_terms_version: 'v1-july-2026',
-    }
-
     try {
-      const { error } = await supabase
-        .from('beta_signups')
-        .insert([formData])
+      const res = await fetch('/api/beta-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          email: email.trim(),
+          coaching_type: coachingType,
+          expected_clients: expectedClients,
+          agreed_to_terms: agreeTerms,
+          consent_ip: userIp,
+          consent_user_agent: navigator.userAgent,
+          consent_terms_version: 'v1-july-2026',
+        }),
+      })
 
-      if (error) {
-        if (error.code === '23505') {
-          setMessage({ text: "You've already signed up! We'll be in touch soon.", type: 'info' })
-        } else {
-          throw error
-        }
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessage({ text: data.error || 'Something went wrong. Please try again or email us directly.', type: 'error' })
+      } else if (data.duplicate) {
+        setMessage({ text: data.message, type: 'info' })
       } else {
-        setMessage({ text: "You're in! We'll be in touch with next steps soon.", type: 'success' })
+        setMessage({ text: data.message, type: 'success' })
         setFullName('')
         setEmail('')
         setCoachingType('')
