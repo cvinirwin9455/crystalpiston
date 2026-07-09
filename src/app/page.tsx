@@ -1,4 +1,4 @@
-import { getBrand } from "@/lib/brand";
+import { getBrand } from "@/lib/brand.server";
 import Navigation from "./components/Navigation";
 import Hero from "./components/Hero";
 import About from "./components/About";

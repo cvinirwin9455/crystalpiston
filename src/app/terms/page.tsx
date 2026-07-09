@@ -1,4 +1,4 @@
-import { getBrand } from '@/lib/brand'
+import { getBrand } from '@/lib/brand.server'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import './terms.css'

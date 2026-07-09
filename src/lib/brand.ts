@@ -1,5 +1,3 @@
-import { headers } from 'next/headers'
-
 export type BrandConfig = {
   slug: 'crystal-pistol' | 'first-mile'
   name: string
@@ -59,17 +57,8 @@ const BRANDS: Record<string, BrandConfig> = {
 }
 
 /**
- * Detect brand from the request hostname (server-side).
- * Falls back to Crystal Pistol if unknown domain or localhost.
- */
-export async function getBrand(): Promise<BrandConfig> {
-  const headersList = await headers()
-  const host = headersList.get('host') || ''
-  return getBrandFromHost(host)
-}
-
-/**
  * Detect brand from a hostname string (works client or server side).
+ * No server-only imports — safe to use in client components.
  */
 export function getBrandFromHost(host: string): BrandConfig {
   const hostname = host.split(':')[0].toLowerCase()
