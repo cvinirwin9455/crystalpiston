@@ -41,11 +41,11 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Public routes that don't require auth
-  const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password', '/set-password', '/auth/callback']
+  const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password', '/set-password', '/auth/callback', '/terms']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/'))
 
   // API routes that must be publicly accessible (webhooks, internal processing, etc.)
-  const isPublicApi = pathname.startsWith('/api/strava/webhook') || pathname.startsWith('/api/strava/activities') || pathname.startsWith('/api/inquiry')
+  const isPublicApi = pathname.startsWith('/api/strava/webhook') || pathname.startsWith('/api/strava/activities') || pathname.startsWith('/api/inquiry') || pathname.startsWith('/api/beta-signup')
 
   // If not logged in and trying to access protected route, redirect to login
   if (!user && !isPublicRoute && !isPublicApi) {
