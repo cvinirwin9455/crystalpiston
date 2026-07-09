@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 const FIRST_MILE_ORG_ID = '1eb9b481-b6b6-455c-b733-fee789803a17'
 const ADMIN_EMAIL = 'curtisirwin@me.com'
+const ADMIN_EMAIL_BACKUP = 'cvin9455@gmail.com'
 
 export async function POST(request: Request) {
   try {
@@ -57,8 +58,10 @@ export async function POST(request: Request) {
     // Send emails (fire and forget — don't fail the signup if email fails)
     const apiKey = process.env.RESEND_API_KEY
     if (apiKey) {
-      sendAdminNotification(apiKey, { full_name, email, coaching_type, expected_clients: String(expected_clients) }).catch(() => {})
-      sendCoachConfirmation(apiKey, { full_name, email }).catch(() => {})
+      sendAdminNotification(apiKey, { full_name, email, coaching_type, expected_clients: String(expected_clients) })
+        .catch((err) => console.error('Admin notification failed:', err))
+      sendCoachConfirmation(apiKey, { full_name, email })
+        .catch((err) => console.error('Coach confirmation failed:', err))
     }
 
     return NextResponse.json({ success: true, message: "You're in! We'll be in touch with next steps soon." })
@@ -83,7 +86,7 @@ async function sendAdminNotification(
     },
     body: JSON.stringify({
       from: `First Mile Coach <${senderEmail}>`,
-      to: [ADMIN_EMAIL],
+      to: [ADMIN_EMAIL, ADMIN_EMAIL_BACKUP],
       subject: `New Beta Signup: ${data.full_name}`,
       html: `<!DOCTYPE html>
 <html>
