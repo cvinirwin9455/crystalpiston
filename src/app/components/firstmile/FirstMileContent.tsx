@@ -300,7 +300,7 @@ export default function FirstMileContent() {
             <ul className="fmc-beta-terms-list">
               <li><strong>Limited to the first 50 coaches.</strong> Once 50 spots are filled, signups close. If you&apos;re in, you&apos;re in for the full beta period.</li>
               <li><strong>Free until June 30, 2027 — unlimited clients.</strong> The beta has a fixed end date. No matter when you join, beta access ends June 30, 2027. You pay nothing during this time.</li>
-              <li><strong>After beta: earn 30 free clients/month for life.</strong> To qualify, you must: sign up at least 10 clients, remain active for at least 3 months, and provide at least 3 feedback responses on how to improve the platform.</li>
+              <li><strong>After beta: earn 10 free clients/month for life.</strong> To qualify, you must: sign up at least 10 clients, remain active for at least 3 months, and provide at least 3 feedback responses on how to improve the platform.</li>
               <li><strong>Don&apos;t qualify? Standard pricing applies.</strong> If you don&apos;t meet the criteria above, you&apos;ll move to our standard pricing (<PricePerMonth amount={1} /> per 10 active clients) when the beta ends. We&apos;ll email you before the transition.</li>
               <li><strong>This is beta software.</strong> Nothing is guaranteed in terms of data persistence or usability. Features may change, be removed, or break. There are no uptime or SLA guarantees.</li>
               <li><strong>You must provide feedback.</strong> We&apos;ll ask for your input regularly. Your honest feedback directly shapes what gets built.</li>

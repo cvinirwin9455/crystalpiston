@@ -75,7 +75,7 @@ export default async function TermsPage() {
         </ul>
 
         <h2>4. Post-Beta Reward — Qualifying Criteria</h2>
-        <p>Beta Testers who meet ALL of the following criteria may receive 30 free active clients per month after the beta ends:</p>
+        <p>Beta Testers who meet ALL of the following criteria may receive 10 free active clients per month after the beta ends:</p>
         <ol>
           <li><strong>Sign up at least 10 clients</strong> to the Platform during the beta period</li>
           <li><strong>Remain active for at least 3 months</strong> during the beta period (not necessarily consecutive)</li>
@@ -221,7 +221,7 @@ export default async function TermsPage() {
         <h2>18. Post-Beta Transition</h2>
         <ul>
           <li>You will be notified by email about your qualification status</li>
-          <li>Qualifying testers may receive 30 free clients/month (subject to Section 4)</li>
+          <li>Qualifying testers may receive 10 free clients/month (subject to Section 4)</li>
           <li>Non-qualifying testers will move to standard pricing or may lose access</li>
           <li>We reserve the right to discontinue the Platform entirely</li>
         </ul>
