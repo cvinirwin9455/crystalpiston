@@ -2217,7 +2217,7 @@ export default function AdminPage() {
             const secondaryClients = filteredClients.filter(c => c.coaches.some(cc => cc.coachId === loggedInUserId && !cc.isDefault));
             const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
             const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
-            const hideOtherClients = myAccessLevel === 'own_clients';
+            const hideOtherClients = myAccessLevel === 'own_clients' || myCoachLevel === 'coach';
             return (
               <>
                 {primaryClients.length > 0 && (

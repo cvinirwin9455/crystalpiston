@@ -23,7 +23,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, access_level')
+    .select('role, access_level, coach_level')
     .eq('id', user.id)
     .single()
 
@@ -31,7 +31,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const accessLevel = profile?.access_level || 'all_clients'
+  // If coach_level is 'coach', always restrict to own clients regardless of access_level
+  const accessLevel = profile?.coach_level === 'coach' ? 'own_clients' : (profile?.access_level || 'all_clients')
 
   const adminClient = await createAdminClient()
 
