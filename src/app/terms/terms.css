@@ -1,0 +1,84 @@
+.fmc-terms-page {
+  padding: 80px 24px;
+  background: #fafbfc;
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #2d3436;
+  line-height: 1.7;
+}
+
+.fmc-terms-container {
+  max-width: 750px;
+  margin: 0 auto;
+}
+
+.fmc-terms-back {
+  display: inline-block;
+  margin-bottom: 32px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f26522;
+  text-decoration: none;
+}
+.fmc-terms-back:hover {
+  text-decoration: underline;
+}
+
+.fmc-terms-page h1 {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 900;
+  color: #2d3436;
+  margin-bottom: 8px;
+}
+
+.fmc-terms-updated {
+  font-size: 0.85rem;
+  color: #9e9e9e;
+  margin-bottom: 40px;
+}
+
+.fmc-terms-page h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2d3436;
+  margin-top: 36px;
+  margin-bottom: 12px;
+}
+
+.fmc-terms-page p,
+.fmc-terms-page li {
+  font-size: 0.95rem;
+  color: #555b5e;
+  line-height: 1.8;
+  margin-bottom: 12px;
+}
+
+.fmc-terms-page ul,
+.fmc-terms-page ol {
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+
+.fmc-terms-page li {
+  margin-bottom: 8px;
+}
+
+.fmc-terms-highlight {
+  background: #fff8f4;
+  border: 1px solid rgba(242, 101, 34, 0.15);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin: 24px 0;
+}
+
+.fmc-terms-highlight p {
+  color: #2d3436;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+.fmc-terms-caps {
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #2d3436;
+}

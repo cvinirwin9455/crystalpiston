@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { getBrandFromHost } from "@/lib/brand";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +13,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  const brand = getBrandFromHost(typeof window !== 'undefined' ? window.location.hostname : '');
+  const isFirstMile = brand.slug === 'first-mile';
 
   // Check for hash fragments (invite/recovery links that landed here by mistake)
   // Also check for error params
@@ -27,16 +31,16 @@ export default function LoginPage() {
       }
     }
     if (hash && hash.includes("error")) {
-      setError("Your invite link has expired or is invalid. Contact Crystal for a new one.");
+      setError("Your invite link has expired or is invalid. Please request a new one.");
       return;
     }
 
     const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
     if (err === "link_expired") {
-      setError("Your invite link has expired. Contact Crystal for a new one.");
+      setError("Your invite link has expired. Please request a new one.");
     } else if (err === "auth_code_error") {
-      setError("Authentication failed. Please try again or contact Crystal for a new invite.");
+      setError("Authentication failed. Please try again or request a new invite.");
     } else if (err) {
       setError("Authentication error. Please try again.");
     }
@@ -61,13 +65,11 @@ export default function LoginPage() {
     // Get user role to redirect appropriately
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from("users")
         .select("role")
         .eq("id", user.id)
         .single();
-
-
 
       if (profile?.role === "admin") {
         window.location.href = "/admin";
@@ -81,6 +83,93 @@ export default function LoginPage() {
     router.refresh();
   };
 
+  // First Mile Coach login — light theme
+  if (isFirstMile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: '#fafbfc' }}>
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <Image
+              src="/firstmile/logo.png"
+              alt="First Mile Coach"
+              width={180}
+              height={180}
+              className="mx-auto mb-4 rounded-xl"
+            />
+            <h1 className="text-3xl font-black" style={{ color: '#2d3436' }}>
+              Coach <span style={{ color: '#f26522' }}>Login</span>
+            </h1>
+            <p className="mt-2" style={{ color: '#555b5e' }}>
+              Log in to manage your clients
+            </p>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="rounded-2xl p-8 space-y-6" style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 30px rgba(0,0,0,0.06)' }}>
+            {error && (
+              <div className="px-4 py-3 rounded-lg text-sm" style={{ background: '#fce4ec', border: '1px solid #ef9a9a', color: '#c62828' }}>
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium mb-2" style={{ color: '#2d3436' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg px-4 py-3 outline-none transition-colors"
+                style={{ background: '#fafbfc', border: '2px solid rgba(0,0,0,0.08)', color: '#2d3436' }}
+                onFocus={(e) => { e.target.style.borderColor = '#f26522'; e.target.style.boxShadow = '0 0 0 3px rgba(242,101,34,0.1)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'rgba(0,0,0,0.08)'; e.target.style.boxShadow = 'none' }}
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: '#2d3436' }}>
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg px-4 py-3 outline-none transition-colors"
+                style={{ background: '#fafbfc', border: '2px solid rgba(0,0,0,0.08)', color: '#2d3436' }}
+                onFocus={(e) => { e.target.style.borderColor = '#f26522'; e.target.style.boxShadow = '0 0 0 3px rgba(242,101,34,0.1)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'rgba(0,0,0,0.08)'; e.target.style.boxShadow = 'none' }}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full text-center block py-3 px-8 rounded-full font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+              style={{ background: '#f26522', color: '#ffffff' }}
+            >
+              {loading ? "Signing in..." : "Log In"}
+            </button>
+
+            <p className="text-center text-sm" style={{ color: '#9e9e9e' }}>
+              <a href="/forgot-password" className="hover:underline" style={{ color: '#f26522' }}>
+                Forgot your password?
+              </a>
+            </p>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Crystal Pistol login — dark theme (original)
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-md">

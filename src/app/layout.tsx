@@ -3,6 +3,7 @@ import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import AuthRedirect from "./components/AuthRedirect";
 import { Analytics } from "@vercel/analytics/react";
+import { getBrand } from "@/lib/brand";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,55 +15,80 @@ const oswald = Oswald({
   variable: "--font-oswald",
 });
 
-export const metadata: Metadata = {
-  title: "Pistol Performance Coaching | Crystal - Running Coach",
-  description:
-    "From 5K to 100 miles. Whether you're getting off the couch or breaking through a plateau, Crystal helps you set goals and crush them. Southwest Missouri running coach.",
-  keywords: [
-    "running coach",
-    "trail running",
-    "ultramarathon",
-    "5K training",
-    "Missouri running coach",
-    "performance coaching",
-    "Southwest Missouri running",
-    "half marathon training",
-    "marathon coach",
-    "couch to 5K",
-    "trail running coach",
-    "running accountability",
-  ],
-  openGraph: {
-    title: "Pistol Performance Coaching | Crystal - Running Coach",
-    description: "From 5K to 100 miles. Whether you're getting off the couch or breaking through a plateau, Crystal helps you set goals and crush them.",
-    url: "https://www.crystalpistolperformance.com",
-    siteName: "Pistol Performance Coaching",
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pistol Performance Coaching | Crystal - Running Coach",
-    description: "From 5K to 100 miles. Crystal helps you set goals and crush them. Southwest Missouri running coach.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  alternates: {
-    canonical: "https://www.crystalpistolperformance.com",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/icon.png", sizes: "192x192", type: "image/png" },
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await getBrand();
+
+  if (brand.slug === 'first-mile') {
+    return {
+      title: brand.title,
+      description: brand.description,
+      openGraph: {
+        title: 'First Mile Coach — Launch your coaching business for $1/month',
+        description: brand.description,
+        url: brand.ogUrl,
+        siteName: brand.name,
+        locale: 'en_US',
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: 'First Mile Coach — Launch your coaching business for $1/month',
+        description: brand.description,
+      },
+      robots: { index: true, follow: true },
+      alternates: { canonical: brand.ogUrl },
+      icons: {
+        icon: [{ url: '/firstmile/favicon.png', type: 'image/png' }],
+        apple: [{ url: '/firstmile/favicon.png', type: 'image/png' }],
+      },
+    };
+  }
+
+  // Crystal Pistol (default)
+  return {
+    title: brand.title,
+    description: brand.description,
+    keywords: [
+      "running coach",
+      "trail running",
+      "ultramarathon",
+      "5K training",
+      "Missouri running coach",
+      "performance coaching",
+      "Southwest Missouri running",
+      "half marathon training",
+      "marathon coach",
+      "couch to 5K",
+      "trail running coach",
+      "running accountability",
     ],
-    apple: [
-      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-  },
-  manifest: "/manifest.json",
-};
+    openGraph: {
+      title: brand.title,
+      description: "From 5K to 100 miles. Whether you're getting off the couch or breaking through a plateau, Crystal helps you set goals and crush them.",
+      url: brand.ogUrl,
+      siteName: brand.name,
+      locale: "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: brand.title,
+      description: "From 5K to 100 miles. Crystal helps you set goals and crush them. Southwest Missouri running coach.",
+    },
+    robots: { index: true, follow: true },
+    alternates: { canonical: brand.ogUrl },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "48x48" },
+        { url: "/icon.png", sizes: "192x192", type: "image/png" },
+      ],
+      apple: [
+        { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+      ],
+    },
+    manifest: "/manifest.json",
+  };
+}
 
 export default function RootLayout({
   children,
