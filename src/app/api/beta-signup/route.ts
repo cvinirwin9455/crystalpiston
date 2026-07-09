@@ -132,7 +132,7 @@ async function sendCoachConfirmation(
     body: JSON.stringify({
       from: `First Mile Coach <${senderEmail}>`,
       to: [data.email],
-      reply_to: 'curtisirwin@me.com',
+      reply_to: 'hello@firstmilecoach.com',
       subject: `You're in, ${firstName}! Welcome to the First Mile Coach beta`,
       html: `<!DOCTYPE html>
 <html>
