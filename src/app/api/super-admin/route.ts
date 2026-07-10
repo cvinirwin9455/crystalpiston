@@ -85,8 +85,8 @@ export async function POST(request: Request) {
   const { action, signupId, organizationId, password } = body
 
   if (action === 'activate_coach') {
-    if (!signupId || !organizationId || !password) {
-      return NextResponse.json({ error: 'signupId, organizationId, and password are required' }, { status: 400 })
+    if (!signupId || !organizationId) {
+      return NextResponse.json({ error: 'signupId and organizationId are required' }, { status: 400 })
     }
 
     // Get the signup record
@@ -111,24 +111,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A user with this email already exists' }, { status: 400 })
     }
 
-    // Create the auth user with a password
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email: signup.email,
-      password: password,
-      email_confirm: true,
-      user_metadata: {
+    // Get the domain for the redirect URL
+    const { data: org } = await adminClient
+      .from('organizations')
+      .select('domain')
+      .eq('id', organizationId)
+      .single()
+
+    const domain = org?.domain || 'firstmilecoach.com'
+    const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
+
+    // Invite the user via Supabase Auth (sends them an email to set their password)
+    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(signup.email, {
+      data: {
         name: signup.full_name,
         role: 'admin',
       },
+      redirectTo: redirectUrl,
     })
 
-    if (createError) {
-      return NextResponse.json({ error: `Failed to create user: ${createError.message}` }, { status: 500 })
+    if (inviteError) {
+      return NextResponse.json({ error: `Failed to invite user: ${inviteError.message}` }, { status: 500 })
     }
 
-    const newUserId = newUser.user.id
+    const newUserId = inviteData.user.id
 
-    // Update the users row
+    // Update the users row with org, role, and coach settings
     await adminClient
       .from('users')
       .update({
@@ -143,7 +151,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       userId: newUserId,
-      message: `Coach account created for ${signup.full_name} (${signup.email})`,
+      message: `Invite email sent to ${signup.full_name} (${signup.email}). They'll set their own password.`,
     })
   }
 

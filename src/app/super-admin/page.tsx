@@ -33,7 +33,6 @@ export default function SuperAdminPage() {
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "beta" | "actions">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
-  const [activatePassword, setActivatePassword] = useState("");
   const [activateMessage, setActivateMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -66,11 +65,6 @@ export default function SuperAdminPage() {
   }
 
   async function activateCoach(signupId: string, organizationId: string) {
-    if (!activatePassword) {
-      setActivateMessage({ text: "Please enter a password for the new account", type: "error" });
-      return;
-    }
-
     setActivateMessage(null);
     try {
       const res = await fetch("/api/super-admin", {
@@ -80,7 +74,6 @@ export default function SuperAdminPage() {
           action: "activate_coach",
           signupId,
           organizationId,
-          password: activatePassword,
         }),
       });
 
@@ -90,7 +83,6 @@ export default function SuperAdminPage() {
       } else {
         setActivateMessage({ text: data.message, type: "success" });
         setActivatingId(null);
-        setActivatePassword("");
         fetchData(); // Refresh
       }
     } catch {
@@ -242,28 +234,19 @@ export default function SuperAdminPage() {
 
                       <div className="flex flex-col items-end gap-2">
                         {activatingId === signup.id ? (
-                          <div className="flex flex-col gap-2 items-end">
-                            <input
-                              type="text"
-                              placeholder="Set password for coach"
-                              value={activatePassword}
-                              onChange={(e) => setActivatePassword(e.target.value)}
-                              className="text-sm border border-gray-300 rounded-lg px-3 py-2 w-56 focus:outline-none focus:border-purple-500"
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => activateCoach(signup.id, signup.organization_id)}
-                                className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-medium"
-                              >
-                                Create Account
-                              </button>
-                              <button
-                                onClick={() => { setActivatingId(null); setActivatePassword(""); }}
-                                className="text-sm text-gray-500 px-3 py-2 hover:text-gray-800 transition"
-                              >
-                                Cancel
-                              </button>
-                            </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => activateCoach(signup.id, signup.organization_id)}
+                              className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-medium"
+                            >
+                              Confirm &amp; Send Invite
+                            </button>
+                            <button
+                              onClick={() => { setActivatingId(null); }}
+                              className="text-sm text-gray-500 px-3 py-2 hover:text-gray-800 transition"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         ) : (
                           <button
