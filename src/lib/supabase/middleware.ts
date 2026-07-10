@@ -72,14 +72,21 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Prevent clients from accessing admin routes
-  if (user && pathname.startsWith('/admin')) {
+  if (user && (pathname.startsWith('/admin') || pathname.startsWith('/super-admin'))) {
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('role, is_super_admin')
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    if (pathname.startsWith('/super-admin')) {
+      // Only super admins can access /super-admin
+      if (!profile?.is_super_admin) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/admin'
+        return NextResponse.redirect(url)
+      }
+    } else if (profile?.role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
