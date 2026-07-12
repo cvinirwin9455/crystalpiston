@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { sendCoachInviteEmail } from '@/lib/invite-emails'
+import { sendCoachInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -156,6 +156,7 @@ export async function POST(request: Request) {
       to: signup.email,
       coachName: signup.full_name,
       confirmationUrl,
+      brand: getBrandFromDomain(org?.domain),
     })
 
     if (!emailSent) {

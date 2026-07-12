@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
-import { sendCoachInviteEmail } from '@/lib/invite-emails'
+import { sendCoachInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -60,7 +60,8 @@ export async function POST(request: Request) {
 
   // Determine the correct redirect URL based on the inviting coach's organization
   const orgId = await getOrgIdForUser(adminClient, user.id)
-  let redirectDomain = 'www.crystalpistolperformance.com'
+  let redirectDomain = 'www.firstmilecoach.com'
+  let orgDomain: string | null = null
   if (orgId) {
     const { data: orgData } = await adminClient
       .from('organizations')
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       .eq('id', orgId)
       .single()
     if (orgData?.domain) {
+      orgDomain = orgData.domain
       let domain = orgData.domain
       if (domain === 'firstmilecoach.com') domain = 'www.firstmilecoach.com'
       if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
@@ -100,6 +102,7 @@ export async function POST(request: Request) {
     to: email,
     coachName: name,
     confirmationUrl,
+    brand: getBrandFromDomain(orgDomain),
   })
 
   if (!emailSent) {
