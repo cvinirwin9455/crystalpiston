@@ -39,16 +39,18 @@ export async function GET() {
   // Get user counts per org
   const { data: users } = await adminClient
     .from('users')
-    .select('id, organization_id, role, status')
+    .select('id, organization_id, role, status, coach_level')
 
   const orgStats = (orgs || []).map(org => {
     const orgUsers = (users || []).filter(u => u.organization_id === org.id)
+    const accountCoach = orgUsers.find(u => u.role === 'admin' && u.coach_level === 'account_coach')
     return {
       ...org,
       totalUsers: orgUsers.length,
       admins: orgUsers.filter(u => u.role === 'admin').length,
       clients: orgUsers.filter(u => u.role === 'client').length,
       activeClients: orgUsers.filter(u => u.role === 'client' && u.status !== 'inactive').length,
+      accountCoachId: accountCoach?.id || null,
     }
   })
 
@@ -65,8 +67,25 @@ export async function GET() {
     .select('id, email, role, created_at')
     .in('email', betaEmails.length > 0 ? betaEmails : ['__none__'])
 
+  // Also check Supabase auth for last_sign_in_at (indicates password has been set)
+  const activatedUserIds = (activatedUsers || []).map(u => u.id)
+  const authUserMap = new Map<string, { lastSignIn: string | null }>()
+  for (const userId of activatedUserIds) {
+    try {
+      const { data: authUser } = await adminClient.auth.admin.getUserById(userId)
+      if (authUser?.user) {
+        authUserMap.set(userId, { lastSignIn: authUser.user.last_sign_in_at || null })
+      }
+    } catch {}
+  }
+
   const activatedEmailMap = new Map(
-    (activatedUsers || []).map(u => [u.email, { userId: u.id, role: u.role, activatedAt: u.created_at }])
+    (activatedUsers || []).map(u => [u.email, {
+      userId: u.id,
+      role: u.role,
+      activatedAt: u.created_at,
+      hasSetPassword: !!authUserMap.get(u.id)?.lastSignIn,
+    }])
   )
 
   const betaSignupsWithStatus = (betaSignups || []).map(signup => ({
@@ -74,6 +93,7 @@ export async function GET() {
     activated: activatedEmailMap.has(signup.email),
     activatedUserId: activatedEmailMap.get(signup.email)?.userId || null,
     activatedAt: activatedEmailMap.get(signup.email)?.activatedAt || null,
+    hasSetPassword: activatedEmailMap.get(signup.email)?.hasSetPassword || false,
   }))
 
   return NextResponse.json({
@@ -357,6 +377,46 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: `${signup.full_name} (${signup.email}) has been completely deleted.`,
+    })
+  }
+
+  if (action === 'impersonate') {
+    const { userId: targetUserId } = body
+    if (!targetUserId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+    }
+
+    // Generate a magic link for the target user (allows super admin to sign in as them)
+    const { data: targetUser } = await adminClient
+      .from('users')
+      .select('email')
+      .eq('id', targetUserId)
+      .single()
+
+    if (!targetUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Generate a magic link that signs in as the target user
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: 'magiclink',
+      email: targetUser.email,
+      options: {
+        redirectTo: 'https://www.firstmilecoach.com/admin',
+      },
+    })
+
+    if (linkError) {
+      return NextResponse.json({ error: `Failed to generate link: ${linkError.message}` }, { status: 500 })
+    }
+
+    // Build the URL pointing to our auth callback
+    const hashedToken = linkData.properties.hashed_token
+    const impersonateUrl = `https://www.firstmilecoach.com/auth/callback?token_hash=${hashedToken}&type=magiclink&next=/admin`
+
+    return NextResponse.json({
+      success: true,
+      url: impersonateUrl,
     })
   }
 

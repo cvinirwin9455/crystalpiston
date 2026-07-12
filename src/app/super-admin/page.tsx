@@ -13,6 +13,7 @@ type Organization = {
   admins: number;
   clients: number;
   activeClients: number;
+  accountCoachId: string | null;
 };
 
 type BetaSignup = {
@@ -28,6 +29,7 @@ type BetaSignup = {
   activated: boolean;
   activatedUserId: string | null;
   activatedAt: string | null;
+  hasSetPassword: boolean;
 };
 
 export default function SuperAdminPage() {
@@ -38,6 +40,7 @@ export default function SuperAdminPage() {
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<"all" | "activated" | "pending">("all");
@@ -76,12 +79,8 @@ export default function SuperAdminPage() {
       const res = await fetch("/api/super-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "activate_coach",
-          signupId,
-        }),
+        body: JSON.stringify({ action: "activate_coach", signupId }),
       });
-
       const data = await res.json();
       if (!res.ok) {
         setActionMessage({ text: data.error || "Failed to activate", type: "error" });
@@ -102,12 +101,8 @@ export default function SuperAdminPage() {
       const res = await fetch("/api/super-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "resend_invite",
-          signupId,
-        }),
+        body: JSON.stringify({ action: "resend_invite", signupId }),
       });
-
       const data = await res.json();
       if (!res.ok) {
         setActionMessage({ text: data.error || "Failed to resend", type: "error" });
@@ -128,12 +123,8 @@ export default function SuperAdminPage() {
       const res = await fetch("/api/super-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "delete_account",
-          signupId,
-        }),
+        body: JSON.stringify({ action: "delete_account", signupId }),
       });
-
       const data = await res.json();
       if (!res.ok) {
         setActionMessage({ text: data.error || "Failed to delete", type: "error" });
@@ -144,6 +135,28 @@ export default function SuperAdminPage() {
       }
     } catch {
       setActionMessage({ text: "Network error", type: "error" });
+    }
+  }
+
+  async function viewAsCoach(userId: string) {
+    setImpersonatingId(userId);
+    try {
+      const res = await fetch("/api/super-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "impersonate", userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setActionMessage({ text: data.error || "Failed to impersonate", type: "error" });
+      } else {
+        // Open in new tab so super admin session isn't lost
+        window.open(data.url, "_blank");
+      }
+    } catch {
+      setActionMessage({ text: "Network error", type: "error" });
+    } finally {
+      setImpersonatingId(null);
     }
   }
 
@@ -160,6 +173,7 @@ export default function SuperAdminPage() {
 
   const activatedCount = betaSignups.filter((s) => s.activated).length;
   const pendingCount = betaSignups.filter((s) => !s.activated).length;
+  const completedCount = betaSignups.filter((s) => s.hasSetPassword).length;
 
   if (loading) {
     return (
@@ -236,7 +250,7 @@ export default function SuperAdminPage() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mb-4">{org.domain || "No domain"}</p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-gray-900">{org.admins}</div>
                       <div className="text-xs text-gray-500">Coaches</div>
@@ -250,6 +264,16 @@ export default function SuperAdminPage() {
                       <div className="text-xs text-gray-500">Total Users</div>
                     </div>
                   </div>
+                  {/* View As button */}
+                  {org.accountCoachId && (
+                    <button
+                      onClick={() => viewAsCoach(org.accountCoachId!)}
+                      disabled={impersonatingId === org.accountCoachId}
+                      className="w-full text-sm bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
+                    >
+                      {impersonatingId === org.accountCoachId ? "Opening..." : "View as Coach \u2192"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -264,18 +288,22 @@ export default function SuperAdminPage() {
             </div>
 
             {/* Status summary cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-gray-900">{betaSignups.length}</div>
                 <div className="text-xs text-gray-500">Total Signups</div>
               </div>
-              <div className="bg-white rounded-xl border border-green-200 p-4 text-center shadow-sm">
-                <div className="text-2xl font-bold text-green-600">{activatedCount}</div>
-                <div className="text-xs text-gray-500">Activated</div>
-              </div>
               <div className="bg-white rounded-xl border border-yellow-200 p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
                 <div className="text-xs text-gray-500">Pending</div>
+              </div>
+              <div className="bg-white rounded-xl border border-blue-200 p-4 text-center shadow-sm">
+                <div className="text-2xl font-bold text-blue-600">{activatedCount - completedCount}</div>
+                <div className="text-xs text-gray-500">Invited (awaiting)</div>
+              </div>
+              <div className="bg-white rounded-xl border border-green-200 p-4 text-center shadow-sm">
+                <div className="text-2xl font-bold text-green-600">{completedCount}</div>
+                <div className="text-xs text-gray-500">Completed Setup</div>
               </div>
             </div>
 
@@ -319,14 +347,27 @@ export default function SuperAdminPage() {
             ) : (
               <div className="space-y-4">
                 {filteredSignups.map((signup) => (
-                  <div key={signup.id} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <div
+                    key={signup.id}
+                    className={`bg-white rounded-xl border p-6 shadow-sm transition ${
+                      signup.hasSetPassword
+                        ? "border-gray-100 opacity-60"
+                        : "border-gray-200"
+                    }`}
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-gray-900">{signup.full_name}</h3>
-                          {signup.activated ? (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                              Activated
+                          <h3 className={`font-bold ${signup.hasSetPassword ? "text-gray-500" : "text-gray-900"}`}>
+                            {signup.full_name}
+                          </h3>
+                          {signup.hasSetPassword ? (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+                              Completed
+                            </span>
+                          ) : signup.activated ? (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                              Invited
                             </span>
                           ) : (
                             <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
@@ -334,12 +375,14 @@ export default function SuperAdminPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{signup.email}</p>
+                        <p className={`text-sm ${signup.hasSetPassword ? "text-gray-400" : "text-gray-500"}`}>
+                          {signup.email}
+                        </p>
                         <div className="flex gap-3 mt-2">
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                          <span className={`text-xs px-2 py-1 rounded-full ${signup.hasSetPassword ? "bg-gray-50 text-gray-400" : "bg-blue-50 text-blue-700"}`}>
                             {signup.coaching_type.replace(/_/g, " ")}
                           </span>
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                          <span className={`text-xs px-2 py-1 rounded-full ${signup.hasSetPassword ? "bg-gray-50 text-gray-400" : "bg-gray-100 text-gray-600"}`}>
                             {signup.expected_clients} expected clients
                           </span>
                         </div>
@@ -348,10 +391,24 @@ export default function SuperAdminPage() {
                           {signup.activatedAt && (
                             <> &bull; Activated: {new Date(signup.activatedAt).toLocaleDateString()}</>
                           )}
+                          {signup.hasSetPassword && (
+                            <> &bull; <span className="text-green-500">Password set</span></>
+                          )}
                         </p>
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
+                        {/* View as button (only for completed setup) */}
+                        {signup.hasSetPassword && signup.activatedUserId && (
+                          <button
+                            onClick={() => viewAsCoach(signup.activatedUserId!)}
+                            disabled={impersonatingId === signup.activatedUserId}
+                            className="text-sm bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
+                          >
+                            {impersonatingId === signup.activatedUserId ? "Opening..." : "View as Coach"}
+                          </button>
+                        )}
+
                         {/* Activate button (only for pending) */}
                         {!signup.activated && (
                           <>
@@ -381,8 +438,8 @@ export default function SuperAdminPage() {
                           </>
                         )}
 
-                        {/* Resend button (only for activated) */}
-                        {signup.activated && (
+                        {/* Resend button (only for activated but NOT completed) */}
+                        {signup.activated && !signup.hasSetPassword && (
                           <button
                             onClick={() => resendInvite(signup.id)}
                             disabled={resendingId === signup.id}
