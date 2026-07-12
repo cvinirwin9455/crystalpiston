@@ -21,9 +21,13 @@ export default function FirstMileContent() {
           <div className="fmc-banner-divider" />
           <RegionToggle />
           <div className="fmc-banner-divider" />
-          <a href="/login" className="fmc-banner-login">
+          <a href="/login?role=coach" className="fmc-banner-login">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-            Coach &amp; Client Login
+            Coach Login
+          </a>
+          <a href="/login?role=client" className="fmc-banner-login fmc-banner-login-client">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Client Login
           </a>
         </div>
       </div>

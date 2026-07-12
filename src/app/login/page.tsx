@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getBrandFromHost } from "@/lib/brand";
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const brand = getBrandFromHost(typeof window !== 'undefined' ? window.location.hostname : '');
   const isFirstMile = brand.slug === 'first-mile';
+  const roleParam = searchParams.get('role');
+  const isClientLogin = roleParam === 'client';
 
   // Check for hash fragments (invite/recovery links that landed here by mistake)
   // Also check for error params
@@ -98,10 +101,10 @@ export default function LoginPage() {
               className="mx-auto mb-4 rounded-xl"
             />
             <h1 className="text-3xl font-black" style={{ color: '#2d3436' }}>
-              Coach <span style={{ color: '#f26522' }}>Login</span>
+              {isClientLogin ? 'Client' : 'Coach'} <span style={{ color: '#f26522' }}>Login</span>
             </h1>
             <p className="mt-2" style={{ color: '#555b5e' }}>
-              Log in to manage your clients
+              {isClientLogin ? 'Log in to view your training plan' : 'Log in to manage your clients'}
             </p>
           </div>
 
@@ -244,5 +247,14 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" style={{ background: '#fafbfc' }}><p style={{ color: '#555b5e' }}>Loading...</p></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
