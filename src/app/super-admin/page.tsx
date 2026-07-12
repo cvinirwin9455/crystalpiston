@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const CRYSTAL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4';
+const LEGACY_FIRSTMILE_ORG_ID = '1eb9b481-b6b6-455c-b733-fee789803a17';
+
 type Organization = {
   id: string;
   name: string;
@@ -150,7 +153,6 @@ export default function SuperAdminPage() {
       if (!res.ok) {
         setActionMessage({ text: data.error || "Failed to impersonate", type: "error" });
       } else {
-        // Open in new tab so super admin session isn't lost
         window.open(data.url, "_blank");
       }
     } catch {
@@ -164,6 +166,18 @@ export default function SuperAdminPage() {
     await supabase.auth.signOut();
     router.push("/login");
   }
+
+  // Filter out the legacy shared First Mile org
+  const coachOrgs = organizations.filter(o => o.id !== LEGACY_FIRSTMILE_ORG_ID && o.id !== CRYSTAL_ORG_ID);
+  const crystalOrg = organizations.find(o => o.id === CRYSTAL_ORG_ID);
+
+  // Aggregate metrics across all coach orgs
+  const totalCoaches = coachOrgs.reduce((sum, o) => sum + o.admins, 0);
+  const totalClients = coachOrgs.reduce((sum, o) => sum + o.clients, 0);
+  const totalActiveClients = coachOrgs.reduce((sum, o) => sum + o.activeClients, 0);
+  const betaSpotsLeft = 50 - betaSignups.length;
+  const coachesActive = betaSignups.filter(s => s.hasSetPassword).length;
+  const avgClientsPerCoach = coachesActive > 0 ? (totalClients / coachesActive).toFixed(1) : "0";
 
   const filteredSignups = betaSignups.filter((s) => {
     if (filterStatus === "activated") return s.activated;
@@ -199,7 +213,7 @@ export default function SuperAdminPage() {
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold text-gray-900">Super Admin</h1>
             <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-full uppercase tracking-wide">
-              All Organizations
+              First Mile Coach
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -213,7 +227,7 @@ export default function SuperAdminPage() {
         <div className="max-w-6xl mx-auto px-6">
           <nav className="flex gap-6 border-t border-gray-100 pt-2">
             {[
-              { key: "overview", label: "Organizations" },
+              { key: "overview", label: "Coaches" },
               { key: "beta", label: `Beta Signups (${betaSignups.length})` },
             ].map((tab) => (
               <button
@@ -235,44 +249,111 @@ export default function SuperAdminPage() {
       {/* Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         {activeTab === "overview" && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold text-gray-900">Organizations</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {organizations.map((org) => (
-                <div key={org.id} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-900">{org.name}</h3>
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                      {org.slug}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-4">{org.domain || "No domain"}</p>
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="space-y-8">
+            {/* Aggregate Dashboard */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Platform Overview</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="text-center p-3 rounded-xl bg-purple-50 border border-purple-100">
+                  <div className="text-2xl font-bold text-purple-700">{totalCoaches}</div>
+                  <div className="text-xs text-purple-600 font-medium mt-1">Total Coaches</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-blue-50 border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-700">{totalClients}</div>
+                  <div className="text-xs text-blue-600 font-medium mt-1">Total Clients</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-green-50 border border-green-100">
+                  <div className="text-2xl font-bold text-green-700">{totalActiveClients}</div>
+                  <div className="text-xs text-green-600 font-medium mt-1">Active Clients</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-orange-50 border border-orange-100">
+                  <div className="text-2xl font-bold text-orange-700">{betaSpotsLeft}</div>
+                  <div className="text-xs text-orange-600 font-medium mt-1">Beta Spots Left</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <div className="text-2xl font-bold text-emerald-700">{coachesActive}</div>
+                  <div className="text-xs text-emerald-600 font-medium mt-1">Coaches Active</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                  <div className="text-2xl font-bold text-indigo-700">{avgClientsPerCoach}</div>
+                  <div className="text-xs text-indigo-600 font-medium mt-1">Avg Clients/Coach</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Crystal's org (special card) */}
+            {crystalOrg && (
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Crystal Pistol Performance</h3>
+                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-900">{org.admins}</div>
+                      <div className="text-xl font-bold text-gray-900">{crystalOrg.admins}</div>
                       <div className="text-xs text-gray-500">Coaches</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-900">{org.activeClients}</div>
+                      <div className="text-xl font-bold text-gray-900">{crystalOrg.activeClients}</div>
                       <div className="text-xs text-gray-500">Active Clients</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-900">{org.totalUsers}</div>
+                      <div className="text-xl font-bold text-gray-900">{crystalOrg.totalUsers}</div>
                       <div className="text-xs text-gray-500">Total Users</div>
                     </div>
                   </div>
-                  {/* View As button */}
-                  {org.accountCoachId && (
+                  {crystalOrg.accountCoachId && (
                     <button
-                      onClick={() => viewAsCoach(org.accountCoachId!)}
-                      disabled={impersonatingId === org.accountCoachId}
-                      className="w-full text-sm bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
+                      onClick={() => viewAsCoach(crystalOrg.accountCoachId!)}
+                      disabled={impersonatingId === crystalOrg.accountCoachId}
+                      className="text-sm bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
                     >
-                      {impersonatingId === org.accountCoachId ? "Opening..." : "View as Coach \u2192"}
+                      {impersonatingId === crystalOrg.accountCoachId ? "Opening..." : "View as Crystal \u2192"}
                     </button>
                   )}
                 </div>
-              ))}
+              </div>
+            )}
+
+            {/* Coach Orgs */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">First Mile Coaches ({coachOrgs.length})</h3>
+              {coachOrgs.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                  <p className="text-gray-500">No coaches activated yet. Go to Beta Signups to activate coaches.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {coachOrgs.map((org) => (
+                    <div key={org.id} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-bold text-gray-900 text-sm">{org.name}</h4>
+                      </div>
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="text-center flex-1">
+                          <div className="text-lg font-bold text-gray-900">{org.admins}</div>
+                          <div className="text-[10px] text-gray-500">Coaches</div>
+                        </div>
+                        <div className="text-center flex-1">
+                          <div className="text-lg font-bold text-gray-900">{org.activeClients}</div>
+                          <div className="text-[10px] text-gray-500">Active Clients</div>
+                        </div>
+                        <div className="text-center flex-1">
+                          <div className="text-lg font-bold text-gray-900">{org.clients}</div>
+                          <div className="text-[10px] text-gray-500">Total Clients</div>
+                        </div>
+                      </div>
+                      {org.accountCoachId && (
+                        <button
+                          onClick={() => viewAsCoach(org.accountCoachId!)}
+                          disabled={impersonatingId === org.accountCoachId}
+                          className="w-full text-xs bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
+                        >
+                          {impersonatingId === org.accountCoachId ? "Opening..." : "View as Coach \u2192"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -395,7 +476,6 @@ export default function SuperAdminPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
-                        {/* View as button (only for completed setup) */}
                         {signup.hasSetPassword && signup.activatedUserId && (
                           <button
                             onClick={() => viewAsCoach(signup.activatedUserId!)}
@@ -406,7 +486,6 @@ export default function SuperAdminPage() {
                           </button>
                         )}
 
-                        {/* Activate button (only for pending) */}
                         {!signup.activated && (
                           <>
                             {activatingId === signup.id ? (
@@ -435,7 +514,6 @@ export default function SuperAdminPage() {
                           </>
                         )}
 
-                        {/* Resend button (only for activated but NOT completed) */}
                         {signup.activated && !signup.hasSetPassword && (
                           <button
                             onClick={() => resendInvite(signup.id)}
@@ -446,7 +524,6 @@ export default function SuperAdminPage() {
                           </button>
                         )}
 
-                        {/* Delete button */}
                         {deletingId === signup.id ? (
                           <div className="flex gap-2 mt-1">
                             <button
