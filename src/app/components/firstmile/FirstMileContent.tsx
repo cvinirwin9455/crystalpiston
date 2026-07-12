@@ -20,6 +20,11 @@ export default function FirstMileContent() {
           <a href="#beta" className="fmc-beta-banner-link">Apply Now &rarr;</a>
           <div className="fmc-banner-divider" />
           <RegionToggle />
+          <div className="fmc-banner-divider" />
+          <a href="/login" className="fmc-banner-login">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Coach &amp; Client Login
+          </a>
         </div>
       </div>
 

@@ -88,6 +88,35 @@
   margin: 0 4px;
 }
 
+.fmc-banner-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  padding: 5px 12px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.fmc-banner-login:hover {
+  color: var(--fmc-color-white);
+  border-color: var(--fmc-color-primary);
+  background: rgba(242, 101, 34, 0.1);
+}
+
+.fmc-banner-login svg {
+  opacity: 0.7;
+}
+
+.fmc-banner-login:hover svg {
+  opacity: 1;
+}
+
 .fmc-region-select {
   padding: 5px 28px 5px 10px;
   font-size: 0.8rem;
