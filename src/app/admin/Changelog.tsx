@@ -11,6 +11,8 @@ const updates = [
     items: [
       { area: "Admin", text: "Fixed: 'Activate Coach' on the super admin dashboard now correctly sends beta coaches to FirstMileCoach.com instead of Crystal's platform" },
       { area: "Admin", text: "Fixed: Coach invites sent from the First Mile Coach admin panel now link to www.firstmilecoach.com instead of Crystal's domain" },
+      { area: "All", text: "NEW: Custom invite emails — coaches get a First Mile Coach branded welcome email, clients get an email mentioning their coach by name with both logos" },
+      { area: "All", text: "Fixed: Invite emails no longer show 'Pistol Performance Coaching' branding for First Mile Coach users" },
     ],
   },
   {
