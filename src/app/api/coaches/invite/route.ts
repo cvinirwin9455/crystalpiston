@@ -57,16 +57,30 @@ export async function POST(request: Request) {
     }
   }
 
-  // Invite the user via Supabase Auth
-  const { getProductionUrl } = await import('@/lib/email')
-  const siteUrl = getProductionUrl(request.url)
+  // Determine the correct redirect URL based on the inviting coach's organization
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+  let redirectDomain = 'www.crystalpistolperformance.com'
+  if (orgId) {
+    const { data: orgData } = await adminClient
+      .from('organizations')
+      .select('domain')
+      .eq('id', orgId)
+      .single()
+    if (orgData?.domain) {
+      let domain = orgData.domain
+      if (domain === 'firstmilecoach.com') domain = 'www.firstmilecoach.com'
+      if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
+      redirectDomain = domain
+    }
+  }
 
+  // Invite the user via Supabase Auth
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: {
       name,
       role: 'admin',
     },
-    redirectTo: `${siteUrl}/auth/callback?next=/set-password`,
+    redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
   })
 
   if (inviteError) {
@@ -74,9 +88,6 @@ export async function POST(request: Request) {
   }
 
   const newUserId = inviteData.user.id
-
-  // Get org scope from the inviting coach and set it on the new user
-  const orgId = await getOrgIdForUser(adminClient, user.id)
 
   // Update the auto-created users row to set role to admin, name, and org
   const userUpdate: Record<string, any> = { role: 'admin', name }

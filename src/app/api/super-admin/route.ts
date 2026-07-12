@@ -118,7 +118,14 @@ export async function POST(request: Request) {
       .eq('id', organizationId)
       .single()
 
-    const domain = org?.domain || 'firstmilecoach.com'
+    // Ensure www prefix for domains that require it (prevents 308 redirect stripping auth tokens)
+    let domain = org?.domain || 'www.firstmilecoach.com'
+    if (domain === 'firstmilecoach.com') {
+      domain = 'www.firstmilecoach.com'
+    }
+    if (domain === 'crystalpistolperformance.com') {
+      domain = 'www.crystalpistolperformance.com'
+    }
     const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
 
     // Invite the user via Supabase Auth (sends them an email to set their password)
