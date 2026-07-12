@@ -18,8 +18,8 @@ interface SendEmailParams {
 
 export async function sendEmail({ to, subject, html }: SendEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
-  const senderEmail = process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com'
-  const senderName = 'Pistol Performance Coaching'
+  const senderEmail = process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
+  const senderName = 'First Mile Coach'
 
   if (!apiKey) {
     console.error('RESEND_API_KEY not configured - check Vercel environment variables')
@@ -66,8 +66,7 @@ function wrapInBrandedTemplate(content: string): string {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #16213e; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
           <tr>
             <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #ffffff; letter-spacing: 1px;">Pistol Performance</h1>
-              <p style="margin: 4px 0 0; font-size: 11px; color: #d4a853; text-transform: uppercase; letter-spacing: 2px;">Coaching</p>
+              <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" width="140" style="display: block; margin: 0 auto; border-radius: 6px;" />
             </td>
           </tr>
           <tr>
@@ -77,7 +76,7 @@ function wrapInBrandedTemplate(content: string): string {
           </tr>
           <tr>
             <td style="padding: 16px 32px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
-              <p style="margin: 0; font-size: 11px; color: #555555;">Pistol Performance Coaching &bull; Southwest Missouri</p>
+              <p style="margin: 0; font-size: 11px; color: #555555;">First Mile Coach &bull; firstmilecoach.com</p>
             </td>
           </tr>
         </table>
@@ -103,7 +102,7 @@ export function buildPlanPublishedEmail(clientName: string, weekDateRange: strin
       <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
         <tr>
           <td align="center">
-            <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View My Plan</a>
+            <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View My Plan</a>
           </td>
         </tr>
       </table>
@@ -119,13 +118,13 @@ export function buildNewMessageEmail(clientName: string, messagePreview: string,
     subject: `New message from ${coach}`,
     html: `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hey ${firstName}! ${coach} sent you a message</h2>
-      <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(233,69,96,0.1); border-left: 3px solid #e94560; border-radius: 4px;">
+      <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(233,69,96,0.1); border-left: 3px solid #f26522; border-radius: 4px;">
         <p style="margin: 0; font-size: 14px; color: #e0e0e0; line-height: 1.5;">${truncated}</p>
       </div>
       <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
         <tr>
           <td align="center">
-            <a href="${siteUrl}/dashboard?tab=messages" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
+            <a href="${siteUrl}/dashboard?tab=messages" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View Message</a>
           </td>
         </tr>
       </table>
@@ -173,7 +172,7 @@ export function buildWorkoutCommentEmail(
       <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
         <tr>
           <td align="center">
-            <a href="${siteUrl}/${isFromCoach ? 'dashboard' : 'admin'}" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View & Reply</a>
+            <a href="${siteUrl}/${isFromCoach ? 'dashboard' : 'admin'}" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View & Reply</a>
           </td>
         </tr>
       </table>`
@@ -206,14 +205,14 @@ export function buildStravaImportEmail(
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #22c55e22; color: #22c55e; border: 1px solid #22c55e44;">Auto-Matched to Your Plan</div>`
     statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to your <strong style="color: #ffffff;">programmed workout</strong> from ${coach}${matchedWorkoutTitle ? `: <strong style="color: #d4a853;">${matchedWorkoutTitle}</strong>` : ''}.</p>
     <div style="margin: 0 0 20px; padding: 14px 16px; background-color: rgba(234,69,96,0.08); border: 1px solid rgba(234,69,96,0.2); border-radius: 8px;">
-      <p style="margin: 0 0 4px; color: #e94560; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
+      <p style="margin: 0 0 4px; color: #f26522; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
       <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps ${coach} understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
     </div>`
   } else if (matchStatus === 'client') {
     statusBadge = `<div style="margin: 0 0 16px; display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background-color: #22c55e22; color: #22c55e; border: 1px solid #22c55e44;">Auto-Matched to Your Workout</div>`
     statusMessage = `<p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Great work! This activity was automatically matched to a <strong style="color: #ffffff;">workout you created</strong>${matchedWorkoutTitle ? `: <strong style="color: #06b6d4;">${matchedWorkoutTitle}</strong>` : ''}.</p>
     <div style="margin: 0 0 20px; padding: 14px 16px; background-color: rgba(234,69,96,0.08); border: 1px solid rgba(234,69,96,0.2); border-radius: 8px;">
-      <p style="margin: 0 0 4px; color: #e94560; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
+      <p style="margin: 0 0 4px; color: #f26522; font-size: 13px; font-weight: 700;">ONE THING LEFT:</p>
       <p style="margin: 0; color: #ffffff; font-size: 14px; line-height: 1.5;">Log in and add your <strong>RPE (effort)</strong> and <strong>Sleep quality</strong> for this workout. This helps ${coach} understand how you&rsquo;re feeling and adjust your plan accordingly.</p>
     </div>`
   } else {
@@ -249,7 +248,7 @@ export function buildStravaImportEmail(
     <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
       <tr>
         <td align="center">
-          <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #e94560; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">Review in Dashboard</a>
+          <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">Review in Dashboard</a>
         </td>
       </tr>
     </table>

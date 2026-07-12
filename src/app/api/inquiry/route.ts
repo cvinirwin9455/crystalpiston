@@ -55,8 +55,8 @@ export async function POST(request: Request) {
                 <p style="margin: 0; color: #ffffff; font-size: 15px;">${email}</p>
               </div>
               
-              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(233,69,96,0.1); border-left: 3px solid #e94560; border-radius: 4px;">
-                <p style="margin: 0 0 4px; color: #e94560; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Their Message</p>
+              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(233,69,96,0.1); border-left: 3px solid #f26522; border-radius: 4px;">
+                <p style="margin: 0 0 4px; color: #f26522; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Their Message</p>
                 <p style="margin: 0; color: #e0e0e0; font-size: 15px; line-height: 1.6;">${message.replace(/\n/g, '<br/>')}</p>
               </div>
               

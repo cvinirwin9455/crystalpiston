@@ -23,7 +23,7 @@ function getBrandAssets(brand: Brand): BrandAssets {
       logoHtml: `<td style="padding: 32px 32px 24px; text-align: center; background: linear-gradient(145deg, #1a1a2e, #16213e);">
               <img src="https://www.crystalpistolperformance.com/IMG_5861.PNG" alt="Pistol Performance Coaching" width="160" style="display: block; margin: 0 auto;" />
             </td>`,
-      buttonColor: '#e94560',
+      buttonColor: '#f26522',
       footerText: 'Pistol Performance Coaching &mdash; From 5K to 100 miles',
     }
   }

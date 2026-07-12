@@ -27,7 +27,7 @@ const BRANDS: Record<string, BrandConfig> = {
     domain: 'crystalpistolperformance.com',
     logoUrl: '/IMG_5861.PNG',
     faviconUrl: '/favicon.ico',
-    primaryColor: '#e94560',
+    primaryColor: '#f26522',
     orgId: 'fffa6f6b-8226-40d9-9e49-ff17164334f4',
     title: 'Pistol Performance Coaching | Crystal - Running Coach',
     description: 'From 5K to 100 miles. Whether you\'re getting off the couch or breaking through a plateau, Crystal helps you set goals and crush them. Southwest Missouri running coach.',

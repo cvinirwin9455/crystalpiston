@@ -304,7 +304,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
+              <button onClick={handleSaveDetails} disabled={saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
               </button>
               <button onClick={() => { setEditing(false); setName(clientData.name); setEmail(clientData.email); setGender(clientData.gender); setGoal(clientData.goal); setBirthday(clientData.birthday || ""); }} className="text-gray-400 text-sm hover:text-white">Cancel</button>
@@ -379,7 +379,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
+              <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {creatingPlan ? "Creating..." : "Create Plan"}
               </button>
               <button onClick={() => setShowNewPlan(false)} className="text-gray-400 text-sm">Cancel</button>
@@ -617,7 +617,7 @@ function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planI
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
+            <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
             <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); setEditGoalPace(plan.goalPace || ""); setEditInjuryNotes(plan.injuryNotes || ""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
           </div>
         </div>
@@ -643,7 +643,7 @@ function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planI
                 />
               </div>
               <div className="flex gap-3">
-                <button onClick={handleCompletePlan} disabled={!completionReason.trim() || completing} className="bg-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+                <button onClick={handleCompletePlan} disabled={!completionReason.trim() || completing} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
                   {completing ? "Completing..." : "Complete Plan"}
                 </button>
                 <button onClick={() => { setShowCompleteConfirm(false); setCompletionReason(""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
