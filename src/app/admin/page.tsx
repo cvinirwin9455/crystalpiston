@@ -2131,7 +2131,7 @@ export default function AdminPage() {
               {showAdminMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
-                  <div className="absolute left-0 top-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[200px] overflow-hidden">
+                  <div className="absolute left-0 top-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[220px] overflow-hidden">
                     <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
