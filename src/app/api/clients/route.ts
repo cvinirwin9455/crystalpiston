@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
+import { sendClientInviteEmail } from '@/lib/invite-emails'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -269,19 +270,61 @@ export async function POST(request: Request) {
   // Get org scope for this coach
   const orgId = await getOrgIdForUser(adminClient, user.id)
 
-  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    data: {
-      name,
-      role: 'client',
-    },
-    redirectTo: `${getBaseUrl(request)}/auth/callback?next=/set-password`,
-  })
+  // Get the coach's name for the email
+  const { data: coachProfile } = await adminClient
+    .from('users')
+    .select('name')
+    .eq('id', user.id)
+    .single()
+  const coachName = coachProfile?.name || 'Your coach'
 
-  if (inviteError) {
-    return NextResponse.json({ error: inviteError.message }, { status: 500 })
+  // Determine the correct redirect URL based on the coach's organization
+  let redirectDomain = 'www.firstmilecoach.com'
+  if (orgId) {
+    const { data: orgData } = await adminClient
+      .from('organizations')
+      .select('domain')
+      .eq('id', orgId)
+      .single()
+    if (orgData?.domain) {
+      let domain = orgData.domain
+      if (domain === 'firstmilecoach.com') domain = 'www.firstmilecoach.com'
+      if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
+      redirectDomain = domain
+    }
   }
 
-  const newUserId = inviteData.user.id
+  // Generate the invite link without sending Supabase's built-in email
+  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: {
+      data: {
+        name,
+        role: 'client',
+      },
+      redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
+    },
+  })
+
+  if (linkError) {
+    return NextResponse.json({ error: linkError.message }, { status: 500 })
+  }
+
+  const newUserId = linkData.user.id
+  const confirmationUrl = linkData.properties.action_link
+
+  // Send our custom client invite email via Resend
+  const emailSent = await sendClientInviteEmail({
+    to: email,
+    clientName: name,
+    coachName,
+    confirmationUrl,
+  })
+
+  if (!emailSent) {
+    console.error(`Failed to send custom invite email to ${email}, but user was created`)
+  }
 
   // Update gender on the auto-created users row and set organization_id
   const userUpdates: Record<string, any> = {}
@@ -358,10 +401,4 @@ export async function POST(request: Request) {
     userId: newUserId,
     message: `Invite email sent to ${email}` 
   })
-}
-
-// Helper: get base URL from request
-function getBaseUrl(request: Request) {
-  const url = new URL(request.url)
-  return `${url.protocol}//${url.host}`
 }

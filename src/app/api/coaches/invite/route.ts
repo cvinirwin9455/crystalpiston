@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
+import { sendCoachInviteEmail } from '@/lib/invite-emails'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -74,20 +75,36 @@ export async function POST(request: Request) {
     }
   }
 
-  // Invite the user via Supabase Auth
-  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    data: {
-      name,
-      role: 'admin',
+  // Generate the invite link without sending Supabase's built-in email
+  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: {
+      data: {
+        name,
+        role: 'admin',
+      },
+      redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
     },
-    redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
   })
 
-  if (inviteError) {
-    return NextResponse.json({ error: inviteError.message }, { status: 500 })
+  if (linkError) {
+    return NextResponse.json({ error: linkError.message }, { status: 500 })
   }
 
-  const newUserId = inviteData.user.id
+  const newUserId = linkData.user.id
+  const confirmationUrl = linkData.properties.action_link
+
+  // Send our custom coach invite email via Resend
+  const emailSent = await sendCoachInviteEmail({
+    to: email,
+    coachName: name,
+    confirmationUrl,
+  })
+
+  if (!emailSent) {
+    console.error(`Failed to send custom invite email to ${email}, but user was created`)
+  }
 
   // Update the auto-created users row to set role to admin, name, and org
   const userUpdate: Record<string, any> = { role: 'admin', name }

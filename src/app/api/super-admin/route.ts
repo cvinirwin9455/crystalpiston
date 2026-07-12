@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { sendCoachInviteEmail } from '@/lib/invite-emails'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -128,20 +129,38 @@ export async function POST(request: Request) {
     }
     const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
 
-    // Invite the user via Supabase Auth (sends them an email to set their password)
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(signup.email, {
-      data: {
-        name: signup.full_name,
-        role: 'admin',
+    // Generate the invite link without sending Supabase's built-in email
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: 'invite',
+      email: signup.email,
+      options: {
+        data: {
+          name: signup.full_name,
+          role: 'admin',
+        },
+        redirectTo: redirectUrl,
       },
-      redirectTo: redirectUrl,
     })
 
-    if (inviteError) {
-      return NextResponse.json({ error: `Failed to invite user: ${inviteError.message}` }, { status: 500 })
+    if (linkError) {
+      return NextResponse.json({ error: `Failed to generate invite link: ${linkError.message}` }, { status: 500 })
     }
 
-    const newUserId = inviteData.user.id
+    const newUserId = linkData.user.id
+
+    // Build the confirmation URL from the token (generateLink returns properties we need)
+    const confirmationUrl = linkData.properties.action_link
+
+    // Send our custom coach invite email via Resend
+    const emailSent = await sendCoachInviteEmail({
+      to: signup.email,
+      coachName: signup.full_name,
+      confirmationUrl,
+    })
+
+    if (!emailSent) {
+      console.error(`Failed to send custom invite email to ${signup.email}, but user was created`)
+    }
 
     // Update the users row with org, role, and coach settings
     await adminClient
