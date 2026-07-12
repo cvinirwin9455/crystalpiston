@@ -34,6 +34,7 @@ export async function GET() {
   const { data: orgs } = await adminClient
     .from('organizations')
     .select('id, name, slug, domain')
+    .order('created_at', { ascending: true })
 
   // Get user counts per org
   const { data: users } = await adminClient
@@ -104,8 +105,8 @@ export async function POST(request: Request) {
   const { action, signupId, organizationId, password } = body
 
   if (action === 'activate_coach') {
-    if (!signupId || !organizationId) {
-      return NextResponse.json({ error: 'signupId and organizationId are required' }, { status: 400 })
+    if (!signupId) {
+      return NextResponse.json({ error: 'signupId is required' }, { status: 400 })
     }
 
     // Get the signup record
@@ -130,21 +131,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A user with this email already exists' }, { status: 400 })
     }
 
-    // Get the domain for the redirect URL
-    const { data: org } = await adminClient
+    // Create a NEW organization for this coach (each beta coach is their own isolated account)
+    const coachSlug = signup.full_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const { data: newOrg, error: orgError } = await adminClient
       .from('organizations')
-      .select('domain')
-      .eq('id', organizationId)
+      .insert({
+        name: `${signup.full_name}`,
+        slug: `fmc-${coachSlug}-${Date.now().toString(36)}`,
+        domain: 'firstmilecoach.com',
+      })
+      .select()
       .single()
 
-    // Ensure www prefix for domains that require it (prevents 308 redirect stripping auth tokens)
-    let domain = org?.domain || 'www.firstmilecoach.com'
-    if (domain === 'firstmilecoach.com') {
-      domain = 'www.firstmilecoach.com'
+    if (orgError) {
+      return NextResponse.json({ error: `Failed to create organization: ${orgError.message}` }, { status: 500 })
     }
-    if (domain === 'crystalpistolperformance.com') {
-      domain = 'www.crystalpistolperformance.com'
-    }
+
+    const newOrgId = newOrg.id
+
+    // Update the beta_signups record with the new org ID
+    await adminClient
+      .from('beta_signups')
+      .update({ organization_id: newOrgId })
+      .eq('id', signupId)
+
+    // Use firstmilecoach.com for the redirect
+    const domain = 'www.firstmilecoach.com'
     const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
 
     // Generate the invite link without sending Supabase's built-in email
@@ -167,7 +179,6 @@ export async function POST(request: Request) {
     const newUserId = linkData.user.id
 
     // Build the confirmation URL using hashed_token pointing to our app's auth callback
-    // (action_link points to Supabase's server which doesn't work reliably with PKCE)
     const hashedToken = linkData.properties.hashed_token
     const confirmationUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
@@ -176,20 +187,20 @@ export async function POST(request: Request) {
       to: signup.email,
       coachName: signup.full_name,
       confirmationUrl,
-      brand: getBrandFromDomain(org?.domain),
+      brand: 'first-mile',
     })
 
     if (!emailSent) {
       console.error(`Failed to send custom invite email to ${signup.email}, but user was created`)
     }
 
-    // Update the users row with org, role, and coach settings
+    // Update the users row with the NEW org, role, and coach settings
     await adminClient
       .from('users')
       .update({
         role: 'admin',
         name: signup.full_name,
-        organization_id: organizationId,
+        organization_id: newOrgId,
         coach_level: 'account_coach',
         access_level: 'all_clients',
       })
@@ -198,7 +209,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       userId: newUserId,
-      message: `Invite email sent to ${signup.full_name} (${signup.email}). They'll set their own password.`,
+      message: `Organization "${signup.full_name}" created. Invite email sent to ${signup.email}.`,
     })
   }
 
@@ -322,10 +333,18 @@ export async function POST(request: Request) {
         await adminClient.from('clients').delete().eq('user_id', existingUser.id)
         // Delete from client_coaches
         await adminClient.from('client_coaches').delete().eq('coach_id', existingUser.id)
+        // Delete templates belonging to this coach's org
+        if (signup.organization_id) {
+          await adminClient.from('templates').delete().eq('organization_id', signup.organization_id)
+        }
         // Delete from users table
         await adminClient.from('users').delete().eq('id', existingUser.id)
         // Delete from Supabase Auth
         await adminClient.auth.admin.deleteUser(existingUser.id)
+        // Delete the coach's organization
+        if (signup.organization_id) {
+          await adminClient.from('organizations').delete().eq('id', signup.organization_id)
+        }
       }
     }
 

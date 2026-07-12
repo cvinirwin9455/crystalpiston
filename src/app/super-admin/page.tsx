@@ -70,7 +70,7 @@ export default function SuperAdminPage() {
     }
   }
 
-  async function activateCoach(signupId: string, organizationId: string) {
+  async function activateCoach(signupId: string) {
     setActionMessage(null);
     try {
       const res = await fetch("/api/super-admin", {
@@ -79,7 +79,6 @@ export default function SuperAdminPage() {
         body: JSON.stringify({
           action: "activate_coach",
           signupId,
-          organizationId,
         }),
       });
 
@@ -359,7 +358,7 @@ export default function SuperAdminPage() {
                             {activatingId === signup.id ? (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => activateCoach(signup.id, signup.organization_id)}
+                                  onClick={() => activateCoach(signup.id)}
                                   className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-medium"
                                 >
                                   Confirm &amp; Send Invite

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getOrgIdForUser } from '@/lib/org'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -10,7 +11,7 @@ async function getAdminClient() {
   )
 }
 
-// GET /api/templates?type=week|day - List all templates (optionally filtered by type)
+// GET /api/templates?type=week|day - List templates scoped to the coach's organization
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,11 +31,17 @@ export async function GET(request: Request) {
   const type = searchParams.get('type')
 
   const adminClient = await getAdminClient()
+  const orgId = await getOrgIdForUser(adminClient, user.id)
 
   let query = adminClient
     .from('templates')
-    .select('id, name, type, category, data, created_at')
+    .select('id, name, type, category, data, created_at, organization_id')
     .order('name', { ascending: true })
+
+  // Scope to the coach's organization
+  if (orgId) {
+    query = query.eq('organization_id', orgId)
+  }
 
   if (type) {
     query = query.eq('type', type)
@@ -49,7 +56,7 @@ export async function GET(request: Request) {
   return NextResponse.json(templates || [])
 }
 
-// POST /api/templates - Create a new template
+// POST /api/templates - Create a new template (scoped to coach's org)
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -77,6 +84,7 @@ export async function POST(request: Request) {
   }
 
   const adminClient = await getAdminClient()
+  const orgId = await getOrgIdForUser(adminClient, user.id)
 
   const { data: template, error } = await adminClient
     .from('templates')
@@ -85,6 +93,7 @@ export async function POST(request: Request) {
       type,
       category: category || null,
       data,
+      organization_id: orgId,
     })
     .select()
     .single()
@@ -96,7 +105,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ success: true, template })
 }
 
-// DELETE /api/templates - Delete a template by id (passed in body)
+// DELETE /api/templates - Delete a template by id (scoped to coach's org)
 export async function DELETE(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -120,11 +129,19 @@ export async function DELETE(request: Request) {
   }
 
   const adminClient = await getAdminClient()
+  const orgId = await getOrgIdForUser(adminClient, user.id)
 
-  const { error } = await adminClient
+  // Only allow deleting templates within the coach's own org
+  let query = adminClient
     .from('templates')
     .delete()
     .eq('id', templateId)
+
+  if (orgId) {
+    query = query.eq('organization_id', orgId)
+  }
+
+  const { error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -133,7 +150,7 @@ export async function DELETE(request: Request) {
   return NextResponse.json({ success: true })
 }
 
-// PATCH /api/templates - Update a template by id
+// PATCH /api/templates - Update a template by id (scoped to coach's org)
 export async function PATCH(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -157,18 +174,24 @@ export async function PATCH(request: Request) {
   }
 
   const adminClient = await getAdminClient()
+  const orgId = await getOrgIdForUser(adminClient, user.id)
 
   const updateFields: Record<string, any> = {}
   if (name !== undefined) updateFields.name = name
   if (category !== undefined) updateFields.category = category
   if (data !== undefined) updateFields.data = data
 
-  const { data: template, error } = await adminClient
+  // Only allow updating templates within the coach's own org
+  let query = adminClient
     .from('templates')
     .update(updateFields)
     .eq('id', templateId)
-    .select()
-    .single()
+
+  if (orgId) {
+    query = query.eq('organization_id', orgId)
+  }
+
+  const { data: template, error } = await query.select().single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
