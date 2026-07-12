@@ -95,7 +95,9 @@ export async function POST(request: Request) {
   }
 
   const newUserId = linkData.user.id
-  const confirmationUrl = linkData.properties.action_link
+  // Build the confirmation URL using hashed_token pointing to our app's auth callback
+  const hashedToken = linkData.properties.hashed_token
+  const confirmationUrl = `https://${redirectDomain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
   // Send our custom coach invite email via Resend
   const emailSent = await sendCoachInviteEmail({

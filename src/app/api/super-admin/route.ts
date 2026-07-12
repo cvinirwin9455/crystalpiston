@@ -148,8 +148,10 @@ export async function POST(request: Request) {
 
     const newUserId = linkData.user.id
 
-    // Build the confirmation URL from the token (generateLink returns properties we need)
-    const confirmationUrl = linkData.properties.action_link
+    // Build the confirmation URL using hashed_token pointing to our app's auth callback
+    // (action_link points to Supabase's server which doesn't work reliably with PKCE)
+    const hashedToken = linkData.properties.hashed_token
+    const confirmationUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
     // Send our custom coach invite email via Resend
     const emailSent = await sendCoachInviteEmail({

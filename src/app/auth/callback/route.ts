@@ -67,7 +67,8 @@ export async function GET(request: Request) {
         type: type as any,
       })
       if (!error) {
-        return NextResponse.redirect(`${origin}/set-password`)
+        const destination = next || '/set-password'
+        return NextResponse.redirect(`${origin}${destination}`)
       }
     }
 
