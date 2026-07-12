@@ -25,16 +25,22 @@ type BetaSignup = {
   agreed_to_terms: boolean;
   signed_up_at: string;
   created_at: string;
+  activated: boolean;
+  activatedUserId: string | null;
+  activatedAt: string | null;
 };
 
 export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "actions">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "beta">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
-  const [activateMessage, setActivateMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<"all" | "activated" | "pending">("all");
   const router = useRouter();
   const supabase = createClient();
 
@@ -65,7 +71,7 @@ export default function SuperAdminPage() {
   }
 
   async function activateCoach(signupId: string, organizationId: string) {
-    setActivateMessage(null);
+    setActionMessage(null);
     try {
       const res = await fetch("/api/super-admin", {
         method: "POST",
@@ -79,14 +85,66 @@ export default function SuperAdminPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setActivateMessage({ text: data.error || "Failed to activate", type: "error" });
+        setActionMessage({ text: data.error || "Failed to activate", type: "error" });
       } else {
-        setActivateMessage({ text: data.message, type: "success" });
+        setActionMessage({ text: data.message, type: "success" });
         setActivatingId(null);
-        fetchData(); // Refresh
+        fetchData();
       }
     } catch {
-      setActivateMessage({ text: "Network error", type: "error" });
+      setActionMessage({ text: "Network error", type: "error" });
+    }
+  }
+
+  async function resendInvite(signupId: string) {
+    setActionMessage(null);
+    setResendingId(signupId);
+    try {
+      const res = await fetch("/api/super-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "resend_invite",
+          signupId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setActionMessage({ text: data.error || "Failed to resend", type: "error" });
+      } else {
+        setActionMessage({ text: data.message, type: "success" });
+        fetchData();
+      }
+    } catch {
+      setActionMessage({ text: "Network error", type: "error" });
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  async function deleteAccount(signupId: string) {
+    setActionMessage(null);
+    try {
+      const res = await fetch("/api/super-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete_account",
+          signupId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setActionMessage({ text: data.error || "Failed to delete", type: "error" });
+      } else {
+        setActionMessage({ text: data.message, type: "success" });
+        setDeletingId(null);
+        fetchData();
+      }
+    } catch {
+      setActionMessage({ text: "Network error", type: "error" });
     }
   }
 
@@ -94,6 +152,15 @@ export default function SuperAdminPage() {
     await supabase.auth.signOut();
     router.push("/login");
   }
+
+  const filteredSignups = betaSignups.filter((s) => {
+    if (filterStatus === "activated") return s.activated;
+    if (filterStatus === "pending") return !s.activated;
+    return true;
+  });
+
+  const activatedCount = betaSignups.filter((s) => s.activated).length;
+  const pendingCount = betaSignups.filter((s) => !s.activated).length;
 
   if (loading) {
     return (
@@ -197,27 +264,77 @@ export default function SuperAdminPage() {
               <span className="text-sm text-gray-500">{betaSignups.length} / 50 spots</span>
             </div>
 
-            {activateMessage && (
+            {/* Status summary cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+                <div className="text-2xl font-bold text-gray-900">{betaSignups.length}</div>
+                <div className="text-xs text-gray-500">Total Signups</div>
+              </div>
+              <div className="bg-white rounded-xl border border-green-200 p-4 text-center shadow-sm">
+                <div className="text-2xl font-bold text-green-600">{activatedCount}</div>
+                <div className="text-xs text-gray-500">Activated</div>
+              </div>
+              <div className="bg-white rounded-xl border border-yellow-200 p-4 text-center shadow-sm">
+                <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
+                <div className="text-xs text-gray-500">Pending</div>
+              </div>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="flex gap-2">
+              {[
+                { key: "all", label: "All" },
+                { key: "activated", label: "Activated" },
+                { key: "pending", label: "Pending" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilterStatus(f.key as any)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                    filterStatus === f.key
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {actionMessage && (
               <div className={`p-4 rounded-lg text-sm ${
-                activateMessage.type === "success"
+                actionMessage.type === "success"
                   ? "bg-green-50 text-green-700 border border-green-200"
                   : "bg-red-50 text-red-700 border border-red-200"
               }`}>
-                {activateMessage.text}
+                {actionMessage.text}
               </div>
             )}
 
-            {betaSignups.length === 0 ? (
+            {filteredSignups.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                <p className="text-gray-500">No beta signups yet.</p>
+                <p className="text-gray-500">
+                  {filterStatus === "all" ? "No beta signups yet." : `No ${filterStatus} signups.`}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {betaSignups.map((signup) => (
+                {filteredSignups.map((signup) => (
                   <div key={signup.id} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-bold text-gray-900">{signup.full_name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-gray-900">{signup.full_name}</h3>
+                          {signup.activated ? (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                              Activated
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                              Pending
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{signup.email}</p>
                         <div className="flex gap-3 mt-2">
                           <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
@@ -229,20 +346,64 @@ export default function SuperAdminPage() {
                         </div>
                         <p className="text-xs text-gray-400 mt-2">
                           Signed up: {new Date(signup.signed_up_at).toLocaleDateString()}
+                          {signup.activatedAt && (
+                            <> &bull; Activated: {new Date(signup.activatedAt).toLocaleDateString()}</>
+                          )}
                         </p>
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
-                        {activatingId === signup.id ? (
-                          <div className="flex gap-2">
+                        {/* Activate button (only for pending) */}
+                        {!signup.activated && (
+                          <>
+                            {activatingId === signup.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => activateCoach(signup.id, signup.organization_id)}
+                                  className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-medium"
+                                >
+                                  Confirm &amp; Send Invite
+                                </button>
+                                <button
+                                  onClick={() => setActivatingId(null)}
+                                  className="text-sm text-gray-500 px-3 py-2 hover:text-gray-800 transition"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setActivatingId(signup.id)}
+                                className="text-sm bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+                              >
+                                Activate Coach
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        {/* Resend button (only for activated) */}
+                        {signup.activated && (
+                          <button
+                            onClick={() => resendInvite(signup.id)}
+                            disabled={resendingId === signup.id}
+                            className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+                          >
+                            {resendingId === signup.id ? "Sending..." : "Resend Invite"}
+                          </button>
+                        )}
+
+                        {/* Delete button */}
+                        {deletingId === signup.id ? (
+                          <div className="flex gap-2 mt-1">
                             <button
-                              onClick={() => activateCoach(signup.id, signup.organization_id)}
-                              className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-medium"
+                              onClick={() => deleteAccount(signup.id)}
+                              className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-medium"
                             >
-                              Confirm &amp; Send Invite
+                              Confirm Delete
                             </button>
                             <button
-                              onClick={() => { setActivatingId(null); }}
+                              onClick={() => setDeletingId(null)}
                               className="text-sm text-gray-500 px-3 py-2 hover:text-gray-800 transition"
                             >
                               Cancel
@@ -250,10 +411,10 @@ export default function SuperAdminPage() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setActivatingId(signup.id)}
-                            className="text-sm bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+                            onClick={() => setDeletingId(signup.id)}
+                            className="text-xs text-red-500 hover:text-red-700 transition mt-1"
                           >
-                            Activate Coach
+                            Delete
                           </button>
                         )}
                       </div>
