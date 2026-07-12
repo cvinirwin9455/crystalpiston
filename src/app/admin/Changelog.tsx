@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-09T19:30:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-12T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 12, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: 'Activate Coach' on the super admin dashboard now correctly sends beta coaches to FirstMileCoach.com instead of Crystal's platform" },
+      { area: "Admin", text: "Fixed: Coach invites sent from the First Mile Coach admin panel now link to www.firstmilecoach.com instead of Crystal's domain" },
+    ],
+  },
   {
     date: "July 9, 2026",
     items: [
