@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-12T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-13T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 13, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Dashboard stats (Active Clients, Drafts, Payments) now only count clients you can actually see — previously could show a higher number than what appeared in your sidebar" },
+      { area: "Admin", text: "Fixed: When you're the only coach, all clients now appear in your sidebar even if they weren't formally assigned to you — no more 'ghost' clients that count in stats but don't show up" },
+    ],
+  },
   {
     date: "July 12, 2026",
     items: [

@@ -2218,14 +2218,18 @@ export default function AdminPage() {
             const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
             const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
             const hideOtherClients = myAccessLevel === 'own_clients' || myCoachLevel === 'coach';
+            // When there's only 1 coach, include unassigned clients in "My Clients" since there's no one else to manage them
+            const effectivePrimaryClients = allCoaches.length <= 1 
+              ? [...primaryClients, ...otherClients]
+              : primaryClients;
             return (
               <>
-                {primaryClients.length > 0 && (
+                {effectivePrimaryClients.length > 0 && (
                   <div className="px-4 py-1.5 bg-primary/30 border-b border-white/5">
-                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({primaryClients.length})</p>
+                    <p className="text-gold text-[10px] font-heading uppercase tracking-wider">My Clients ({effectivePrimaryClients.length})</p>
                   </div>
                 )}
-                {primaryClients.map((client) => {
+                {effectivePrimaryClients.map((client) => {
             const isSelected = selectedClient === client.id;
             return (
               <button key={client.id} onClick={() => { handleSelectClient(client.id); }} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-white/5 ${isSelected ? "bg-accent/10 border-l-2 border-l-accent" : "hover:bg-white/5"}`}>
@@ -3918,16 +3922,33 @@ export default function AdminPage() {
                 <h2 className="font-heading text-2xl uppercase text-white">Dashboard</h2>
 
             {/* Overview Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{clients.filter(c => c.status === "active").length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{clients.reduce((s, c) => s + c.weeks.filter(w => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${clients.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
-              <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${clients.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
-            </div>
+            {(() => {
+              // Use the same visibility logic as the sidebar: only count clients this coach can see
+              const visibleClients = clients.filter(c => {
+                const isMyClient = c.coaches.some((cc: any) => cc.coachId === loggedInUserId);
+                // If there's only 1 coach, show all clients (unassigned ones too, since there's no one else)
+                // If there are multiple coaches, unassigned clients are visible to account coaches
+                return isMyClient || allCoaches.length <= 1 || (myAccessLevel !== 'own_clients' && myCoachLevel !== 'coach');
+              });
+              const activeVisible = visibleClients.filter(c => c.status === "active");
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{activeVisible.length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{activeVisible.reduce((s, c) => s + c.weeks.filter((w: any) => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${activeVisible.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
+                </div>
+              );
+            })()}
 
             {/* Action Items */}
             {(() => {
-              const allDrafts = clients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "draft").map(w => ({ client: c, week: w }))).sort((a, b) => {
+              // Use the same visibility logic as the dashboard stats
+              const visibleClients = clients.filter(c => {
+                const isMyClient = c.coaches.some((cc: any) => cc.coachId === loggedInUserId);
+                return isMyClient || allCoaches.length <= 1 || (myAccessLevel !== 'own_clients' && myCoachLevel !== 'coach');
+              });
+              const allDrafts = visibleClients.filter(c => c.status === "active").flatMap(c => c.weeks.filter(w => w.status === "draft").map(w => ({ client: c, week: w }))).sort((a, b) => {
                 // Sort by date first
                 const dateA = new Date(a.week.dateRange.split(' - ')[0] + ', ' + new Date().getFullYear());
                 const dateB = new Date(b.week.dateRange.split(' - ')[0] + ', ' + new Date().getFullYear());
@@ -3935,7 +3956,7 @@ export default function AdminPage() {
                 // Then alphabetically by client first name
                 return a.client.name.localeCompare(b.client.name);
               });
-              const unpaidClients = clients.filter(c => c.status === "active" && c.owed - c.paid > 0);
+              const unpaidClients = visibleClients.filter(c => c.status === "active" && c.owed - c.paid > 0);
               return (
                 <>
                   {/* Drafts Ready to Publish */}
