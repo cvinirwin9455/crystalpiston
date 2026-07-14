@@ -542,8 +542,23 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
         </select>
         <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.recovery.type === "distance" ? (
-          <button type="button" onClick={() => onChange({ ...block, recovery: { ...block.recovery!, unit: block.recovery!.unit === "meters" ? defaultDistUnit : "meters", value: "" } })} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
-            {block.recovery.unit === "meters" ? "meters" : mainUnitLabel}
+          <button type="button" onClick={() => {
+            const newUnit = block.recovery!.unit === "meters" ? defaultDistUnit : "meters";
+            const currentVal = parseFloat(block.recovery!.value) || 0;
+            let newVal = "";
+            if (currentVal > 0) {
+              // Convert value when switching units
+              if (block.recovery!.unit === "meters" && newUnit === "miles") newVal = (currentVal / 1609.34).toFixed(2).replace(/\.?0+$/, '') || "1";
+              else if (block.recovery!.unit === "meters" && newUnit === "km") newVal = (currentVal / 1000).toFixed(2).replace(/\.?0+$/, '') || "1";
+              else if (block.recovery!.unit === "miles" && newUnit === "meters") newVal = Math.round(currentVal * 1609.34).toString();
+              else if (block.recovery!.unit === "km" && newUnit === "meters") newVal = Math.round(currentVal * 1000).toString();
+              else newVal = block.recovery!.value;
+            } else {
+              newVal = newUnit === "meters" ? "200" : "1";
+            }
+            onChange({ ...block, recovery: { ...block.recovery!, unit: newUnit, value: newVal } });
+          }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs hover:border-purple-500/50 transition-colors">
+            {block.recovery!.unit === "meters" ? "meters" : mainUnitLabel}
           </button>
         ) : (
           <select value={block.recovery.unit} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, unit: e.target.value as TimeUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
