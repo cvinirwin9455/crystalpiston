@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-13T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-14T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 14, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Recovery interval in structured run builder now defaults to miles (or km) instead of always starting at meters — the toggle button to switch between miles and meters was already there, but it always started on meters before" },
+    ],
+  },
   {
     date: "July 13, 2026",
     items: [

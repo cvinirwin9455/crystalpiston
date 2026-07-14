@@ -529,14 +529,14 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
           if (hasRecovery) {
             onChange({ ...block, recovery: { ...block.recovery!, value: "" } });
           } else {
-            onChange({ ...block, recovery: { type: "distance", value: "200", unit: "meters", recoveryType: "Jog" } });
+            onChange({ ...block, recovery: { type: "distance", value: defaultDistUnit === "meters" ? "200" : "1", unit: defaultDistUnit, recoveryType: "Jog" } });
           }
         }} className={`text-xs px-2 py-0.5 rounded border transition-colors ${block.recovery?.value && parseFloat(block.recovery.value) > 0 ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/10 text-gray-500 hover:text-white'}`}>
           Recovery {block.recovery?.value && parseFloat(block.recovery.value) > 0 ? '✓' : '(optional)'}
         </button>
         {block.recovery?.value && parseFloat(block.recovery.value) > 0 && (
           <>
-        <select value={block.recovery.type} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : "meters" } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
+        <select value={block.recovery.type} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : defaultDistUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
           <option value="distance">Dist</option>
           <option value="time">Time</option>
         </select>
