@@ -176,8 +176,11 @@ export async function POST(request: Request) {
 
         if (client) {
           const isCoach = profile?.role === 'admin'
-          const { getProductionUrl } = await import('@/lib/email')
+          const { getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+          const { getOrgIdForUser } = await import('@/lib/org')
           const siteUrl = getProductionUrl(request.url)
+          const orgId = await getOrgIdForUser(adminClient, user.id)
+          const brand = getEmailBrandFromOrgId(orgId)
 
           let recipientEmail: string | null = null
           let recipientName: string = ''
@@ -241,7 +244,7 @@ export async function POST(request: Request) {
                       isCoach,
                       profile?.name?.split(' ')[0] || undefined
                     )
-                    sendEmail({ to: coach.email, ...emailContent }).catch(console.error)
+                    sendEmail({ to: coach.email, ...emailContent, brand }).catch(console.error)
                   }
                 }
               }
@@ -282,7 +285,7 @@ export async function POST(request: Request) {
                     isCoach,
                     undefined
                   )
-                  sendEmail({ to: coach.email, ...emailContent }).catch(console.error)
+                  sendEmail({ to: coach.email, ...emailContent, brand }).catch(console.error)
                 }
               }
             } else {
@@ -306,7 +309,7 @@ export async function POST(request: Request) {
                     isCoach,
                     undefined
                   )
-                  sendEmail({ to: adminUser.email, ...emailContent }).catch(console.error)
+                  sendEmail({ to: adminUser.email, ...emailContent, brand }).catch(console.error)
                 }
               }
             }
@@ -326,7 +329,7 @@ export async function POST(request: Request) {
               isCoach,
               isCoach ? (profile?.name?.split(' ')[0] || undefined) : undefined
             )
-            sendEmail({ to: recipientEmail, ...emailContent }).catch(console.error)
+            sendEmail({ to: recipientEmail, ...emailContent, brand }).catch(console.error)
           }
         }
       }

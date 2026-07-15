@@ -346,7 +346,10 @@ export async function POST(request: Request) {
           }
         }
 
-        const { sendEmail, buildStravaImportEmail } = await import('@/lib/email')
+        const { sendEmail, buildStravaImportEmail, getEmailBrandFromOrgId } = await import('@/lib/email')
+        const { getOrgIdForUser } = await import('@/lib/org')
+        const orgId = await getOrgIdForUser(adminClient, connection.user_id)
+        const brand = getEmailBrandFromOrgId(orgId)
         const url = new URL(request.url)
         const siteUrl = `https://${url.host}`
 
@@ -363,7 +366,7 @@ export async function POST(request: Request) {
           siteUrl
         )
 
-        await sendEmail({ to: clientUser.email, subject, html })
+        await sendEmail({ to: clientUser.email, subject, html, brand })
       }
       }
     } catch (emailErr) {
@@ -686,7 +689,10 @@ async function notifyCrystalStravaMatch(adminClient: any, userId: string, strava
     }
   }
 
-  const { sendEmail } = await import('@/lib/email')
+  const { sendEmail, getEmailBrandFromOrgId } = await import('@/lib/email')
+  const { getOrgIdForUser } = await import('@/lib/org')
+  const orgId = await getOrgIdForUser(adminClient, userId)
+  const brand = getEmailBrandFromOrgId(orgId)
   const url = new URL(request.url)
   const siteUrl = `https://${url.host}`
 
@@ -715,6 +721,6 @@ async function notifyCrystalStravaMatch(adminClient: any, userId: string, strava
   `
 
   for (const email of notifEmails) {
-    sendEmail({ to: email, subject, html: emailHtml }).catch(console.error)
+    sendEmail({ to: email, subject, html: emailHtml, brand }).catch(console.error)
   }
 }

@@ -1,5 +1,58 @@
 // Email utility for sending notifications via Resend
 
+export type EmailBrand = 'first-mile' | 'crystal-pistol'
+
+interface EmailBrandAssets {
+  name: string
+  senderName: string
+  senderEmail: string
+  logoUrl: string
+  logoAlt: string
+  footerText: string
+  bgColor: string
+  cardBgColor: string
+  borderColor: string
+}
+
+function getEmailBrandAssets(brand: EmailBrand): EmailBrandAssets {
+  if (brand === 'crystal-pistol') {
+    return {
+      name: 'Pistol Performance Coaching',
+      senderName: 'Pistol Performance Coaching',
+      senderEmail: process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com',
+      logoUrl: 'https://www.crystalpistolperformance.com/IMG_5861.PNG',
+      logoAlt: 'Pistol Performance Coaching',
+      footerText: 'Pistol Performance Coaching &bull; crystalpistolperformance.com',
+      bgColor: '#1a1a2e',
+      cardBgColor: '#16213e',
+      borderColor: 'rgba(255,255,255,0.1)',
+    }
+  }
+
+  return {
+    name: 'First Mile Coach',
+    senderName: 'First Mile Coach',
+    senderEmail: process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com',
+    logoUrl: 'https://www.firstmilecoach.com/firstmile/logo.png',
+    logoAlt: 'First Mile Coach',
+    footerText: 'First Mile Coach &bull; firstmilecoach.com',
+    bgColor: '#1a1a2e',
+    cardBgColor: '#16213e',
+    borderColor: 'rgba(255,255,255,0.1)',
+  }
+}
+
+/**
+ * Determine email brand from an organization ID.
+ * Crystal Pistol org → crystal-pistol, everything else → first-mile.
+ */
+const CRYSTAL_PISTOL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4'
+
+export function getEmailBrandFromOrgId(orgId: string | null | undefined): EmailBrand {
+  if (orgId === CRYSTAL_PISTOL_ORG_ID) return 'crystal-pistol'
+  return 'first-mile'
+}
+
 // Helper: get the production site URL (never use preview deployment URLs in emails)
 export function getProductionUrl(requestUrl?: string): string {
   // Always prefer the configured production URL
@@ -14,12 +67,12 @@ interface SendEmailParams {
   to: string
   subject: string
   html: string
+  brand?: EmailBrand
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailParams): Promise<boolean> {
+export async function sendEmail({ to, subject, html, brand = 'crystal-pistol' }: SendEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
-  const senderEmail = process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
-  const senderName = 'First Mile Coach'
+  const assets = getEmailBrandAssets(brand)
 
   if (!apiKey) {
     console.error('RESEND_API_KEY not configured - check Vercel environment variables')
@@ -34,10 +87,10 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: `${senderName} <${senderEmail}>`,
+        from: `${assets.senderName} <${assets.senderEmail}>`,
         to: [to],
         subject,
-        html: wrapInBrandedTemplate(html),
+        html: wrapInBrandedTemplate(html, brand),
       }),
     })
 
@@ -55,18 +108,19 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
 }
 
 // Wrap content in branded email template
-function wrapInBrandedTemplate(content: string): string {
+function wrapInBrandedTemplate(content: string, brand: EmailBrand = 'crystal-pistol'): string {
+  const assets = getEmailBrandAssets(brand)
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; background-color: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #1a1a2e; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; background-color: ${assets.bgColor}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${assets.bgColor}; padding: 40px 20px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #16213e; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: ${assets.cardBgColor}; border-radius: 16px; border: 1px solid ${assets.borderColor}; overflow: hidden;">
           <tr>
-            <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" width="140" style="display: block; margin: 0 auto; border-radius: 6px;" />
+            <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid ${assets.borderColor};">
+              <img src="${assets.logoUrl}" alt="${assets.logoAlt}" width="140" style="display: block; margin: 0 auto; border-radius: 6px;" />
             </td>
           </tr>
           <tr>
@@ -76,7 +130,7 @@ function wrapInBrandedTemplate(content: string): string {
           </tr>
           <tr>
             <td style="padding: 16px 32px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
-              <p style="margin: 0; font-size: 11px; color: #555555;">First Mile Coach &bull; firstmilecoach.com</p>
+              <p style="margin: 0; font-size: 11px; color: #555555;">${assets.footerText}</p>
             </td>
           </tr>
         </table>

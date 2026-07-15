@@ -256,7 +256,10 @@ async function notifyCrystalClientWorkout(userId: string, workoutId: string, req
   const workoutDay = workout.day || ''
   const workoutMiles = workout.miles ? `${workout.miles} mi` : ''
 
-  const { sendEmail, getProductionUrl } = await import('@/lib/email')
+  const { sendEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+  const { getOrgIdForUser } = await import('@/lib/org')
+  const orgId = await getOrgIdForUser(adminClient, userId)
+  const brand = getEmailBrandFromOrgId(orgId)
   const siteUrl = getProductionUrl(request.url)
 
   const subject = `${clientName} completed: ${workoutTitle}${isStrava ? ' (Strava)' : ''}`
@@ -282,6 +285,6 @@ async function notifyCrystalClientWorkout(userId: string, workoutId: string, req
   `
 
   for (const email of notifEmails) {
-    sendEmail({ to: email, subject, html: emailHtml }).catch(console.error)
+    sendEmail({ to: email, subject, html: emailHtml, brand }).catch(console.error)
   }
 }

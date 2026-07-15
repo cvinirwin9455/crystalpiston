@@ -98,7 +98,14 @@ export async function PATCH(
               .single()
 
             if (clientUser?.email) {
-              const { sendEmail, buildPlanPublishedEmail, getProductionUrl } = await import('@/lib/email')
+              const { sendEmail, buildPlanPublishedEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+              // Determine brand from the admin user's organization
+              const { data: orgData } = await supabase
+                .from('users')
+                .select('organization_id')
+                .eq('id', user.id)
+                .single()
+              const brand = getEmailBrandFromOrgId(orgData?.organization_id)
               const siteUrl = getProductionUrl(request.url)
               const emailContent = buildPlanPublishedEmail(
                 clientUser.name || 'there',
@@ -107,7 +114,7 @@ export async function PATCH(
                 siteUrl
               )
               // Fire and forget
-              sendEmail({ to: clientUser.email, ...emailContent }).catch(console.error)
+              sendEmail({ to: clientUser.email, ...emailContent, brand }).catch(console.error)
             }
           }
         }

@@ -373,7 +373,9 @@ export async function POST(request: Request) {
         }
 
         if (notifEmails.length > 0) {
-          const { sendEmail, getProductionUrl } = await import('@/lib/email')
+          const { sendEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+          const orgId = await getOrgIdForUser(adminClient, user.id)
+          const brand = getEmailBrandFromOrgId(orgId)
           const siteUrl = getProductionUrl(request.url)
           const senderName = senderProfile?.name?.split(' ')[0] || 'A client'
           const truncated = message.trim().length > 150 ? message.trim().slice(0, 150) + '...' : message.trim()
@@ -393,7 +395,7 @@ export async function POST(request: Request) {
           `
 
           for (const email of notifEmails) {
-            sendEmail({ to: email, subject: `New message from ${senderName}`, html: emailHtml }).catch(console.error)
+            sendEmail({ to: email, subject: `New message from ${senderName}`, html: emailHtml, brand }).catch(console.error)
           }
         }
       }
@@ -409,10 +411,12 @@ export async function POST(request: Request) {
     const messagesPref = notifPrefs?.messages || 'immediate'
 
     if ((messagesPref === 'immediate' || messagesPref === 'daily') && recipientProfile.email) {
-      const { sendEmail, buildNewMessageEmail, getProductionUrl } = await import('@/lib/email')
+      const { sendEmail, buildNewMessageEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+      const orgId = await getOrgIdForUser(adminClient, user.id)
+      const brand = getEmailBrandFromOrgId(orgId)
       const siteUrl = getProductionUrl(request.url)
       const emailContent = buildNewMessageEmail(recipientProfile.name?.split(' ')[0] || 'there', message.trim(), siteUrl, senderProfile?.name?.split(' ')[0] || undefined)
-      sendEmail({ to: recipientProfile.email, ...emailContent }).catch(console.error)
+      sendEmail({ to: recipientProfile.email, ...emailContent, brand }).catch(console.error)
     }
   }
   } catch (notifErr) {

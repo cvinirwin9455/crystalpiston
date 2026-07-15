@@ -451,7 +451,10 @@ export async function POST(request: Request) {
               .eq('id', user.id)
               .single()
 
-            const { sendEmail, buildPlanPublishedEmail, getProductionUrl } = await import('@/lib/email')
+            const { sendEmail, buildPlanPublishedEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+            const { getOrgIdForUser } = await import('@/lib/org')
+            const orgId = await getOrgIdForUser(adminClient, user.id)
+            const brand = getEmailBrandFromOrgId(orgId)
             const siteUrl = getProductionUrl(request.url)
             const emailContent = buildPlanPublishedEmail(
               clientUser.name?.split(' ')[0] || 'there',
@@ -460,7 +463,7 @@ export async function POST(request: Request) {
               siteUrl,
               coachProfile?.name?.split(' ')[0] || undefined
             )
-            sendEmail({ to: clientUser.email, ...emailContent }).catch(console.error)
+            sendEmail({ to: clientUser.email, ...emailContent, brand }).catch(console.error)
           }
         }
       }

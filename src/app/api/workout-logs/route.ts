@@ -216,7 +216,10 @@ async function notifyCrystalWorkoutLog(
   const workoutMiles = workout?.miles ? `${workout.miles} mi` : ''
 
   // Build email content based on status
-  const { sendEmail, getProductionUrl } = await import('@/lib/email')
+  const { sendEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+  const { getOrgIdForUser } = await import('@/lib/org')
+  const orgId = await getOrgIdForUser(adminClient, userId)
+  const brand = getEmailBrandFromOrgId(orgId)
   const siteUrl = getProductionUrl(request.url)
 
   let subject: string
@@ -267,6 +270,6 @@ async function notifyCrystalWorkoutLog(
   `
 
   for (const { email } of coachEmails) {
-    sendEmail({ to: email, subject, html: emailHtml }).catch(console.error)
+    sendEmail({ to: email, subject, html: emailHtml, brand }).catch(console.error)
   }
 }

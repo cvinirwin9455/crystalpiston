@@ -76,36 +76,32 @@ export async function POST(
   // Construct the invite URL using token_hash format
   const inviteUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
-  // Send email via Resend API directly
-  const resendApiKey = process.env.RESEND_API_KEY
-  const senderEmail = process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com'
+  // Determine brand from admin's organization
+  const { getOrgIdForUser } = await import('@/lib/org')
+  const { getEmailBrandFromOrgId } = await import('@/lib/email')
+  const { sendClientInviteEmail } = await import('@/lib/invite-emails')
 
-  if (!resendApiKey) {
-    return NextResponse.json({ error: 'Email service not configured. Add RESEND_API_KEY to environment variables.' }, { status: 500 })
-  }
+  const orgId = await getOrgIdForUser(adminClient, user.id)
+  const brand = getEmailBrandFromOrgId(orgId)
 
-  const emailRes = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${resendApiKey}`,
-    },
-    body: JSON.stringify({
-      from: `Pistol Performance Coaching <${senderEmail}>`,
-      to: [clientUser.email],
-      subject: "You're invited to Pistol Performance Coaching!",
-      html: `
-        <h2>You've been invited to Pistol Performance Coaching!</h2>
-        <p>Crystal has set up your training account. Click the link below to set your password and get started.</p>
-        <p><a href="${inviteUrl}">Set Up Your Account</a></p>
-        <p>If you didn't expect this email, you can safely ignore it.</p>
-      `,
-    }),
+  // Get the coach's name for the invite email
+  const { data: coachProfile } = await adminClient
+    .from('users')
+    .select('name')
+    .eq('id', user.id)
+    .single()
+  const coachName = coachProfile?.name || 'Your coach'
+
+  const sent = await sendClientInviteEmail({
+    to: clientUser.email,
+    clientName: clientUser.name || 'there',
+    coachName,
+    confirmationUrl: inviteUrl,
+    brand,
   })
 
-  if (!emailRes.ok) {
-    const errData = await emailRes.json().catch(() => ({}))
-    return NextResponse.json({ error: errData.message || 'Failed to send email' }, { status: 500 })
+  if (!sent) {
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true, message: `Invite resent to ${clientUser.email}` })
