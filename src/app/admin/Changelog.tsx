@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-14T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-15T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 15, 2026",
+    items: [
+      { area: "All", text: "Fixed: All notification emails (plan published, messages, workout comments, Strava syncs, workout logs) now show the correct logo for your brand — Crystal Pistol clients see Crystal's logo, First Mile Coach clients see the First Mile logo" },
+      { area: "All", text: "Fixed: Resend invite emails now use the correct branded template instead of a plain-text fallback" },
+    ],
+  },
   {
     date: "July 14, 2026",
     items: [
