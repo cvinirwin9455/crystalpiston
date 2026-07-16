@@ -62,7 +62,13 @@ export async function POST(request: Request) {
     }
 
     // Get a valid access token (refreshing if needed)
-    const accessToken = await getValidAccessToken(connection, adminClient)
+    let accessToken: string
+    try {
+      accessToken = await getValidAccessToken(connection, adminClient)
+    } catch (tokenErr: any) {
+      console.error(`Strava token refresh failed for athlete ${athleteId} (user ${connection.user_id}). User needs to reconnect Strava:`, tokenErr.message)
+      return NextResponse.json({ error: 'Token refresh failed — user needs to reconnect Strava', athleteId }, { status: 401 })
+    }
 
     // Fetch the full activity from Strava
     const activity = await getStravaActivity(accessToken, activityId)
