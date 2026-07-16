@@ -3,9 +3,17 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-15T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-16T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 16, 2026",
+    items: [
+      { area: "All", text: "Fixed: Strava sync catch-up (the background job that picks up missed workouts) was broken for matching — workouts would import but never auto-match to your programmed plan. Now works correctly for all clients" },
+      { area: "Client", text: "NEW: If your Strava connection expires, you'll now see a clear orange banner on your dashboard telling you to reconnect in Settings — previously it just silently stopped syncing with no warning" },
+      { area: "All", text: "Improved: Strava token errors are now logged clearly so we can tell exactly which client has a broken connection instead of silent failures" },
+    ],
+  },
   {
     date: "July 15, 2026",
     items: [
