@@ -49,7 +49,13 @@ export async function POST() {
 
   try {
     // Get valid access token (auto-refreshes if expired)
-    const accessToken = await getValidAccessToken(connection, adminClient)
+    let accessToken: string
+    try {
+      accessToken = await getValidAccessToken(connection, adminClient)
+    } catch (tokenErr: any) {
+      console.error(`Sync-check: token refresh failed for user ${user.id}:`, tokenErr.message)
+      return NextResponse.json({ synced: 0, message: 'Strava connection expired. Please disconnect and reconnect Strava in your settings.', reconnectNeeded: true })
+    }
 
     // Fetch activities from last 24 hours
     const oneDayAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000)

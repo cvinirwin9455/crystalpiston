@@ -707,7 +707,9 @@ export default function DashboardPage() {
         const res = await fetch('/api/strava/sync-check', { method: 'POST' });
         if (res.ok) {
           const data = await res.json();
-          if (data.synced > 0) {
+          if (data.reconnectNeeded) {
+            setStravaReconnectNeeded(true);
+          } else if (data.synced > 0) {
             // New activities were imported — reload to show them
             window.location.reload();
           }
@@ -901,6 +903,7 @@ export default function DashboardPage() {
   // Strava match state
   const [stravaMatchDecisions, setStravaMatchDecisions] = useState<Record<string, 'matched' | 'standalone' | 'dismissed'>>({});
   const [stravaMatchLog, setStravaMatchLog] = useState<{ stravaActivityId: string; workoutId: string; workoutType: string; rpe: string; sleep: string; notes: string } | null>(null);
+  const [stravaReconnectNeeded, setStravaReconnectNeeded] = useState(false);
 
   const openStravaMatchLog = (stravaActivityId: string, workoutId: string, workoutType: string) => {
     setStravaMatchLog({ stravaActivityId, workoutId, workoutType, rpe: '', sleep: '', notes: '' });
@@ -1152,6 +1155,17 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-primary">
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm">Skip to main content</a>
+
+      {/* Strava reconnect banner */}
+      {stravaReconnectNeeded && (
+        <div className="bg-orange-500/15 border-b border-orange-500/30 px-4 py-3 text-center">
+          <p className="text-orange-300 text-sm">
+            <span className="font-semibold">Strava connection expired.</span>{' '}
+            Go to Settings &gt; Strava to disconnect and reconnect so your workouts sync again.
+          </p>
+        </div>
+      )}
+
       {/* Header — sticky */}
       <header className="bg-secondary/95 backdrop-blur-sm border-b border-white/10 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

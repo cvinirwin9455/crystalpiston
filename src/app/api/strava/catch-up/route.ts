@@ -82,7 +82,14 @@ export async function POST(request: Request) {
 
     try {
       // Get a valid access token (auto-refreshes if expired)
-      const accessToken = await getValidAccessToken(connection, adminClient)
+      let accessToken: string
+      try {
+        accessToken = await getValidAccessToken(connection, adminClient)
+      } catch (tokenErr: any) {
+        userResult.errors.push(`Token refresh failed (user may need to reconnect Strava): ${tokenErr.message?.slice(0, 150)}`)
+        results.push(userResult)
+        continue
+      }
 
       // Fetch recent activities from Strava API
       const activitiesRes = await fetch(
@@ -189,16 +196,22 @@ export async function POST(request: Request) {
                 .filter((w: any) => !alreadyMatchedIds.includes(w.id))
                 .map((w: any) => ({
                   id: w.id,
+                  type: 'programmed' as const,
                   day: w.day,
-                  type: w.type,
-                  trainingType: w.training_type,
+                  workoutType: w.type,
+                  trainingType: w.training_type || null,
                   miles: w.miles ? parseFloat(w.miles) : null,
-                  title: w.title,
+                  title: w.title || null,
+                  completed: false,
                 }))
 
               if (candidates.length > 0) {
                 const matchResult = findBestMatch(
-                  { day: dayOfWeek, type: workoutType, miles, name: activity.name },
+                  workoutType,
+                  miles,
+                  duration,
+                  dayOfWeek,
+                  trainingType,
                   candidates
                 )
                 if (matchResult.candidateId && matchResult.confidence >= 50) {
