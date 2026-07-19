@@ -143,7 +143,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, raceDateSameAsEnd } = body
+  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId } = body
 
   if (!planId) {
     return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -164,24 +164,33 @@ export async function PATCH(request: Request) {
   if (goalPace !== undefined) updates.goal_pace = goalPace || null
   if (injuryNotes !== undefined) updates.injury_notes = injuryNotes || null
   if (programTemplateId !== undefined) updates.program_template_id = programTemplateId || null
-  if (raceDateSameAsEnd !== undefined) updates.race_date_same_as_end = raceDateSameAsEnd
 
   let { error } = await adminClient
     .from('plans')
     .update(updates)
     .eq('id', planId)
 
-  // If the update failed (e.g. new columns don't exist yet), retry without them
+  // If the update failed (e.g. some columns don't exist yet), retry without optional new columns
   if (error) {
     const fallbackUpdates = { ...updates }
     delete fallbackUpdates.completion_reason
-    delete fallbackUpdates.program_template_id
     delete fallbackUpdates.race_date_same_as_end
-    const result = await adminClient
+    // Keep program_template_id in fallback - only remove if it also fails
+    let { error: err2 } = await adminClient
       .from('plans')
       .update(fallbackUpdates)
       .eq('id', planId)
-    error = result.error
+    if (err2) {
+      // Last resort: remove program_template_id too
+      delete fallbackUpdates.program_template_id
+      const result = await adminClient
+        .from('plans')
+        .update(fallbackUpdates)
+        .eq('id', planId)
+      error = result.error
+    } else {
+      error = null
+    }
   }
 
   if (error) {
