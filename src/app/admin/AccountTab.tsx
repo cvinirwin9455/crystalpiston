@@ -480,7 +480,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       const res = await fetch("/api/plans", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDateSameAsEnd ? editEndDate : (editRaceDate || null), goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null, programTemplateId: editProgramId || null, raceDateSameAsEnd: editRaceDateSameAsEnd }),
+        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDate || null, goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null, programTemplateId: editProgramId || null }),
       });
       if (res.ok) {
         // Update local state via parent

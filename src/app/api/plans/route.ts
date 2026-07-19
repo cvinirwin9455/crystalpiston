@@ -171,10 +171,12 @@ export async function PATCH(request: Request) {
     .update(updates)
     .eq('id', planId)
 
-  // If the update failed (e.g. completion_reason column doesn't exist yet), retry without it
-  if (error && updates.completion_reason !== undefined) {
+  // If the update failed (e.g. new columns don't exist yet), retry without them
+  if (error) {
     const fallbackUpdates = { ...updates }
     delete fallbackUpdates.completion_reason
+    delete fallbackUpdates.program_template_id
+    delete fallbackUpdates.race_date_same_as_end
     const result = await adminClient
       .from('plans')
       .update(fallbackUpdates)

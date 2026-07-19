@@ -3781,16 +3781,7 @@ export default function AdminPage() {
                                       <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
                                         <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                       </select>
-                                      <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder={adminDistanceUnit} />
-                                      <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
-                                    </>
-                                  )}
-                                  {wo.type === "walk" && (
-                                    <>
-                                      <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                        <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
-                                      </select>
-                                      <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder={adminDistanceUnit} />
+                                      <input type="text" value={wo.miles || ''} readOnly title="Auto-calculated from workout structure below" className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-gray-400 text-xs text-center cursor-not-allowed" placeholder={adminDistanceUnit} />
                                       <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
                                     </>
                                   )}
@@ -3955,7 +3946,7 @@ export default function AdminPage() {
                                               <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
                                                 <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
                                               </select>
-                                              <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder={adminDistanceUnit} />
+                                              <input type="text" value={wo.miles || ''} readOnly title="Auto-calculated from workout structure below" className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-gray-400 text-xs text-center cursor-not-allowed" placeholder={adminDistanceUnit} />
                                               <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
                                             </>
                                           )}
@@ -4053,7 +4044,7 @@ export default function AdminPage() {
                             <select value={newDayTemplateData.trainingType || ""} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
                               <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                             </select>
-                            <input type="text" value={newDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setNewDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder={adminDistanceUnit} />
+                            <input type="text" value={newDayTemplateData.miles || ''} readOnly title="Auto-calculated from workout structure below" className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-gray-400 text-xs text-center cursor-not-allowed" placeholder={adminDistanceUnit} />
                             <input type="text" value={newDayTemplateData.title || ''} onChange={(e) => setNewDayTemplateData((prev: any) => ({ ...prev, title: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
                           </>
                         )}
@@ -4173,7 +4164,7 @@ export default function AdminPage() {
                                     <select value={editDayTemplateData.trainingType || ""} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, trainingType: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
                                       <option value="" disabled>Run Type</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                     </select>
-                                    <input type="text" value={editDayTemplateData.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setEditDayTemplateData((prev: any) => ({ ...prev, miles: v })); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder={adminDistanceUnit} />
+                                    <input type="text" value={editDayTemplateData.miles || ''} readOnly title="Auto-calculated from workout structure below" className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-gray-400 text-xs text-center cursor-not-allowed" placeholder={adminDistanceUnit} />
                                     <input type="text" value={editDayTemplateData.title || ''} onChange={(e) => setEditDayTemplateData((prev: any) => ({ ...prev, title: e.target.value }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
                                   </>
                                 )}
@@ -4264,22 +4255,27 @@ export default function AdminPage() {
                         <div><label className="text-gray-400 text-xs block mb-1">Program Name *</label><input type="text" value={programName} onChange={(e) => setProgramName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g. Marathon 20-Week" /></div>
                         <div><label className="text-gray-400 text-xs block mb-1">Category</label><input type="text" value={programCategory} onChange={(e) => setProgramCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g. Marathon, Half Marathon" /></div>
                         <div><label className="text-gray-400 text-xs block mb-1">Total Weeks *</label>
-                          <input type="number" min={1} max={52} value={programTotalWeeks} onChange={(e) => {
-                            const n = parseInt(e.target.value) || 1;
+                          <input type="text" inputMode="numeric" value={programTotalWeeks || ''} onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') { setProgramTotalWeeks(0); return; }
+                            const n = parseInt(val);
+                            if (isNaN(n) || n < 0 || n > 52) return;
                             setProgramTotalWeeks(n);
                             // Resize weeks array
-                            setProgramWeeks((prev) => {
-                              if (prev.length === n) return prev;
-                              if (prev.length < n) {
-                                const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-                                return [...prev, ...Array.from({ length: n - prev.length }, (_, i) => ({
-                                  weekNumber: prev.length + i + 1, label: "",
-                                  days: dayNames.map(day => ({ day, workouts: [{ type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] })),
-                                }))];
-                              }
-                              return prev.slice(0, n);
-                            });
-                          }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                            if (n > 0) {
+                              setProgramWeeks((prev) => {
+                                if (prev.length === n) return prev;
+                                if (prev.length < n) {
+                                  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                                  return [...prev, ...Array.from({ length: n - prev.length }, (_, i) => ({
+                                    weekNumber: prev.length + i + 1, label: "",
+                                    days: dayNames.map(day => ({ day, workouts: [{ type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] })),
+                                  }))];
+                                }
+                                return prev.slice(0, n);
+                              });
+                            }
+                          }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g. 20" />
                         </div>
                       </div>
 
@@ -4294,7 +4290,7 @@ export default function AdminPage() {
                             const isExpanded = programExpandedWeek === wi;
                             const hasContent = week.days.some((d: any) => d.workouts.some((w: any) => w.type && w.type !== ""));
                             const weekMiles = week.days.reduce((total: number, d: any) => total + d.workouts.reduce((dt: number, w: any) => dt + (parseFloat(w.miles) || 0), 0), 0);
-                            const dayTypes = week.days.map((d: any) => d.workouts[0]?.type || "").map((t: string) => t === "run" ? "R" : t === "cross" ? "XT" : t === "rest" ? "-" : t === "walk" ? "W" : t === "stretching" ? "S" : t === "cycling" ? "C" : "").join(" ");
+                            const dayTypes = week.days.map((d: any) => d.workouts[0]?.type || "").map((t: string) => t === "run" ? "R" : t === "cross" ? "X" : t === "rest" ? "-" : t === "walk" ? "W" : t === "stretching" ? "S" : t === "cycling" ? "C" : "").join(" ");
                             return (
                               <div key={wi} className={`border rounded-lg transition-all ${isExpanded ? 'border-purple-500/30 bg-primary/50' : hasContent ? 'border-white/10 bg-primary/20' : 'border-white/5 bg-primary/10 opacity-60'}`}>
                                 <button type="button" onClick={() => setProgramExpandedWeek(isExpanded ? null : wi)} className="w-full flex items-center justify-between px-3 py-2 text-left">
@@ -4321,7 +4317,7 @@ export default function AdminPage() {
                                           {day.workouts.map((wo: any, woi: number) => (
                                             <div key={woi} className="flex items-center gap-2 flex-wrap">
                                               <select value={wo.type || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], type: e.target.value, trainingType: e.target.value === 'rest' ? 'Rest' : '' }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-20">
-                                                <option value="">—</option><option value="run">Run</option><option value="cross">XT</option><option value="walk">Walk</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
+                                                <option value="">—</option><option value="run">Run</option><option value="cross">Cross</option><option value="walk">Walk</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
                                               </select>
                                               {(wo.type === "run" || wo.type === "walk") && (
                                                 <>
