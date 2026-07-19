@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const fullResult = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, race_date_same_as_end, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, program_template_id, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, raceDateSameAsEnd } = body
+  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, programTemplateId } = body
 
   if (!clientId || !startDate || !endDate) {
     return NextResponse.json({ error: 'clientId, startDate, and endDate are required' }, { status: 400 })
@@ -93,10 +93,7 @@ export async function POST(request: Request) {
       status: 'active',
       target_distance: targetDistance || null,
       race_date: raceDate || null,
-      goal_pace: goalPace || null,
-      injury_notes: injuryNotes || null,
       program_template_id: programTemplateId || null,
-      race_date_same_as_end: raceDateSameAsEnd !== undefined ? raceDateSameAsEnd : true,
     })
     .select()
     .single()
@@ -143,7 +140,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId } = body
+  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate, programTemplateId } = body
 
   if (!planId) {
     return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -161,8 +158,6 @@ export async function PATCH(request: Request) {
   if (goal !== undefined) updates.goal = goal || null
   if (targetDistance !== undefined) updates.target_distance = targetDistance || null
   if (raceDate !== undefined) updates.race_date = raceDate || null
-  if (goalPace !== undefined) updates.goal_pace = goalPace || null
-  if (injuryNotes !== undefined) updates.injury_notes = injuryNotes || null
   if (programTemplateId !== undefined) updates.program_template_id = programTemplateId || null
 
   let { error } = await adminClient
@@ -170,27 +165,15 @@ export async function PATCH(request: Request) {
     .update(updates)
     .eq('id', planId)
 
-  // If the update failed (e.g. some columns don't exist yet), retry without optional new columns
+  // If the update failed, retry without completion_reason (older schemas)
   if (error) {
     const fallbackUpdates = { ...updates }
     delete fallbackUpdates.completion_reason
-    delete fallbackUpdates.race_date_same_as_end
-    // Keep program_template_id in fallback - only remove if it also fails
-    let { error: err2 } = await adminClient
+    const result = await adminClient
       .from('plans')
       .update(fallbackUpdates)
       .eq('id', planId)
-    if (err2) {
-      // Last resort: remove program_template_id too
-      delete fallbackUpdates.program_template_id
-      const result = await adminClient
-        .from('plans')
-        .update(fallbackUpdates)
-        .eq('id', planId)
-      error = result.error
-    } else {
-      error = null
-    }
+    error = result.error
   }
 
   if (error) {
