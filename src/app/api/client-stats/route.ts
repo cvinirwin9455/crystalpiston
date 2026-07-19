@@ -97,17 +97,17 @@ export async function GET(request: Request) {
       .select('id, week_id, day, type, miles, duration, average_pace, distance_meters, moving_time_seconds, avg_heartrate, max_heartrate, activity_name, created_at')
       .eq('user_id', userId)
       .in('week_id', weekIds)
-      .eq('type', 'Run')
+      .eq('type', 'run')
     stravaActivities = data || []
   }
 
   // Also get Strava activities not tied to weeks (if any exist outside week scope)
   const { data: allStravaRuns } = await adminClient
     .from('strava_activities')
-    .select('id, miles, duration, average_pace, distance_meters, moving_time_seconds, avg_heartrate, max_heartrate, activity_name, created_at')
+    .select('id, miles, duration, average_pace, distance_meters, moving_time_seconds, avg_heartrate, max_heartrate, activity_name, start_date')
     .eq('user_id', userId)
-    .eq('type', 'Run')
-    .order('created_at', { ascending: false })
+    .eq('type', 'run')
+    .order('start_date', { ascending: false })
     .limit(100)
 
   // Combine all run data into a unified format
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
       : `${mins}:${secs.toString().padStart(2, '0')}`
 
     runs.push({
-      date: activity.created_at ? activity.created_at.split('T')[0] : '',
+      date: activity.start_date ? activity.start_date.split('T')[0] : '',
       miles,
       pace,
       duration,
