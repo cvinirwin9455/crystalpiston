@@ -710,8 +710,10 @@ export default function AdminPage() {
     fetchTemplates();
   }, [fetchTemplates]);
 
+  type ProgramTemplate = { id: string; name: string; category: string; data: { totalWeeks: number; weeks: any[] }; created_at: string };
   const weekTemplates = templates.filter(t => t.type === 'week').sort((a, b) => a.name.localeCompare(b.name));
   const dayTemplates = templates.filter(t => t.type === 'day').sort((a, b) => a.name.localeCompare(b.name));
+  const programTemplates = templates.filter(t => t.type === 'program').sort((a, b) => a.name.localeCompare(b.name)) as ProgramTemplate[];
 
   // Template search state
   const [weekTemplateSearch, setWeekTemplateSearch] = useState("");
@@ -735,8 +737,6 @@ export default function AdminPage() {
   }, {} as Record<string, typeof filteredWeekTemplates>);
 
   // Program Templates state
-  type ProgramTemplate = { id: string; name: string; category: string; data: { totalWeeks: number; weeks: any[] }; created_at: string };
-  const [programTemplates, setProgramTemplates] = useState<ProgramTemplate[]>([]);
   const [creatingProgram, setCreatingProgram] = useState(false);
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   const [programName, setProgramName] = useState("");
@@ -755,23 +755,6 @@ export default function AdminPage() {
       days: dayNames.map(day => ({ day, workouts: [{ type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] })),
     }));
   };
-
-  // Fetch program templates
-  const fetchProgramTemplates = useCallback(async () => {
-    try {
-      const res = await fetch('/api/templates?type=program');
-      if (res.ok) {
-        const data = await res.json();
-        setProgramTemplates(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch program templates:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProgramTemplates();
-  }, [fetchProgramTemplates]);
 
   // Save week as template
   const saveTemplateRef = useRef<HTMLDivElement>(null);
@@ -1149,7 +1132,7 @@ export default function AdminPage() {
         setProgramTotalWeeks(20);
         setProgramWeeks([]);
         setProgramExpandedWeek(null);
-        fetchProgramTemplates();
+        fetchTemplates();
       }
     } catch (err) {
       console.error('Failed to create program template:', err);
@@ -1179,7 +1162,7 @@ export default function AdminPage() {
         setProgramTotalWeeks(20);
         setProgramWeeks([]);
         setProgramExpandedWeek(null);
-        fetchProgramTemplates();
+        fetchTemplates();
       }
     } catch (err) {
       console.error('Failed to update program template:', err);
@@ -1196,7 +1179,7 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: id }),
       });
-      fetchProgramTemplates();
+      fetchTemplates();
     } catch (err) {
       console.error('Failed to delete program template:', err);
     }
