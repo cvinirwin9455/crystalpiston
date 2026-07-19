@@ -3,9 +3,20 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-16T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-19T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 19, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Templates now have the exact same workout builders as Create Week — when creating or editing a template, you get the full structured run builder (intervals, tempo, progression, etc.) and cross-training builder (exercises with sets/reps/weight)" },
+      { area: "Admin", text: "Improved: Week template selector is now a searchable dropdown instead of a row of buttons — much easier to find templates when you have 20-30 of them. Templates are grouped by category with run/cross/rest counts shown" },
+      { area: "Admin", text: "Improved: Day template selector is now also a searchable popup grouped by category — no more scrolling through a long flat list" },
+      { area: "Admin", text: "Fixed: When saving a template, all structured workout data (interval blocks, warm-up/cool-down, cross-training exercises) is now properly saved and restored when loading the template" },
+      { area: "Admin", text: "NEW: You can now add/remove multiple workouts per day when creating or editing week templates (previously only one workout per day)" },
+      { area: "Admin", text: "Improved: After loading a template into the Create Week form, all fields including structured builders are fully editable — nothing is locked" },
+    ],
+  },
   {
     date: "July 16, 2026",
     items: [
