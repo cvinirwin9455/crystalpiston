@@ -3785,6 +3785,15 @@ export default function AdminPage() {
                                       <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
                                     </>
                                   )}
+                                  {wo.type === "walk" && (
+                                    <>
+                                      <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                                        <option value="" disabled>Walk Type</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
+                                      </select>
+                                      <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], miles: v }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); } }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent" placeholder={adminDistanceUnit} />
+                                      <input type="text" value={wo.title || ''} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], title: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 min-w-24 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Title" />
+                                    </>
+                                  )}
                                   {wo.type === "stretching" && (
                                     <select value={wo.trainingType || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], trainingType: e.target.value }; nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
                                       <option value="" disabled>Type</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
