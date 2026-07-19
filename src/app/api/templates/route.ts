@@ -79,8 +79,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'name, type, and data are required' }, { status: 400 })
   }
 
-  if (type !== 'week' && type !== 'day') {
-    return NextResponse.json({ error: 'type must be "week" or "day"' }, { status: 400 })
+  if (type !== 'week' && type !== 'day' && type !== 'program') {
+    return NextResponse.json({ error: 'type must be "week", "day", or "program"' }, { status: 400 })
   }
 
   const adminClient = await getAdminClient()

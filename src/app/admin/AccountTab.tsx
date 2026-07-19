@@ -17,6 +17,8 @@ type Plan = {
   raceDate: string;
   goalPace: string;
   injuryNotes: string;
+  programTemplateId?: string;
+  raceDateSameAsEnd?: boolean;
 };
 
 type ClientData = {
@@ -91,6 +93,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             raceDate: p.race_date || '',
             goalPace: p.goal_pace || '',
             injuryNotes: p.injury_notes || '',
+            programTemplateId: p.program_template_id || '',
+            raceDateSameAsEnd: p.race_date_same_as_end !== false,
           })));
         }
       } catch (err) {
@@ -478,6 +482,8 @@ function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planI
   const [editRaceDate, setEditRaceDate] = useState(plan.raceDate || "");
   const [editGoalPace, setEditGoalPace] = useState(plan.goalPace || "");
   const [editInjuryNotes, setEditInjuryNotes] = useState(plan.injuryNotes || "");
+  const [editProgramId, setEditProgramId] = useState((plan as any).programTemplateId || "");
+  const [editRaceDateSameAsEnd, setEditRaceDateSameAsEnd] = useState((plan as any).raceDateSameAsEnd !== false);
   const [savingPlanEdit, setSavingPlanEdit] = useState(false);
 
   const handleSavePlanEdit = async () => {
@@ -486,7 +492,7 @@ function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planI
       const res = await fetch("/api/plans", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDate || null, goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null }),
+        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDateSameAsEnd ? editEndDate : (editRaceDate || null), goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null, programTemplateId: editProgramId || null, raceDateSameAsEnd: editRaceDateSameAsEnd }),
       });
       if (res.ok) {
         // Update local state via parent
@@ -651,8 +657,31 @@ function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planI
           </div>
           <div className="flex gap-3">
             <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
-            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); setEditGoalPace(plan.goalPace || ""); setEditInjuryNotes(plan.injuryNotes || ""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+            <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); setEditGoalPace(plan.goalPace || ""); setEditInjuryNotes(plan.injuryNotes || ""); setEditProgramId((plan as any).programTemplateId || ""); setEditRaceDateSameAsEnd((plan as any).raceDateSameAsEnd !== false); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
           </div>
+          {/* Program Assignment (Edit) */}
+          {programTemplates && programTemplates.length > 0 && (
+            <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 mt-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-purple-300 text-xs block mb-1">Training Program (optional)</label>
+                  <select value={editProgramId} onChange={(e) => setEditProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
+                    <option value="">No Program</option>
+                    {programTemplates.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-purple-300 text-xs block mb-1">Race Date Setting</label>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={editRaceDateSameAsEnd} onChange={(e) => setEditRaceDateSameAsEnd(e.target.checked)} className="rounded border-white/20 bg-primary/50 text-purple-500 focus:ring-purple-500" />
+                    <span className="text-gray-400 text-xs">Race date same as plan end date</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

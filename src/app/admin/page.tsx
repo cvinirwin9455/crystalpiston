@@ -759,7 +759,7 @@ export default function AdminPage() {
   // Fetch program templates
   const fetchProgramTemplates = useCallback(async () => {
     try {
-      const res = await fetch('/api/program-templates');
+      const res = await fetch('/api/templates?type=program');
       if (res.ok) {
         const data = await res.json();
         setProgramTemplates(data);
@@ -1132,11 +1132,12 @@ export default function AdminPage() {
     if (!programName.trim() || programWeeks.length === 0) return;
     setSavingProgram(true);
     try {
-      const res = await fetch('/api/program-templates', {
+      const res = await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: programName.trim(),
+          type: 'program',
           category: programCategory.trim() || null,
           data: { totalWeeks: programTotalWeeks, weeks: programWeeks },
         }),
@@ -1161,7 +1162,7 @@ export default function AdminPage() {
     if (!editingProgramId || !programName.trim()) return;
     setSavingProgram(true);
     try {
-      const res = await fetch('/api/program-templates', {
+      const res = await fetch('/api/templates', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1190,7 +1191,7 @@ export default function AdminPage() {
   const handleDeleteProgram = async (id: string) => {
     if (!confirm("Delete this program template? This cannot be undone.")) return;
     try {
-      await fetch('/api/program-templates', {
+      await fetch('/api/templates', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: id }),
