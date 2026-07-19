@@ -9,6 +9,10 @@ const updates = [
   {
     date: "July 19, 2026",
     items: [
+      { area: "Admin", text: "NEW: Program Templates — create multi-week structured training programs (e.g. Marathon 20-Week) with a week-by-week builder. Define mileage, workout types, and multiple workouts per day for each week of the program" },
+      { area: "Admin", text: "NEW: Assign a program to a client in their Account tab — select from available programs and set a race date. Programs are optional, not every client needs one" },
+      { area: "Admin", text: "NEW: Program banner on Create Week — when a client has an assigned program, you'll see their program name, race date, weeks remaining, and which program week auto-loads" },
+      { area: "Admin", text: "NEW: Auto-populate from program — when creating a week for a program client, the form automatically fills with that week's workouts from the program. You can still edit everything before publishing" },
       { area: "Admin", text: "NEW: Templates now have the exact same workout builders as Create Week — when creating or editing a template, you get the full structured run builder (intervals, tempo, progression, etc.) and cross-training builder (exercises with sets/reps/weight)" },
       { area: "Admin", text: "Improved: Week template selector is now a searchable dropdown instead of a row of buttons — much easier to find templates when you have 20-30 of them. Templates are grouped by category with run/cross/rest counts shown" },
       { area: "Admin", text: "Improved: Day template selector is now also a searchable popup grouped by category — no more scrolling through a long flat list" },
