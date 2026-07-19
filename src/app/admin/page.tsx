@@ -4335,6 +4335,13 @@ export default function AdminPage() {
                                               )}
                                               {day.workouts.length > 1 && <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: nd[di].workouts.filter((_: any, idx: number) => idx !== woi) }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-red-400 text-xs hover:text-red-300">x</button>}
                                             </div>
+                                            {wo.type && wo.type !== "rest" && (
+                                              <div className="flex items-center gap-2 ml-0 mt-1">
+                                                <input type="text" value={wo.title || ''} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], title: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1" placeholder="Title (e.g. Tempo Tuesday)" />
+                                                <input type="text" value={wo.coachNotes || ''} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], coachNotes: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1" placeholder="Notes (e.g. Keep conversational pace)" />
+                                              </div>
+                                            )}
+                                          </div>
                                           ))}
                                           <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: [...nd[di].workouts, { type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-purple-400 text-[10px] hover:underline">+ workout</button>
                                         </div>
