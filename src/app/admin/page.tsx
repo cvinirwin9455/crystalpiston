@@ -4324,7 +4324,8 @@ export default function AdminPage() {
                                         <span className="text-gray-400 text-xs w-12 pt-1 shrink-0">{day.day.slice(0, 3)}</span>
                                         <div className="flex-1 space-y-1">
                                           {day.workouts.map((wo: any, woi: number) => (
-                                            <div key={woi} className="flex items-center gap-2 flex-wrap">
+                                            <div key={woi}>
+                                            <div className="flex items-center gap-2 flex-wrap">
                                               <select value={wo.type || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], type: e.target.value, trainingType: e.target.value === 'rest' ? 'Rest' : '' }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-20">
                                                 <option value="">—</option><option value="run">Run</option><option value="cross">Cross</option><option value="walk">Walk</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
                                               </select>
@@ -4345,12 +4346,12 @@ export default function AdminPage() {
                                               {day.workouts.length > 1 && <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: nd[di].workouts.filter((_: any, idx: number) => idx !== woi) }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-red-400 text-xs hover:text-red-300">x</button>}
                                             </div>
                                             {wo.type && wo.type !== "rest" && (
-                                              <div className="flex items-center gap-2 ml-0 mt-1">
+                                              <div className="flex items-center gap-2 mt-1">
                                                 <input type="text" value={wo.title || ''} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], title: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1" placeholder="Title (e.g. Tempo Tuesday)" />
                                                 <input type="text" value={wo.coachNotes || ''} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], coachNotes: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1" placeholder="Notes (e.g. Keep conversational pace)" />
                                               </div>
                                             )}
-                                          </div>
+                                            </div>
                                           ))}
                                           <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: [...nd[di].workouts, { type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-purple-400 text-[10px] hover:underline">+ workout</button>
                                         </div>
