@@ -31,7 +31,7 @@ type ClientData = {
   avatarUrl?: string | null;
 };
 
-export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
+export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat, programTemplates }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
@@ -52,6 +52,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
   const [newPlanRaceDate, setNewPlanRaceDate] = useState("");
   const [newPlanGoalPace, setNewPlanGoalPace] = useState("");
   const [newPlanInjuryNotes, setNewPlanInjuryNotes] = useState("");
+  const [newPlanProgramId, setNewPlanProgramId] = useState("");
+  const [newPlanRaceDateSameAsEnd, setNewPlanRaceDateSameAsEnd] = useState(true);
   const [creatingPlan, setCreatingPlan] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -139,9 +141,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           owed: newPlanOwed,
           goal: newPlanGoal,
           targetDistance: newPlanTargetDistance || null,
-          raceDate: newPlanRaceDate || null,
+          raceDate: newPlanRaceDateSameAsEnd ? newPlanEnd : (newPlanRaceDate || null),
           goalPace: newPlanGoalPace || null,
           injuryNotes: newPlanInjuryNotes || null,
+          programTemplateId: newPlanProgramId || null,
+          raceDateSameAsEnd: newPlanRaceDateSameAsEnd,
         }),
       });
       if (res.ok) {
@@ -174,6 +178,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         setNewPlanRaceDate("");
         setNewPlanGoalPace("");
         setNewPlanInjuryNotes("");
+        setNewPlanProgramId("");
+        setNewPlanRaceDateSameAsEnd(true);
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Failed to create plan. Please try again.');
@@ -378,6 +384,33 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
                 <input type="text" value={newPlanInjuryNotes} onChange={(e) => setNewPlanInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
               </div>
             </div>
+            {/* Program Assignment */}
+            {programTemplates && programTemplates.length > 0 && (
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 mb-3">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-purple-300 text-xs block mb-1">Training Program (optional)</label>
+                    <select value={newPlanProgramId} onChange={(e) => setNewPlanProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
+                      <option value="">No Program</option>
+                      {programTemplates.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
+                      ))}
+                    </select>
+                    <p className="text-gray-500 text-xs mt-1">Assigns a structured week-by-week program that auto-populates when creating weeks</p>
+                  </div>
+                  <div>
+                    <label className="text-purple-300 text-xs block mb-1">Race Date</label>
+                    <div className="flex items-center gap-2 mb-2">
+                      <input type="checkbox" checked={newPlanRaceDateSameAsEnd} onChange={(e) => setNewPlanRaceDateSameAsEnd(e.target.checked)} className="rounded border-white/20 bg-primary/50 text-purple-500 focus:ring-purple-500" />
+                      <span className="text-gray-400 text-xs">Race date is same as plan end date</span>
+                    </div>
+                    {!newPlanRaceDateSameAsEnd && (
+                      <input type="date" value={newPlanRaceDate} onChange={(e) => setNewPlanRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500 [color-scheme:dark]" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {creatingPlan ? "Creating..." : "Create Plan"}

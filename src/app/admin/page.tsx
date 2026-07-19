@@ -732,7 +732,46 @@ export default function AdminPage() {
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(t);
     return acc;
-  }, {} as Record<string, Template[]>);
+  }, {} as Record<string, typeof filteredWeekTemplates>);
+
+  // Program Templates state
+  type ProgramTemplate = { id: string; name: string; category: string; data: { totalWeeks: number; weeks: any[] }; created_at: string };
+  const [programTemplates, setProgramTemplates] = useState<ProgramTemplate[]>([]);
+  const [creatingProgram, setCreatingProgram] = useState(false);
+  const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const [programName, setProgramName] = useState("");
+  const [programCategory, setProgramCategory] = useState("");
+  const [programTotalWeeks, setProgramTotalWeeks] = useState<number>(20);
+  const [programWeeks, setProgramWeeks] = useState<any[]>([]);
+  const [programExpandedWeek, setProgramExpandedWeek] = useState<number | null>(null);
+  const [savingProgram, setSavingProgram] = useState(false);
+
+  // Initialize program weeks array helper
+  const initProgramWeeks = (totalWeeks: number) => {
+    const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    return Array.from({ length: totalWeeks }, (_, i) => ({
+      weekNumber: i + 1,
+      label: "",
+      days: dayNames.map(day => ({ day, workouts: [{ type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] })),
+    }));
+  };
+
+  // Fetch program templates
+  const fetchProgramTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/program-templates');
+      if (res.ok) {
+        const data = await res.json();
+        setProgramTemplates(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch program templates:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProgramTemplates();
+  }, [fetchProgramTemplates]);
 
   // Save week as template
   const saveTemplateRef = useRef<HTMLDivElement>(null);
@@ -1086,6 +1125,89 @@ export default function AdminPage() {
     } finally {
       setSavingTemplate(false);
     }
+  };
+
+  // === Program Template Handlers ===
+  const handleCreateProgram = async () => {
+    if (!programName.trim() || programWeeks.length === 0) return;
+    setSavingProgram(true);
+    try {
+      const res = await fetch('/api/program-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: programName.trim(),
+          category: programCategory.trim() || null,
+          data: { totalWeeks: programTotalWeeks, weeks: programWeeks },
+        }),
+      });
+      if (res.ok) {
+        setCreatingProgram(false);
+        setProgramName("");
+        setProgramCategory("");
+        setProgramTotalWeeks(20);
+        setProgramWeeks([]);
+        setProgramExpandedWeek(null);
+        fetchProgramTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to create program template:', err);
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
+  const handleSaveEditedProgram = async () => {
+    if (!editingProgramId || !programName.trim()) return;
+    setSavingProgram(true);
+    try {
+      const res = await fetch('/api/program-templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: editingProgramId,
+          name: programName.trim(),
+          category: programCategory.trim() || null,
+          data: { totalWeeks: programTotalWeeks, weeks: programWeeks },
+        }),
+      });
+      if (res.ok) {
+        setEditingProgramId(null);
+        setProgramName("");
+        setProgramCategory("");
+        setProgramTotalWeeks(20);
+        setProgramWeeks([]);
+        setProgramExpandedWeek(null);
+        fetchProgramTemplates();
+      }
+    } catch (err) {
+      console.error('Failed to update program template:', err);
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
+  const handleDeleteProgram = async (id: string) => {
+    if (!confirm("Delete this program template? This cannot be undone.")) return;
+    try {
+      await fetch('/api/program-templates', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: id }),
+      });
+      fetchProgramTemplates();
+    } catch (err) {
+      console.error('Failed to delete program template:', err);
+    }
+  };
+
+  const startEditingProgram = (prog: ProgramTemplate) => {
+    setEditingProgramId(prog.id);
+    setProgramName(prog.name);
+    setProgramCategory(prog.category || '');
+    setProgramTotalWeeks(prog.data.totalWeeks);
+    setProgramWeeks(prog.data.weeks || []);
+    setProgramExpandedWeek(null);
   };
 
   // Fetch unread message counts
@@ -1701,7 +1823,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Active plan for the selected client
-  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string } | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; raceDateSameAsEnd?: boolean } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
 
   // Load weeks and active plan once when a client is first selected
@@ -1727,6 +1849,9 @@ export default function AdminPage() {
               owed: parseFloat(active.owed) || 0,
               paid: parseFloat(active.paid) || 0,
               status: active.status,
+              programTemplateId: active.program_template_id || null,
+              raceDate: active.race_date || null,
+              raceDateSameAsEnd: active.race_date_same_as_end !== false,
             });
           } else {
             setActivePlan(null);
@@ -1736,6 +1861,60 @@ export default function AdminPage() {
         .finally(() => setLoadingPlan(false));
     }
   }, [selectedClient, clients.length]);
+
+  // Auto-populate weekPlan from program template when switching to Create tab
+  useEffect(() => {
+    if (clientTab !== 'create' || editingDraftId) return;
+    if (!activePlan?.programTemplateId) return;
+    const prog = programTemplates.find(p => p.id === activePlan.programTemplateId);
+    if (!prog || !prog.data.weeks) return;
+
+    // Calculate which program week we're in
+    const raceDate = activePlan.raceDateSameAsEnd ? activePlan.endDate : (activePlan.raceDate || activePlan.endDate);
+    const raceDateObj = new Date(raceDate + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weeksOut = Math.max(0, Math.ceil((raceDateObj.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+    const currentWeekNumber = Math.max(1, Math.min(prog.data.totalWeeks, prog.data.totalWeeks - weeksOut + 1));
+
+    // Find this week in the program
+    const programWeek = prog.data.weeks.find((w: any) => w.weekNumber === currentWeekNumber);
+    if (!programWeek || !programWeek.days) return;
+
+    // Check if weekPlan is still in blank/default state (don't overwrite if user already has data)
+    const isBlank = weekPlan.days.every(d => d.workouts.every(wo => !wo.type));
+    if (!isBlank) return;
+
+    // Auto-fill from program week
+    const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const mappedDays = dayNames.map(dayName => {
+      const progDay = programWeek.days.find((d: any) => d.day === dayName);
+      if (!progDay || !progDay.workouts || progDay.workouts.length === 0) {
+        return { day: dayName, workouts: [{ type: "rest", trainingType: "Rest", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] };
+      }
+      return {
+        day: dayName,
+        workouts: progDay.workouts.map((wo: any) => ({
+          type: wo.type || "",
+          trainingType: wo.trainingType || "",
+          title: wo.title || "",
+          miles: wo.miles || "",
+          description: wo.description || "",
+          paceTarget: wo.paceTarget || "",
+          location: wo.location || "",
+          coachNotes: wo.coachNotes || "",
+          distanceUnit: wo.distanceUnit || adminDistanceUnit,
+          ...(wo.structure ? { structure: wo.structure } : {}),
+          ...(wo.crossTrainingStructure ? { crossTrainingStructure: wo.crossTrainingStructure } : {}),
+        })),
+      };
+    });
+
+    setWeekPlan(prev => ({
+      ...prev,
+      focus: programWeek.label || '',
+      days: mappedDays,
+    }));
+  }, [clientTab, activePlan?.programTemplateId, programTemplates.length]);
 
   // Reset active plan when switching clients
   useEffect(() => {
@@ -3005,6 +3184,31 @@ export default function AdminPage() {
                 <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
                 <p className="text-gray-300 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
+                {/* Program Banner — shows for clients with an assigned program */}
+                {activePlan?.programTemplateId && (() => {
+                  const prog = programTemplates.find(p => p.id === activePlan.programTemplateId);
+                  if (!prog) return null;
+                  const raceDate = activePlan.raceDateSameAsEnd ? activePlan.endDate : (activePlan.raceDate || activePlan.endDate);
+                  const raceDateObj = new Date(raceDate + 'T00:00:00');
+                  const today = new Date(); today.setHours(0, 0, 0, 0);
+                  const weeksOut = Math.max(0, Math.ceil((raceDateObj.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+                  const currentWeekNumber = Math.max(1, prog.data.totalWeeks - weeksOut + 1);
+                  const raceDateFmt = raceDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  return (
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        <div>
+                          <p className="text-purple-300 text-sm font-medium">{prog.name}</p>
+                          <p className="text-gray-400 text-xs">Race: {raceDateFmt} · <span className="text-white font-bold">{weeksOut} weeks out</span> · Program week {currentWeekNumber} of {prog.data.totalWeeks}</p>
+                        </div>
+                      </div>
+                      {currentWeekNumber <= prog.data.totalWeeks && (
+                        <span className="bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs px-2 py-1 rounded-lg">Auto-loads Week {currentWeekNumber}</span>
+                      )}
+                    </div>
+                  );
+                })()}
                 {/* Load from Week Template */}
                 {weekTemplates.length > 0 && (
                   <div className="bg-secondary/30 border border-white/10 rounded-lg p-3">
@@ -3266,7 +3470,7 @@ export default function AdminPage() {
                                       });
                                       const grouped = filtered.reduce((acc, t) => { const cat = t.category || 'Uncategorized'; if (!acc[cat]) acc[cat] = []; acc[cat].push(t); return acc; }, {} as Record<string, typeof dayTemplates>);
                                       if (filtered.length === 0) return <p className="text-gray-500 text-xs p-3">No templates match &ldquo;{dayTemplateSearch}&rdquo;</p>;
-                                      return Object.entries(grouped).map(([cat, temps]) => (
+                                      return Object.entries(grouped).map(([cat, temps]: [string, typeof dayTemplates]) => (
                                         <div key={cat}>
                                           <div className="sticky top-0 bg-secondary/95 backdrop-blur px-3 py-1 border-b border-white/5">
                                             <span className="text-gold text-[10px] font-heading uppercase">{cat}</span>
@@ -3434,6 +3638,7 @@ export default function AdminPage() {
                   }
                 }}
                 dateFormat={adminDateFormat}
+                programTemplates={programTemplates}
               />
             )}
           </div>
@@ -4049,6 +4254,159 @@ export default function AdminPage() {
                           )}
                         </div>
                       );})}
+                    </div>
+                  )}
+                </div>
+
+                {/* Program Templates */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-heading text-sm uppercase text-purple-400">Program Templates ({programTemplates.length})</h3>
+                      <p className="text-gray-500 text-xs mt-0.5">Multi-week structured training programs that auto-populate when creating weeks for assigned clients</p>
+                    </div>
+                    <button onClick={() => {
+                      if (creatingProgram) { setCreatingProgram(false); } else {
+                        setCreatingProgram(true); setEditingProgramId(null);
+                        setProgramName(""); setProgramCategory(""); setProgramTotalWeeks(20);
+                        setProgramWeeks(initProgramWeeks(20)); setProgramExpandedWeek(null);
+                      }
+                    }} className="bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingProgram ? "Cancel" : "+ Create Program"}</button>
+                  </div>
+
+                  {/* Create / Edit Program Form */}
+                  {(creatingProgram || editingProgramId) && (
+                    <div className="bg-primary/30 border border-purple-500/20 rounded-xl p-4 mb-4 space-y-4">
+                      <div className="grid md:grid-cols-3 gap-3">
+                        <div><label className="text-gray-400 text-xs block mb-1">Program Name *</label><input type="text" value={programName} onChange={(e) => setProgramName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g. Marathon 20-Week" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Category</label><input type="text" value={programCategory} onChange={(e) => setProgramCategory(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="e.g. Marathon, Half Marathon" /></div>
+                        <div><label className="text-gray-400 text-xs block mb-1">Total Weeks *</label>
+                          <input type="number" min={1} max={52} value={programTotalWeeks} onChange={(e) => {
+                            const n = parseInt(e.target.value) || 1;
+                            setProgramTotalWeeks(n);
+                            // Resize weeks array
+                            setProgramWeeks((prev) => {
+                              if (prev.length === n) return prev;
+                              if (prev.length < n) {
+                                const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                                return [...prev, ...Array.from({ length: n - prev.length }, (_, i) => ({
+                                  weekNumber: prev.length + i + 1, label: "",
+                                  days: dayNames.map(day => ({ day, workouts: [{ type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] })),
+                                }))];
+                              }
+                              return prev.slice(0, n);
+                            });
+                          }} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                        </div>
+                      </div>
+
+                      {/* Week-by-week summary grid */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-purple-300 text-xs font-heading uppercase">Week-by-Week Plan ({programWeeks.length} weeks)</span>
+                          <span className="text-gray-500 text-xs">Week 1 = start of training · Week {programTotalWeeks} = race week</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-1 max-h-[600px] overflow-y-auto">
+                          {programWeeks.map((week, wi) => {
+                            const isExpanded = programExpandedWeek === wi;
+                            const hasContent = week.days.some((d: any) => d.workouts.some((w: any) => w.type && w.type !== ""));
+                            const weekMiles = week.days.reduce((total: number, d: any) => total + d.workouts.reduce((dt: number, w: any) => dt + (parseFloat(w.miles) || 0), 0), 0);
+                            const dayTypes = week.days.map((d: any) => d.workouts[0]?.type || "").map((t: string) => t === "run" ? "R" : t === "cross" ? "XT" : t === "rest" ? "-" : t === "walk" ? "W" : t === "stretching" ? "S" : t === "cycling" ? "C" : "").join(" ");
+                            return (
+                              <div key={wi} className={`border rounded-lg transition-all ${isExpanded ? 'border-purple-500/30 bg-primary/50' : hasContent ? 'border-white/10 bg-primary/20' : 'border-white/5 bg-primary/10 opacity-60'}`}>
+                                <button type="button" onClick={() => setProgramExpandedWeek(isExpanded ? null : wi)} className="w-full flex items-center justify-between px-3 py-2 text-left">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-white text-xs font-bold w-16">Week {week.weekNumber}</span>
+                                    {week.label && <span className="text-purple-300 text-xs">{week.label}</span>}
+                                    <span className="text-gray-500 text-xs font-mono">{dayTypes}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    {weekMiles > 0 && <span className="text-accent text-xs">{weekMiles.toFixed(1)} {adminDistanceUnit}</span>}
+                                    <svg className={`w-3 h-3 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                  </div>
+                                </button>
+                                {isExpanded && (
+                                  <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <label className="text-gray-400 text-xs">Label:</label>
+                                      <input type="text" value={week.label || ''} onChange={(e) => { const nw = [...programWeeks]; nw[wi] = { ...nw[wi], label: e.target.value }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs flex-1 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g. Base Phase, Build, Peak, Taper, Race Week" />
+                                    </div>
+                                    {week.days.map((day: any, di: number) => (
+                                      <div key={day.day} className="flex items-start gap-2">
+                                        <span className="text-gray-400 text-xs w-12 pt-1 shrink-0">{day.day.slice(0, 3)}</span>
+                                        <div className="flex-1 space-y-1">
+                                          {day.workouts.map((wo: any, woi: number) => (
+                                            <div key={woi} className="flex items-center gap-2 flex-wrap">
+                                              <select value={wo.type || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], type: e.target.value, trainingType: e.target.value === 'rest' ? 'Rest' : '' }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-20">
+                                                <option value="">—</option><option value="run">Run</option><option value="cross">XT</option><option value="walk">Walk</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
+                                              </select>
+                                              {(wo.type === "run" || wo.type === "walk") && (
+                                                <>
+                                                  <select value={wo.trainingType || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], trainingType: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                                    <option value="">Subtype</option>
+                                                    {wo.type === "run" ? <><option value="Easy">Easy</option><option value="LongRun">Long Run</option><option value="Intervals">Intervals</option><option value="Progressive">Progressive</option><option value="SpeedRoad">Speed Road</option><option value="SpeedTrack">Speed Track</option><option value="RacePace">Race Pace</option><option value="ClosePace">Close to Race Pace</option><option value="Trail">Trail</option></> : <><option value="WalkPower">Power</option><option value="WalkRecovery">Recovery</option></>}
+                                                  </select>
+                                                  <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], miles: v }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); } }} className="w-12 bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder={adminDistanceUnit} />
+                                                </>
+                                              )}
+                                              {wo.type === "stretching" && (
+                                                <select value={wo.trainingType || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], trainingType: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                                  <option value="">Type</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
+                                                </select>
+                                              )}
+                                              {day.workouts.length > 1 && <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: nd[di].workouts.filter((_: any, idx: number) => idx !== woi) }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-red-400 text-xs hover:text-red-300">x</button>}
+                                            </div>
+                                          ))}
+                                          <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: [...nd[di].workouts, { type: "", trainingType: "", miles: "", title: "", description: "", distanceUnit: adminDistanceUnit }] }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-purple-400 text-[10px] hover:underline">+ workout</button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button onClick={editingProgramId ? handleSaveEditedProgram : handleCreateProgram} disabled={!programName.trim() || savingProgram || programWeeks.length === 0} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingProgram ? "Saving..." : editingProgramId ? "Save Changes" : "Create Program"}</button>
+                        <button onClick={() => { setCreatingProgram(false); setEditingProgramId(null); setProgramName(""); setProgramWeeks([]); setProgramExpandedWeek(null); }} className="text-gray-400 text-sm">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Program list */}
+                  {programTemplates.length === 0 && !creatingProgram ? (
+                    <p className="text-gray-300 text-sm">No program templates yet. Create one to define a multi-week training progression (e.g. Marathon 20-Week).</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {programTemplates.map((prog) => (
+                        <div key={prog.id} className="bg-primary/30 border border-purple-500/10 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <h4 className="text-white font-medium">{prog.name}</h4>
+                              <p className="text-gray-400 text-xs">{prog.category && <span className="text-purple-300">{prog.category} · </span>}{prog.data.totalWeeks} weeks</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => { setCreatingProgram(false); startEditingProgram(prog); }} className="text-gray-500 hover:text-white text-xs transition-colors border border-white/10 px-3 py-1 rounded">Edit</button>
+                              <button onClick={() => handleDeleteProgram(prog.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
+                            </div>
+                          </div>
+                          {/* Compact week overview */}
+                          <div className="grid grid-cols-5 md:grid-cols-10 gap-1">
+                            {(prog.data.weeks || []).map((w: any, i: number) => {
+                              const wm = w.days?.reduce((t: number, d: any) => t + d.workouts.reduce((dt: number, wo: any) => dt + (parseFloat(wo.miles) || 0), 0), 0) || 0;
+                              return (
+                                <div key={i} className="bg-primary/50 rounded px-1 py-1 text-center" title={`Week ${w.weekNumber}${w.label ? ': ' + w.label : ''}`}>
+                                  <p className="text-gray-500 text-[9px]">W{w.weekNumber}</p>
+                                  {wm > 0 && <p className="text-accent text-[10px] font-bold">{Math.round(wm)}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
