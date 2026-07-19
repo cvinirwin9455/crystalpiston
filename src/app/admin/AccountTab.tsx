@@ -429,7 +429,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         {!loadingPlans && plans.length === 0 && <p className="text-gray-500 text-sm">No plans yet. Create one above.</p>}
         {/* Active Plan */}
         {plans.filter(p => p.status === "active").map((plan) => (
-          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} />
+          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} programTemplates={programTemplates} />
         ))}
         {/* Completed Plans - collapsible */}
         {plans.filter(p => p.status !== "active").length > 0 && (
@@ -439,7 +439,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             </summary>
             <div className="mt-3 space-y-3">
               {plans.filter(p => p.status !== "active").map((plan) => (
-                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} />
+                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} programTemplates={programTemplates} />
               ))}
             </div>
           </details>
@@ -463,7 +463,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
 }
 
 // Sub-component for individual plan card with payment logging
-function PlanCard({ plan, onUpdate, dateFormat }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" }) {
+function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
