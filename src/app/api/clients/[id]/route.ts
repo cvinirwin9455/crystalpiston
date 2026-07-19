@@ -209,6 +209,7 @@ export async function DELETE(
   const adminClient = await getAdminClient()
   const userId = params.id
 
+  // Set user status to inactive
   const { error } = await adminClient
     .from('users')
     .update({ status: 'inactive' })
@@ -216,6 +217,37 @@ export async function DELETE(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Disconnect Strava if connected (deauthorize + delete connection)
+  try {
+    const { data: connection } = await adminClient
+      .from('strava_connections')
+      .select('access_token')
+      .eq('user_id', userId)
+      .single()
+
+    if (connection) {
+      // Deauthorize on Strava (best effort)
+      try {
+        await fetch('https://www.strava.com/oauth/deauthorize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: connection.access_token }),
+        })
+      } catch (err) {
+        console.error('Failed to deauthorize Strava for archived client:', err)
+      }
+
+      // Delete the connection from our DB
+      await adminClient
+        .from('strava_connections')
+        .delete()
+        .eq('user_id', userId)
+    }
+  } catch (err) {
+    console.error('Failed to disconnect Strava during archive:', err)
+    // Don't fail the archive operation if Strava disconnect fails
   }
 
   return NextResponse.json({ success: true })

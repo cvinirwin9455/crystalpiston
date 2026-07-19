@@ -7,6 +7,7 @@ import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
 import AvatarUpload from "@/components/AvatarUpload";
+import ClientStatsTab from "./ClientStatsTab";
 import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
@@ -19,7 +20,7 @@ type Client = { id: string; clientId: string | null; name: string; email: string
 
 export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account">("plan");
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">("plan");
   const [editingWeek, setEditingWeek] = useState(false);
   const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
   const [editDistanceUnits, setEditDistanceUnits] = useState<Record<string, "mi" | "km">>({});
@@ -2722,7 +2723,7 @@ export default function AdminPage() {
 
               {/* Tabs (always in sticky area) */}
               <div className="px-6 pb-2 flex gap-1 flex-wrap">
-                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "account", label: "Account" }].map((tab) => (
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
                   <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                     {tab.label}
                     {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
@@ -3601,6 +3602,11 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* STATS */}
+            {clientTab === "stats" && (
+              <ClientStatsTab clientId={selectedClientData.clientId} distanceUnit={adminDistanceUnit} />
             )}
 
             {/* ACCOUNT */}

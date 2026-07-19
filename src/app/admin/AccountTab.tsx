@@ -437,12 +437,33 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
       {/* Account Actions */}
       <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
         <h4 className="text-gray-400 text-xs font-heading uppercase mb-4">Account Actions</h4>
-        <p className="text-gray-500 text-xs mb-3">Archiving hides the client but keeps their data. They can no longer log in.</p>
         <div className="flex flex-wrap gap-3">
           {clientData.status === "active" ? (
-            <button onClick={onArchive} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive Client</button>
+            <>
+              <button onClick={() => setShowDeleteConfirm(true)} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Archive Client</button>
+              {showDeleteConfirm && (
+                <div className="w-full bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-4 mt-2">
+                  <p className="text-yellow-400 text-sm font-medium mb-2">Archive this client?</p>
+                  <p className="text-gray-300 text-xs mb-1">This will:</p>
+                  <ul className="text-gray-400 text-xs mb-3 list-disc list-inside space-y-0.5">
+                    <li>Block them from logging in (they won&apos;t be able to access their dashboard)</li>
+                    <li>Disconnect their Strava connection</li>
+                    <li>Move them to the Archived tab in your client list</li>
+                    <li>Keep all their training data (nothing is deleted)</li>
+                  </ul>
+                  <p className="text-gray-400 text-xs mb-3">You can reactivate them at any time from the Archived tab to restore access.</p>
+                  <div className="flex gap-3">
+                    <button onClick={onArchive} className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 font-bold py-2 px-4 rounded-lg text-xs">Yes, Archive Client</button>
+                    <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
-            <button onClick={onArchive} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate Client</button>
+            <>
+              <p className="text-gray-500 text-xs mb-2 w-full">This client is archived. They cannot log in or access their dashboard. Reactivating will restore their access (they&apos;ll need to reconnect Strava if needed).</p>
+              <button onClick={onArchive} className="border border-green-500/30 text-green-400 py-2 px-4 rounded-lg text-sm">Reactivate Client</button>
+            </>
           )}
         </div>
       </div>

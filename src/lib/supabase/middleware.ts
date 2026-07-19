@@ -54,42 +54,48 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If logged in and on login page, redirect to appropriate dashboard
-  if (user && pathname === '/login') {
+  // If logged in, check user profile for role and status
+  if (user) {
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('role, status, is_super_admin')
       .eq('id', user.id)
       .single()
 
-    const url = request.nextUrl.clone()
-    if (profile?.role === 'admin') {
-      url.pathname = '/admin'
-    } else {
-      url.pathname = '/dashboard'
+    // Block archived/inactive clients from accessing protected routes
+    // Admins are never blocked. Public routes (login, etc.) are not blocked.
+    if (profile?.status === 'inactive' && profile?.role !== 'admin' && !isPublicRoute) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('archived', '1')
+      return NextResponse.redirect(url)
     }
-    return NextResponse.redirect(url)
-  }
 
-  // Prevent clients from accessing admin routes
-  if (user && (pathname.startsWith('/admin') || pathname.startsWith('/super-admin'))) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role, is_super_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (pathname.startsWith('/super-admin')) {
-      // Only super admins can access /super-admin
-      if (!profile?.is_super_admin) {
-        const url = request.nextUrl.clone()
+    // If on login page, redirect to appropriate dashboard
+    if (pathname === '/login') {
+      const url = request.nextUrl.clone()
+      if (profile?.role === 'admin') {
         url.pathname = '/admin'
+      } else {
+        url.pathname = '/dashboard'
+      }
+      return NextResponse.redirect(url)
+    }
+
+    // Prevent clients from accessing admin routes
+    if (pathname.startsWith('/admin') || pathname.startsWith('/super-admin')) {
+      if (pathname.startsWith('/super-admin')) {
+        // Only super admins can access /super-admin
+        if (!profile?.is_super_admin) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/admin'
+          return NextResponse.redirect(url)
+        }
+      } else if (profile?.role !== 'admin') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
         return NextResponse.redirect(url)
       }
-    } else if (profile?.role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
     }
   }
 
