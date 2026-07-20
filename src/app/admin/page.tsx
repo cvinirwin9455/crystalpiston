@@ -1846,18 +1846,27 @@ export default function AdminPage() {
     }
   }, [selectedClient, clients.length]);
 
-  // Auto-populate weekPlan from program template when switching to Create tab
+  // Auto-populate weekPlan from program template when a week date range is selected
   useEffect(() => {
     if (clientTab !== 'create' || editingDraftId) return;
     if (!activePlan?.programTemplateId) return;
+    if (!weekPlan.dateRange) return; // Wait until a date range is picked
     const prog = programTemplates.find(p => p.id === activePlan.programTemplateId);
     if (!prog || !prog.data.weeks) return;
 
-    // Calculate which program week we're in
+    // Calculate which program week based on the SELECTED week's start date (not today)
     const raceDate = activePlan.raceDate || activePlan.endDate;
     const raceDateObj = new Date(raceDate + 'T00:00:00');
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const weeksOut = Math.max(0, Math.ceil((raceDateObj.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+    // Parse the selected week's start date from the dateRange (e.g. "Jul 27 - Aug 2")
+    const weekStartStr = weekPlan.dateRange.split(' - ')[0];
+    const selectedWeekDate = new Date(weekStartStr + ', ' + new Date().getFullYear());
+    selectedWeekDate.setHours(0, 0, 0, 0);
+    // If the parsed date is in the past relative to current month, it might be next year
+    if (selectedWeekDate.getTime() < new Date().getTime() - 180 * 24 * 60 * 60 * 1000) {
+      selectedWeekDate.setFullYear(selectedWeekDate.getFullYear() + 1);
+    }
+
+    const weeksOut = Math.max(0, Math.ceil((raceDateObj.getTime() - selectedWeekDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
     const currentWeekNumber = Math.max(1, Math.min(prog.data.totalWeeks, prog.data.totalWeeks - weeksOut + 1));
 
     // Find this week in the program
@@ -1898,7 +1907,7 @@ export default function AdminPage() {
       focus: programWeek.label || '',
       days: mappedDays,
     }));
-  }, [clientTab, activePlan?.programTemplateId, programTemplates.length]);
+  }, [clientTab, activePlan?.programTemplateId, programTemplates.length, weekPlan.dateRange]);
 
   // Reset active plan when switching clients
   useEffect(() => {
@@ -3172,11 +3181,23 @@ export default function AdminPage() {
                 {activePlan?.programTemplateId && (() => {
                   const prog = programTemplates.find(p => p.id === activePlan.programTemplateId);
                   if (!prog) return null;
-                  const raceDate = activePlan.raceDateSameAsEnd ? activePlan.endDate : (activePlan.raceDate || activePlan.endDate);
+                  const raceDate = activePlan.raceDate || activePlan.endDate;
                   const raceDateObj = new Date(raceDate + 'T00:00:00');
-                  const today = new Date(); today.setHours(0, 0, 0, 0);
-                  const weeksOut = Math.max(0, Math.ceil((raceDateObj.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-                  const currentWeekNumber = Math.max(1, prog.data.totalWeeks - weeksOut + 1);
+                  // Use selected week date if available, otherwise today
+                  let referenceDate = new Date(); referenceDate.setHours(0, 0, 0, 0);
+                  if (weekPlan.dateRange) {
+                    const weekStartStr = weekPlan.dateRange.split(' - ')[0];
+                    const parsed = new Date(weekStartStr + ', ' + new Date().getFullYear());
+                    if (!isNaN(parsed.getTime())) {
+                      parsed.setHours(0, 0, 0, 0);
+                      if (parsed.getTime() < new Date().getTime() - 180 * 24 * 60 * 60 * 1000) {
+                        parsed.setFullYear(parsed.getFullYear() + 1);
+                      }
+                      referenceDate = parsed;
+                    }
+                  }
+                  const weeksOut = Math.max(0, Math.ceil((raceDateObj.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+                  const currentWeekNumber = Math.max(1, Math.min(prog.data.totalWeeks, prog.data.totalWeeks - weeksOut + 1));
                   const raceDateFmt = raceDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                   return (
                     <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 flex items-center justify-between flex-wrap gap-2">
