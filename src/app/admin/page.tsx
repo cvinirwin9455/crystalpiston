@@ -2539,7 +2539,9 @@ export default function AdminPage() {
                               {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
                             </div>
                             <p className="text-gray-300 text-xs truncate">
-                              {client.inviteStatus !== "accepted" 
+                              {client.status === "archived"
+                                ? <span className="text-gray-500">Archived</span>
+                                : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                                 : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
                               }
@@ -2583,7 +2585,9 @@ export default function AdminPage() {
                               {client.stravaConnected && <svg className="w-3 h-3 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>}
                             </div>
                             <p className="text-gray-300 text-xs truncate">
-                              {client.inviteStatus !== "accepted" 
+                              {client.status === "archived"
+                                ? <span className="text-gray-500">Archived</span>
+                                : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                                 : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
                               }
