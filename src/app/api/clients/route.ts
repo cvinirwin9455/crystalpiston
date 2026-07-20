@@ -221,7 +221,7 @@ export async function GET() {
       avatarUrl: u.avatar_url,
       stravaProfileUrl: stravaProfileByUserId.get(u.id) || null,
       stravaConnected: stravaConnectedUserIds.has(u.id),
-      goal: activePlan?.goal || clientRecord?.goal || '',
+      goal: activePlan?.goal || '',
       startDate: activePlan?.start_date || clientRecord?.start_date || '',
       planEnd: activePlan?.end_date || clientRecord?.plan_end || '',
       owed,
