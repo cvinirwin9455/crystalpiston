@@ -1886,19 +1886,35 @@ export default function AdminPage() {
       }
       return {
         day: dayName,
-        workouts: progDay.workouts.map((wo: any) => ({
-          type: wo.type || "",
-          trainingType: wo.trainingType || "",
-          title: wo.title || "",
-          miles: wo.miles || "",
-          description: wo.description || "",
-          paceTarget: wo.paceTarget || "",
-          location: wo.location || "",
-          coachNotes: wo.coachNotes || "",
-          distanceUnit: wo.distanceUnit || adminDistanceUnit,
-          ...(wo.structure ? { structure: wo.structure } : {}),
-          ...(wo.crossTrainingStructure ? { crossTrainingStructure: wo.crossTrainingStructure } : {}),
-        })),
+        workouts: progDay.workouts.map((wo: any) => {
+          // Convert distance if program unit differs from admin preference
+          let miles = wo.miles || "";
+          let distUnit = wo.distanceUnit || "mi";
+          if (miles && distUnit !== adminDistanceUnit) {
+            const val = parseFloat(miles);
+            if (!isNaN(val) && val > 0) {
+              if (distUnit === "mi" && adminDistanceUnit === "km") {
+                miles = (val * 1.60934).toFixed(1).replace(/\.0$/, '');
+              } else if (distUnit === "km" && adminDistanceUnit === "mi") {
+                miles = (val / 1.60934).toFixed(1).replace(/\.0$/, '');
+              }
+            }
+            distUnit = adminDistanceUnit;
+          }
+          return {
+            type: wo.type || "",
+            trainingType: wo.trainingType || "",
+            title: wo.title || "",
+            miles,
+            description: wo.description || "",
+            paceTarget: wo.paceTarget || "",
+            location: wo.location || "",
+            coachNotes: wo.coachNotes || "",
+            distanceUnit: distUnit,
+            ...(wo.structure ? { structure: wo.structure } : {}),
+            ...(wo.crossTrainingStructure ? { crossTrainingStructure: wo.crossTrainingStructure } : {}),
+          };
+        }),
       };
     });
 
@@ -4319,7 +4335,7 @@ export default function AdminPage() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-purple-300 text-xs font-heading uppercase">Week-by-Week Plan ({programWeeks.length} weeks)</span>
-                          <span className="text-gray-500 text-xs">Week 1 = start of training · Week {programTotalWeeks} = race week</span>
+                          <span className="text-gray-500 text-xs">Week 1 = start of training · Week {programTotalWeeks} = race week · Distances in {adminDistanceUnit}</span>
                         </div>
                         <div className="grid grid-cols-1 gap-1 max-h-[600px] overflow-y-auto">
                           {programWeeks.map((week, wi) => {
