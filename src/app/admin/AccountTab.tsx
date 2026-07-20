@@ -31,6 +31,7 @@ type ClientData = {
   status: string;
   birthday?: string | null;
   avatarUrl?: string | null;
+  stravaProfileUrl?: string | null;
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat, programTemplates }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
@@ -247,14 +248,13 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           /* View Mode */
           <div className="space-y-4">
             <div className="flex items-start gap-5">
-              {/* Avatar Upload (admin can change client photo) */}
+              {/* Client avatar (view only — only clients can change their own photo) */}
               <AvatarUpload
-                currentAvatarUrl={clientData.avatarUrl}
+                currentAvatarUrl={clientData.avatarUrl || clientData.stravaProfileUrl}
                 userName={clientData.name}
                 userId={clientData.id}
                 size="md"
-                onUploadComplete={() => onSave()}
-                onRemove={() => onSave()}
+                readOnly={true}
               />
               <div className="grid md:grid-cols-4 gap-4 flex-1">
                 <div>

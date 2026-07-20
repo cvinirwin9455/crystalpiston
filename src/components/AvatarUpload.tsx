@@ -7,6 +7,7 @@ type AvatarUploadProps = {
   userName?: string;
   userId?: string; // Only needed for admin uploading on behalf of a client
   size?: "sm" | "md" | "lg"; // sm=40px, md=64px, lg=96px
+  readOnly?: boolean; // If true, hide all edit controls
   onUploadComplete?: (newUrl: string) => void;
   onRemove?: () => void;
 };
@@ -53,6 +54,7 @@ export default function AvatarUpload({
   userName,
   userId,
   size = "lg",
+  readOnly = false,
   onUploadComplete,
   onRemove,
 }: AvatarUploadProps) {
@@ -177,6 +179,7 @@ export default function AvatarUpload({
           )}
 
           {/* Overlay on hover */}
+          {!readOnly && (
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
@@ -224,10 +227,11 @@ export default function AvatarUpload({
               </svg>
             )}
           </button>
+          )}
         </div>
 
         {/* Remove button (shown when there's a photo) */}
-        {displayUrl && !uploading && (
+        {displayUrl && !uploading && !readOnly && (
           <button
             onClick={(e) => { e.stopPropagation(); handleRemove(); }}
             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
@@ -251,6 +255,7 @@ export default function AvatarUpload({
       </div>
 
       {/* Upload text hint */}
+      {!readOnly && (
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
@@ -258,6 +263,7 @@ export default function AvatarUpload({
       >
         {uploading ? "Uploading..." : displayUrl ? "Change photo" : "Add photo"}
       </button>
+      )}
 
       {/* Error */}
       {error && <p className="text-red-400 text-xs text-center">{error}</p>}
