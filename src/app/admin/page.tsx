@@ -1353,17 +1353,36 @@ export default function AdminPage() {
     }
   };
 
-  // Archive client via API
+  // Archive or reactivate client via API
   const handleArchiveClient = async (userId: string) => {
-    try {
-      const res = await fetch(`/api/clients/${userId}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchClients();
-        setSelectedClient(null);
-        setShowDeleteConfirm(false);
+    const client = clients.find(c => c.id === userId);
+    if (client?.status === 'archived') {
+      // Reactivate: set status back to active
+      try {
+        const res = await fetch(`/api/clients/${userId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' }),
+        });
+        if (res.ok) {
+          fetchClients();
+          setSelectedClient(null);
+        }
+      } catch (err) {
+        console.error('Failed to reactivate client:', err);
       }
-    } catch (err) {
-      console.error('Failed to archive client:', err);
+    } else {
+      // Archive: set status to inactive (DELETE handler)
+      try {
+        const res = await fetch(`/api/clients/${userId}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchClients();
+          setSelectedClient(null);
+          setShowDeleteConfirm(false);
+        }
+      } catch (err) {
+        console.error('Failed to archive client:', err);
+      }
     }
   };
 
