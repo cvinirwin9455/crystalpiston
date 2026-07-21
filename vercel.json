@@ -1,4 +1,3 @@
 {
-  "framework": "nextjs",
-  "regions": ["iad1", "lhr1"]
+  "framework": "nextjs"
 }
