@@ -146,11 +146,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           owed: newPlanOwed,
           goal: newPlanGoal,
           targetDistance: newPlanTargetDistance || null,
-          raceDate: newPlanRaceDateSameAsEnd ? newPlanEnd : (newPlanRaceDate || null),
+          raceDate: newPlanRaceDate || null,
           goalPace: newPlanGoalPace || null,
           injuryNotes: newPlanInjuryNotes || null,
           programTemplateId: newPlanProgramId || null,
-          raceDateSameAsEnd: newPlanRaceDateSameAsEnd,
         }),
       });
       if (res.ok) {
