@@ -2357,7 +2357,7 @@ export default function AdminPage() {
               )}
             </div>
             {/* Desktop: coach photo replacing pistol logo */}
-            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity cursor-pointer text-left">
+            <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center gap-3 flex-1 hover:bg-white/5 transition-all cursor-pointer text-left rounded-lg px-2 py-1.5 border border-white/10 hover:border-white/20">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
                 {adminAvatarUrl ? (
                   <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -2369,7 +2369,7 @@ export default function AdminPage() {
                 <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
                 <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
               </div>
-              <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              <svg className={`w-4 h-4 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               {showNewUpdatesBadge && <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full"></span>}
             </button>
             {/* Desktop-only dropdown */}
@@ -2397,6 +2397,12 @@ export default function AdminPage() {
                       Manage Coaches
                     </button>
                     )}
+                    <div className="border-t border-white/10 mt-1 pt-1">
+                      <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-red-400 hover:text-red-300">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Logout
+                      </a>
+                    </div>
                   </div>
                 </>
               )}
@@ -2603,12 +2609,7 @@ export default function AdminPage() {
           })()}
         </div>
         <div className="p-3 border-t border-white/10 hidden md:block">
-          <div className="relative">
-            <a href="/auth/signout" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-accent">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-              <span className="text-xs">Logout</span>
-            </a>
-          </div>
+        </div>
         </div>
       </aside>
 
