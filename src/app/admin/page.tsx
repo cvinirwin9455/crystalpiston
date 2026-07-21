@@ -2337,10 +2337,98 @@ export default function AdminPage() {
     }
   };
 
-  const getTrainingTypeLabel = (tt: string) => { switch (tt) { case "ClosePace": return "Close to Race Pace"; case "Easy": return "Easy Run"; case "Fartlek": return "Fartlek"; case "Hills": return "Hill Repeats"; case "Intervals": return "Intervals (Run/Walk)"; case "LongRun": return "Long Run"; case "Progressive": return "Progressive"; case "RacePace": return "Race Pace"; case "Recovery": return "Recovery Run"; case "SpeedRoad": return "Speed Workout - Road"; case "SpeedTrack": return "Speed Workout - Track"; case "Tempo": return "Tempo Runs"; case "Threshold": return "Threshold Runs"; case "TimeTrial": return "Time Trial"; case "Trail": return "Trail"; case "Treadmill": return "Treadmill"; case "WalkRecovery": return "Walk Recovery"; case "WalkPower": return "Walk Power"; case "Stretching": return "Stretching"; case "FoamRoll": return "Foam Roll"; case "Yoga": return "Yoga"; case "CrossTraining": return "Cross Training"; case "OrangeTheory": return "Cross Training"; case "Rest": return "Rest"; default: return tt; } };
-  const getTypeBadge = (type: string) => { switch (type) { case "run": return "bg-accent/20 text-accent"; case "cross": return "bg-gold/20 text-gold"; case "rest": return "bg-green-500/20 text-green-400"; case "walk": return "bg-blue-500/20 text-blue-400"; case "cycling": return "bg-cyan-500/20 text-cyan-400"; case "stretching": return "bg-purple-500/20 text-purple-400"; default: return "bg-gray-500/20 text-gray-400"; } };
-  const getTypeLabel = (type: string) => { switch (type) { case "cross": return "Cross Training"; case "cycling": return "Cycling"; case "rest": return "Rest"; case "run": return "Run"; case "stretching": return "Stretching"; case "walk": return "Walk"; default: return type; } };
-  const getTrainingTypeBadge = (tt: string) => { switch (tt) { case "SpeedRoad": case "SpeedTrack": return "bg-red-500/20 text-red-400 border-red-500/30"; case "Tempo": case "Threshold": return "bg-orange-500/20 text-orange-400 border-orange-500/30"; case "LongRun": case "Easy": case "Recovery": case "Treadmill": case "Progressive": case "Trail": return "bg-blue-500/20 text-blue-400 border-blue-500/30"; case "Hills": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"; case "RacePace": case "ClosePace": return "bg-green-500/20 text-green-300 border-green-500/30"; case "Intervals": return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"; case "TimeTrial": case "Fartlek": return "bg-red-500/20 text-red-300 border-red-500/30"; case "WalkRecovery": case "WalkPower": return "bg-blue-500/20 text-blue-300 border-blue-500/30"; case "Stretching": case "FoamRoll": case "Yoga": return "bg-purple-500/20 text-purple-400 border-purple-500/30"; case "CrossTraining": return "bg-purple-500/20 text-purple-400 border-purple-500/30"; default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"; } };
+  const getTrainingTypeLabel = (tt: string) => {
+    switch (tt) {
+      case "ClosePace": return "Close to Race Pace";
+      case "Easy": return "Easy Run";
+      case "Fartlek": return "Fartlek";
+      case "Hills": return "Hill Repeats";
+      case "Intervals": return "Intervals (Run/Walk)";
+      case "LongRun": return "Long Run";
+      case "Progressive": return "Progressive";
+      case "RacePace": return "Race Pace";
+      case "Recovery": return "Recovery Run";
+      case "SpeedRoad": return "Speed Workout - Road";
+      case "SpeedTrack": return "Speed Workout - Track";
+      case "Tempo": return "Tempo Runs";
+      case "Threshold": return "Threshold Runs";
+      case "TimeTrial": return "Time Trial";
+      case "Trail": return "Trail";
+      case "Treadmill": return "Treadmill";
+      case "WalkRecovery": return "Walk Recovery";
+      case "WalkPower": return "Walk Power";
+      case "Stretching": return "Stretching";
+      case "FoamRoll": return "Foam Roll";
+      case "Yoga": return "Yoga";
+      case "CrossTraining": return "Cross Training";
+      case "OrangeTheory": return "Cross Training";
+      case "Rest": return "Rest";
+      default: return tt;
+    }
+  };
+
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case "run": return "bg-accent/20 text-accent";
+      case "cross": return "bg-gold/20 text-gold";
+      case "rest": return "bg-green-500/20 text-green-400";
+      case "walk": return "bg-blue-500/20 text-blue-400";
+      case "cycling": return "bg-cyan-500/20 text-cyan-400";
+      case "stretching": return "bg-purple-500/20 text-purple-400";
+      default: return "bg-gray-500/20 text-gray-400";
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "cross": return "Cross Training";
+      case "cycling": return "Cycling";
+      case "rest": return "Rest";
+      case "run": return "Run";
+      case "stretching": return "Stretching";
+      case "walk": return "Walk";
+      default: return type;
+    }
+  };
+
+  const getTrainingTypeBadge = (tt: string) => {
+    switch (tt) {
+      case "SpeedRoad":
+      case "SpeedTrack":
+        return "bg-red-500/20 text-red-400 border-red-500/30";
+      case "Tempo":
+      case "Threshold":
+        return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+      case "LongRun":
+      case "Easy":
+      case "Recovery":
+      case "Treadmill":
+      case "Progressive":
+      case "Trail":
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      case "Hills":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      case "RacePace":
+      case "ClosePace":
+        return "bg-green-500/20 text-green-300 border-green-500/30";
+      case "Intervals":
+        return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30";
+      case "TimeTrial":
+      case "Fartlek":
+        return "bg-red-500/20 text-red-300 border-red-500/30";
+      case "WalkRecovery":
+      case "WalkPower":
+        return "bg-blue-500/20 text-blue-300 border-blue-500/30";
+      case "Stretching":
+      case "FoamRoll":
+      case "Yoga":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      case "CrossTraining":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      default:
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-primary md:flex">
