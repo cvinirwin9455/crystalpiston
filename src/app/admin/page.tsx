@@ -2698,7 +2698,6 @@ export default function AdminPage() {
         </div>
         <div className="p-3 border-t border-white/10 hidden md:block">
         </div>
-        </div>
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
