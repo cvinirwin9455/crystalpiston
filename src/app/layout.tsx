@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import AuthRedirect from "./components/AuthRedirect";
+import PullToRefresh from "@/components/PullToRefresh";
 import { Analytics } from "@vercel/analytics/react";
 import { getBrand } from "@/lib/brand.server";
 
@@ -150,7 +151,9 @@ export default function RootLayout({
       </head>
       <body className="font-body">
         <AuthRedirect />
-        {children}
+        <PullToRefresh>
+          {children}
+        </PullToRefresh>
         <Analytics />
       </body>
     </html>
