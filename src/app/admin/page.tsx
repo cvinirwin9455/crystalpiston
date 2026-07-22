@@ -458,6 +458,7 @@ export default function AdminPage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [dashboardDraftCount, setDashboardDraftCount] = useState<number>(0);
   const [loggedInUser, setLoggedInUser] = useState<string>("");
   const [loggedInUserId, setLoggedInUserId] = useState<string>("");
   const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null);
@@ -1276,6 +1277,20 @@ export default function AdminPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  // Fetch dashboard draft count via dedicated lightweight API
+  useEffect(() => {
+    const fetchDraftCount = async () => {
+      try {
+        const res = await fetch('/api/weeks/draft-count');
+        if (res.ok) {
+          const data = await res.json();
+          setDashboardDraftCount(data.draftCount || 0);
+        }
+      } catch (err) { console.error('Failed to fetch draft count:', err); }
+    };
+    fetchDraftCount();
+  }, []);
 
   // Fetch all drafts on initial load so dashboard shows them immediately
   const draftsLoadingRef = useRef(false);
@@ -2110,6 +2125,10 @@ export default function AdminPage() {
         }),
       });
       if (res.ok) {
+        // Update dashboard draft count
+        if (publishStatus === "draft" && !editingDraftId) {
+          setDashboardDraftCount(prev => prev + 1);
+        }
         // Reset form
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
@@ -2161,6 +2180,7 @@ export default function AdminPage() {
         body: JSON.stringify({ status: 'published' }),
       });
       if (res.ok) {
+        setDashboardDraftCount(prev => Math.max(0, prev - 1));
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) {
           await fetchWeeks(client.clientId);
@@ -2179,6 +2199,7 @@ export default function AdminPage() {
         body: JSON.stringify({ status: 'draft' }),
       });
       if (res.ok) {
+        setDashboardDraftCount(prev => prev + 1);
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) fetchWeeks(client.clientId);
       }
@@ -2335,6 +2356,7 @@ export default function AdminPage() {
       if (res.ok) {
         // Optimistically remove from local state immediately
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: c.weeks.filter(w => w.weekId !== weekId) } : c));
+        setDashboardDraftCount(prev => Math.max(0, prev - 1));
         // Then re-fetch to ensure server consistency
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) {
@@ -4746,7 +4768,7 @@ export default function AdminPage() {
               return (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{activeVisible.length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{activeVisible.reduce((s, c) => s + c.weeks.filter((w: any) => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{dashboardDraftCount}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${activeVisible.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
                 </div>
