@@ -1278,49 +1278,63 @@ export default function AdminPage() {
   }, [fetchClients]);
 
   // Fetch all drafts on initial load so dashboard shows them immediately
-  const draftsLoadedRef = useRef(false);
+  const draftsLoadingRef = useRef(false);
   useEffect(() => {
-    if (draftsLoadedRef.current) return;
-    const fetchAllDrafts = async () => {
-      if (clients.length === 0) return;
-      draftsLoadedRef.current = true;
-      const clientsWithIds = clients.filter(c => c.clientId && c.weeks.length === 0);
-      if (clientsWithIds.length === 0) return;
-      for (const client of clientsWithIds) {
-        try {
-          const res = await fetch(`/api/weeks?client_id=${client.clientId}`);
-          if (res.ok) {
-            const data = await res.json();
-            const drafts = data.filter((w: any) => w.status === 'draft');
-            if (drafts.length > 0) {
-              const mapped = drafts.map((w: any) => ({
-                weekId: w.weekId,
-                label: w.dateRange,
-                dateRange: w.dateRange,
-                focus: w.focus || '',
-                coachMessage: w.coachMessage || '',
-                status: 'draft' as const,
-                clientWorkouts: [],
-                workouts: (w.workouts || []).map((wo: any) => ({
-                  id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
-                  trainingType: wo.trainingType || '', title: wo.title || '',
-                  miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
-                  description: wo.description || '', paceTarget: wo.paceTarget || '',
-                  location: wo.location || '', coachNotes: wo.coachNotes || '',
-                  completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
-                  stravaActivityName: wo.stravaActivityName || null,
-                  status: wo.status || undefined,
-                  skipReason: wo.skipReason || undefined, log: wo.log || undefined,
-                  structure: wo.structure || null,
-                })),
-              }));
-              setClients(prev => prev.map(c => c.id === client.id ? { ...c, weeks: [...c.weeks, ...mapped] } : c));
-            }
-          }
-        } catch (err) { console.error('Failed to fetch drafts for', client.name, err); }
-      }
+    if (draftsLoadingRef.current) return;
+    if (clients.length === 0) return;
+    const clientsNeedingDrafts = clients.filter(c => c.clientId && c.weeks.length === 0);
+    if (clientsNeedingDrafts.length === 0) return;
+    draftsLoadingRef.current = true;
+
+    const fetchDraftsForClient = async (client: typeof clients[0]) => {
+      const res = await fetch(`/api/weeks?client_id=${client.clientId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const drafts = data.filter((w: any) => w.status === 'draft');
+      if (drafts.length === 0) return null;
+      return {
+        clientId: client.id,
+        weeks: drafts.map((w: any) => ({
+          weekId: w.weekId,
+          label: w.dateRange,
+          dateRange: w.dateRange,
+          focus: w.focus || '',
+          coachMessage: w.coachMessage || '',
+          status: 'draft' as const,
+          clientWorkouts: [],
+          workouts: (w.workouts || []).map((wo: any) => ({
+            id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
+            trainingType: wo.trainingType || '', title: wo.title || '',
+            miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
+            description: wo.description || '', paceTarget: wo.paceTarget || '',
+            location: wo.location || '', coachNotes: wo.coachNotes || '',
+            completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
+            stravaActivityName: wo.stravaActivityName || null,
+            status: wo.status || undefined,
+            skipReason: wo.skipReason || undefined, log: wo.log || undefined,
+            structure: wo.structure || null,
+          })),
+        })),
+      };
     };
-    fetchAllDrafts();
+
+    Promise.allSettled(clientsNeedingDrafts.map(fetchDraftsForClient))
+      .then(results => {
+        const updates = results
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null)
+          .map(r => r.value);
+        if (updates.length > 0) {
+          setClients(prev => prev.map(c => {
+            const update = updates.find(u => u.clientId === c.id);
+            if (update && c.weeks.length === 0) {
+              return { ...c, weeks: [...c.weeks, ...update.weeks] };
+            }
+            return c;
+          }));
+        }
+      })
+      .catch(err => console.error('Failed to fetch drafts:', err))
+      .finally(() => { draftsLoadingRef.current = false; });
   }, [clients.length]);
 
   // Create new client via API
