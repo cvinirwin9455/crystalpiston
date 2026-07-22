@@ -1285,7 +1285,9 @@ export default function AdminPage() {
         const res = await fetch('/api/weeks/draft-count');
         if (res.ok) {
           const data = await res.json();
-          setDashboardDraftCount(data.draftCount || 0);
+          setDashboardDraftCount(data.draftCount ?? 0);
+        } else {
+          console.error('Draft count API returned', res.status);
         }
       } catch (err) { console.error('Failed to fetch draft count:', err); }
     };
