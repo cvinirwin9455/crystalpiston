@@ -458,6 +458,7 @@ export default function AdminPage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [dashboardDraftCount, setDashboardDraftCount] = useState<number>(0);
   const [loggedInUser, setLoggedInUser] = useState<string>("");
   const [loggedInUserId, setLoggedInUserId] = useState<string>("");
   const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null);
@@ -1277,50 +1278,80 @@ export default function AdminPage() {
     fetchClients();
   }, [fetchClients]);
 
-  // Fetch all drafts on initial load so dashboard shows them immediately
-  const draftsLoadedRef = useRef(false);
+  // Fetch dashboard draft count via dedicated lightweight API
   useEffect(() => {
-    if (draftsLoadedRef.current) return;
-    const fetchAllDrafts = async () => {
-      if (clients.length === 0) return;
-      draftsLoadedRef.current = true;
-      const clientsWithIds = clients.filter(c => c.clientId && c.weeks.length === 0);
-      if (clientsWithIds.length === 0) return;
-      for (const client of clientsWithIds) {
-        try {
-          const res = await fetch(`/api/weeks?client_id=${client.clientId}`);
-          if (res.ok) {
-            const data = await res.json();
-            const drafts = data.filter((w: any) => w.status === 'draft');
-            if (drafts.length > 0) {
-              const mapped = drafts.map((w: any) => ({
-                weekId: w.weekId,
-                label: w.dateRange,
-                dateRange: w.dateRange,
-                focus: w.focus || '',
-                coachMessage: w.coachMessage || '',
-                status: 'draft' as const,
-                clientWorkouts: [],
-                workouts: (w.workouts || []).map((wo: any) => ({
-                  id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
-                  trainingType: wo.trainingType || '', title: wo.title || '',
-                  miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
-                  description: wo.description || '', paceTarget: wo.paceTarget || '',
-                  location: wo.location || '', coachNotes: wo.coachNotes || '',
-                  completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
-                  stravaActivityName: wo.stravaActivityName || null,
-                  status: wo.status || undefined,
-                  skipReason: wo.skipReason || undefined, log: wo.log || undefined,
-                  structure: wo.structure || null,
-                })),
-              }));
-              setClients(prev => prev.map(c => c.id === client.id ? { ...c, weeks: [...c.weeks, ...mapped] } : c));
-            }
-          }
-        } catch (err) { console.error('Failed to fetch drafts for', client.name, err); }
-      }
+    const fetchDraftCount = async () => {
+      try {
+        const res = await fetch('/api/weeks/draft-count');
+        if (res.ok) {
+          const data = await res.json();
+          setDashboardDraftCount(data.draftCount ?? 0);
+        } else {
+          console.error('Draft count API returned', res.status);
+        }
+      } catch (err) { console.error('Failed to fetch draft count:', err); }
     };
-    fetchAllDrafts();
+    fetchDraftCount();
+  }, []);
+
+  // Fetch all drafts on initial load so dashboard shows them immediately
+  const draftsLoadingRef = useRef(false);
+  useEffect(() => {
+    if (draftsLoadingRef.current) return;
+    if (clients.length === 0) return;
+    const clientsNeedingDrafts = clients.filter(c => c.clientId && c.weeks.length === 0);
+    if (clientsNeedingDrafts.length === 0) return;
+    draftsLoadingRef.current = true;
+
+    const fetchDraftsForClient = async (client: typeof clients[0]) => {
+      const res = await fetch(`/api/weeks?client_id=${client.clientId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const drafts = data.filter((w: any) => w.status === 'draft');
+      if (drafts.length === 0) return null;
+      return {
+        clientId: client.id,
+        weeks: drafts.map((w: any) => ({
+          weekId: w.weekId,
+          label: w.dateRange,
+          dateRange: w.dateRange,
+          focus: w.focus || '',
+          coachMessage: w.coachMessage || '',
+          status: 'draft' as const,
+          clientWorkouts: [],
+          workouts: (w.workouts || []).map((wo: any) => ({
+            id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
+            trainingType: wo.trainingType || '', title: wo.title || '',
+            miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
+            description: wo.description || '', paceTarget: wo.paceTarget || '',
+            location: wo.location || '', coachNotes: wo.coachNotes || '',
+            completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
+            stravaActivityName: wo.stravaActivityName || null,
+            status: wo.status || undefined,
+            skipReason: wo.skipReason || undefined, log: wo.log || undefined,
+            structure: wo.structure || null,
+          })),
+        })),
+      };
+    };
+
+    Promise.allSettled(clientsNeedingDrafts.map(fetchDraftsForClient))
+      .then(results => {
+        const updates = results
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null)
+          .map(r => r.value);
+        if (updates.length > 0) {
+          setClients(prev => prev.map(c => {
+            const update = updates.find(u => u.clientId === c.id);
+            if (update && c.weeks.length === 0) {
+              return { ...c, weeks: [...c.weeks, ...update.weeks] };
+            }
+            return c;
+          }));
+        }
+      })
+      .catch(err => console.error('Failed to fetch drafts:', err))
+      .finally(() => { draftsLoadingRef.current = false; });
   }, [clients.length]);
 
   // Create new client via API
@@ -2096,6 +2127,10 @@ export default function AdminPage() {
         }),
       });
       if (res.ok) {
+        // Update dashboard draft count
+        if (publishStatus === "draft" && !editingDraftId) {
+          setDashboardDraftCount(prev => prev + 1);
+        }
         // Reset form
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
@@ -2147,6 +2182,7 @@ export default function AdminPage() {
         body: JSON.stringify({ status: 'published' }),
       });
       if (res.ok) {
+        setDashboardDraftCount(prev => Math.max(0, prev - 1));
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) {
           await fetchWeeks(client.clientId);
@@ -2165,6 +2201,7 @@ export default function AdminPage() {
         body: JSON.stringify({ status: 'draft' }),
       });
       if (res.ok) {
+        setDashboardDraftCount(prev => prev + 1);
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) fetchWeeks(client.clientId);
       }
@@ -2321,6 +2358,7 @@ export default function AdminPage() {
       if (res.ok) {
         // Optimistically remove from local state immediately
         setClients(prev => prev.map(c => c.id === selectedClient ? { ...c, weeks: c.weeks.filter(w => w.weekId !== weekId) } : c));
+        setDashboardDraftCount(prev => Math.max(0, prev - 1));
         // Then re-fetch to ensure server consistency
         const client = clients.find(c => c.id === selectedClient);
         if (client && client.clientId) {
@@ -4732,7 +4770,7 @@ export default function AdminPage() {
               return (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{activeVisible.length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{activeVisible.reduce((s, c) => s + c.weeks.filter((w: any) => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{dashboardDraftCount}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${activeVisible.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
                 </div>
