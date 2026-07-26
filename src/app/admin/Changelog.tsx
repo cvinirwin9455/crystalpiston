@@ -3,9 +3,20 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-19T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-26T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 26, 2026",
+    items: [
+      { area: "All", text: "NEW: Feedback & Bug Report button — a floating 'Feedback' button now appears on every page (bottom-left) for all logged-in users. Click it to submit a bug report or feature suggestion. You can optionally attach a screenshot" },
+      { area: "All", text: "NEW: When you submit feedback, you'll get a confirmation email thanking you. When the team reviews your submission and has an update, you'll get another email with details" },
+      { area: "Admin", text: "NEW: Feedback & Bugs page — in the admin menu you'll find a new 'Feedback & Bugs' section. See all submissions from coaches and clients across both Crystal Pistol and First Mile Coach, filter by status/type/platform/role" },
+      { area: "Admin", text: "NEW: Improvements Log — a dedicated view inside Feedback & Bugs that shows everything marked as 'Implemented', so you can track what's been fixed and improved over time" },
+      { area: "Admin", text: "NEW: When someone submits feedback or a bug, you (the admin) get an email notification with the full details and a link to the admin panel" },
+      { area: "Admin", text: "NEW: From the admin detail view, you can update the status, add internal notes, and send a message to the user about their submission — the message goes out as a branded email automatically" },
+    ],
+  },
   {
     date: "July 19, 2026",
     items: [

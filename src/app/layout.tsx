@@ -3,6 +3,7 @@ import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import AuthRedirect from "./components/AuthRedirect";
 import PullToRefresh from "@/components/PullToRefresh";
+import FeedbackButton from "@/components/FeedbackButton";
 import { Analytics } from "@vercel/analytics/react";
 import { getBrand } from "@/lib/brand.server";
 
@@ -155,6 +156,7 @@ export default function RootLayout({
           {children}
         </PullToRefresh>
         <Analytics />
+        <FeedbackButton />
       </body>
     </html>
   );
