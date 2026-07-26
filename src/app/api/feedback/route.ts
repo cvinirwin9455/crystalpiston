@@ -77,76 +77,38 @@ export async function POST(request: Request) {
   const brand = getEmailBrandFromOrgId(orgId)
   const siteUrl = getProductionUrl(request.url)
 
-  // 1. Send notification email to super admin(s)
+  // 1. Send notification email to super admin (curtisirwin@me.com)
   try {
-    // Get all account_coach level users (super admins) in this org
-    let adminQuery = adminClient
-      .from('users')
-      .select('id, email')
-      .eq('role', 'admin')
-      .eq('coach_level', 'account_coach')
+    const typeLabel = type === 'bug' ? 'Bug Report' : 'Feature Feedback'
+    const priorityLabel = priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Medium'
+    const platformLabel = platform === 'crystal-pistol' ? 'Crystal Pistol' : 'First Mile'
+    const roleLabel = userRole === 'coach' ? 'Coach' : 'Client'
+    const truncatedDesc = description.trim().length > 200 ? description.trim().slice(0, 200) + '...' : description.trim()
 
-    const { data: adminUsers } = await adminQuery
+    const adminEmailHtml = `
+      <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New ${typeLabel}</h2>
+      <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">
+        <strong style="color: #ffffff;">${userName || 'A user'}</strong> (${roleLabel}) submitted a ${type === 'bug' ? 'bug report' : 'feature suggestion'} on <strong style="color: #d4a853;">${platformLabel}</strong>.
+      </p>
+      
+      <div style="margin: 0 0 16px; padding: 16px; background-color: rgba(${type === 'bug' ? '239,68,68' : '34,197,94'},0.1); border-left: 3px solid ${type === 'bug' ? '#ef4444' : '#22c55e'}; border-radius: 4px;">
+        <p style="margin: 0 0 4px; color: ${type === 'bug' ? '#ef4444' : '#22c55e'}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">${typeLabel} &bull; ${priorityLabel} Priority</p>
+        <p style="margin: 0; color: #e0e0e0; font-size: 14px; line-height: 1.5;">${truncatedDesc}</p>
+      </div>
 
-    if (adminUsers && adminUsers.length > 0) {
-      // Also check notification_preferences for custom email
-      for (const admin of adminUsers) {
-        const { data: notifPrefs } = await adminClient
-          .from('notification_preferences')
-          .select('notification_emails')
-          .eq('user_id', admin.id)
-          .maybeSingle()
+      <div style="margin: 0 0 16px; padding: 12px 16px; background-color: rgba(255,255,255,0.05); border-radius: 4px;">
+        <p style="margin: 0 0 4px; color: #888; font-size: 12px;">From: ${userName} &lt;${userEmail}&gt;</p>
+        <p style="margin: 0 0 4px; color: #888; font-size: 12px;">Platform: ${platformLabel} &bull; Role: ${roleLabel}</p>
+        ${pageUrl ? `<p style="margin: 0; color: #888; font-size: 12px;">Page: ${pageUrl}</p>` : ''}
+      </div>
+    `
 
-        let adminEmails: string[] = []
-        if (notifPrefs?.notification_emails) {
-          adminEmails = notifPrefs.notification_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
-        }
-        if (adminEmails.length === 0 && admin.email) {
-          adminEmails = [admin.email]
-        }
-
-        const typeLabel = type === 'bug' ? 'Bug Report' : 'Feature Feedback'
-        const priorityLabel = priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Medium'
-        const platformLabel = platform === 'crystal-pistol' ? 'Crystal Pistol' : 'First Mile'
-        const roleLabel = userRole === 'coach' ? 'Coach' : 'Client'
-        const truncatedDesc = description.trim().length > 200 ? description.trim().slice(0, 200) + '...' : description.trim()
-
-        const adminEmailHtml = `
-          <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New ${typeLabel}</h2>
-          <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">
-            <strong style="color: #ffffff;">${userName || 'A user'}</strong> (${roleLabel}) submitted a ${type === 'bug' ? 'bug report' : 'feature suggestion'} on <strong style="color: #d4a853;">${platformLabel}</strong>.
-          </p>
-          
-          <div style="margin: 0 0 16px; padding: 16px; background-color: rgba(${type === 'bug' ? '239,68,68' : '34,197,94'},0.1); border-left: 3px solid ${type === 'bug' ? '#ef4444' : '#22c55e'}; border-radius: 4px;">
-            <p style="margin: 0 0 4px; color: ${type === 'bug' ? '#ef4444' : '#22c55e'}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">${typeLabel} &bull; ${priorityLabel} Priority</p>
-            <p style="margin: 0; color: #e0e0e0; font-size: 14px; line-height: 1.5;">${truncatedDesc}</p>
-          </div>
-
-          <div style="margin: 0 0 16px; padding: 12px 16px; background-color: rgba(255,255,255,0.05); border-radius: 4px;">
-            <p style="margin: 0 0 4px; color: #888; font-size: 12px;">From: ${userName} &lt;${userEmail}&gt;</p>
-            <p style="margin: 0 0 4px; color: #888; font-size: 12px;">Platform: ${platformLabel} &bull; Role: ${roleLabel}</p>
-            ${pageUrl ? `<p style="margin: 0; color: #888; font-size: 12px;">Page: ${pageUrl}</p>` : ''}
-          </div>
-
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
-            <tr>
-              <td align="center">
-                <a href="${siteUrl}/admin?tab=feedback" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View in Admin</a>
-              </td>
-            </tr>
-          </table>
-        `
-
-        for (const email of adminEmails) {
-          sendEmail({
-            to: email,
-            subject: `New ${typeLabel} from ${userName || 'a user'} (${platformLabel})`,
-            html: adminEmailHtml,
-            brand,
-          }).catch(err => console.error('Failed to send admin notification:', err))
-        }
-      }
-    }
+    sendEmail({
+      to: 'curtisirwin@me.com',
+      subject: `New ${typeLabel} from ${userName || 'a user'} (${platformLabel})`,
+      html: adminEmailHtml,
+      brand,
+    }).catch(err => console.error('Failed to send admin notification:', err))
   } catch (err) {
     console.error('Admin notification error (feedback still saved):', err)
   }
