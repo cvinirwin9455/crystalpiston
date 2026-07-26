@@ -228,7 +228,7 @@ export default function SuperAdminFeedbackTab() {
           )}
 
           {/* Screenshot */}
-          {selectedItem.screenshot_url && (
+          {selectedItem.screenshot_url ? (
             <div className="mt-4">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Screenshot</p>
               <a href={selectedItem.screenshot_url} target="_blank" rel="noopener noreferrer">
@@ -238,6 +238,11 @@ export default function SuperAdminFeedbackTab() {
                   className="max-w-full max-h-64 rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer"
                 />
               </a>
+            </div>
+          ) : (
+            <div className="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Screenshot</p>
+              <p className="text-gray-400 text-sm italic">No screenshot attached</p>
             </div>
           )}
         </div>

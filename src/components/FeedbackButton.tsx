@@ -167,8 +167,8 @@ export default function FeedbackButton() {
   // Don't render if not authenticated
   if (!isAuthenticated) return null;
 
-  // Don't render on the marketing/landing pages (non-authenticated pages)
-  if (typeof window !== "undefined" && (window.location.pathname === "/" || window.location.pathname === "/login")) {
+  // Don't render on the marketing/landing pages or super-admin
+  if (typeof window !== "undefined" && (window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname.startsWith("/super-admin"))) {
     return null;
   }
 
