@@ -81,21 +81,16 @@ export async function POST(request: Request) {
   try {
     // Get all account_coach level users (super admins) in this org
     let adminQuery = adminClient
-      .from('coaches')
-      .select('user_id')
+      .from('users')
+      .select('id, email')
+      .eq('role', 'admin')
       .eq('coach_level', 'account_coach')
 
-    const { data: adminCoaches } = await adminQuery
+    const { data: adminUsers } = await adminQuery
 
-    if (adminCoaches && adminCoaches.length > 0) {
-      const adminUserIds = adminCoaches.map(c => c.user_id)
-      const { data: adminUsers } = await adminClient
-        .from('users')
-        .select('id, email')
-        .in('id', adminUserIds)
-
+    if (adminUsers && adminUsers.length > 0) {
       // Also check notification_preferences for custom email
-      for (const admin of adminUsers || []) {
+      for (const admin of adminUsers) {
         const { data: notifPrefs } = await adminClient
           .from('notification_preferences')
           .select('notification_emails')

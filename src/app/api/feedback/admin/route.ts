@@ -17,13 +17,13 @@ async function verifyAdmin(supabase: any, adminClient: any): Promise<{ userId: s
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: coach } = await adminClient
-    .from('coaches')
-    .select('coach_level')
-    .eq('user_id', user.id)
+  const { data: profile } = await adminClient
+    .from('users')
+    .select('role, coach_level')
+    .eq('id', user.id)
     .single()
 
-  if (!coach || coach.coach_level !== 'account_coach') return null
+  if (!profile || profile.role !== 'admin' || profile.coach_level !== 'account_coach') return null
   return { userId: user.id }
 }
 

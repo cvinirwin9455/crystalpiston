@@ -46,9 +46,10 @@ CREATE POLICY "Admins can read all feedback"
   ON public.feedback FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.coaches
-      WHERE coaches.user_id = auth.uid()
-      AND coaches.coach_level = 'account_coach'
+      SELECT 1 FROM public.users
+      WHERE users.id = auth.uid()
+      AND users.role = 'admin'
+      AND users.coach_level = 'account_coach'
     )
   );
 
@@ -57,9 +58,10 @@ CREATE POLICY "Admins can update feedback"
   ON public.feedback FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM public.coaches
-      WHERE coaches.user_id = auth.uid()
-      AND coaches.coach_level = 'account_coach'
+      SELECT 1 FROM public.users
+      WHERE users.id = auth.uid()
+      AND users.role = 'admin'
+      AND users.coach_level = 'account_coach'
     )
   );
 
