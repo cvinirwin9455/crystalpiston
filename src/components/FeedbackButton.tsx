@@ -90,10 +90,14 @@ export default function FeedbackButton() {
 
       const { data, error } = await supabase.storage
         .from("feedback-screenshots")
-        .upload(fileName, screenshotFile);
+        .upload(fileName, screenshotFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
       if (error) {
         console.error("Screenshot upload error:", error);
+        // Don't block submission — just skip screenshot
         return null;
       }
 
