@@ -3,7 +3,7 @@ import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import AuthRedirect from "./components/AuthRedirect";
 import PullToRefresh from "@/components/PullToRefresh";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { getBrand } from "@/lib/brand.server";
 
 const inter = Inter({
