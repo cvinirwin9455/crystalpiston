@@ -330,36 +330,6 @@ export default function SuperAdminFeedbackTab() {
             />
           </div>
 
-          {/* Activity Log */}
-          {activityLog.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Activity Log</p>
-              <div className="space-y-2">
-                {[...activityLog].reverse().map((entry, i) => (
-                  <div key={i} className={`rounded-lg p-3 ${
-                    entry.type === "message" ? "bg-purple-50 border border-purple-100" :
-                    entry.type === "note" ? "bg-yellow-50 border border-yellow-100" :
-                    "bg-blue-50 border border-blue-100"
-                  }`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                        entry.type === "message" ? "text-purple-500" :
-                        entry.type === "note" ? "text-yellow-600" :
-                        "text-blue-500"
-                      }`}>
-                        {entry.type === "message" ? "Email sent to user" :
-                         entry.type === "note" ? "Internal note" :
-                         "Status update"}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 text-sm">{entry.text}</p>
-                    <p className="text-gray-400 text-xs mt-1">{formatDateTime(entry.date)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Buttons */}
           <div className="flex items-center gap-3 pt-2">
             <button
@@ -390,6 +360,37 @@ export default function SuperAdminFeedbackTab() {
           {error && (
             <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</div>
           )}
+
+          {/* Activity Log */}
+          {activityLog.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Activity Log</p>
+              <div className="space-y-2">
+                {[...activityLog].reverse().map((entry, i) => (
+                  <div key={i} className={`rounded-lg p-3 ${
+                    entry.type === "message" ? "bg-purple-50 border border-purple-100" :
+                    entry.type === "note" ? "bg-yellow-50 border border-yellow-100" :
+                    "bg-blue-50 border border-blue-100"
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        entry.type === "message" ? "text-purple-500" :
+                        entry.type === "note" ? "text-yellow-600" :
+                        "text-blue-500"
+                      }`}>
+                        {entry.type === "message" ? "Email sent to user" :
+                         entry.type === "note" ? "Internal note" :
+                         "Status update"}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 text-sm">{entry.text}</p>
+                    <p className="text-gray-400 text-xs mt-1">{formatDateTime(entry.date)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     );
