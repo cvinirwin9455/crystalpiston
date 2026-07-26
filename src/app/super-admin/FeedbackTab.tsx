@@ -121,12 +121,17 @@ export default function SuperAdminFeedbackTab() {
       }
 
       const data = await res.json();
+
+      // Capture old values before updating state
+      const oldStatus = selectedItem.status;
+      const oldNotes = selectedItem.admin_notes || "";
+
       setFeedback((prev) =>
         prev.map((f) => (f.id === selectedItem.id ? data.feedback : f))
       );
       setSelectedItem(data.feedback);
 
-      // If we sent an email, add it to the activity log and clear the field
+      // Add to activity log
       const now = new Date().toISOString();
       if (sendEmail && editResolution.trim()) {
         setActivityLog((prev) => [
@@ -136,20 +141,18 @@ export default function SuperAdminFeedbackTab() {
         setEditResolution("");
         setSaveSuccess("Saved & email sent to user!");
       } else {
+        const newEntries: { type: "note" | "message" | "status"; text: string; date: string }[] = [];
         // Log status change if different
-        if (editStatus !== selectedItem.status) {
+        if (editStatus !== oldStatus) {
           const statusLabels: Record<string, string> = { new: "New", in_progress: "In Progress", implemented: "Implemented", wont_fix: "Won't Fix" };
-          setActivityLog((prev) => [
-            { type: "status", text: `Status changed to "${statusLabels[editStatus] || editStatus}"`, date: now },
-            ...prev,
-          ]);
+          newEntries.push({ type: "status", text: `Status changed to "${statusLabels[editStatus] || editStatus}"`, date: now });
         }
         // Log note if it changed
-        if (editNotes && editNotes !== (selectedItem.admin_notes || "")) {
-          setActivityLog((prev) => [
-            { type: "note", text: editNotes, date: now },
-            ...prev,
-          ]);
+        if (editNotes && editNotes !== oldNotes) {
+          newEntries.push({ type: "note", text: editNotes, date: now });
+        }
+        if (newEntries.length > 0) {
+          setActivityLog((prev) => [...newEntries, ...prev]);
         }
         setSaveSuccess("Saved!");
       }
