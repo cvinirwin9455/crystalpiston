@@ -68,9 +68,10 @@ interface SendEmailParams {
   subject: string
   html: string
   brand?: EmailBrand
+  replyTo?: string
 }
 
-export async function sendEmail({ to, subject, html, brand = 'crystal-pistol' }: SendEmailParams): Promise<boolean> {
+export async function sendEmail({ to, subject, html, brand = 'crystal-pistol', replyTo }: SendEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   const assets = getEmailBrandAssets(brand)
 
@@ -91,6 +92,7 @@ export async function sendEmail({ to, subject, html, brand = 'crystal-pistol' }:
         to: [to],
         subject,
         html: wrapInBrandedTemplate(html, brand),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     })
 

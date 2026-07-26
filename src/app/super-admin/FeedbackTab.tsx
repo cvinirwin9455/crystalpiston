@@ -368,22 +368,37 @@ export default function SuperAdminFeedbackTab() {
               <div className="space-y-2">
                 {[...activityLog].reverse().map((entry, i) => (
                   <div key={i} className={`rounded-lg p-3 ${
+                    entry.type === "user_reply" ? "bg-indigo-50 border border-indigo-100" :
                     entry.type === "message" ? "bg-purple-50 border border-purple-100" :
                     entry.type === "note" ? "bg-yellow-50 border border-yellow-100" :
                     "bg-blue-50 border border-blue-100"
                   }`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        entry.type === "user_reply" ? "text-indigo-600" :
                         entry.type === "message" ? "text-purple-500" :
                         entry.type === "note" ? "text-yellow-600" :
                         "text-blue-500"
                       }`}>
-                        {entry.type === "message" ? "Email sent to user" :
+                        {entry.type === "user_reply" ? "User replied" :
+                         entry.type === "message" ? "Email sent to user" :
                          entry.type === "note" ? "Internal note" :
                          "Status update"}
                       </span>
                     </div>
                     <p className="text-gray-700 text-sm">{entry.text}</p>
+                    {(entry as any).attachments && (entry as any).attachments.length > 0 && (
+                      <div className="mt-2 flex gap-2 flex-wrap">
+                        {(entry as any).attachments.map((url: string, j: number) => (
+                          <a key={j} href={url} target="_blank" rel="noopener noreferrer">
+                            <img src={url} alt="Attachment" className="max-h-32 rounded-lg border border-gray-200 hover:border-indigo-300 transition" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {(entry as any).from && (
+                      <p className="text-gray-400 text-xs mt-1">From: {(entry as any).from}</p>
+                    )}
                     <p className="text-gray-400 text-xs mt-1">{formatDateTime(entry.date)}</p>
                   </div>
                 ))}

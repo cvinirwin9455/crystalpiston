@@ -178,21 +178,20 @@ export async function PATCH(request: Request) {
           Thanks for helping make ${platformLabel} better!
         </p>
 
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
-          <tr>
-            <td align="center">
-              <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">Open Dashboard</a>
-            </td>
-          </tr>
-        </table>
+        <p style="margin: 16px 0 0; font-size: 13px; color: #888888; line-height: 1.5;">
+          Need to share more details or a screenshot? Just reply to this email and we&rsquo;ll get it.
+        </p>
       `
 
       if (existingFeedback.user_email) {
+        // Set reply-to so user replies go to inbound processing
+        const replyToAddress = `feedback+${feedbackId}@reply.crystalpistolperformance.com`
         await sendEmail({
           to: existingFeedback.user_email,
           subject: `Update on your ${typeLabel} — ${statusLabel}`,
           html: userEmailHtml,
           brand,
+          replyTo: replyToAddress,
         })
       }
     } catch (err) {
