@@ -188,12 +188,12 @@ export async function PATCH(request: Request) {
       `
 
       if (existingFeedback.user_email) {
-        sendEmail({
+        await sendEmail({
           to: existingFeedback.user_email,
           subject: `Update on your ${typeLabel} — ${statusLabel}`,
           html: userEmailHtml,
           brand,
-        }).catch(err => console.error('Failed to send feedback update email:', err))
+        })
       }
     } catch (err) {
       console.error('Feedback update email error:', err)
