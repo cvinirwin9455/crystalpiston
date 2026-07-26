@@ -82,8 +82,14 @@ export default function SuperAdminFeedbackTab() {
     setEditNotes(item.admin_notes || "");
     setEditResolution("");
     setSaveSuccess("");
-    // Load activity log from database
-    setActivityLog((item as any).activity_log || []);
+    // Load activity log from database, falling back to resolution_message for older items
+    const dbLog = (item as any).activity_log || [];
+    if (dbLog.length === 0 && item.resolution_message) {
+      // Migrate: show the old resolution_message as a historical entry
+      setActivityLog([{ type: "message", text: item.resolution_message, date: item.updated_at }]);
+    } else {
+      setActivityLog(dbLog);
+    }
   };
 
   // Save updates
