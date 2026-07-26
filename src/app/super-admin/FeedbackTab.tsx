@@ -41,6 +41,7 @@ export default function SuperAdminFeedbackTab() {
   const [editResolution, setEditResolution] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState("");
+  const [sentMessages, setSentMessages] = useState<{ text: string; date: string }[]>([]);
 
   // Fetch feedback
   const fetchFeedback = async () => {
@@ -79,8 +80,14 @@ export default function SuperAdminFeedbackTab() {
     setSelectedItem(item);
     setEditStatus(item.status);
     setEditNotes(item.admin_notes || "");
-    setEditResolution(item.resolution_message || "");
+    setEditResolution("");
     setSaveSuccess("");
+    // Show existing resolution message as previously sent
+    if (item.resolution_message) {
+      setSentMessages([{ text: item.resolution_message, date: item.updated_at }]);
+    } else {
+      setSentMessages([]);
+    }
   };
 
   // Save updates
@@ -88,6 +95,7 @@ export default function SuperAdminFeedbackTab() {
     if (!selectedItem) return;
     setSaving(true);
     setSaveSuccess("");
+    setError("");
 
     try {
       const body: any = {
@@ -99,8 +107,6 @@ export default function SuperAdminFeedbackTab() {
       // Only include resolutionMessage if sendEmail is true (triggers email to user)
       if (sendEmail && editResolution.trim()) {
         body.resolutionMessage = editResolution.trim();
-      } else if (!sendEmail && editResolution !== (selectedItem.resolution_message || "")) {
-        body.resolutionMessage = editResolution.trim() || null;
       }
 
       const res = await fetch("/api/feedback/admin", {
@@ -119,7 +125,18 @@ export default function SuperAdminFeedbackTab() {
         prev.map((f) => (f.id === selectedItem.id ? data.feedback : f))
       );
       setSelectedItem(data.feedback);
-      setSaveSuccess(sendEmail ? "Saved & email sent to user!" : "Saved!");
+
+      // If we sent an email, add it to the sent messages log and clear the field
+      if (sendEmail && editResolution.trim()) {
+        setSentMessages((prev) => [
+          { text: editResolution.trim(), date: new Date().toISOString() },
+          ...prev,
+        ]);
+        setEditResolution("");
+        setSaveSuccess("Saved & email sent to user!");
+      } else {
+        setSaveSuccess("Saved!");
+      }
       setTimeout(() => setSaveSuccess(""), 4000);
     } catch (err: any) {
       setError(err.message);
@@ -284,6 +301,21 @@ export default function SuperAdminFeedbackTab() {
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none"
             />
           </div>
+
+          {/* Sent Messages Log */}
+          {sentMessages.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Messages Sent to User</p>
+              <div className="space-y-2">
+                {sentMessages.map((msg, i) => (
+                  <div key={i} className="bg-purple-50 border border-purple-100 rounded-lg p-3">
+                    <p className="text-gray-700 text-sm">{msg.text}</p>
+                    <p className="text-gray-400 text-xs mt-1">Sent {formatDateTime(msg.date)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex items-center gap-3 pt-2">
