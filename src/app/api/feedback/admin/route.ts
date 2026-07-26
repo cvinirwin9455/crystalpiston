@@ -101,13 +101,22 @@ export async function PATCH(request: Request) {
   const updateObj: Record<string, any> = {}
   if (status !== undefined) updateObj.status = status
   if (adminNotes !== undefined) updateObj.admin_notes = adminNotes
-  if (resolutionMessage !== undefined) updateObj.resolution_message = resolutionMessage
 
   // Append new log entries to existing activity_log
   if (newLogEntries && Array.isArray(newLogEntries) && newLogEntries.length > 0) {
     const existingLog = existingFeedback.activity_log || []
+    // If there's an old resolution_message that isn't in the log yet, migrate it first
+    if (existingFeedback.resolution_message) {
+      const alreadyInLog = existingLog.some((e: any) => e.type === 'message' && e.text === existingFeedback.resolution_message)
+      if (!alreadyInLog) {
+        existingLog.push({ type: 'message', text: existingFeedback.resolution_message, date: existingFeedback.updated_at })
+      }
+    }
     updateObj.activity_log = [...existingLog, ...newLogEntries]
   }
+
+  // Update resolution_message to latest message (used for email trigger logic)
+  if (resolutionMessage !== undefined) updateObj.resolution_message = resolutionMessage
 
   if (Object.keys(updateObj).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
