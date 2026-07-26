@@ -41,7 +41,7 @@ export default function SuperAdminFeedbackTab() {
   const [editResolution, setEditResolution] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState("");
-  const [sentMessages, setSentMessages] = useState<{ text: string; date: string }[]>([]);
+  const [activityLog, setActivityLog] = useState<{ type: "note" | "message" | "status"; text: string; date: string }[]>([]);
 
   // Fetch feedback
   const fetchFeedback = async () => {
@@ -82,12 +82,12 @@ export default function SuperAdminFeedbackTab() {
     setEditNotes(item.admin_notes || "");
     setEditResolution("");
     setSaveSuccess("");
-    // Show existing resolution message as previously sent
+    // Build activity log from existing data
+    const log: { type: "note" | "message" | "status"; text: string; date: string }[] = [];
     if (item.resolution_message) {
-      setSentMessages([{ text: item.resolution_message, date: item.updated_at }]);
-    } else {
-      setSentMessages([]);
+      log.push({ type: "message", text: item.resolution_message, date: item.updated_at });
     }
+    setActivityLog(log);
   };
 
   // Save updates
@@ -126,15 +126,31 @@ export default function SuperAdminFeedbackTab() {
       );
       setSelectedItem(data.feedback);
 
-      // If we sent an email, add it to the sent messages log and clear the field
+      // If we sent an email, add it to the activity log and clear the field
+      const now = new Date().toISOString();
       if (sendEmail && editResolution.trim()) {
-        setSentMessages((prev) => [
-          { text: editResolution.trim(), date: new Date().toISOString() },
+        setActivityLog((prev) => [
+          { type: "message", text: editResolution.trim(), date: now },
           ...prev,
         ]);
         setEditResolution("");
         setSaveSuccess("Saved & email sent to user!");
       } else {
+        // Log status change if different
+        if (editStatus !== selectedItem.status) {
+          const statusLabels: Record<string, string> = { new: "New", in_progress: "In Progress", implemented: "Implemented", wont_fix: "Won't Fix" };
+          setActivityLog((prev) => [
+            { type: "status", text: `Status changed to "${statusLabels[editStatus] || editStatus}"`, date: now },
+            ...prev,
+          ]);
+        }
+        // Log note if it changed
+        if (editNotes && editNotes !== (selectedItem.admin_notes || "")) {
+          setActivityLog((prev) => [
+            { type: "note", text: editNotes, date: now },
+            ...prev,
+          ]);
+        }
         setSaveSuccess("Saved!");
       }
       setTimeout(() => setSaveSuccess(""), 4000);
@@ -307,15 +323,30 @@ export default function SuperAdminFeedbackTab() {
             />
           </div>
 
-          {/* Sent Messages Log */}
-          {sentMessages.length > 0 && (
+          {/* Activity Log */}
+          {activityLog.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Messages Sent to User</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Activity Log</p>
               <div className="space-y-2">
-                {sentMessages.map((msg, i) => (
-                  <div key={i} className="bg-purple-50 border border-purple-100 rounded-lg p-3">
-                    <p className="text-gray-700 text-sm">{msg.text}</p>
-                    <p className="text-gray-400 text-xs mt-1">Sent {formatDateTime(msg.date)}</p>
+                {activityLog.map((entry, i) => (
+                  <div key={i} className={`rounded-lg p-3 ${
+                    entry.type === "message" ? "bg-purple-50 border border-purple-100" :
+                    entry.type === "note" ? "bg-yellow-50 border border-yellow-100" :
+                    "bg-blue-50 border border-blue-100"
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        entry.type === "message" ? "text-purple-500" :
+                        entry.type === "note" ? "text-yellow-600" :
+                        "text-blue-500"
+                      }`}>
+                        {entry.type === "message" ? "Email sent to user" :
+                         entry.type === "note" ? "Internal note" :
+                         "Status update"}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 text-sm">{entry.text}</p>
+                    <p className="text-gray-400 text-xs mt-1">{formatDateTime(entry.date)}</p>
                   </div>
                 ))}
               </div>
