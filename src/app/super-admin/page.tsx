@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import SuperAdminFeedbackTab from "./FeedbackTab";
 
 const CRYSTAL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4';
 const LEGACY_FIRSTMILE_ORG_ID = '1eb9b481-b6b6-455c-b733-fee789803a17';
@@ -39,7 +40,7 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "beta">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -229,6 +230,7 @@ export default function SuperAdminPage() {
             {[
               { key: "overview", label: "Coaches" },
               { key: "beta", label: `Beta Signups (${betaSignups.length})` },
+              { key: "feedback", label: "Feedback & Bugs" },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -554,6 +556,10 @@ export default function SuperAdminPage() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === "feedback" && (
+          <SuperAdminFeedbackTab />
         )}
       </main>
     </div>
