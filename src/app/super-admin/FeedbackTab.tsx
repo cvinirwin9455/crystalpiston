@@ -82,12 +82,8 @@ export default function SuperAdminFeedbackTab() {
     setEditNotes(item.admin_notes || "");
     setEditResolution("");
     setSaveSuccess("");
-    // Build activity log from existing data
-    const log: { type: "note" | "message" | "status"; text: string; date: string }[] = [];
-    if (item.resolution_message) {
-      log.push({ type: "message", text: item.resolution_message, date: item.updated_at });
-    }
-    setActivityLog(log);
+    // Load activity log from database
+    setActivityLog((item as any).activity_log || []);
   };
 
   // Save updates
@@ -109,6 +105,26 @@ export default function SuperAdminFeedbackTab() {
         body.resolutionMessage = editResolution.trim();
       }
 
+      // Build new log entries
+      const now = new Date().toISOString();
+      const newLogEntries: { type: string; text: string; date: string }[] = [];
+
+      if (sendEmail && editResolution.trim()) {
+        newLogEntries.push({ type: "message", text: editResolution.trim(), date: now });
+      } else {
+        if (editStatus !== selectedItem.status) {
+          const statusLabels: Record<string, string> = { new: "New", in_progress: "In Progress", implemented: "Implemented", wont_fix: "Won't Fix" };
+          newLogEntries.push({ type: "status", text: `Status changed to "${statusLabels[editStatus] || editStatus}"`, date: now });
+        }
+        if (editNotes && editNotes !== (selectedItem.admin_notes || "")) {
+          newLogEntries.push({ type: "note", text: editNotes, date: now });
+        }
+      }
+
+      if (newLogEntries.length > 0) {
+        body.newLogEntries = newLogEntries;
+      }
+
       const res = await fetch("/api/feedback/admin", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -122,38 +138,17 @@ export default function SuperAdminFeedbackTab() {
 
       const data = await res.json();
 
-      // Capture old values before updating state
-      const oldStatus = selectedItem.status;
-      const oldNotes = selectedItem.admin_notes || "";
-
       setFeedback((prev) =>
         prev.map((f) => (f.id === selectedItem.id ? data.feedback : f))
       );
       setSelectedItem(data.feedback);
+      // Update local activity log from the saved data
+      setActivityLog((data.feedback as any).activity_log || []);
 
-      // Add to activity log
-      const now = new Date().toISOString();
       if (sendEmail && editResolution.trim()) {
-        setActivityLog((prev) => [
-          { type: "message", text: editResolution.trim(), date: now },
-          ...prev,
-        ]);
         setEditResolution("");
         setSaveSuccess("Saved & email sent to user!");
       } else {
-        const newEntries: { type: "note" | "message" | "status"; text: string; date: string }[] = [];
-        // Log status change if different
-        if (editStatus !== oldStatus) {
-          const statusLabels: Record<string, string> = { new: "New", in_progress: "In Progress", implemented: "Implemented", wont_fix: "Won't Fix" };
-          newEntries.push({ type: "status", text: `Status changed to "${statusLabels[editStatus] || editStatus}"`, date: now });
-        }
-        // Log note if it changed
-        if (editNotes && editNotes !== oldNotes) {
-          newEntries.push({ type: "note", text: editNotes, date: now });
-        }
-        if (newEntries.length > 0) {
-          setActivityLog((prev) => [...newEntries, ...prev]);
-        }
         setSaveSuccess("Saved!");
       }
       setTimeout(() => setSaveSuccess(""), 4000);
@@ -331,7 +326,7 @@ export default function SuperAdminFeedbackTab() {
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Activity Log</p>
               <div className="space-y-2">
-                {activityLog.map((entry, i) => (
+                {[...activityLog].reverse().map((entry, i) => (
                   <div key={i} className={`rounded-lg p-3 ${
                     entry.type === "message" ? "bg-purple-50 border border-purple-100" :
                     entry.type === "note" ? "bg-yellow-50 border border-yellow-100" :

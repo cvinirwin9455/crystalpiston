@@ -75,7 +75,7 @@ export async function PATCH(request: Request) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { feedbackId, status, adminNotes, resolutionMessage } = body
+  const { feedbackId, status, adminNotes, resolutionMessage, newLogEntries } = body
 
   if (!feedbackId) {
     return NextResponse.json({ error: 'feedbackId is required' }, { status: 400 })
@@ -102,6 +102,12 @@ export async function PATCH(request: Request) {
   if (status !== undefined) updateObj.status = status
   if (adminNotes !== undefined) updateObj.admin_notes = adminNotes
   if (resolutionMessage !== undefined) updateObj.resolution_message = resolutionMessage
+
+  // Append new log entries to existing activity_log
+  if (newLogEntries && Array.isArray(newLogEntries) && newLogEntries.length > 0) {
+    const existingLog = existingFeedback.activity_log || []
+    updateObj.activity_log = [...existingLog, ...newLogEntries]
+  }
 
   if (Object.keys(updateObj).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
