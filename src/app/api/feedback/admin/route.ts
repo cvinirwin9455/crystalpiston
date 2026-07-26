@@ -133,8 +133,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // If a resolution message was provided (new or changed), send an update email to the user
-  if (resolutionMessage && resolutionMessage !== existingFeedback.resolution_message) {
+  // If a resolution message was provided, send an update email to the user
+  if (resolutionMessage) {
     try {
       const orgId = await getOrgIdForUser(adminClient, existingFeedback.user_id)
       const brand = getEmailBrandFromOrgId(orgId)
