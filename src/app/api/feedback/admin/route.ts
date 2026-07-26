@@ -12,19 +12,22 @@ async function getAdminClient() {
   )
 }
 
-// Verify the requesting user is an account_coach (super admin)
+// Verify the requesting user is an account_coach (super admin) or is_super_admin
 async function verifyAdmin(supabase: any, adminClient: any): Promise<{ userId: string } | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const { data: profile } = await adminClient
     .from('users')
-    .select('role, coach_level')
+    .select('role, coach_level, is_super_admin')
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'admin' || profile.coach_level !== 'account_coach') return null
-  return { userId: user.id }
+  if (!profile) return null
+  // Allow if super admin OR if account_coach
+  if (profile.is_super_admin) return { userId: user.id }
+  if (profile.role === 'admin' && profile.coach_level === 'account_coach') return { userId: user.id }
+  return null
 }
 
 // GET /api/feedback/admin - Get all feedback with optional filters
