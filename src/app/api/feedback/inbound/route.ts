@@ -98,10 +98,22 @@ export async function POST(request: Request) {
     if (!replyText && emailHtml) {
       replyText = emailHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
     }
+    
+    // Aggressively strip quoted reply content
+    // Match "On [date], [name] wrote:" pattern (most email clients)
+    const onWrotePattern = /\n?.*On .{10,80} wrote:\s*\n/i
+    const onWroteIdx = replyText.search(onWrotePattern)
+    if (onWroteIdx > 0) {
+      replyText = replyText.substring(0, onWroteIdx)
+    }
+    
+    // Match "> " quoted lines at the start (if reply is below quotes)
+    // But first try splitting on common markers
     const replyMarkers = [
-      /\n--\s*\n/,
-      /\nOn .+ wrote:\n/i,
-      /\n>{2,}/,
+      /\n>+ *On .+ wrote:/i,      // "> On ... wrote:" 
+      /> On .+ wrote:/i,           // starts with "> On ... wrote:"
+      /On .{10,80},.*wrote:/i,     // "On Jul 27, 2026, ... wrote:"
+      /\n--\s*\n/,                 // -- signature marker
       /\n-{3,}\s*Original Message/i,
       /\nFrom: .+\nSent: /i,
       /\n_{3,}\n/,
@@ -110,52 +122,96 @@ export async function POST(request: Request) {
       const idx = replyText.search(marker)
       if (idx > 0) {
         replyText = replyText.substring(0, idx)
+        break
       }
     }
-    replyText = replyText.trim()
+    
+    // Remove leading/trailing ">" quote characters and whitespace
+    replyText = replyText.replace(/^(>+ ?)+/gm, '').trim()
+    // Remove any trailing whitespace lines
+    replyText = replyText.replace(/\n\s*$/g, '').trim()
 
     // Try to get attachments
-    // Resend may have attachments in the email response or via a separate API
     const adminClient = await getAdminClient()
     let attachmentUrls: string[] = []
 
-    // If there are attachment references, try to download and store them
     try {
-      // Check if the email response includes attachment info
       const attachRes = await fetch(`https://api.resend.com/emails/receiving/${emailId}/attachments`, {
         headers: { 'Authorization': `Bearer ${resendApiKey}` },
       })
+      console.log('Attachments API response status:', attachRes.status)
       if (attachRes.ok) {
-        const attachments = await attachRes.json()
-        if (Array.isArray(attachments) && attachments.length > 0) {
-          for (const attachment of attachments) {
-            // Download the attachment content
-            if (attachment.content_type?.startsWith('image/') && attachment.url) {
-              try {
-                const imgRes = await fetch(attachment.url)
-                if (imgRes.ok) {
-                  const buffer = Buffer.from(await imgRes.arrayBuffer())
-                  const fileExt = attachment.filename?.split('.').pop() || 'png'
-                  const fileName = `reply-${feedbackId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+        const attachmentsResponse = await attachRes.json()
+        // Could be { data: [...] } or just [...]
+        const attachments = Array.isArray(attachmentsResponse) ? attachmentsResponse : (attachmentsResponse.data || [])
+        console.log('Attachments found:', attachments.length)
+        
+        for (const attachment of attachments) {
+          try {
+            const contentType = attachment.content_type || attachment.contentType || ''
+            const filename = attachment.filename || attachment.name || 'image.png'
+            
+            // Only handle images
+            if (!contentType.startsWith('image/')) {
+              console.log('Skipping non-image attachment:', contentType, filename)
+              continue
+            }
 
-                  const { data: uploadData, error: uploadError } = await adminClient.storage
-                    .from('feedback-screenshots')
-                    .upload(fileName, buffer, {
-                      contentType: attachment.content_type,
-                      cacheControl: '3600',
-                    })
+            let buffer: Buffer | null = null
 
-                  if (!uploadError && uploadData) {
-                    const { data: { publicUrl } } = adminClient.storage
-                      .from('feedback-screenshots')
-                      .getPublicUrl(uploadData.path)
-                    attachmentUrls.push(publicUrl)
-                  }
-                }
-              } catch (err) {
-                console.error('Failed to download/upload attachment:', err)
+            // If attachment has a URL, download it
+            if (attachment.url) {
+              const imgRes = await fetch(attachment.url, {
+                headers: { 'Authorization': `Bearer ${resendApiKey}` },
+              })
+              if (imgRes.ok) {
+                buffer = Buffer.from(await imgRes.arrayBuffer())
               }
             }
+            // If attachment has an id, fetch it via the individual attachment API
+            else if (attachment.id) {
+              const singleAttachRes = await fetch(
+                `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachment.id}`,
+                { headers: { 'Authorization': `Bearer ${resendApiKey}` } }
+              )
+              if (singleAttachRes.ok) {
+                const attachData = await singleAttachRes.json()
+                if (attachData.content) {
+                  buffer = Buffer.from(attachData.content, 'base64')
+                } else if (attachData.url) {
+                  const dlRes = await fetch(attachData.url)
+                  if (dlRes.ok) buffer = Buffer.from(await dlRes.arrayBuffer())
+                }
+              }
+            }
+            // If attachment has inline content (base64)
+            else if (attachment.content) {
+              buffer = Buffer.from(attachment.content, 'base64')
+            }
+
+            if (buffer) {
+              const fileExt = filename.split('.').pop() || 'png'
+              const storageName = `reply-${feedbackId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+
+              const { data: uploadData, error: uploadError } = await adminClient.storage
+                .from('feedback-screenshots')
+                .upload(storageName, buffer, {
+                  contentType: contentType || 'image/png',
+                  cacheControl: '3600',
+                })
+
+              if (!uploadError && uploadData) {
+                const { data: { publicUrl } } = adminClient.storage
+                  .from('feedback-screenshots')
+                  .getPublicUrl(uploadData.path)
+                attachmentUrls.push(publicUrl)
+                console.log('Uploaded attachment:', publicUrl)
+              } else {
+                console.error('Upload error:', uploadError)
+              }
+            }
+          } catch (err) {
+            console.error('Failed to process attachment:', err)
           }
         }
       }
