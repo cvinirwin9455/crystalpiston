@@ -219,6 +219,46 @@ export async function POST(request: Request) {
       console.error('Error fetching attachments:', err)
     }
 
+    // If no attachments found via API, check if there are inline images in the HTML
+    // (some email clients embed pasted images as inline/CID attachments in HTML)
+    if (attachmentUrls.length === 0 && emailHtml) {
+      // Look for base64 inline images: src="data:image/..."
+      const base64Matches = emailHtml.matchAll(/src="data:(image\/[^;]+);base64,([^"]+)"/g)
+      for (const match of base64Matches) {
+        try {
+          const contentType = match[1]
+          const base64Data = match[2]
+          const buffer = Buffer.from(base64Data, 'base64')
+          const fileExt = contentType.split('/')[1] || 'png'
+          const storageName = `reply-${feedbackId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+
+          const { data: uploadData, error: uploadError } = await adminClient.storage
+            .from('feedback-screenshots')
+            .upload(storageName, buffer, {
+              contentType,
+              cacheControl: '3600',
+            })
+
+          if (!uploadError && uploadData) {
+            const { data: { publicUrl } } = adminClient.storage
+              .from('feedback-screenshots')
+              .getPublicUrl(uploadData.path)
+            attachmentUrls.push(publicUrl)
+            console.log('Uploaded inline image:', publicUrl)
+          }
+        } catch (err) {
+          console.error('Failed to process inline image:', err)
+        }
+      }
+      
+      // Also check for CID references — these would need the attachments API
+      // Log if we found image references but couldn't get them
+      const cidMatches = emailHtml.match(/src="cid:[^"]+"/g)
+      if (cidMatches && cidMatches.length > 0) {
+        console.log('Found CID image references in HTML:', cidMatches.length, '- these require attachment API')
+      }
+    }
+
     // Get the feedback record
     const { data: feedback } = await adminClient
       .from('feedback')
