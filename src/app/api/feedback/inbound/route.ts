@@ -64,18 +64,29 @@ export async function POST(request: Request) {
     let emailHtml = ''
     let attachmentData: any[] = []
 
-    // Retrieve the received email body
+    // Retrieve the received email body via Resend's Receiving API
     try {
-      const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
+      const emailRes = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
         headers: { 'Authorization': `Bearer ${resendApiKey}` },
       })
       if (emailRes.ok) {
         const emailContent = await emailRes.json()
         emailText = emailContent.text || ''
         emailHtml = emailContent.html || ''
-        console.log('Retrieved email content, text length:', emailText.length)
+        console.log('Retrieved email content, text length:', emailText.length, 'html length:', emailHtml.length)
       } else {
-        console.error('Failed to retrieve email content:', emailRes.status, await emailRes.text().catch(() => ''))
+        const errText = await emailRes.text().catch(() => '')
+        console.error('Failed to retrieve email content:', emailRes.status, errText)
+        // Fallback: try the regular emails endpoint
+        const fallbackRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
+          headers: { 'Authorization': `Bearer ${resendApiKey}` },
+        })
+        if (fallbackRes.ok) {
+          const fallbackContent = await fallbackRes.json()
+          emailText = fallbackContent.text || ''
+          emailHtml = fallbackContent.html || ''
+          console.log('Fallback retrieved email content, text length:', emailText.length)
+        }
       }
     } catch (err) {
       console.error('Error fetching email content:', err)
@@ -83,6 +94,10 @@ export async function POST(request: Request) {
 
     // Strip common email reply artifacts from text
     let replyText = emailText
+    // If no plain text, try to extract from HTML
+    if (!replyText && emailHtml) {
+      replyText = emailHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+    }
     const replyMarkers = [
       /\n--\s*\n/,
       /\nOn .+ wrote:\n/i,
@@ -107,7 +122,7 @@ export async function POST(request: Request) {
     // If there are attachment references, try to download and store them
     try {
       // Check if the email response includes attachment info
-      const attachRes = await fetch(`https://api.resend.com/emails/${emailId}/attachments`, {
+      const attachRes = await fetch(`https://api.resend.com/emails/receiving/${emailId}/attachments`, {
         headers: { 'Authorization': `Bearer ${resendApiKey}` },
       })
       if (attachRes.ok) {
