@@ -12,35 +12,141 @@ async function getAdminClient() {
 
 // POST /api/feedback/inbound - Resend inbound email webhook
 // Called when a user replies to a feedback update email
+// Webhook payload contains metadata only — must call Resend API to get body/attachments
 export async function POST(request: Request) {
   try {
     const payload = await request.json()
 
-    // Resend inbound webhook payload contains:
-    // - from: sender email
-    // - to: recipient (our inbound address like feedback+{id}@reply.crystalpistolperformance.com)
-    // - subject: email subject
-    // - text: plain text body
-    // - html: html body
-    // - attachments: array of attachments with filename, content (base64), content_type
+    // Resend email.received webhook payload:
+    // { type: "email.received", data: { email_id, from, to, subject, created_at } }
+    const eventType = payload.type
+    const data = payload.data || payload
 
-    const { from, to, subject, text, html, attachments } = payload
+    // Handle both wrapper format and direct format
+    const emailId = data.email_id || data.id
+    const toField = data.to
+    const fromField = data.from
+    const subject = data.subject
+
+    console.log('Inbound webhook received:', { eventType, emailId, to: toField, from: fromField, subject })
+
+    if (!emailId) {
+      console.error('Inbound email: no email_id in payload', JSON.stringify(payload).slice(0, 500))
+      return NextResponse.json({ error: 'No email_id' }, { status: 400 })
+    }
 
     // Extract feedback ID from the To address
     // Format: feedback+{uuid}@reply.crystalpistolperformance.com
     let feedbackId: string | null = null
-    const toAddress = Array.isArray(to) ? to[0] : to
-    const match = toAddress?.match(/feedback\+([a-f0-9-]+)@/i)
-    if (match) {
-      feedbackId = match[1]
+    const toAddresses = Array.isArray(toField) ? toField : [toField]
+    for (const addr of toAddresses) {
+      const addrStr = typeof addr === 'string' ? addr : addr?.address || ''
+      const match = addrStr.match(/feedback\+([a-f0-9-]+)@/i)
+      if (match) {
+        feedbackId = match[1]
+        break
+      }
     }
 
     if (!feedbackId) {
-      console.error('Inbound email: could not extract feedback ID from To:', toAddress)
+      console.error('Inbound email: could not extract feedback ID from To:', JSON.stringify(toField))
       return NextResponse.json({ error: 'Invalid recipient' }, { status: 400 })
     }
 
+    // Fetch the full email content from Resend API
+    const resendApiKey = process.env.RESEND_API_KEY
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY not configured')
+      return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
+    }
+
+    let emailText = ''
+    let emailHtml = ''
+    let attachmentData: any[] = []
+
+    // Retrieve the received email body
+    try {
+      const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
+        headers: { 'Authorization': `Bearer ${resendApiKey}` },
+      })
+      if (emailRes.ok) {
+        const emailContent = await emailRes.json()
+        emailText = emailContent.text || ''
+        emailHtml = emailContent.html || ''
+        console.log('Retrieved email content, text length:', emailText.length)
+      } else {
+        console.error('Failed to retrieve email content:', emailRes.status, await emailRes.text().catch(() => ''))
+      }
+    } catch (err) {
+      console.error('Error fetching email content:', err)
+    }
+
+    // Strip common email reply artifacts from text
+    let replyText = emailText
+    const replyMarkers = [
+      /\n--\s*\n/,
+      /\nOn .+ wrote:\n/i,
+      /\n>{2,}/,
+      /\n-{3,}\s*Original Message/i,
+      /\nFrom: .+\nSent: /i,
+      /\n_{3,}\n/,
+    ]
+    for (const marker of replyMarkers) {
+      const idx = replyText.search(marker)
+      if (idx > 0) {
+        replyText = replyText.substring(0, idx)
+      }
+    }
+    replyText = replyText.trim()
+
+    // Try to get attachments
+    // Resend may have attachments in the email response or via a separate API
     const adminClient = await getAdminClient()
+    let attachmentUrls: string[] = []
+
+    // If there are attachment references, try to download and store them
+    try {
+      // Check if the email response includes attachment info
+      const attachRes = await fetch(`https://api.resend.com/emails/${emailId}/attachments`, {
+        headers: { 'Authorization': `Bearer ${resendApiKey}` },
+      })
+      if (attachRes.ok) {
+        const attachments = await attachRes.json()
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          for (const attachment of attachments) {
+            // Download the attachment content
+            if (attachment.content_type?.startsWith('image/') && attachment.url) {
+              try {
+                const imgRes = await fetch(attachment.url)
+                if (imgRes.ok) {
+                  const buffer = Buffer.from(await imgRes.arrayBuffer())
+                  const fileExt = attachment.filename?.split('.').pop() || 'png'
+                  const fileName = `reply-${feedbackId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+
+                  const { data: uploadData, error: uploadError } = await adminClient.storage
+                    .from('feedback-screenshots')
+                    .upload(fileName, buffer, {
+                      contentType: attachment.content_type,
+                      cacheControl: '3600',
+                    })
+
+                  if (!uploadError && uploadData) {
+                    const { data: { publicUrl } } = adminClient.storage
+                      .from('feedback-screenshots')
+                      .getPublicUrl(uploadData.path)
+                    attachmentUrls.push(publicUrl)
+                  }
+                }
+              } catch (err) {
+                console.error('Failed to download/upload attachment:', err)
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching attachments:', err)
+    }
 
     // Get the feedback record
     const { data: feedback } = await adminClient
@@ -54,62 +160,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Feedback not found' }, { status: 404 })
     }
 
-    // Extract the sender email
-    const senderEmail = typeof from === 'string' ? from : from?.address || from?.[0] || 'unknown'
+    // Extract sender info
+    const senderEmail = typeof fromField === 'string' ? fromField : fromField?.address || fromField?.[0] || 'unknown'
 
-    // Get the reply text (prefer plain text, strip common email reply artifacts)
-    let replyText = text || ''
-    // Strip everything after common reply markers
-    const replyMarkers = [
-      /\n--\s*\n/,  // -- signature marker
-      /\nOn .+ wrote:\n/i,  // "On ... wrote:" quote header
-      /\n>{2,}/,  // multiple > quote markers
-      /\n-{3,}\s*Original Message/i,  // --- Original Message
-    ]
-    for (const marker of replyMarkers) {
-      const idx = replyText.search(marker)
-      if (idx > 0) {
-        replyText = replyText.substring(0, idx)
-      }
-    }
-    replyText = replyText.trim()
-
-    if (!replyText && !attachments?.length) {
-      // Nothing useful in the reply
+    if (!replyText && attachmentUrls.length === 0) {
+      console.log('Empty reply (no text and no attachments), skipping')
       return NextResponse.json({ success: true, message: 'Empty reply ignored' })
-    }
-
-    // Handle attachments — upload to storage if present
-    let attachmentUrls: string[] = []
-    if (attachments && attachments.length > 0) {
-      for (const attachment of attachments) {
-        try {
-          // Only handle images
-          if (!attachment.content_type?.startsWith('image/')) continue
-
-          const fileExt = attachment.filename?.split('.').pop() || 'png'
-          const fileName = `reply-${feedbackId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
-
-          // Decode base64 content
-          const buffer = Buffer.from(attachment.content, 'base64')
-
-          const { data, error } = await adminClient.storage
-            .from('feedback-screenshots')
-            .upload(fileName, buffer, {
-              contentType: attachment.content_type,
-              cacheControl: '3600',
-            })
-
-          if (!error && data) {
-            const { data: { publicUrl } } = adminClient.storage
-              .from('feedback-screenshots')
-              .getPublicUrl(data.path)
-            attachmentUrls.push(publicUrl)
-          }
-        } catch (err) {
-          console.error('Failed to upload inbound attachment:', err)
-        }
-      }
     }
 
     // Build the log entry
@@ -167,6 +223,7 @@ export async function POST(request: Request) {
       brand: feedback.platform === 'crystal-pistol' ? 'crystal-pistol' : 'first-mile',
     })
 
+    console.log('Inbound reply processed successfully for feedback:', feedbackId)
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('Inbound email processing error:', err)
