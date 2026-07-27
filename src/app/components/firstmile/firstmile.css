@@ -870,7 +870,7 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 999;
+  z-index: 1001;
   background: linear-gradient(135deg, #1a1d1e 0%, #2d3436 100%);
   border-bottom: 2px solid var(--fmc-color-primary);
   padding: 10px 16px;
@@ -884,15 +884,16 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
-  padding: 10px 20px;
+  padding: 12px 24px;
   border-radius: 50px;
   transition: all 0.2s ease;
   white-space: nowrap;
   flex: 1;
-  max-width: 160px;
+  max-width: 180px;
+  letter-spacing: 0.3px;
 }
 
 .fmc-mobile-login-btn-coach {

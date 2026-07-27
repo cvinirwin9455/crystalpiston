@@ -55,6 +55,7 @@ export default function AdminPage() {
   const [aiFeedbackGiven, setAiFeedbackGiven] = useState<"up" | "down" | null>(null);
   const [aiProvider, setAiProvider] = useState<string | null>(null);
   const [aiQuickActionsExpanded, setAiQuickActionsExpanded] = useState(false);
+  const [aiWeekPlannerExpanded, setAiWeekPlannerExpanded] = useState(false);
 
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
@@ -1266,6 +1267,64 @@ export default function AdminPage() {
           })),
         }));
         setClients(mapped);
+
+        // Immediately fetch drafts for all clients in parallel
+        const clientsWithIds = mapped.filter(c => c.clientId);
+        if (clientsWithIds.length > 0) {
+          const draftResults = await Promise.all(
+            clientsWithIds.map(async (client) => {
+              try {
+                const wRes = await fetch(`/api/weeks?client_id=${client.clientId}`);
+                if (wRes.ok) {
+                  const wData = await wRes.json();
+                  const drafts = wData.filter((w: any) => w.status === 'draft');
+                  if (drafts.length > 0) {
+                    return {
+                      clientId: client.id,
+                      drafts: drafts.map((w: any) => ({
+                        weekId: w.weekId,
+                        label: w.dateRange,
+                        dateRange: w.dateRange,
+                        focus: w.focus || '',
+                        coachMessage: w.coachMessage || '',
+                        status: 'draft' as const,
+                        clientWorkouts: [],
+                        workouts: (w.workouts || []).map((wo: any) => ({
+                          id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
+                          trainingType: wo.trainingType || '', title: wo.title || '',
+                          miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
+                          description: wo.description || '', paceTarget: wo.paceTarget || '',
+                          location: wo.location || '', coachNotes: wo.coachNotes || '',
+                          completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
+                          stravaActivityName: wo.stravaActivityName || null,
+                          status: wo.status || undefined,
+                          skipReason: wo.skipReason || undefined, log: wo.log || undefined,
+                          structure: wo.structure || null,
+                        })),
+                      })),
+                    };
+                  }
+                }
+              } catch (err) { console.error('Failed to fetch drafts for', client.name, err); }
+              return null;
+            })
+          );
+
+          // Apply all drafts in one state update
+          const draftsMap = new Map<string, any[]>();
+          for (const result of draftResults) {
+            if (result) draftsMap.set(result.clientId, result.drafts);
+          }
+          if (draftsMap.size > 0) {
+            setClients(prev => prev.map(c => {
+              const clientDrafts = draftsMap.get(c.id);
+              if (!clientDrafts) return c;
+              const existingIds = new Set(c.weeks.map(w => w.weekId));
+              const newDrafts = clientDrafts.filter(w => !existingIds.has(w.weekId));
+              return newDrafts.length > 0 ? { ...c, weeks: [...c.weeks, ...newDrafts] } : c;
+            }));
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to fetch clients:', err);
@@ -1277,57 +1336,6 @@ export default function AdminPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
-
-  // Fetch all drafts on initial load so dashboard shows them immediately
-  const draftsLoadedRef = useRef(false);
-  useEffect(() => {
-    if (draftsLoadedRef.current) return;
-    const fetchAllDrafts = async () => {
-      if (clients.length === 0) return;
-      draftsLoadedRef.current = true;
-      const clientsWithIds = clients.filter(c => c.clientId);
-      if (clientsWithIds.length === 0) return;
-      for (const client of clientsWithIds) {
-        try {
-          const res = await fetch(`/api/weeks?client_id=${client.clientId}`);
-          if (res.ok) {
-            const data = await res.json();
-            const drafts = data.filter((w: any) => w.status === 'draft');
-            if (drafts.length > 0) {
-              const mapped = drafts.map((w: any) => ({
-                weekId: w.weekId,
-                label: w.dateRange,
-                dateRange: w.dateRange,
-                focus: w.focus || '',
-                coachMessage: w.coachMessage || '',
-                status: 'draft' as const,
-                clientWorkouts: [],
-                workouts: (w.workouts || []).map((wo: any) => ({
-                  id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
-                  trainingType: wo.trainingType || '', title: wo.title || '',
-                  miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
-                  description: wo.description || '', paceTarget: wo.paceTarget || '',
-                  location: wo.location || '', coachNotes: wo.coachNotes || '',
-                  completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
-                  stravaActivityName: wo.stravaActivityName || null,
-                  status: wo.status || undefined,
-                  skipReason: wo.skipReason || undefined, log: wo.log || undefined,
-                  structure: wo.structure || null,
-                })),
-              }));
-              setClients(prev => prev.map(c => {
-                if (c.id !== client.id) return c;
-                const existingIds = new Set(c.weeks.map(w => w.weekId));
-                const newDrafts = mapped.filter(w => !existingIds.has(w.weekId));
-                return newDrafts.length > 0 ? { ...c, weeks: [...c.weeks, ...newDrafts] } : c;
-              }));
-            }
-          }
-        } catch (err) { console.error('Failed to fetch drafts for', client.name, err); }
-      }
-    };
-    fetchAllDrafts();
-  }, [clients.length]);
 
   // Create new client via API
   const handleCreateClient = async () => {
@@ -2722,42 +2730,34 @@ export default function AdminPage() {
             <span className="text-sm">Back to Clients</span>
           </button>
         )}
-        {/* Create Client Modal */}
+        {/* Create Client Modal - rendered inside main for desktop only */}
         {showCreateClient && (
-          <div className="fixed inset-0 z-50 bg-primary/95 backdrop-blur-sm overflow-y-auto p-6 md:relative md:inset-auto md:z-auto md:bg-secondary/30 md:backdrop-blur-none md:overflow-visible md:border-b md:border-white/10">
-            <div className="max-w-lg mx-auto md:max-w-none">
-              <div className="flex items-center justify-between mb-4 md:hidden">
-                <h3 className="font-heading text-lg uppercase text-accent">New Client</h3>
-                <button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white p-2">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-              <h3 className="hidden md:block font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
-              <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
-                <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
-                <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
-                <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label>
-                  <div className="flex gap-2">
-                    <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[1] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[1] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                      <option value="" disabled>Month</option>
-                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
-                    </select>
-                    <select value={newClientForm.birthday ? String(parseInt(newClientForm.birthday.split('-')[2])) : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[2] = e.target.value.padStart(2, '0'); setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-16 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                      <option value="" disabled>Day</option>
-                      {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
-                    </select>
-                    <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-20 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                      <option value="" disabled>Year</option>
-                      {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
-                    </select>
-                  </div>
+          <div className="hidden md:block p-6 bg-secondary/30 border-b border-white/10">
+            <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
+            <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
+            <div className="grid md:grid-cols-4 gap-4 mb-4">
+              <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+              <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label>
+                <div className="flex gap-2">
+                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[1] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[1] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Month</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+                  </select>
+                  <select value={newClientForm.birthday ? String(parseInt(newClientForm.birthday.split('-')[2])) : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[2] = e.target.value.padStart(2, '0'); setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-16 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Day</option>
+                    {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
+                  </select>
+                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-20 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Year</option>
+                    {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
+                  </select>
                 </div>
               </div>
-              <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
-              {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
             </div>
+            <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
+            {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
           </div>
         )}
 
@@ -3410,60 +3410,68 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
-                {/* AI Suggest Week Plan */}
-                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-purple-300 text-xs font-heading uppercase">AI Week Planner</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold">BETA</span>
-                    <span className="text-gray-500 text-xs">— Suggestions may not be fully accurate. Always review before publishing.</span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <button
-                      onClick={handleAiSuggest}
-                      disabled={aiSuggesting || !selectedClient || !weekPlan.dateRange}
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
-                    >
-                      {aiSuggesting ? (
-                        <>
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                          Analyzing Client History...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                          AI Suggest Week
-                        </>
+                {/* AI Suggest Week Plan — Collapsible */}
+                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg">
+                  <button onClick={() => setAiWeekPlannerExpanded(!aiWeekPlannerExpanded)} className="w-full flex items-center justify-between p-3 hover:bg-purple-500/5 transition-colors rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                      <span className="text-purple-300 text-xs font-heading uppercase">AI Week Planner</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold">BETA</span>
+                      {aiCredits && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
+                          ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)}
+                        </span>
                       )}
-                    </button>
-                    {!weekPlan.dateRange && <span className="text-purple-300/60 text-xs">Select a week date range first</span>}
-                    {weekPlan.dateRange && <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>}
-                    {aiCredits && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${aiCredits.used >= aiCredits.total ? 'bg-red-500/10 border-red-500/30 text-red-400' : aiCredits.used >= aiCredits.total * 0.8 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'}`}>
-                        ${aiCredits.used.toFixed(2)} / ${aiCredits.total.toFixed(2)} used
-                      </span>
-                    )}
-                  </div>
-                  {weekPlan.dateRange && (
-                    <div className="mt-2">
-                      <label className="text-purple-300 text-xs block mb-1">Anything you want AI to consider? (optional but recommended)</label>
-                      <textarea
-                        value={aiCoachNotes}
-                        onChange={(e) => setAiCoachNotes(e.target.value)}
-                        className="w-full bg-primary/50 border border-purple-500/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none placeholder-gray-500"
-                        rows={3}
-                        placeholder={"The more you tell it, the better the plan. Examples:\n• Easy pace 10:30-11:00, tempo pace 9:00-9:15, long run pace 10:45\n• Focus on speed this week, race is Aug 15\n• He's been dealing with shin pain, avoid back-to-back run days\n• Currently running 20mpw, ready to bump to 22-23\n• Keep Tuesday and Thursday as hard days, easy the rest"}
-                      />
                     </div>
-                  )}
-                  {aiError && (
-                    <div className="mt-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
-                      <p className="text-red-400 text-xs">{aiError}</p>
-                    </div>
-                  )}
-                  {aiReasoning && (
-                    <div className="mt-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
-                      <p className="text-purple-300 text-xs font-heading uppercase mb-1">AI Reasoning (only you see this):</p>
-                      <p className="text-gray-300 text-xs leading-relaxed">{aiReasoning}</p>
+                    <svg className={`w-4 h-4 text-purple-400 transition-transform ${aiWeekPlannerExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  {aiWeekPlannerExpanded && (
+                    <div className="px-3 pb-3 space-y-2">
+                      <p className="text-gray-500 text-xs">Suggestions may not be fully accurate. Always review before publishing.</p>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <button
+                          onClick={handleAiSuggest}
+                          disabled={aiSuggesting || !selectedClient || !weekPlan.dateRange}
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                        >
+                          {aiSuggesting ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                              Analyzing Client History...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                              AI Suggest Week
+                            </>
+                          )}
+                        </button>
+                        {!weekPlan.dateRange && <span className="text-purple-300/60 text-xs">Select a week date range first</span>}
+                        {weekPlan.dateRange && <span className="text-gray-400 text-xs">Analyzes {clients.find(c => c.id === selectedClient)?.name?.split(' ')[0] || 'client'}'s history, metrics, goals & feedback to suggest a plan</span>}
+                      </div>
+                      {weekPlan.dateRange && (
+                        <div className="mt-2">
+                          <label className="text-purple-300 text-xs block mb-1">Anything you want AI to consider? (optional but recommended)</label>
+                          <textarea
+                            value={aiCoachNotes}
+                            onChange={(e) => setAiCoachNotes(e.target.value)}
+                            className="w-full bg-primary/50 border border-purple-500/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none placeholder-gray-500"
+                            rows={3}
+                            placeholder={"The more you tell it, the better the plan. Examples:\n• Easy pace 10:30-11:00, tempo pace 9:00-9:15, long run pace 10:45\n• Focus on speed this week, race is Aug 15\n• He's been dealing with shin pain, avoid back-to-back run days\n• Currently running 20mpw, ready to bump to 22-23\n• Keep Tuesday and Thursday as hard days, easy the rest"}
+                          />
+                        </div>
+                      )}
+                      {aiError && (
+                        <div className="mt-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
+                          <p className="text-red-400 text-xs">{aiError}</p>
+                        </div>
+                      )}
+                      {aiReasoning && (
+                        <div className="mt-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
+                          <p className="text-purple-300 text-xs font-heading uppercase mb-1">AI Reasoning (only you see this):</p>
+                          <p className="text-gray-300 text-xs leading-relaxed">{aiReasoning}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -4866,6 +4874,47 @@ export default function AdminPage() {
           </div>
         )}
       </main>
+
+      {/* Create Client Modal — Mobile Full-Screen Overlay (outside main so it's always rendered) */}
+      {showCreateClient && (
+        <div className="md:hidden fixed inset-0 z-50 bg-primary overflow-y-auto">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-heading text-xl uppercase text-accent">New Client</h3>
+              <button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white p-2 -mr-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm mb-6">This will send an invite email. Once they accept, create a plan for them in the Account tab.</p>
+            <div className="space-y-5">
+              <div><label className="text-gray-400 text-sm block mb-2">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-secondary border border-white/10 rounded-lg px-4 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
+              <div><label className="text-gray-400 text-sm block mb-2">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-secondary border border-white/10 rounded-lg px-4 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
+              <div><label className="text-gray-400 text-sm block mb-2">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-secondary border border-white/10 rounded-lg px-4 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+              <div><label className="text-gray-400 text-sm block mb-2">Birthday <span className="text-accent">*</span></label>
+                <div className="flex gap-2">
+                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[1] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[1] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="flex-1 bg-secondary border border-white/10 rounded-lg px-3 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Month</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+                  </select>
+                  <select value={newClientForm.birthday ? String(parseInt(newClientForm.birthday.split('-')[2])) : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[2] = e.target.value.padStart(2, '0'); setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-16 bg-secondary border border-white/10 rounded-lg px-2 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Day</option>
+                    {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
+                  </select>
+                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-20 bg-secondary border border-white/10 rounded-lg px-2 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                    <option value="" disabled>Year</option>
+                    {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 space-y-3">
+              <button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="w-full bg-accent hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg text-base disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button>
+              <button onClick={() => setShowCreateClient(false)} className="w-full text-gray-400 hover:text-white text-sm py-2">Cancel</button>
+            </div>
+            {createError && <p role="alert" className="text-red-400 text-sm mt-3">{createError}</p>}
+          </div>
+        </div>
+      )}
 
       {/* AI Coach Assistant — Floating Button + Panel */}
       <button onClick={() => setShowAiPanel(!showAiPanel)} className={`fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAiPanel ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gradient-to-r from-purple-600 to-accent hover:scale-105'}`} title="AI Coach Assistant">
