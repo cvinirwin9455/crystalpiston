@@ -854,6 +854,71 @@
   .fmc-beta-banner-content { gap: 8px; }
   .fmc-beta-banner-text { font-size: 0.8rem; }
   .fmc-beta-banner-link { font-size: 0.8rem; padding: 4px 12px; }
+  .fmc-banner-divider { display: none; }
+  .fmc-banner-login { display: none; }
+  .fmc-mobile-login-bar { display: flex; }
+  .fmc-beta-banner { top: 52px; padding: 8px 16px; }
+  .fmc-beta-banner-content { justify-content: center; }
+  .fmc-beta-banner .fmc-region-select { display: none; }
+  .fmc-hero { padding-top: 100px; }
+}
+
+/* === Mobile Login Bar (visible only on mobile) === */
+.fmc-mobile-login-bar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: linear-gradient(135deg, #1a1d1e 0%, #2d3436 100%);
+  border-bottom: 2px solid var(--fmc-color-primary);
+  padding: 10px 16px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.fmc-mobile-login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 50px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex: 1;
+  max-width: 160px;
+}
+
+.fmc-mobile-login-btn-coach {
+  background: var(--fmc-color-primary);
+  color: var(--fmc-color-white);
+  border: 2px solid var(--fmc-color-primary);
+}
+
+.fmc-mobile-login-btn-coach:hover {
+  background: var(--fmc-color-primary-hover);
+}
+
+.fmc-mobile-login-btn-client {
+  background: transparent;
+  color: var(--fmc-color-white);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.fmc-mobile-login-btn-client:hover {
+  border-color: var(--fmc-color-white);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.fmc-mobile-login-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 @media (max-width: 480px) {

@@ -3,9 +3,19 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-26T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-27T12:00:00Z";
 
 const updates = [
+  {
+    date: "July 27, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: 'Drafts to Publish' on the coach dashboard now correctly shows ALL draft weeks across all clients. Previously it was showing 0 for coaches who had clients with existing published weeks — those drafts were being missed" },
+      { area: "Admin", text: "Improved: 'New Client' form on mobile — tapping '+ New Client' now opens a full-screen form overlay instead of trying to show the form off-screen. Much easier to fill out on a phone in portrait mode" },
+      { area: "Admin", text: "Improved: AI Coach Assistant panel — the quick action buttons are now collapsed behind a toggle so the panel takes up less space. You'll see just the input box by default, tap 'Quick Actions' to expand the preset buttons" },
+      { area: "Admin", text: "Improved: AI Coach Assistant panel is now responsive on mobile — it adapts to your screen width instead of being a fixed 420px wide" },
+      { area: "Marketing", text: "Improved: First Mile Coach landing page on mobile — the Coach Login and Client Login buttons are now shown as large, clear buttons in their own bar at the top of the screen instead of being crammed into the beta banner" },
+    ],
+  },
   {
     date: "July 26, 2026",
     items: [

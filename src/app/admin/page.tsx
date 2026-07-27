@@ -54,6 +54,7 @@ export default function AdminPage() {
   const [aiCustomPrompt, setAiCustomPrompt] = useState("");
   const [aiFeedbackGiven, setAiFeedbackGiven] = useState<"up" | "down" | null>(null);
   const [aiProvider, setAiProvider] = useState<string | null>(null);
+  const [aiQuickActionsExpanded, setAiQuickActionsExpanded] = useState(false);
 
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
@@ -1284,7 +1285,7 @@ export default function AdminPage() {
     const fetchAllDrafts = async () => {
       if (clients.length === 0) return;
       draftsLoadedRef.current = true;
-      const clientsWithIds = clients.filter(c => c.clientId && c.weeks.length === 0);
+      const clientsWithIds = clients.filter(c => c.clientId);
       if (clientsWithIds.length === 0) return;
       for (const client of clientsWithIds) {
         try {
@@ -1314,7 +1315,12 @@ export default function AdminPage() {
                   structure: wo.structure || null,
                 })),
               }));
-              setClients(prev => prev.map(c => c.id === client.id ? { ...c, weeks: [...c.weeks, ...mapped] } : c));
+              setClients(prev => prev.map(c => {
+                if (c.id !== client.id) return c;
+                const existingIds = new Set(c.weeks.map(w => w.weekId));
+                const newDrafts = mapped.filter(w => !existingIds.has(w.weekId));
+                return newDrafts.length > 0 ? { ...c, weeks: [...c.weeks, ...newDrafts] } : c;
+              }));
             }
           }
         } catch (err) { console.error('Failed to fetch drafts for', client.name, err); }
@@ -2718,32 +2724,40 @@ export default function AdminPage() {
         )}
         {/* Create Client Modal */}
         {showCreateClient && (
-          <div className="p-6 bg-secondary/30 border-b border-white/10">
-            <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
-            <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
-              <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
-              <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label>
-                <div className="flex gap-2">
-                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[1] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[1] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                    <option value="" disabled>Month</option>
-                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
-                  </select>
-                  <select value={newClientForm.birthday ? String(parseInt(newClientForm.birthday.split('-')[2])) : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[2] = e.target.value.padStart(2, '0'); setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-16 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                    <option value="" disabled>Day</option>
-                    {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
-                  </select>
-                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-20 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                    <option value="" disabled>Year</option>
-                    {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
-                  </select>
+          <div className="fixed inset-0 z-50 bg-primary/95 backdrop-blur-sm overflow-y-auto p-6 md:relative md:inset-auto md:z-auto md:bg-secondary/30 md:backdrop-blur-none md:overflow-visible md:border-b md:border-white/10">
+            <div className="max-w-lg mx-auto md:max-w-none">
+              <div className="flex items-center justify-between mb-4 md:hidden">
+                <h3 className="font-heading text-lg uppercase text-accent">New Client</h3>
+                <button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white p-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <h3 className="hidden md:block font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
+              <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
+                <div><label className="text-gray-400 text-xs block mb-1">Birthday <span className="text-accent">*</span></label>
+                  <div className="flex gap-2">
+                    <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[1] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[1] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                      <option value="" disabled>Month</option>
+                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+                    </select>
+                    <select value={newClientForm.birthday ? String(parseInt(newClientForm.birthday.split('-')[2])) : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[2] = e.target.value.padStart(2, '0'); setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-16 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                      <option value="" disabled>Day</option>
+                      {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
+                    </select>
+                    <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-20 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                      <option value="" disabled>Year</option>
+                      {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
+                    </select>
+                  </div>
                 </div>
               </div>
+              <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
+              {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
             </div>
-            <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
-            {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
           </div>
         )}
 
@@ -4863,7 +4877,7 @@ export default function AdminPage() {
       </button>
 
       {showAiPanel && (
-        <div className="fixed bottom-24 right-6 z-50 w-[420px] max-h-[70vh] bg-secondary border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] max-w-[420px] max-h-[70vh] bg-secondary border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Panel Header */}
           <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/30 to-accent/10">
             <div className="flex items-center justify-between">
@@ -4902,7 +4916,22 @@ export default function AdminPage() {
           <div className="flex-1 overflow-y-auto px-5 py-4">
             {!aiResponse && !aiLoading && (
               <div className="space-y-2">
-                <p className="text-gray-400 text-xs mb-3 font-medium">Quick Actions:</p>
+                {/* Ask anything — always visible at top */}
+                <div className="pb-3">
+                  <div className="flex gap-2">
+                    <input type="text" value={aiCustomPrompt} onChange={(e) => setAiCustomPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && aiCustomPrompt.trim()) handleAiQuery(aiCustomPrompt.trim()); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Ask about your clients..." />
+                    <button onClick={() => { if (aiCustomPrompt.trim()) handleAiQuery(aiCustomPrompt.trim()); }} disabled={!aiCustomPrompt.trim()} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors">Ask</button>
+                  </div>
+                </div>
+
+                {/* Collapsible Quick Actions */}
+                <button onClick={() => setAiQuickActionsExpanded(!aiQuickActionsExpanded)} className="w-full flex items-center justify-between text-left py-2 px-3 rounded-lg bg-primary/20 hover:bg-primary/30 border border-white/5 transition-colors">
+                  <span className="text-gray-400 text-xs font-medium">Quick Actions</span>
+                  <svg className={`w-4 h-4 text-gray-500 transition-transform ${aiQuickActionsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+
+                {aiQuickActionsExpanded && (
+                  <div className="space-y-2 pt-1">
                 <button onClick={() => handleAiQuery(aiSelectedClient !== 'all' ? "Give me a progress summary for this client. How are they tracking this week? Any patterns or concerns?" : "Give me a summary of all my clients' progress this week. Who completed their workouts, who's behind, and what's the overall compliance rate?")} className="w-full text-left bg-primary/30 hover:bg-primary/50 border border-white/5 hover:border-purple-500/30 rounded-lg p-3 transition-colors group">
                   <p className="text-white text-xs font-medium group-hover:text-purple-300">{aiSelectedClient !== 'all' ? 'Progress summary' : 'Weekly client summary'}</p>
                   <p className="text-gray-500 text-[10px] mt-0.5">{aiSelectedClient !== 'all' ? 'How are they tracking, patterns, concerns' : 'Who completed what, compliance rates, overall status'}</p>
@@ -4923,13 +4952,8 @@ export default function AdminPage() {
                     </button>
                   </>
                 )}
-                <div className="pt-2 border-t border-white/5">
-                  <p className="text-gray-400 text-xs mb-2 font-medium">Ask anything:</p>
-                  <div className="flex gap-2">
-                    <input type="text" value={aiCustomPrompt} onChange={(e) => setAiCustomPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && aiCustomPrompt.trim()) handleAiQuery(aiCustomPrompt.trim()); }} className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500" placeholder="Type your question..." />
-                    <button onClick={() => { if (aiCustomPrompt.trim()) handleAiQuery(aiCustomPrompt.trim()); }} disabled={!aiCustomPrompt.trim()} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors">Ask</button>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
