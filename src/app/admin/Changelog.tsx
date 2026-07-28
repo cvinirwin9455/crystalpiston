@@ -3,9 +3,17 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-27T22:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-28T20:00:00Z";
 
 const updates = [
+  {
+    date: "July 28, 2026",
+    items: [
+      { area: "All", text: "Fixed: Light mode text visibility — sidebar client names, category labels, and plan text are now fully visible in light mode. Previously they were barely readable because the dark-theme text colors were being overridden" },
+      { area: "All", text: "Improved: Light mode sticky headers on the client dashboard now correctly show as white/translucent instead of the old dark colors" },
+      { area: "All", text: "Improved: Shadows in light mode are now softer and less harsh" },
+    ],
+  },
   {
     date: "July 27, 2026",
     items: [
