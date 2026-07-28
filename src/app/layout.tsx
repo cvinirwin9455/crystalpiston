@@ -99,19 +99,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
+    <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               // Apply theme immediately to prevent flash
               (function() {
-                var theme = localStorage.getItem('theme');
-                if (theme === 'light') {
-                  document.documentElement.classList.add('light');
-                } else {
-                  document.documentElement.classList.add('dark');
-                }
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  }
+                } catch(e) {}
               })();
             `,
           }}

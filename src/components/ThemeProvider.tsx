@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type Theme = "dark" | "light";
 
@@ -20,39 +20,19 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
+// Read theme from localStorage (safe for SSR)
+function getStoredTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  const stored = localStorage.getItem("theme");
+  return stored === "light" ? "light" : "dark";
+}
+
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [mounted, setMounted] = useState(false);
+  // Initialize state from localStorage immediately (matches what inline script set)
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
 
-  // On mount: read from localStorage first (instant), then fetch from API (persistent)
-  useEffect(() => {
-    // 1. Check localStorage for instant theme application (no flash)
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored === "light" || stored === "dark") {
-      setThemeState(stored);
-      applyThemeClass(stored);
-    }
-
-    // 2. Fetch from API for the authoritative preference (syncs across devices)
-    const fetchTheme = async () => {
-      try {
-        const res = await fetch("/api/notification-preferences");
-        if (res.ok) {
-          const data = await res.json();
-          const apiTheme: Theme = data.theme === "light" ? "light" : "dark";
-          setThemeState(apiTheme);
-          applyThemeClass(apiTheme);
-          localStorage.setItem("theme", apiTheme);
-        }
-      } catch (err) {
-        // Silent fail — use localStorage/default
-      }
-    };
-    fetchTheme();
-    setMounted(true);
-  }, []);
-
-  const applyThemeClass = (t: Theme) => {
+  // Apply theme class to html element
+  const applyThemeClass = useCallback((t: Theme) => {
     const html = document.documentElement;
     if (t === "light") {
       html.classList.add("light");
@@ -61,24 +41,52 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
       html.classList.add("dark");
       html.classList.remove("light");
     }
-  };
+  }, []);
 
-  const setTheme = (newTheme: Theme) => {
+  // On mount: ensure the class is applied (in case hydration wiped it)
+  // Then sync with API (but DON'T override localStorage — localStorage is the source of truth for this device)
+  useEffect(() => {
+    // Re-apply class after hydration (hydration may have reset it)
+    applyThemeClass(theme);
+
+    // Fetch from API only if localStorage has no preference set yet
+    // This handles first-time login on a new device
+    const hasLocalPreference = localStorage.getItem("theme") !== null;
+    if (!hasLocalPreference) {
+      const fetchTheme = async () => {
+        try {
+          const res = await fetch("/api/notification-preferences");
+          if (res.ok) {
+            const data = await res.json();
+            const apiTheme: Theme = data.theme === "light" ? "light" : "dark";
+            setThemeState(apiTheme);
+            applyThemeClass(apiTheme);
+            localStorage.setItem("theme", apiTheme);
+          }
+        } catch (err) {
+          // Silent fail — use default dark
+        }
+      };
+      fetchTheme();
+    }
+  }, [applyThemeClass, theme]);
+
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     applyThemeClass(newTheme);
     localStorage.setItem("theme", newTheme);
 
-    // Persist to API (fire-and-forget)
+    // Persist to API (fire-and-forget for cross-device sync)
     fetch("/api/notification-preferences", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme: newTheme }),
     }).catch(() => {});
-  };
+  }, [applyThemeClass]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
-  };
+  }, [theme, setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
