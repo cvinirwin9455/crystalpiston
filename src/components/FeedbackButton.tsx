@@ -181,7 +181,7 @@ export default function FeedbackButton() {
       {/* Floating Button — bottom-left */}
       <button
         onClick={() => setShowModal(true)}
-        className="fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-full shadow-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all hover:scale-105 text-white text-sm font-medium"
+        className="fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-full shadow-2xl bg-[#16213e] border border-white/20 hover:bg-[#1e2d4a] transition-all hover:scale-105 text-white text-sm font-medium"
         title="Report a bug or give feedback"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +200,7 @@ export default function FeedbackButton() {
           />
 
           {/* Modal */}
-          <div className="relative w-full max-w-md bg-[#16213e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-md bg-[#16213e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden always-dark">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
               <h2 className="text-lg font-bold text-white">

@@ -4958,7 +4958,7 @@ export default function AdminPage() {
       </button>
 
       {showAiPanel && (
-        <div className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] max-w-[420px] max-h-[70vh] bg-secondary border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] max-w-[420px] max-h-[70vh] bg-secondary border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden always-dark">
           {/* Panel Header */}
           <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/30 to-accent/10">
             <div className="flex items-center justify-between">

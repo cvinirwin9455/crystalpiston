@@ -113,9 +113,48 @@
   }
   .light .bg-secondary\/50 {
     background-color: rgb(var(--color-surface) / 0.8);
+    border: 1px solid rgb(var(--color-border) / 0.1);
   }
   .light .bg-secondary\/30 {
     background-color: rgb(var(--color-surface) / 0.5);
+  }
+
+  /* Light mode: sidebar should stay dark for contrast */
+  .light aside {
+    background-color: rgb(30 35 55) !important;
+  }
+  .light aside * {
+    /* Keep sidebar text/elements in dark mode */
+  }
+  .light aside .text-white {
+    color: #ffffff !important;
+  }
+  .light aside .text-gray-400 {
+    color: rgb(156 163 175) !important;
+  }
+  .light aside .text-gray-500 {
+    color: rgb(107 114 128) !important;
+  }
+  .light aside .text-gold {
+    color: rgb(212 168 83) !important;
+  }
+  .light aside .text-accent {
+    color: rgb(242 101 34) !important;
+  }
+  .light aside [class*="border-white"] {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  .light aside [class*="bg-primary"] {
+    background-color: rgba(26, 26, 46, 0.5) !important;
+  }
+  .light aside [class*="bg-accent"] {
+    background-color: rgb(242 101 34) !important;
+  }
+  .light aside .hover\:bg-white\/5:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+  .light aside .hover\:text-white:hover {
+    color: #ffffff !important;
   }
 
   /* Light mode: keep accent-colored text readable */
@@ -125,6 +164,29 @@
   .light .text-gold {
     color: rgb(var(--color-gold));
   }
+
+  /* Elements that should ALWAYS stay dark regardless of theme */
+  .always-dark {
+    --color-primary: 26 26 46;
+    --color-secondary: 22 33 62;
+    --color-text: 255 255 255;
+    --color-border: 255 255 255;
+    --color-surface: 22 33 62;
+    --color-input-bg: 26 26 46;
+    background-color: rgb(22 33 62) !important;
+    color: #ffffff !important;
+  }
+  .always-dark .text-white { color: #ffffff !important; }
+  .always-dark .text-gray-400 { color: rgb(156 163 175) !important; }
+  .always-dark .text-gray-300 { color: rgb(209 213 219) !important; }
+  .always-dark .text-gray-500 { color: rgb(107 114 128) !important; }
+  .always-dark .text-gray-200 { color: rgb(229 231 235) !important; }
+  .always-dark [class*="border-white"] { border-color: rgba(255, 255, 255, 0.1) !important; }
+  .always-dark [class*="bg-primary"] { background-color: rgba(26, 26, 46, 0.5) !important; }
+  .always-dark [class*="bg-secondary"] { background-color: rgba(22, 33, 62, 0.5) !important; }
+  .always-dark [class*="bg-white/"] { background-color: rgba(255, 255, 255, 0.05) !important; }
+  .always-dark .hover\:text-white:hover { color: #ffffff !important; }
+  .always-dark .hover\:bg-white\/5:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
 }
 
 @layer components {
