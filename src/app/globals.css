@@ -173,23 +173,33 @@
    ============================================================ */
 
 /* Sidebar always dark — use highest specificity to override everything */
-html.light aside,
-html.light aside * {
-  /* Reset: ensure sidebar never gets light mode colors */
-}
 html.light aside {
   background-color: #1a1a2e !important;
+  color: #ffffff !important;
+}
+/* Force ALL text inside sidebar to be light - catch everything */
+html.light aside p,
+html.light aside span,
+html.light aside a,
+html.light aside button,
+html.light aside div,
+html.light aside label,
+html.light aside h1,
+html.light aside h2,
+html.light aside h3,
+html.light aside h4 {
+  color: inherit;
 }
 html.light aside .text-white { color: #ffffff !important; }
 html.light aside .text-gray-400 { color: rgb(156, 163, 175) !important; }
 html.light aside .text-gray-500 { color: rgb(107, 114, 128) !important; }
 html.light aside .text-gray-300 { color: rgb(209, 213, 219) !important; }
+html.light aside .text-gray-200 { color: rgb(229, 231, 235) !important; }
 html.light aside .text-gold { color: rgb(212, 168, 83) !important; }
 html.light aside .text-accent { color: #f26522 !important; }
 html.light aside .text-green-400 { color: rgb(74, 222, 128) !important; }
 html.light aside .text-red-400 { color: rgb(248, 113, 113) !important; }
 html.light aside .text-purple-400 { color: rgb(192, 132, 252) !important; }
-html.light aside p { color: inherit; }
 html.light aside .border-white\/10,
 html.light aside .border-white\/5 { border-color: rgba(255, 255, 255, 0.1) !important; }
 html.light aside .bg-primary { background-color: rgba(26, 26, 46, 1) !important; }
@@ -200,6 +210,7 @@ html.light aside .bg-white\/5 { background-color: rgba(255, 255, 255, 0.05) !imp
 html.light aside .bg-white\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
 html.light aside .bg-accent { background-color: #f26522 !important; color: #ffffff !important; }
 html.light aside .bg-accent\/20 { background-color: rgba(242, 101, 34, 0.2) !important; }
+html.light aside .bg-accent\/10 { background-color: rgba(242, 101, 34, 0.1) !important; }
 html.light aside .hover\:bg-white\/5:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
 html.light aside .hover\:text-white:hover { color: #ffffff !important; }
 html.light aside input { background-color: rgba(26, 26, 46, 0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
