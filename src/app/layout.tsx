@@ -104,11 +104,13 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Apply theme immediately to prevent flash
+              // Apply theme immediately to prevent flash (only on platform pages)
               (function() {
                 try {
+                  var path = window.location.pathname;
+                  var isPlatform = path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/super-admin') || path.startsWith('/login') || path.startsWith('/set-password') || path.startsWith('/reset-password');
                   var theme = localStorage.getItem('theme');
-                  if (theme === 'light') {
+                  if (isPlatform && theme === 'light') {
                     document.documentElement.classList.add('light');
                     document.documentElement.classList.remove('dark');
                   } else {

@@ -31,13 +31,17 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   // Initialize state from localStorage immediately (matches what inline script set)
   const [theme, setThemeState] = useState<Theme>(getStoredTheme);
 
-  // Apply theme class to html element
+  // Apply theme class to html element (only on platform pages, not marketing)
   const applyThemeClass = useCallback((t: Theme) => {
     const html = document.documentElement;
-    if (t === "light") {
+    const path = window.location.pathname;
+    const isPlatformPage = path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/super-admin') || path.startsWith('/login') || path.startsWith('/set-password') || path.startsWith('/reset-password');
+    
+    if (isPlatformPage && t === "light") {
       html.classList.add("light");
       html.classList.remove("dark");
     } else {
+      // Marketing pages or dark mode: always use dark (default)
       html.classList.add("dark");
       html.classList.remove("light");
     }
