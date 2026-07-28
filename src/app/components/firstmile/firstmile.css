@@ -856,70 +856,58 @@
   .fmc-beta-banner-link { font-size: 0.8rem; padding: 4px 12px; }
   .fmc-banner-divider { display: none; }
   .fmc-banner-login { display: none; }
-  .fmc-mobile-login-bar { display: flex; }
-  .fmc-beta-banner { top: 52px; padding: 8px 16px; }
+  .fmc-banner-mobile-logins { display: flex; }
+  .fmc-beta-banner { padding: 10px 16px; }
   .fmc-beta-banner-content { justify-content: center; }
   .fmc-beta-banner .fmc-region-select { display: none; }
-  .fmc-hero { padding-top: 100px; }
+  .fmc-beta-banner-text { display: none; }
 }
 
-/* === Mobile Login Bar (visible only on mobile) === */
-.fmc-mobile-login-bar {
+/* === Mobile Login Buttons (inside banner, visible only on mobile) === */
+.fmc-banner-mobile-logins {
   display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1001;
-  background: linear-gradient(135deg, #1a1d1e 0%, #2d3436 100%);
-  border-bottom: 2px solid var(--fmc-color-primary);
-  padding: 10px 16px;
-  align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.fmc-mobile-login-btn {
+.fmc-banner-mobile-login-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-decoration: none;
-  padding: 12px 24px;
+  padding: 10px 24px;
   border-radius: 50px;
   transition: all 0.2s ease;
   white-space: nowrap;
   flex: 1;
-  max-width: 180px;
-  letter-spacing: 0.3px;
+  max-width: 160px;
+  text-align: center;
 }
 
-.fmc-mobile-login-btn-coach {
+.fmc-banner-mobile-login-coach {
   background: var(--fmc-color-primary);
-  color: var(--fmc-color-white);
+  color: #ffffff;
   border: 2px solid var(--fmc-color-primary);
 }
 
-.fmc-mobile-login-btn-coach:hover {
+.fmc-banner-mobile-login-coach:hover {
   background: var(--fmc-color-primary-hover);
 }
 
-.fmc-mobile-login-btn-client {
+.fmc-banner-mobile-login-client {
   background: transparent;
-  color: var(--fmc-color-white);
+  color: #ffffff;
   border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
-.fmc-mobile-login-btn-client:hover {
-  border-color: var(--fmc-color-white);
+.fmc-banner-mobile-login-client:hover {
+  border-color: #ffffff;
   background: rgba(255, 255, 255, 0.05);
-}
-
-.fmc-mobile-login-btn svg {
-  width: 16px;
-  height: 16px;
 }
 
 @media (max-width: 480px) {
