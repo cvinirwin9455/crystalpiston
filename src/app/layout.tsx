@@ -4,6 +4,7 @@ import "./globals.css";
 import AuthRedirect from "./components/AuthRedirect";
 import PullToRefresh from "@/components/PullToRefresh";
 import FeedbackButton from "@/components/FeedbackButton";
+import ThemeProvider from "@/components/ThemeProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { getBrand } from "@/lib/brand.server";
 
@@ -101,6 +102,21 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
       <head>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Apply theme immediately to prevent flash
+              (function() {
+                var theme = localStorage.getItem('theme');
+                if (theme === 'light') {
+                  document.documentElement.classList.add('light');
+                } else {
+                  document.documentElement.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
@@ -151,12 +167,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body">
-        <AuthRedirect />
-        <PullToRefresh>
-          {children}
-        </PullToRefresh>
-        <Analytics />
-        <FeedbackButton />
+        <ThemeProvider>
+          <AuthRedirect />
+          <PullToRefresh>
+            {children}
+          </PullToRefresh>
+          <Analytics />
+          <FeedbackButton />
+        </ThemeProvider>
       </body>
     </html>
   );

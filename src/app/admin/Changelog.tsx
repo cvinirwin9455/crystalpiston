@@ -3,17 +3,18 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-27T18:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-07-27T22:00:00Z";
 
 const updates = [
   {
     date: "July 27, 2026",
     items: [
+      { area: "All", text: "NEW: Dark/Light mode toggle — you can now switch between dark and light mode from your Account settings (under 'Appearance'). Your preference saves and syncs across devices" },
       { area: "Admin", text: "Fixed: 'Drafts to Publish' on the coach dashboard now correctly shows ALL draft weeks across all clients. Previously showing 0 due to a loading timing issue — drafts are now fetched in parallel immediately after clients load" },
       { area: "Admin", text: "Improved: 'New Client' form on mobile — tapping '+ New Client' now opens a full-screen form that fills the entire screen with large, easy-to-tap inputs. Previously the form was hidden behind the client list on portrait mode" },
       { area: "Admin", text: "Improved: AI Week Planner on the Create Week page is now collapsed into a small clickable bar. Tap it to expand and see the AI Suggest button, notes field, and options. Saves screen space when you don't need AI" },
       { area: "Admin", text: "Improved: AI Coach Assistant floating panel now adapts to your screen width on mobile instead of being a fixed size" },
-      { area: "Marketing", text: "Improved: First Mile Coach mobile landing page — Coach Login and Client Login are now shown as large, prominent buttons in their own bar at the very top of the screen. No more hunting for tiny links in the banner" },
+      { area: "Marketing", text: "Improved: First Mile Coach mobile landing page — Coach Login and Client Login are now shown as large, prominent buttons inside the banner on mobile" },
     ],
   },
   {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
+import { useTheme } from "@/components/ThemeProvider";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
@@ -115,6 +116,7 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 }
 
 export default function DashboardPage() {
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
 
   // Check URL params for tab navigation (e.g. from email links)
@@ -2500,6 +2502,22 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   <button onClick={() => saveDefaultExpanded(true)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
                   <button onClick={() => saveDefaultExpanded(false)} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!defaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
+                </div>
+              </div>
+
+              {/* Theme */}
+              <div className="mb-6">
+                <p className="text-white text-sm font-medium mb-1">Appearance</p>
+                <p className="text-gray-300 text-xs mb-3">Switch between dark and light mode.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setTheme("dark")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${theme === "dark" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    Dark
+                  </button>
+                  <button onClick={() => setTheme("light")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${theme === "light" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    Light
+                  </button>
                 </div>
               </div>
 

@@ -9,6 +9,7 @@ import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from ".
 import AvatarUpload from "@/components/AvatarUpload";
 import ClientStatsTab from "./ClientStatsTab";
 import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
+import { useTheme } from "@/components/ThemeProvider";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
@@ -19,6 +20,7 @@ type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean;
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
+  const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">("plan");
   const [editingWeek, setEditingWeek] = useState(false);
@@ -3905,6 +3907,22 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDefaultExpanded(true); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, true); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
                     <button onClick={() => { setAdminDefaultExpanded(false); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, false); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
+                  </div>
+                </div>
+
+                {/* Appearance / Theme */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Appearance</h3>
+                  <p className="text-gray-300 text-xs mb-4">Switch between dark and light mode.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => adminSetTheme("dark")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${adminTheme === "dark" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                      Dark
+                    </button>
+                    <button onClick={() => adminSetTheme("light")} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${adminTheme === "light" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                      Light
+                    </button>
                   </div>
                 </div>
 

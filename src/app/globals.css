@@ -6,8 +6,124 @@
   html {
     scroll-behavior: smooth;
   }
+
+  /* Dark theme (default) */
+  :root {
+    --color-primary: 26 26 46;       /* #1a1a2e */
+    --color-secondary: 22 33 62;     /* #16213e */
+    --color-accent: 242 101 34;      /* #f26522 */
+    --color-gold: 212 168 83;        /* #d4a853 */
+    --color-light: 245 245 245;      /* #f5f5f5 */
+    --color-text: 255 255 255;       /* white */
+    --color-text-muted: 156 163 175; /* gray-400 */
+    --color-border: 255 255 255;     /* white borders with opacity */
+    --color-surface: 22 33 62;       /* card/panel surfaces */
+    --color-input-bg: 26 26 46;      /* input backgrounds */
+  }
+
+  /* Light theme */
+  .light {
+    --color-primary: 249 250 251;    /* #f9fafb - gray-50 */
+    --color-secondary: 255 255 255;  /* #ffffff - white */
+    --color-accent: 242 101 34;      /* #f26522 - stays the same */
+    --color-gold: 180 130 50;        /* slightly darker gold for contrast */
+    --color-light: 26 26 46;         /* inverted for light mode */
+    --color-text: 31 41 55;          /* #1f2937 - gray-800 */
+    --color-text-muted: 107 114 128; /* gray-500 */
+    --color-border: 209 213 219;     /* gray-300 */
+    --color-surface: 255 255 255;    /* white */
+    --color-input-bg: 243 244 246;   /* gray-100 */
+  }
+
   body {
-    @apply bg-primary text-white;
+    background-color: rgb(var(--color-primary));
+    color: rgb(var(--color-text));
+  }
+
+  /* Override white text utilities in light mode */
+  .light .text-white {
+    color: rgb(var(--color-text));
+  }
+
+  /* Keep text-white for elements that should ALWAYS be white (buttons, badges on dark bg) */
+  .light .text-always-white,
+  .light .bg-accent .text-white,
+  .light .bg-accent\/20 .text-white,
+  .light [class*="bg-gradient"] .text-white,
+  .light .bg-green-600 .text-white,
+  .light .bg-purple-600 .text-white,
+  .light .bg-red-600 .text-white,
+  .light button[class*="bg-accent"] .text-white {
+    color: #ffffff;
+  }
+
+  /* In light mode, elements using white with opacity for borders should use the border color */
+  .light [class*="border-white"] {
+    border-color: rgb(var(--color-border) / 0.2);
+  }
+  .light .border-white\/10 {
+    border-color: rgb(var(--color-border) / 0.15);
+  }
+  .light .border-white\/5 {
+    border-color: rgb(var(--color-border) / 0.1);
+  }
+  .light .border-white\/20 {
+    border-color: rgb(var(--color-border) / 0.25);
+  }
+
+  /* Light mode: fix gray text that's meant to be subtle */
+  .light .text-gray-400 {
+    color: rgb(107 114 128);  /* gray-500 - slightly darker for readability */
+  }
+  .light .text-gray-500 {
+    color: rgb(107 114 128);
+  }
+  .light .text-gray-300 {
+    color: rgb(75 85 99);     /* gray-600 */
+  }
+  .light .text-gray-200 {
+    color: rgb(55 65 81);     /* gray-700 */
+  }
+
+  /* Light mode: bg-white/X opacity overlays should use dark overlays */
+  .light [class*="bg-white/"] {
+    background-color: rgb(0 0 0 / 0.03);
+  }
+  .light .bg-white\/5 {
+    background-color: rgb(0 0 0 / 0.03);
+  }
+  .light .bg-white\/10 {
+    background-color: rgb(0 0 0 / 0.05);
+  }
+
+  /* Light mode: hover states */
+  .light .hover\:bg-white\/5:hover {
+    background-color: rgb(0 0 0 / 0.05);
+  }
+  .light .hover\:text-white:hover {
+    color: rgb(var(--color-text));
+  }
+
+  /* Light mode: specific component overrides */
+  .light .bg-primary\/50 {
+    background-color: rgb(var(--color-input-bg) / 0.8);
+  }
+  .light .bg-primary\/30 {
+    background-color: rgb(var(--color-input-bg) / 0.5);
+  }
+  .light .bg-secondary\/50 {
+    background-color: rgb(var(--color-surface) / 0.8);
+  }
+  .light .bg-secondary\/30 {
+    background-color: rgb(var(--color-surface) / 0.5);
+  }
+
+  /* Light mode: keep accent-colored text readable */
+  .light .text-accent {
+    color: rgb(var(--color-accent));
+  }
+  .light .text-gold {
+    color: rgb(var(--color-gold));
   }
 }
 
