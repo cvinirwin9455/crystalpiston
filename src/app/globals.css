@@ -60,18 +60,22 @@ html.light body {
   color: #1f2937 !important;
 }
 html.light main,
-html.light main *,
-html.light body > div,
-html.light body > div > div {
-  color: #1f2937;
+html.light main *:not(aside *):not(.always-dark *) {
+  color: #1f2937 !important;
 }
-/* Let specific color classes still work */
-html.light main .text-accent { color: #e55b1e !important; }
+html.light body > div:not(aside):not(.always-dark),
+html.light body > div > div:not(aside):not(.always-dark) {
+  color: #1f2937 !important;
+}
+/* Let specific color classes still work with higher specificity */
+html.light main .text-accent,
+html.light main span.text-accent,
+html.light main p.text-accent { color: #e55b1e !important; }
 html.light main .text-gold { color: #92640f !important; }
-html.light main .text-green-400 { color: #16a34a !important; }
+html.light main .text-green-400,
 html.light main .text-green-500 { color: #16a34a !important; }
 html.light main .text-yellow-400 { color: #ca8a04 !important; }
-html.light main .text-red-400 { color: #dc2626 !important; }
+html.light main .text-red-400,
 html.light main .text-red-500 { color: #dc2626 !important; }
 html.light main .text-purple-300,
 html.light main .text-purple-400 { color: #7c3aed !important; }
