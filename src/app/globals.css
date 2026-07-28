@@ -43,18 +43,23 @@
 }
 
 /* ============================================================
-   LIGHT MODE — MAIN CONTENT
-   Force dark text on ALL elements in the light background area.
-   The sidebar (<aside>) is excluded and stays dark with light text.
+   LIGHT MODE — MAIN CONTENT AREA
+   Force dark text on elements in the light background area.
+   The sidebar ([data-sidebar]) is excluded via higher-specificity
+   rules below that override these.
    ============================================================ */
 
 /* Background overrides */
+html.light { color: #111827; }
+html.light body { color: #111827 !important; }
 html.light .bg-primary { background-color: #f3f4f6 !important; }
 html.light .bg-secondary { background-color: #ffffff !important; }
 html.light .bg-primary\/50 { background-color: #eef0f3 !important; }
 html.light .bg-primary\/30 { background-color: #f0f2f5 !important; }
-html.light .bg-secondary\/50 { background-color: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb !important; }
+html.light .bg-secondary\/50 { background-color: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 html.light .bg-secondary\/30 { background-color: rgba(255,255,255,0.7) !important; }
+html.light .bg-secondary\/80 { background-color: rgba(255,255,255,0.9) !important; }
+html.light .bg-secondary\/95 { background-color: rgba(255,255,255,0.97) !important; }
 html.light .bg-white\/5 { background-color: rgba(0,0,0,0.02) !important; }
 html.light .bg-white\/10 { background-color: rgba(0,0,0,0.04) !important; }
 html.light .bg-accent\/10 { background-color: rgba(242,101,34,0.08) !important; }
@@ -65,7 +70,7 @@ html.light .border-white\/5 { border-color: #e5e7eb !important; }
 html.light .border-white\/10 { border-color: #d1d5db !important; }
 html.light .border-white\/20 { border-color: #9ca3af !important; }
 
-/* TEXT: Override EVERY text color class to be dark on light backgrounds */
+/* TEXT: Dark text on light backgrounds */
 html.light .text-white { color: #111827 !important; }
 html.light .text-gray-200 { color: #1f2937 !important; }
 html.light .text-gray-300 { color: #374151 !important; }
@@ -81,6 +86,11 @@ html.light .text-red-400 { color: #dc2626 !important; }
 html.light .text-red-500 { color: #dc2626 !important; }
 html.light .text-purple-300 { color: #7c3aed !important; }
 html.light .text-purple-400 { color: #7c3aed !important; }
+html.light .text-blue-400 { color: #2563eb !important; }
+html.light .text-cyan-400 { color: #0891b2 !important; }
+html.light .text-orange-300 { color: #c2410c !important; }
+html.light .text-orange-400 { color: #ea580c !important; }
+html.light .text-orange-500 { color: #ea580c !important; }
 
 /* Hover text overrides */
 html.light .hover\:text-white:hover { color: #111827 !important; }
@@ -100,47 +110,81 @@ html.light .bg-green-700 { color: #ffffff !important; }
 html.light .bg-purple-600 { color: #ffffff !important; }
 html.light .bg-red-500 { color: #ffffff !important; }
 html.light .bg-red-600 { color: #ffffff !important; }
+html.light .bg-blue-600 { color: #ffffff !important; }
 
-/* SVG icons in light mode */
+/* SVG icons in light mode — inherit from parent */
 html.light svg { color: inherit; }
 
-/* ============================================================
-   SIDEBAR — Always stays dark with light text
-   ============================================================ */
-html.light aside { background-color: #1a1a2e !important; }
-html.light aside .text-white { color: #ffffff !important; }
-html.light aside .text-gray-200 { color: #e5e7eb !important; }
-html.light aside .text-gray-300 { color: #d1d5db !important; }
-html.light aside .text-gray-400 { color: #9ca3af !important; }
-html.light aside .text-gray-500 { color: #6b7280 !important; }
-html.light aside .text-gold { color: #d4a853 !important; }
-html.light aside .text-accent { color: #f26522 !important; }
-html.light aside .text-green-400 { color: #4ade80 !important; }
-html.light aside .text-red-400 { color: #f87171 !important; }
-html.light aside .text-purple-400 { color: #c084fc !important; }
-html.light aside .border-white\/5 { border-color: rgba(255,255,255,0.05) !important; }
-html.light aside .border-white\/10 { border-color: rgba(255,255,255,0.1) !important; }
-html.light aside .bg-primary { background-color: #1a1a2e !important; }
-html.light aside .bg-primary\/50 { background-color: rgba(26,26,46,0.5) !important; }
-html.light aside .bg-primary\/30 { background-color: rgba(26,26,46,0.3) !important; }
-html.light aside .bg-secondary\/50 { background-color: rgba(22,33,62,0.5) !important; box-shadow: none !important; border: none !important; }
-html.light aside .bg-white\/5 { background-color: rgba(255,255,255,0.05) !important; }
-html.light aside .bg-accent { background-color: #f26522 !important; color: #ffffff !important; }
-html.light aside .bg-accent\/20 { background-color: rgba(242,101,34,0.2) !important; }
-html.light aside .bg-accent\/10 { background-color: rgba(242,101,34,0.1) !important; }
-html.light aside .hover\:text-white:hover { color: #ffffff !important; }
-html.light aside .hover\:bg-white\/5:hover { background-color: rgba(255,255,255,0.05) !important; }
-html.light aside input { background-color: rgba(26,26,46,0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
-html.light aside input::placeholder { color: rgba(255,255,255,0.5) !important; }
-html.light aside select { background-color: rgba(26,26,46,0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
+/* Shadows — soften in light mode */
+html.light .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.05) !important; }
+html.light .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1) !important; }
+html.light .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05) !important; }
 
 /* ============================================================
-   ALWAYS-DARK — Modals, floating panels
+   SIDEBAR — Always stays dark with light text.
+   Uses [data-sidebar] attribute selector which gives HIGHER
+   specificity than the global rules above (0,1,1 vs 0,1,0 for
+   the class part). Combined with html.light this guarantees
+   sidebar overrides always win.
+   ============================================================ */
+
+/* Sidebar container itself */
+html.light [data-sidebar] { background-color: #1a1a2e !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
+html.light [data-sidebar].bg-secondary\/50 { background-color: #1a1a2e !important; box-shadow: none !important; }
+
+/* Text colors inside sidebar */
+html.light [data-sidebar] .text-white { color: #ffffff !important; }
+html.light [data-sidebar] .text-gray-200 { color: #e5e7eb !important; }
+html.light [data-sidebar] .text-gray-300 { color: #d1d5db !important; }
+html.light [data-sidebar] .text-gray-400 { color: #9ca3af !important; }
+html.light [data-sidebar] .text-gray-500 { color: #6b7280 !important; }
+html.light [data-sidebar] .text-gold { color: #d4a853 !important; }
+html.light [data-sidebar] .text-accent { color: #f26522 !important; }
+html.light [data-sidebar] .text-green-400 { color: #4ade80 !important; }
+html.light [data-sidebar] .text-red-400 { color: #f87171 !important; }
+html.light [data-sidebar] .text-red-500 { color: #f87171 !important; }
+html.light [data-sidebar] .text-purple-400 { color: #c084fc !important; }
+html.light [data-sidebar] .text-yellow-400 { color: #facc15 !important; }
+html.light [data-sidebar] .text-blue-400 { color: #60a5fa !important; }
+html.light [data-sidebar] .text-orange-500 { color: #f97316 !important; }
+
+/* Borders inside sidebar */
+html.light [data-sidebar] .border-white\/5 { border-color: rgba(255,255,255,0.05) !important; }
+html.light [data-sidebar] .border-white\/10 { border-color: rgba(255,255,255,0.1) !important; }
+html.light [data-sidebar] .border-white\/20 { border-color: rgba(255,255,255,0.2) !important; }
+html.light [data-sidebar] .border-l-accent { border-left-color: #f26522 !important; }
+
+/* Backgrounds inside sidebar */
+html.light [data-sidebar] .bg-primary { background-color: #1a1a2e !important; }
+html.light [data-sidebar] .bg-primary\/50 { background-color: rgba(26,26,46,0.5) !important; }
+html.light [data-sidebar] .bg-primary\/30 { background-color: rgba(26,26,46,0.3) !important; }
+html.light [data-sidebar] .bg-secondary { background-color: #16213e !important; }
+html.light [data-sidebar] .bg-secondary\/50 { background-color: rgba(22,33,62,0.5) !important; box-shadow: none !important; }
+html.light [data-sidebar] .bg-white\/5 { background-color: rgba(255,255,255,0.05) !important; }
+html.light [data-sidebar] .bg-white\/10 { background-color: rgba(255,255,255,0.1) !important; }
+html.light [data-sidebar] .bg-accent { background-color: #f26522 !important; color: #ffffff !important; }
+html.light [data-sidebar] .bg-accent\/20 { background-color: rgba(242,101,34,0.2) !important; }
+html.light [data-sidebar] .bg-accent\/10 { background-color: rgba(242,101,34,0.1) !important; }
+
+/* Hover states inside sidebar */
+html.light [data-sidebar] .hover\:text-white:hover { color: #ffffff !important; }
+html.light [data-sidebar] .hover\:bg-white\/5:hover { background-color: rgba(255,255,255,0.05) !important; }
+
+/* Inputs inside sidebar */
+html.light [data-sidebar] input { background-color: rgba(26,26,46,0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
+html.light [data-sidebar] input::placeholder { color: rgba(255,255,255,0.5) !important; }
+html.light [data-sidebar] select { background-color: rgba(26,26,46,0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
+
+/* SVG inside sidebar */
+html.light [data-sidebar] svg { color: inherit; }
+
+/* ============================================================
+   ALWAYS-DARK — Modals, floating panels, dropdowns
    ============================================================ */
 html.light .always-dark { background-color: #16213e !important; color: #ffffff !important; }
 html.light .always-dark .text-white { color: #ffffff !important; }
-html.light .always-dark .text-gray-400 { color: #9ca3af !important; }
 html.light .always-dark .text-gray-300 { color: #d1d5db !important; }
+html.light .always-dark .text-gray-400 { color: #9ca3af !important; }
 html.light .always-dark .text-gray-500 { color: #6b7280 !important; }
 html.light .always-dark .border-white\/10 { border-color: rgba(255,255,255,0.1) !important; }
 html.light .always-dark .bg-primary\/50 { background-color: rgba(26,26,46,0.5) !important; }
