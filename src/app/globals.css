@@ -7,210 +7,27 @@
     scroll-behavior: smooth;
   }
 
-  /* Dark theme (default) */
   :root {
-    --color-primary: 26 26 46;       /* #1a1a2e */
-    --color-secondary: 22 33 62;     /* #16213e */
-    --color-accent: 242 101 34;      /* #f26522 */
-    --color-gold: 212 168 83;        /* #d4a853 */
-    --color-light: 245 245 245;      /* #f5f5f5 */
-    --color-text: 255 255 255;       /* white */
-    --color-text-muted: 156 163 175; /* gray-400 */
-    --color-border: 255 255 255;     /* white borders with opacity */
-    --color-surface: 22 33 62;       /* card/panel surfaces */
-    --color-input-bg: 26 26 46;      /* input backgrounds */
+    --color-primary: 26 26 46;
+    --color-secondary: 22 33 62;
+    --color-accent: 242 101 34;
+    --color-gold: 212 168 83;
+    --color-light: 245 245 245;
+    --color-text: 255 255 255;
   }
 
-  /* Light theme */
   .light {
-    --color-primary: 249 250 251;    /* #f9fafb - gray-50 */
-    --color-secondary: 255 255 255;  /* #ffffff - white */
-    --color-accent: 242 101 34;      /* #f26522 - stays the same */
-    --color-gold: 180 130 50;        /* slightly darker gold for contrast */
-    --color-light: 26 26 46;         /* inverted for light mode */
-    --color-text: 31 41 55;          /* #1f2937 - gray-800 */
-    --color-text-muted: 107 114 128; /* gray-500 */
-    --color-border: 209 213 219;     /* gray-300 */
-    --color-surface: 255 255 255;    /* white */
-    --color-input-bg: 243 244 246;   /* gray-100 */
+    --color-primary: 249 250 251;
+    --color-secondary: 255 255 255;
+    --color-accent: 242 101 34;
+    --color-gold: 180 130 50;
+    --color-light: 26 26 46;
+    --color-text: 31 41 55;
   }
 
   body {
-    background-color: rgb(var(--color-primary));
-    color: rgb(var(--color-text));
+    @apply bg-primary text-white;
   }
-
-  /* Light mode: force backgrounds on key elements */
-  .light body {
-    background-color: #f9fafb;
-    color: #1f2937;
-  }
-
-  /* Override Tailwind bg-primary/bg-secondary in light mode */
-  .light .bg-primary {
-    background-color: #f9fafb !important;
-  }
-  .light .bg-secondary {
-    background-color: #ffffff !important;
-  }
-
-  /* But NOT inside always-dark or aside */
-  .light aside .bg-primary,
-  .light .always-dark .bg-primary {
-    background-color: rgba(26, 26, 46, 1) !important;
-  }
-  .light aside .bg-secondary,
-  .light .always-dark .bg-secondary {
-    background-color: rgba(22, 33, 62, 1) !important;
-  }
-
-  /* Override white text utilities in light mode */
-  .light .text-white {
-    color: rgb(var(--color-text));
-  }
-
-  /* Keep text-white for elements that should ALWAYS be white (buttons, badges on dark bg) */
-  .light .text-always-white,
-  .light .bg-accent .text-white,
-  .light .bg-accent\/20 .text-white,
-  .light [class*="bg-gradient"] .text-white,
-  .light .bg-green-600 .text-white,
-  .light .bg-purple-600 .text-white,
-  .light .bg-red-600 .text-white,
-  .light button[class*="bg-accent"] .text-white {
-    color: #ffffff;
-  }
-
-  /* In light mode, elements using white with opacity for borders should use the border color */
-  .light [class*="border-white"] {
-    border-color: rgb(var(--color-border) / 0.2);
-  }
-  .light .border-white\/10 {
-    border-color: rgb(var(--color-border) / 0.15);
-  }
-  .light .border-white\/5 {
-    border-color: rgb(var(--color-border) / 0.1);
-  }
-  .light .border-white\/20 {
-    border-color: rgb(var(--color-border) / 0.25);
-  }
-
-  /* Light mode: fix gray text that's meant to be subtle */
-  .light .text-gray-400 {
-    color: rgb(107 114 128);  /* gray-500 - slightly darker for readability */
-  }
-  .light .text-gray-500 {
-    color: rgb(107 114 128);
-  }
-  .light .text-gray-300 {
-    color: rgb(75 85 99);     /* gray-600 */
-  }
-  .light .text-gray-200 {
-    color: rgb(55 65 81);     /* gray-700 */
-  }
-
-  /* Light mode: bg-white/X opacity overlays should use dark overlays */
-  .light [class*="bg-white/"] {
-    background-color: rgb(0 0 0 / 0.03);
-  }
-  .light .bg-white\/5 {
-    background-color: rgb(0 0 0 / 0.03);
-  }
-  .light .bg-white\/10 {
-    background-color: rgb(0 0 0 / 0.05);
-  }
-
-  /* Light mode: hover states */
-  .light .hover\:bg-white\/5:hover {
-    background-color: rgb(0 0 0 / 0.05);
-  }
-  .light .hover\:text-white:hover {
-    color: rgb(var(--color-text));
-  }
-
-  /* Light mode: specific component overrides */
-  .light .bg-primary\/50 {
-    background-color: rgb(var(--color-input-bg) / 0.8);
-  }
-  .light .bg-primary\/30 {
-    background-color: rgb(var(--color-input-bg) / 0.5);
-  }
-  .light .bg-secondary\/50 {
-    background-color: rgb(var(--color-surface) / 0.8);
-    border: 1px solid rgb(var(--color-border) / 0.1);
-  }
-  .light .bg-secondary\/30 {
-    background-color: rgb(var(--color-surface) / 0.5);
-  }
-
-  /* Light mode: sidebar should stay dark for contrast */
-  .light aside {
-    background-color: rgb(30 35 55) !important;
-  }
-  .light aside * {
-    /* Keep sidebar text/elements in dark mode */
-  }
-  .light aside .text-white {
-    color: #ffffff !important;
-  }
-  .light aside .text-gray-400 {
-    color: rgb(156 163 175) !important;
-  }
-  .light aside .text-gray-500 {
-    color: rgb(107 114 128) !important;
-  }
-  .light aside .text-gold {
-    color: rgb(212 168 83) !important;
-  }
-  .light aside .text-accent {
-    color: rgb(242 101 34) !important;
-  }
-  .light aside [class*="border-white"] {
-    border-color: rgba(255, 255, 255, 0.1) !important;
-  }
-  .light aside [class*="bg-primary"] {
-    background-color: rgba(26, 26, 46, 0.5) !important;
-  }
-  .light aside [class*="bg-accent"] {
-    background-color: rgb(242 101 34) !important;
-  }
-  .light aside .hover\:bg-white\/5:hover {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-  }
-  .light aside .hover\:text-white:hover {
-    color: #ffffff !important;
-  }
-
-  /* Light mode: keep accent-colored text readable */
-  .light .text-accent {
-    color: rgb(var(--color-accent));
-  }
-  .light .text-gold {
-    color: rgb(var(--color-gold));
-  }
-
-  /* Elements that should ALWAYS stay dark regardless of theme */
-  .always-dark {
-    --color-primary: 26 26 46;
-    --color-secondary: 22 33 62;
-    --color-text: 255 255 255;
-    --color-border: 255 255 255;
-    --color-surface: 22 33 62;
-    --color-input-bg: 26 26 46;
-    background-color: rgb(22 33 62) !important;
-    color: #ffffff !important;
-  }
-  .always-dark .text-white { color: #ffffff !important; }
-  .always-dark .text-gray-400 { color: rgb(156 163 175) !important; }
-  .always-dark .text-gray-300 { color: rgb(209 213 219) !important; }
-  .always-dark .text-gray-500 { color: rgb(107 114 128) !important; }
-  .always-dark .text-gray-200 { color: rgb(229 231 235) !important; }
-  .always-dark [class*="border-white"] { border-color: rgba(255, 255, 255, 0.1) !important; }
-  .always-dark [class*="bg-primary"] { background-color: rgba(26, 26, 46, 0.5) !important; }
-  .always-dark [class*="bg-secondary"] { background-color: rgba(22, 33, 62, 0.5) !important; }
-  .always-dark [class*="bg-white/"] { background-color: rgba(255, 255, 255, 0.05) !important; }
-  .always-dark .hover\:text-white:hover { color: #ffffff !important; }
-  .always-dark .hover\:bg-white\/5:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
 }
 
 @layer components {
@@ -223,4 +40,175 @@
   .btn-secondary {
     @apply inline-block border-2 border-gold text-gold hover:bg-gold hover:text-primary font-bold py-3 px-8 rounded-full transition-all duration-300;
   }
+}
+
+/* ============================================================
+   LIGHT MODE OVERRIDES
+   These are OUTSIDE @layer so they beat Tailwind utilities.
+   ============================================================ */
+
+/* Main backgrounds */
+.light .bg-primary {
+  background-color: #f9fafb !important;
+}
+.light .bg-secondary {
+  background-color: #ffffff !important;
+}
+.light .bg-primary\/50 {
+  background-color: rgba(243, 244, 246, 0.8) !important;
+}
+.light .bg-primary\/30 {
+  background-color: rgba(243, 244, 246, 0.5) !important;
+}
+.light .bg-secondary\/50 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.light .bg-secondary\/30 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Text */
+.light .text-white {
+  color: #1f2937 !important;
+}
+.light .text-gray-400 {
+  color: #6b7280 !important;
+}
+.light .text-gray-300 {
+  color: #4b5563 !important;
+}
+.light .text-gray-200 {
+  color: #374151 !important;
+}
+.light .text-gray-500 {
+  color: #6b7280 !important;
+}
+.light .text-accent {
+  color: #f26522 !important;
+}
+.light .text-gold {
+  color: #b48232 !important;
+}
+
+/* Borders */
+.light .border-white\/10,
+.light .border-white\/5,
+.light .border-white\/20 {
+  border-color: rgba(209, 213, 219, 0.5) !important;
+}
+
+/* bg-white/X overlays */
+.light .bg-white\/5,
+.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Hover states */
+.light .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+.light .hover\:text-white:hover {
+  color: #1f2937 !important;
+}
+
+/* ============================================================
+   ELEMENTS THAT MUST STAY DARK (sidebar, modals, floating panels)
+   ============================================================ */
+
+/* Sidebar */
+.light aside {
+  background-color: #1e2340 !important;
+}
+.light aside .bg-primary {
+  background-color: rgba(26, 26, 46, 1) !important;
+}
+.light aside .bg-secondary\/50 {
+  background-color: rgba(22, 33, 62, 0.5) !important;
+  box-shadow: none;
+}
+.light aside .bg-primary\/50 {
+  background-color: rgba(26, 26, 46, 0.5) !important;
+}
+.light aside .text-white {
+  color: #ffffff !important;
+}
+.light aside .text-gray-400 {
+  color: rgb(156, 163, 175) !important;
+}
+.light aside .text-gray-500 {
+  color: rgb(107, 114, 128) !important;
+}
+.light aside .text-gold {
+  color: rgb(212, 168, 83) !important;
+}
+.light aside .text-accent {
+  color: #f26522 !important;
+}
+.light aside .border-white\/10,
+.light aside .border-white\/5 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.light aside .hover\:bg-white\/5:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+.light aside .hover\:text-white:hover {
+  color: #ffffff !important;
+}
+.light aside .bg-white\/5,
+.light aside .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+.light aside .bg-accent {
+  background-color: #f26522 !important;
+}
+.light aside .bg-accent\/20 {
+  background-color: rgba(242, 101, 34, 0.2) !important;
+}
+
+/* Always-dark class (for modals, floating panels) */
+.light .always-dark {
+  background-color: #16213e !important;
+  color: #ffffff !important;
+}
+.light .always-dark .text-white {
+  color: #ffffff !important;
+}
+.light .always-dark .text-gray-400 {
+  color: rgb(156, 163, 175) !important;
+}
+.light .always-dark .text-gray-300 {
+  color: rgb(209, 213, 219) !important;
+}
+.light .always-dark .text-gray-500 {
+  color: rgb(107, 114, 128) !important;
+}
+.light .always-dark .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.light .always-dark .bg-primary\/50 {
+  background-color: rgba(26, 26, 46, 0.5) !important;
+}
+.light .always-dark .hover\:text-white:hover {
+  color: #ffffff !important;
+}
+.light .always-dark .hover\:bg-white\/5:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Keep buttons with colored backgrounds readable */
+.light .bg-accent .text-white,
+.light .bg-green-600 .text-white,
+.light .bg-purple-600 .text-white,
+.light .bg-red-500 .text-white,
+.light button.bg-accent .text-white {
+  color: #ffffff !important;
+}
+/* Accent buttons themselves should keep white text */
+.light .bg-accent {
+  color: #ffffff !important;
+}
+.light .bg-green-600,
+.light .bg-purple-600 {
+  color: #ffffff !important;
 }
