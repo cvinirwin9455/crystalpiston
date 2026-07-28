@@ -40,7 +40,7 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "admins">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -48,6 +48,10 @@ export default function SuperAdminPage() {
   const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<"all" | "activated" | "pending">("all");
+  const [superAdmins, setSuperAdmins] = useState<{ id: string; email: string; name: string }[]>([]);
+  const [newSuperAdminEmail, setNewSuperAdminEmail] = useState("");
+  const [addingSuperAdmin, setAddingSuperAdmin] = useState(false);
+  const [removingSuperAdminId, setRemovingSuperAdminId] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -70,6 +74,7 @@ export default function SuperAdminPage() {
       const data = await res.json();
       setOrganizations(data.organizations || []);
       setBetaSignups(data.betaSignups || []);
+      setSuperAdmins(data.superAdmins || []);
     } catch {
       setError("Failed to load data");
     } finally {
@@ -231,6 +236,7 @@ export default function SuperAdminPage() {
               { key: "overview", label: "Coaches" },
               { key: "beta", label: `Beta Signups (${betaSignups.length})` },
               { key: "feedback", label: "Feedback & Bugs" },
+              { key: "admins", label: "Super Admins" },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -560,6 +566,112 @@ export default function SuperAdminPage() {
 
         {activeTab === "feedback" && (
           <SuperAdminFeedbackTab />
+        )}
+
+        {/* Super Admins Tab */}
+        {activeTab === "admins" && (
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Manage Super Admins</h2>
+              <p className="text-sm text-gray-500 mb-6">Super admins have full access to this panel, all organizations, and can manage other super admins.</p>
+
+              {/* Current Super Admins */}
+              <div className="space-y-3 mb-6">
+                {superAdmins.map((admin) => (
+                  <div key={admin.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg p-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{admin.name || admin.email}</p>
+                      <p className="text-xs text-gray-500">{admin.email}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Remove super admin access for ${admin.email}? They will still be a coach but won't be able to access this panel.`)) return;
+                        setRemovingSuperAdminId(admin.id);
+                        setActionMessage(null);
+                        try {
+                          const res = await fetch("/api/super-admin", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "remove_super_admin", userId: admin.id }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) {
+                            setActionMessage({ text: data.error || "Failed to remove", type: "error" });
+                          } else {
+                            setActionMessage({ text: `Removed super admin access for ${admin.email}`, type: "success" });
+                            setSuperAdmins(prev => prev.filter(a => a.id !== admin.id));
+                          }
+                        } catch {
+                          setActionMessage({ text: "Network error", type: "error" });
+                        } finally {
+                          setRemovingSuperAdminId(null);
+                        }
+                      }}
+                      disabled={removingSuperAdminId === admin.id}
+                      className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                    >
+                      {removingSuperAdminId === admin.id ? "Removing..." : "Remove"}
+                    </button>
+                  </div>
+                ))}
+                {superAdmins.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">No super admins found.</p>
+                )}
+              </div>
+
+              {/* Add New Super Admin */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-sm font-bold text-gray-700 mb-3">Add Super Admin</h3>
+                <p className="text-xs text-gray-500 mb-3">Enter the email of an existing user (coach or admin) to grant them super admin access.</p>
+                <div className="flex gap-3">
+                  <input
+                    type="email"
+                    value={newSuperAdminEmail}
+                    onChange={(e) => setNewSuperAdminEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!newSuperAdminEmail.trim()) return;
+                      setAddingSuperAdmin(true);
+                      setActionMessage(null);
+                      try {
+                        const res = await fetch("/api/super-admin", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "add_super_admin", email: newSuperAdminEmail.trim() }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                          setActionMessage({ text: data.error || "Failed to add", type: "error" });
+                        } else {
+                          setActionMessage({ text: `Added ${newSuperAdminEmail} as super admin`, type: "success" });
+                          setNewSuperAdminEmail("");
+                          fetchData();
+                        }
+                      } catch {
+                        setActionMessage({ text: "Network error", type: "error" });
+                      } finally {
+                        setAddingSuperAdmin(false);
+                      }
+                    }}
+                    disabled={addingSuperAdmin || !newSuperAdminEmail.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-lg text-sm disabled:opacity-50 transition-colors"
+                  >
+                    {addingSuperAdmin ? "Adding..." : "Add"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action message */}
+              {actionMessage && (
+                <div className={`mt-4 p-3 rounded-lg text-sm ${actionMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {actionMessage.text}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>

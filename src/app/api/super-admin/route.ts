@@ -99,6 +99,14 @@ export async function GET() {
   return NextResponse.json({
     organizations: orgStats,
     betaSignups: betaSignupsWithStatus,
+    superAdmins: await (async () => {
+      const { data: admins } = await adminClient
+        .from('users')
+        .select('id, email, name')
+        .eq('is_super_admin', true)
+        .order('name', { ascending: true })
+      return admins || []
+    })(),
   })
 }
 
@@ -418,6 +426,58 @@ export async function POST(request: Request) {
       success: true,
       url: impersonateUrl,
     })
+  }
+
+  if (action === 'add_super_admin') {
+    const { email } = body
+    if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+
+    // Find user by email
+    const { data: targetUser } = await adminClient
+      .from('users')
+      .select('id, email, name, is_super_admin')
+      .eq('email', email.toLowerCase().trim())
+      .single()
+
+    if (!targetUser) {
+      return NextResponse.json({ error: `No user found with email ${email}` }, { status: 404 })
+    }
+
+    if (targetUser.is_super_admin) {
+      return NextResponse.json({ error: `${email} is already a super admin` }, { status: 400 })
+    }
+
+    const { error: updateError } = await adminClient
+      .from('users')
+      .update({ is_super_admin: true })
+      .eq('id', targetUser.id)
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: `${email} is now a super admin` })
+  }
+
+  if (action === 'remove_super_admin') {
+    const { userId } = body
+    if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+
+    // Don't let someone remove themselves
+    if (userId === user.id) {
+      return NextResponse.json({ error: "You can't remove your own super admin access" }, { status: 400 })
+    }
+
+    const { error: updateError } = await adminClient
+      .from('users')
+      .update({ is_super_admin: false })
+      .eq('id', userId)
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: 'Super admin access removed' })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
