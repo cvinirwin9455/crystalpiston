@@ -40,6 +40,30 @@
     color: rgb(var(--color-text));
   }
 
+  /* Light mode: force backgrounds on key elements */
+  .light body {
+    background-color: #f9fafb;
+    color: #1f2937;
+  }
+
+  /* Override Tailwind bg-primary/bg-secondary in light mode */
+  .light .bg-primary {
+    background-color: #f9fafb !important;
+  }
+  .light .bg-secondary {
+    background-color: #ffffff !important;
+  }
+
+  /* But NOT inside always-dark or aside */
+  .light aside .bg-primary,
+  .light .always-dark .bg-primary {
+    background-color: rgba(26, 26, 46, 1) !important;
+  }
+  .light aside .bg-secondary,
+  .light .always-dark .bg-secondary {
+    background-color: rgba(22, 33, 62, 1) !important;
+  }
+
   /* Override white text utilities in light mode */
   .light .text-white {
     color: rgb(var(--color-text));
