@@ -181,7 +181,7 @@ export default function FeedbackButton() {
       {/* Floating Button — bottom-left */}
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-20 left-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all hover:scale-105 text-white text-sm font-medium md:left-[19.5rem]"
+        className="fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-full shadow-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all hover:scale-105 text-white text-sm font-medium"
         title="Report a bug or give feedback"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
