@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-07-28T20:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-03T12:00:00Z";
 
 const updates = [
+  {
+    date: "August 3, 2026",
+    items: [
+      { area: "Client", text: "Fixed: The Feedback button was covering the Account menu on mobile — you couldn't tap your profile/avatar to access Account Preferences or Logout. The Feedback button has been moved to the bottom-left corner of the screen so it no longer blocks anything" },
+    ],
+  },
   {
     date: "July 28, 2026",
     items: [
