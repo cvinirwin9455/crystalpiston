@@ -44,6 +44,35 @@ export async function POST(request: Request) {
   const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || 'hello@firstmilecoach.com'
   const replySubject = subject?.startsWith('Re:') ? subject : `Re: ${subject || '(No subject)'}`
 
+  // Fetch thread history to include in the reply
+  let threadHistoryHtml = ''
+  let threadHistoryText = ''
+  if (thread_id) {
+    const { data: threadMessages } = await adminClient
+      .from('inbound_emails')
+      .select('direction, from_email, from_name, body_text, created_at')
+      .eq('thread_id', thread_id)
+      .order('created_at', { ascending: false })
+
+    if (threadMessages && threadMessages.length > 0) {
+      threadHistoryHtml = threadMessages.map(msg => {
+        const sender = msg.direction === 'outbound' ? 'First Mile Coach' : (msg.from_name || msg.from_email)
+        const date = new Date(msg.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+        const bodyEscaped = (msg.body_text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        return `<div style="margin-bottom: 16px; padding-left: 12px; border-left: 3px solid #e0e0e0;">
+          <p style="margin: 0 0 4px; font-size: 12px; color: #9e9e9e;"><strong>${sender}</strong> &mdash; ${date}</p>
+          <div style="font-size: 14px; color: #666; line-height: 1.6; white-space: pre-wrap;">${bodyEscaped}</div>
+        </div>`
+      }).join('')
+
+      threadHistoryText = '\n\n---\n\n' + threadMessages.map(msg => {
+        const sender = msg.direction === 'outbound' ? 'First Mile Coach' : (msg.from_name || msg.from_email)
+        const date = new Date(msg.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+        return `On ${date}, ${sender} wrote:\n> ${(msg.body_text || '').split('\n').join('\n> ')}`
+      }).join('\n\n')
+    }
+  }
+
   // Send via Resend
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -74,6 +103,14 @@ export async function POST(request: Request) {
               <div style="font-size: 16px; color: #2d3436; line-height: 1.7; white-space: pre-wrap;">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
             </td>
           </tr>
+          ${threadHistoryHtml ? `<tr>
+            <td style="padding: 0 24px 24px;">
+              <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
+                <p style="margin: 0 0 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #bbb;">Previous messages</p>
+                ${threadHistoryHtml}
+              </div>
+            </td>
+          </tr>` : ''}
           <tr>
             <td style="padding: 16px 24px 24px; border-top: 1px solid rgba(0,0,0,0.06);">
               <p style="margin: 0; font-size: 13px; color: #9e9e9e;">
@@ -87,7 +124,7 @@ export async function POST(request: Request) {
   </table>
 </body>
 </html>`,
-      text: message,
+      text: message + threadHistoryText,
     }),
   })
 
