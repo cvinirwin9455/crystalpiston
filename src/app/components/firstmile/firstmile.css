@@ -807,6 +807,198 @@
   border: 1px solid #90caf9;
 }
 
+/* === About Us === */
+.fmc-about-section {
+  padding: 100px 24px;
+  background: var(--fmc-color-white);
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.fmc-about-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.fmc-about-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  padding: 6px 16px;
+  border-radius: 50px;
+  background: var(--fmc-color-dark);
+  color: var(--fmc-color-white);
+  margin-bottom: 20px;
+}
+
+.fmc-about-header h2 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 900;
+  color: var(--fmc-color-dark);
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+
+.fmc-about-intro {
+  max-width: 600px;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  color: var(--fmc-color-text-light);
+  line-height: 1.8;
+}
+
+.fmc-about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 40px;
+  max-width: 800px;
+  margin: 0 auto 60px;
+}
+
+.fmc-about-card {
+  background: var(--fmc-color-bg);
+  border-radius: var(--fmc-radius);
+  padding: 40px 32px;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--fmc-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fmc-about-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--fmc-shadow-lg);
+}
+
+.fmc-about-photo {
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid var(--fmc-color-primary);
+  box-shadow: 0 4px 20px rgba(242, 101, 34, 0.15);
+}
+
+.fmc-about-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fmc-about-card h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--fmc-color-dark);
+  margin: 0 0 4px;
+}
+
+.fmc-about-role {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fmc-color-primary);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fmc-about-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--fmc-color-text-muted);
+  margin: 0 0 16px;
+}
+
+.fmc-about-location svg {
+  flex-shrink: 0;
+}
+
+.fmc-about-bio {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--fmc-color-text-light);
+  margin: 0 0 12px;
+  text-align: left;
+}
+
+.fmc-about-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--fmc-color-primary);
+  text-decoration: none;
+  padding: 8px 18px;
+  border: 1.5px solid var(--fmc-color-primary);
+  border-radius: 50px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.fmc-about-link:hover {
+  background: var(--fmc-color-primary);
+  color: var(--fmc-color-white);
+}
+
+.fmc-about-story {
+  max-width: 650px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.fmc-about-story h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--fmc-color-dark);
+  margin-bottom: 20px;
+}
+
+.fmc-about-story p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--fmc-color-text-light);
+  margin-bottom: 16px;
+}
+
+.fmc-about-story em {
+  color: var(--fmc-color-dark);
+  font-style: italic;
+}
+
+.fmc-about-tagline {
+  font-size: 1.2rem !important;
+  font-weight: 800;
+  color: var(--fmc-color-primary) !important;
+  margin-top: 28px !important;
+}
+
+/* About section responsive */
+@media (max-width: 680px) {
+  .fmc-about-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .fmc-about-card {
+    padding: 32px 24px;
+  }
+
+  .fmc-about-photo {
+    width: 120px;
+    height: 120px;
+  }
+
+  .fmc-about-section {
+    padding: 70px 20px;
+  }
+
+  .fmc-about-header {
+    margin-bottom: 40px;
+  }
+}
+
 /* === Footer === */
 .fmc-footer {
   padding: 48px 24px;
