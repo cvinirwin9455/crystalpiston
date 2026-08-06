@@ -380,7 +380,7 @@ export default function InboxTab() {
             onChange={(e) => setReplyText(e.target.value)}
             placeholder="Type your reply..."
             rows={4}
-            className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-900 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
           <div className="flex items-center justify-between mt-3">
             <p className="text-xs text-gray-400">
