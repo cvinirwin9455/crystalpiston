@@ -298,7 +298,7 @@ export default function FirstMileContent() {
             <div className="fmc-about-card">
               <div className="fmc-about-photo">
                 <Image
-                  src="/firstmile/IMG_5209.jpeg"
+                  src="/IMG_0995.JPG"
                   alt="Crystal Irwin — Running Coach"
                   width={200}
                   height={200}
@@ -326,7 +326,7 @@ export default function FirstMileContent() {
             <div className="fmc-about-card">
               <div className="fmc-about-photo">
                 <Image
-                  src="/firstmile/curtis.jpg"
+                  src="/IMG_8868.jpeg"
                   alt="Curtis Irwin — Platform Builder"
                   width={200}
                   height={200}
