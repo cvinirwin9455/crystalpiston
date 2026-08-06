@@ -2,6 +2,11 @@ import { updateSession } from '@/lib/supabase/middleware'
 import { type NextRequest, NextResponse } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Skip middleware entirely for webhook endpoints (they don't need auth/sessions)
+  if (request.nextUrl.pathname.startsWith('/api/webhooks/')) {
+    return NextResponse.next()
+  }
+
   // Rewrite /favicon.ico based on domain
   if (request.nextUrl.pathname === '/favicon.ico') {
     const host = request.headers.get('host') || ''
