@@ -35,7 +35,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             from: `First Mile Coach <${senderEmail}>`,
             to: [email],
-            reply_to: 'hello@firstmilecoach.com',
+            reply_to: 'hello@reply.firstmilecoach.com',
             subject: "Your first clients shouldn't cost a fortune to manage",
             html: getMarketingEmailHtml(email),
           }),
