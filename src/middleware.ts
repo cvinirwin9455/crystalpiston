@@ -12,6 +12,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Brand override via ?brand= query param (for previewing First Mile on any domain)
+  const brandParam = request.nextUrl.searchParams.get('brand')
+  if (brandParam) {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-brand-override', brandParam)
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    })
+    return response
+  }
+
   return await updateSession(request)
 }
 

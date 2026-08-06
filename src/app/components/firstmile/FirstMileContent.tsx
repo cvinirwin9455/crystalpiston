@@ -282,6 +282,93 @@ export default function FirstMileContent() {
         </div>
       </section>
 
+      {/* About Us */}
+      <section className="fmc-about-section" id="about">
+        <div className="fmc-container">
+          <div className="fmc-about-header fmc-fade-in">
+            <span className="fmc-about-label">Who We Are</span>
+            <h2>Built by a brother for his sister.<br />Now built for you.</h2>
+            <p className="fmc-about-intro">
+              First Mile Coach isn&apos;t a faceless startup backed by venture capital. It&apos;s a family project — built by two people who saw a problem and decided to fix it.
+            </p>
+          </div>
+
+          <div className="fmc-about-grid fmc-fade-in">
+            {/* Crystal */}
+            <div className="fmc-about-card">
+              <div className="fmc-about-photo">
+                <Image
+                  src="/firstmile/IMG_5209.jpeg"
+                  alt="Crystal Irwin — Running Coach"
+                  width={200}
+                  height={200}
+                  className="fmc-about-img"
+                />
+              </div>
+              <h3>Crystal Irwin</h3>
+              <p className="fmc-about-role">Running Coach &amp; Co-Founder</p>
+              <p className="fmc-about-location">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Springfield, Missouri, USA
+              </p>
+              <p className="fmc-about-bio">
+                Crystal is a running coach with a diverse athletic background spanning CrossFit (L1 certified), boxing, kickboxing coaching, and running roads and trails — from 5K to ultramarathons. She coaches runners of all levels on top of her full-time job because she genuinely loves helping people set goals and crush them.
+              </p>
+              <p className="fmc-about-bio">
+                Crystal is the reason First Mile Coach exists. She needed a simple, affordable way to manage her growing client list without paying hundreds a month for tools designed for massive coaching operations.
+              </p>
+              <a href="https://www.crystalpistolperformance.com" target="_blank" rel="noopener noreferrer" className="fmc-about-link">
+                Visit Crystal&apos;s coaching site &rarr;
+              </a>
+            </div>
+
+            {/* Curtis */}
+            <div className="fmc-about-card">
+              <div className="fmc-about-photo">
+                <Image
+                  src="/firstmile/curtis.jpg"
+                  alt="Curtis Irwin — Platform Builder"
+                  width={200}
+                  height={200}
+                  className="fmc-about-img"
+                />
+              </div>
+              <h3>Curtis Irwin</h3>
+              <p className="fmc-about-role">Builder &amp; Co-Founder</p>
+              <p className="fmc-about-location">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                London, England, United Kingdom
+              </p>
+              <p className="fmc-about-bio">
+                Curtis is an L&amp;D leader at Amazon, where he helps transform how thousands of people learn and develop. He built First Mile Coach for his sister Crystal when he saw her juggling notebooks, spreadsheets, and WhatsApp messages to manage her coaching clients.
+              </p>
+              <p className="fmc-about-bio">
+                What started as a side project to make Crystal&apos;s life easier quickly became something bigger — a platform built specifically for coaches who are just getting started and shouldn&apos;t have to pay a fortune for basic client management.
+              </p>
+              <a href="https://curtisirwin.com" target="_blank" rel="noopener noreferrer" className="fmc-about-link">
+                Learn more about Curtis &rarr;
+              </a>
+            </div>
+          </div>
+
+          <div className="fmc-about-story fmc-fade-in">
+            <h3>The story behind First Mile Coach</h3>
+            <p>
+              Crystal lives in Missouri. Curtis lives in London. They&apos;re brother and sister separated by 4,000 miles — but connected by a shared frustration.
+            </p>
+            <p>
+              Crystal had been coaching runners for years, managing everything through handwritten plans and scattered messages. The &ldquo;professional&rdquo; platforms charged $50–$200/month — way more than made sense when you&apos;re coaching a handful of people on top of a full-time job. Curtis saw the problem and thought: <em>&ldquo;I can build something better than a notebook for way less than $50 a month.&rdquo;</em>
+            </p>
+            <p>
+              So he did. And once Crystal started using it, they realised this wasn&apos;t just her problem — it was every new coach&apos;s problem. That&apos;s how First Mile Coach was born.
+            </p>
+            <p className="fmc-about-tagline">
+              Real people. Real problem. Real solution.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Stats */}
       <section className="fmc-stats">
         <div className="fmc-container">
