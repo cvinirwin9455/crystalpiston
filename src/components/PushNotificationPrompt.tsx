@@ -5,8 +5,10 @@ import { useState, useEffect } from "react";
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  // Ensure the string only contains valid base64url characters
+  const cleaned = base64String.replace(/[^A-Za-z0-9\-_]/g, '');
+  const padding = "=".repeat((4 - (cleaned.length % 4)) % 4);
+  const base64 = (cleaned + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
@@ -78,6 +80,10 @@ export default function PushNotificationPrompt() {
       const registration = await navigator.serviceWorker.ready;
 
       // Subscribe to push
+      if (!VAPID_PUBLIC_KEY) {
+        throw new Error("Push notifications not configured yet. Try again later.");
+      }
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),

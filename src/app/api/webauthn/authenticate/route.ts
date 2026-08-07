@@ -4,6 +4,17 @@ import { generateAuthenticationOptions, verifyAuthenticationResponse } from '@si
 const RP_ID = process.env.WEBAUTHN_RP_ID || 'firstmilecoach.com'
 const ORIGIN = process.env.WEBAUTHN_ORIGIN || 'https://firstmilecoach.com'
 
+// Accept both www and non-www origins
+function getExpectedOrigins(): string[] {
+  const origins = [ORIGIN]
+  if (ORIGIN.includes('://www.')) {
+    origins.push(ORIGIN.replace('://www.', '://'))
+  } else {
+    origins.push(ORIGIN.replace('://', '://www.'))
+  }
+  return origins
+}
+
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
   return createSupabaseClient(
@@ -107,7 +118,7 @@ export async function POST(request: Request) {
     const verification = await verifyAuthenticationResponse({
       response: authResponse,
       expectedChallenge: challengeData.challenge,
-      expectedOrigin: ORIGIN,
+      expectedOrigin: getExpectedOrigins(),
       expectedRPID: RP_ID,
       credential: {
         id: credential.credential_id,
