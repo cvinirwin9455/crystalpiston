@@ -443,14 +443,14 @@ export async function POST(request: Request) {
             .eq('id', client.user_id)
             .single()
 
-          if (clientUser?.email) {
-            // Get the coach name who published this week
-            const { data: coachProfile } = await adminClient
-              .from('users')
-              .select('name')
-              .eq('id', user.id)
-              .single()
+          // Get the coach name who published this week
+          const { data: coachProfile } = await adminClient
+            .from('users')
+            .select('name')
+            .eq('id', user.id)
+            .single()
 
+          if (clientUser?.email) {
             const { sendEmail, buildPlanPublishedEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
             const { getOrgIdForUser } = await import('@/lib/org')
             const orgId = await getOrgIdForUser(adminClient, user.id)
