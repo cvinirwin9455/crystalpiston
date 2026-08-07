@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  // Ensure the string only contains valid base64url characters
-  const cleaned = base64String.replace(/[^A-Za-z0-9\-_]/g, '');
+  // Trim whitespace and remove any non-base64url characters
+  const cleaned = base64String.trim().replace(/[^A-Za-z0-9\-_]/g, "");
   const padding = "=".repeat((4 - (cleaned.length % 4)) % 4);
   const base64 = (cleaned + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
@@ -23,25 +23,24 @@ export default function PushNotificationPrompt() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Only show on supported browsers, when not already subscribed, and when dismissed flag not set
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     if (!VAPID_PUBLIC_KEY) return;
 
-    // Don't show if user dismissed recently (24 hours)
+    // Check current permission state
+    if (Notification.permission === "granted") {
+      // Permission already granted — check if we have an active subscription
+      checkAndSyncSubscription();
+      return;
+    }
+    if (Notification.permission === "denied") return;
+
+    // Permission not yet asked — don't show if user dismissed recently (24 hours)
     const dismissed = localStorage.getItem("push-prompt-dismissed");
     if (dismissed) {
       const dismissedAt = parseInt(dismissed, 10);
       if (Date.now() - dismissedAt < 24 * 60 * 60 * 1000) return;
     }
-
-    // Check current permission state
-    if (Notification.permission === "granted") {
-      // Already granted — make sure we have a subscription saved
-      checkAndSyncSubscription();
-      return;
-    }
-    if (Notification.permission === "denied") return;
 
     // Show prompt after a short delay (don't interrupt initial page load)
     const timer = setTimeout(() => setShowPrompt(true), 3000);
@@ -52,15 +51,44 @@ export default function PushNotificationPrompt() {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
+
       if (subscription) {
-        // Already subscribed — save to backend in case it's not stored
+        // Already subscribed — sync to backend (in case it's not stored)
         await fetch("/api/push-subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ subscription: subscription.toJSON() }),
         });
+        localStorage.setItem("push-enabled", "1");
+      } else {
+        // Permission granted but NO subscription exists
+        // This happens when the first subscribe attempt failed
+        // Auto-retry the subscription silently
+        try {
+          const newSubscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
+
+          const res = await fetch("/api/push-subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscription: newSubscription.toJSON() }),
+          });
+
+          if (res.ok) {
+            localStorage.setItem("push-enabled", "1");
+            console.log("[Push] Auto-subscribed successfully");
+          }
+        } catch (retryErr) {
+          console.error("[Push] Auto-subscribe retry failed:", retryErr);
+          // Show the prompt so user can manually retry
+          setShowPrompt(true);
+        }
       }
-    } catch {}
+    } catch (err) {
+      console.error("[Push] checkAndSyncSubscription error:", err);
+    }
   }
 
   async function handleEnable() {
@@ -81,7 +109,7 @@ export default function PushNotificationPrompt() {
 
       // Subscribe to push
       if (!VAPID_PUBLIC_KEY) {
-        throw new Error("Push notifications not configured yet. Try again later.");
+        throw new Error("Push notifications are not configured yet.");
       }
 
       const subscription = await registration.pushManager.subscribe({
@@ -103,7 +131,7 @@ export default function PushNotificationPrompt() {
       setShowPrompt(false);
       localStorage.setItem("push-enabled", "1");
     } catch (err: any) {
-      console.error("Push subscription error:", err);
+      console.error("[Push] Subscription error:", err);
       setError(err.message || "Something went wrong. Try again later.");
     } finally {
       setSubscribing(false);
