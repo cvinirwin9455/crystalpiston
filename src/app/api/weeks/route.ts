@@ -465,6 +465,20 @@ export async function POST(request: Request) {
             )
             sendEmail({ to: clientUser.email, ...emailContent, brand }).catch(console.error)
           }
+
+          // Send push notification
+          try {
+            const { sendPushToUser } = await import('@/lib/push')
+            const coachName = coachProfile?.name?.split(' ')[0] || 'Your coach'
+            sendPushToUser(adminClient, client.user_id, {
+              title: 'New training plan published!',
+              body: `${coachName} published your plan for ${dateRange}${focus ? ' — ' + focus : ''}`,
+              url: '/dashboard',
+              tag: `plan-${week.id}`,
+            }).catch(console.error)
+          } catch (pushErr) {
+            console.error('Push notification failed for plan publish:', pushErr)
+          }
         }
       }
     } catch (notifErr) {
@@ -473,4 +487,3 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ success: true, weekId: week.id })
-}
