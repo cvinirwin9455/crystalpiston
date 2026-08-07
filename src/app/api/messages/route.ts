@@ -419,6 +419,52 @@ export async function POST(request: Request) {
       sendEmail({ to: recipientProfile.email, ...emailContent, brand }).catch(console.error)
     }
   }
+
+  // Send push notifications (fire and forget, alongside email)
+  try {
+    const { sendPushToUser, sendPushToUsers } = await import('@/lib/push')
+    const senderName = senderProfile?.name?.split(' ')[0] || 'Someone'
+    const truncatedBody = message.trim().length > 100 ? message.trim().slice(0, 100) + '...' : message.trim()
+
+    if (recipientProfile?.role === 'admin') {
+      // Client sending to coaches — push to all assigned coaches
+      let pushCoachIds: string[] = [recipientId]
+      try {
+        const { data: clientRecord } = await adminClient
+          .from('clients')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+        if (clientRecord) {
+          const { data: coachAssignments } = await adminClient
+            .from('client_coaches')
+            .select('coach_id')
+            .eq('client_id', clientRecord.id)
+          if (coachAssignments && coachAssignments.length > 0) {
+            pushCoachIds = coachAssignments.map((ca: any) => ca.coach_id)
+          }
+        }
+      } catch {}
+
+      sendPushToUsers(adminClient, pushCoachIds, {
+        title: `New message from ${senderName}`,
+        body: truncatedBody,
+        url: '/admin',
+        tag: `msg-${newMessage.id}`,
+      }).catch(console.error)
+    } else if (recipientProfile?.role === 'client') {
+      // Coach sending to client — push to the client
+      sendPushToUser(adminClient, recipientId, {
+        title: `${senderName} sent you a message`,
+        body: truncatedBody,
+        url: '/dashboard?tab=messages',
+        tag: `msg-${newMessage.id}`,
+      }).catch(console.error)
+    }
+  } catch (pushErr) {
+    console.error('Push notification error (message still sent):', pushErr)
+  }
+
   } catch (notifErr) {
     console.error('Notification error (message still sent):', notifErr)
   }

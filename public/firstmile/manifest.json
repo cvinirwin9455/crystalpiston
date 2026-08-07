@@ -1,26 +1,26 @@
 {
-  "name": "Pistol Performance Coaching",
-  "short_name": "Pistol Performance",
-  "description": "Your personalized running coach — training plans, messaging, and workout tracking.",
+  "name": "First Mile Coach",
+  "short_name": "First Mile",
+  "description": "Your coaching platform — training plans, client messaging, and workout tracking.",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/firstmile/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/firstmile/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "theme_color": "#1a1a2e",
-  "background_color": "#1a1a2e",
+  "theme_color": "#ffffff",
+  "background_color": "#fafbfc",
   "categories": ["health", "fitness", "sports"]
 }
