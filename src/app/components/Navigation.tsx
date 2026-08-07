@@ -29,7 +29,7 @@ export default function Navigation() {
           <a href="#distances" className="hover:text-accent transition-colors">
             Distances
           </a>
-          <a href="/login" className="hover:text-accent transition-colors">
+          <a href="https://www.firstmilecoach.com/login?role=client" className="hover:text-accent transition-colors">
             Client Login
           </a>
           <a href="#contact" className="btn-primary text-sm">
@@ -65,7 +65,7 @@ export default function Navigation() {
           <a href="#distances" className="block hover:text-accent transition-colors" onClick={() => setIsOpen(false)}>
             Distances
           </a>
-          <a href="/login" className="block hover:text-accent transition-colors" onClick={() => setIsOpen(false)}>
+          <a href="https://www.firstmilecoach.com/login?role=client" className="block hover:text-accent transition-colors" onClick={() => setIsOpen(false)}>
             Client Login
           </a>
           <a href="#contact" className="block btn-primary text-sm text-center" onClick={() => setIsOpen(false)}>

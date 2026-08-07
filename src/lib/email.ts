@@ -44,12 +44,12 @@ function getEmailBrandAssets(brand: EmailBrand): EmailBrandAssets {
 
 /**
  * Determine email brand from an organization ID.
- * Crystal Pistol org → crystal-pistol, everything else → first-mile.
+ * All orgs now use First Mile Coach branding for the app platform.
  */
 const CRYSTAL_PISTOL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4'
 
 export function getEmailBrandFromOrgId(orgId: string | null | undefined): EmailBrand {
-  if (orgId === CRYSTAL_PISTOL_ORG_ID) return 'crystal-pistol'
+  // All platform emails now use First Mile branding
   return 'first-mile'
 }
 
@@ -59,8 +59,8 @@ export function getProductionUrl(requestUrl?: string): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
   }
-  // Hardcoded production URL as fallback (prevents preview deployment links in emails)
-  return 'https://crystalpiston.vercel.app'
+  // All platform links now go to First Mile Coach
+  return 'https://www.firstmilecoach.com'
 }
 
 interface SendEmailParams {
@@ -71,7 +71,7 @@ interface SendEmailParams {
   replyTo?: string
 }
 
-export async function sendEmail({ to, subject, html, brand = 'crystal-pistol', replyTo }: SendEmailParams): Promise<boolean> {
+export async function sendEmail({ to, subject, html, brand = 'first-mile', replyTo }: SendEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   const assets = getEmailBrandAssets(brand)
 
@@ -110,7 +110,7 @@ export async function sendEmail({ to, subject, html, brand = 'crystal-pistol', r
 }
 
 // Wrap content in branded email template
-function wrapInBrandedTemplate(content: string, brand: EmailBrand = 'crystal-pistol'): string {
+function wrapInBrandedTemplate(content: string, brand: EmailBrand = 'first-mile'): string {
   const assets = getEmailBrandAssets(brand)
   return `<!DOCTYPE html>
 <html>
