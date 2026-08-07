@@ -278,23 +278,9 @@ export async function POST(request: Request) {
     .single()
   const coachName = coachProfile?.name || 'Your coach'
 
-  // Determine the correct redirect URL based on the coach's organization
-  let redirectDomain = 'www.firstmilecoach.com'
-  let orgDomain: string | null = null
-  if (orgId) {
-    const { data: orgData } = await adminClient
-      .from('organizations')
-      .select('domain')
-      .eq('id', orgId)
-      .single()
-    if (orgData?.domain) {
-      orgDomain = orgData.domain
-      let domain = orgData.domain
-      if (domain === 'firstmilecoach.com') domain = 'www.firstmilecoach.com'
-      if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
-      redirectDomain = domain
-    }
-  }
+  // All invites now redirect to First Mile Coach platform
+  const redirectDomain = 'www.firstmilecoach.com'
+  const orgDomain = 'firstmilecoach.com'
 
   // Generate the invite link without sending Supabase's built-in email
   const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({

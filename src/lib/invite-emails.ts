@@ -42,10 +42,9 @@ function getBrandAssets(brand: Brand): BrandAssets {
 
 /**
  * Determine brand based on org domain
+ * All platform communications now use First Mile branding
  */
 export function getBrandFromDomain(domain: string | null | undefined): Brand {
-  if (!domain) return 'first-mile'
-  if (domain.includes('crystalpistol')) return 'crystal-pistol'
   return 'first-mile'
 }
 

@@ -13,12 +13,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 const CRYSTAL_PISTOL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4'
 
 export function getPushBrandFromOrgId(orgId: string | null | undefined): { name: string; icon: string } {
-  if (orgId === CRYSTAL_PISTOL_ORG_ID) {
-    return {
-      name: 'Pistol Performance',
-      icon: 'https://www.crystalpistolperformance.com/IMG_5861.PNG',
-    }
-  }
+  // All platform push notifications now use First Mile branding
   return {
     name: 'First Mile Coach',
     icon: 'https://www.firstmilecoach.com/firstmile/favicon.png',

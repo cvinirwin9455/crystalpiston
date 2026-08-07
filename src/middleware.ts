@@ -7,9 +7,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  const host = request.headers.get('host') || ''
+  const pathname = request.nextUrl.pathname
+
+  // If on Crystal Pistol domain and accessing platform routes (login, admin, dashboard, etc.),
+  // redirect to First Mile Coach. Marketing pages (/, #about, etc.) stay on Crystal Pistol domain.
+  if (host.includes('crystalpistol') || host.includes('crystalpiston.vercel.app')) {
+    const platformRoutes = ['/login', '/admin', '/dashboard', '/set-password', '/reset-password', '/forgot-password', '/auth']
+    const isPlatformRoute = platformRoutes.some(route => pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?'))
+    if (isPlatformRoute) {
+      const redirectUrl = new URL(pathname + request.nextUrl.search, 'https://www.firstmilecoach.com')
+      return NextResponse.redirect(redirectUrl, 301)
+    }
+  }
+
   // Rewrite /favicon.ico based on domain
-  if (request.nextUrl.pathname === '/favicon.ico') {
-    const host = request.headers.get('host') || ''
+  if (pathname === '/favicon.ico') {
     if (host.includes('firstmilecoach')) {
       return NextResponse.rewrite(new URL('/firstmile/favicon.png', request.url))
     }
