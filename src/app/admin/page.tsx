@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import AccountTab from "./AccountTab";
+import BiometricSetup from "@/components/BiometricSetup";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay, getPaceRangeFromStructure } from "./StructuredRunBuilder";
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
@@ -3945,6 +3946,9 @@ export default function AdminPage() {
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Email Notifications</h3>
                   <p className="text-gray-300 text-xs">Notification emails are automatically sent to all coaches assigned to a client (primary and secondary). Clients can turn off specific notifications from their own Account tab.</p>
                 </div>
+
+                {/* Biometric Login Setup */}
+                <BiometricSetup />
               </>
             ) : showChangelog ? (
               <Changelog />
