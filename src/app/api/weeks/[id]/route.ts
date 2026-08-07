@@ -125,16 +125,18 @@ export async function PATCH(
                 process.env.SUPABASE_SERVICE_ROLE_KEY!,
                 { auth: { autoRefreshToken: false, persistSession: false } }
               )
-              const { sendPushToUser } = await import('@/lib/push')
+              const { sendPushToUser, getPushBrandFromOrgId } = await import('@/lib/push')
               const { data: coachProfile } = await supabase
                 .from('users')
-                .select('name')
+                .select('name, organization_id')
                 .eq('id', user.id)
                 .single()
+              const pushBrand = getPushBrandFromOrgId(coachProfile?.organization_id)
               const coachName = coachProfile?.name?.split(' ')[0] || 'Your coach'
               sendPushToUser(pushAdminClient, client.user_id, {
                 title: 'New training plan published!',
                 body: `${coachName} published your plan for ${week.date_range || dateRange || 'this week'}${week.focus || focus ? ' — ' + (week.focus || focus) : ''}`,
+                icon: pushBrand.icon,
                 url: '/dashboard',
                 tag: `plan-${weekId}`,
               }).catch(console.error)

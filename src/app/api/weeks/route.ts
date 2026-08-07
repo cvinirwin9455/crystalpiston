@@ -468,11 +468,13 @@ export async function POST(request: Request) {
 
           // Send push notification
           try {
-            const { sendPushToUser } = await import('@/lib/push')
+            const { sendPushToUser, getPushBrandFromOrgId } = await import('@/lib/push')
+            const pushBrand = getPushBrandFromOrgId(orgId)
             const coachName = coachProfile?.name?.split(' ')[0] || 'Your coach'
             sendPushToUser(adminClient, client.user_id, {
               title: 'New training plan published!',
               body: `${coachName} published your plan for ${dateRange}${focus ? ' — ' + focus : ''}`,
+              icon: pushBrand.icon,
               url: '/dashboard',
               tag: `plan-${week.id}`,
             }).catch(console.error)

@@ -1,11 +1,6 @@
 import webPush from 'web-push'
 
 // Configure web-push with VAPID keys
-// These env vars need to be set in production:
-// NEXT_PUBLIC_VAPID_PUBLIC_KEY - the public VAPID key (also used client-side)
-// VAPID_PRIVATE_KEY - the private VAPID key (server-only)
-// VAPID_SUBJECT - mailto: or https:// URL identifying the sender
-
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || ''
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hello@firstmilecoach.com'
@@ -14,11 +9,28 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
 }
 
+// Brand assets for push notifications (mirrors email branding logic)
+const CRYSTAL_PISTOL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4'
+
+export function getPushBrandFromOrgId(orgId: string | null | undefined): { name: string; icon: string } {
+  if (orgId === CRYSTAL_PISTOL_ORG_ID) {
+    return {
+      name: 'Pistol Performance',
+      icon: 'https://www.crystalpistolperformance.com/IMG_5861.PNG',
+    }
+  }
+  return {
+    name: 'First Mile Coach',
+    icon: 'https://www.firstmilecoach.com/firstmile/favicon.png',
+  }
+}
+
 export interface PushPayload {
   title: string
   body: string
   url?: string
   icon?: string
+  badge?: string
   tag?: string
   requireInteraction?: boolean
   actions?: Array<{ action: string; title: string }>

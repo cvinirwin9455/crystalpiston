@@ -422,9 +422,12 @@ export async function POST(request: Request) {
 
   // Send push notifications (fire and forget, alongside email)
   try {
-    const { sendPushToUser, sendPushToUsers } = await import('@/lib/push')
+    const { sendPushToUser, sendPushToUsers, getPushBrandFromOrgId } = await import('@/lib/push')
+    const { getOrgIdForUser } = await import('@/lib/org')
     const senderName = senderProfile?.name?.split(' ')[0] || 'Someone'
     const truncatedBody = message.trim().length > 100 ? message.trim().slice(0, 100) + '...' : message.trim()
+    const orgId = await getOrgIdForUser(adminClient, user.id)
+    const pushBrand = getPushBrandFromOrgId(orgId)
 
     if (recipientProfile?.role === 'admin') {
       // Client sending to coaches — push to all assigned coaches
@@ -449,6 +452,7 @@ export async function POST(request: Request) {
       sendPushToUsers(adminClient, pushCoachIds, {
         title: `New message from ${senderName}`,
         body: truncatedBody,
+        icon: pushBrand.icon,
         url: '/admin',
         tag: `msg-${newMessage.id}`,
       }).catch(console.error)
@@ -457,6 +461,7 @@ export async function POST(request: Request) {
       sendPushToUser(adminClient, recipientId, {
         title: `${senderName} sent you a message`,
         body: truncatedBody,
+        icon: pushBrand.icon,
         url: '/dashboard?tab=messages',
         tag: `msg-${newMessage.id}`,
       }).catch(console.error)

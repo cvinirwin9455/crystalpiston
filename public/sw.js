@@ -68,7 +68,7 @@ self.addEventListener('fetch', (event) => {
 
 // Push notification received
 self.addEventListener('push', (event) => {
-  let data = { title: 'First Mile Coach', body: 'You have a new notification', url: '/dashboard' };
+  let data = { title: 'Notification', body: 'You have a new notification', url: '/dashboard' };
 
   if (event.data) {
     try {
@@ -81,7 +81,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body,
     icon: data.icon || '/firstmile/favicon.png',
-    badge: '/firstmile/favicon.png',
+    badge: data.badge || data.icon || '/firstmile/favicon.png',
     tag: data.tag || 'default',
     data: {
       url: data.url || '/dashboard',
