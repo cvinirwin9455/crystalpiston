@@ -5,6 +5,8 @@ import AuthRedirect from "./components/AuthRedirect";
 import PullToRefresh from "@/components/PullToRefresh";
 import FeedbackButton from "@/components/FeedbackButton";
 import ThemeProvider from "@/components/ThemeProvider";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import PushNotificationPrompt from "@/components/PushNotificationPrompt";
 import { Analytics } from "@vercel/analytics/react";
 import { getBrand } from "@/lib/brand.server";
 
@@ -44,6 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
         icon: [{ url: '/firstmile/favicon.png', type: 'image/png' }],
         apple: [{ url: '/firstmile/favicon.png', type: 'image/png' }],
       },
+      manifest: '/firstmile/manifest.json',
     };
   }
 
@@ -101,6 +104,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -180,6 +186,8 @@ export default function RootLayout({
           </PullToRefresh>
           <Analytics />
           <FeedbackButton />
+          <ServiceWorkerRegistration />
+          <PushNotificationPrompt />
         </ThemeProvider>
       </body>
     </html>

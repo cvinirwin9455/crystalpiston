@@ -5,12 +5,16 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getBrandFromHost } from "@/lib/brand";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [showBiometric, setShowBiometric] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -48,6 +52,129 @@ function LoginContent() {
       setError("Authentication error. Please try again.");
     }
   }, []);
+
+  // Check if WebAuthn/biometric login is available on this device
+  useEffect(() => {
+    async function checkBiometric() {
+      if (typeof window === "undefined") return;
+      if (!window.PublicKeyCredential) return;
+
+      try {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        setBiometricAvailable(available);
+
+        // Check if we have a saved email that has credentials
+        const savedEmail = localStorage.getItem("biometric-email");
+        if (savedEmail && available) {
+          setEmail(savedEmail);
+          setShowBiometric(true);
+        }
+      } catch {
+        setBiometricAvailable(false);
+      }
+    }
+    checkBiometric();
+  }, []);
+
+  // When email changes, check if biometric is available for that email
+  useEffect(() => {
+    if (!biometricAvailable || !email || email.length < 5) {
+      setShowBiometric(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/webauthn/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        setShowBiometric(data.hasCredentials === true);
+      } catch {
+        setShowBiometric(false);
+      }
+    }, 500); // Debounce
+
+    return () => clearTimeout(timer);
+  }, [email, biometricAvailable]);
+
+  const handleBiometricLogin = async () => {
+    setError("");
+    setBiometricLoading(true);
+
+    try {
+      // Step 1: Get authentication options
+      const optionsRes = await fetch("/api/webauthn/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!optionsRes.ok) {
+        const err = await optionsRes.json();
+        throw new Error(err.error || "Failed to start biometric login");
+      }
+
+      const options = await optionsRes.json();
+
+      // Step 2: Trigger biometric prompt (Face ID / Touch ID)
+      const authResponse = await startAuthentication({ optionsJSON: options });
+
+      // Step 3: Verify with server
+      const verifyRes = await fetch("/api/webauthn/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, response: authResponse }),
+      });
+
+      if (!verifyRes.ok) {
+        const err = await verifyRes.json();
+        throw new Error(err.error || "Biometric verification failed");
+      }
+
+      const { verified, tokenHash, email: verifiedEmail } = await verifyRes.json();
+
+      if (!verified || !tokenHash) {
+        throw new Error("Verification failed");
+      }
+
+      // Step 4: Establish Supabase session using the token
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "magiclink",
+      });
+
+      if (otpError) {
+        throw new Error(otpError.message);
+      }
+
+      // Save email for next time
+      localStorage.setItem("biometric-email", email);
+
+      // Redirect based on role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.role === "admin") {
+          window.location.href = "/admin";
+        } else {
+          window.location.href = "/dashboard";
+        }
+      }
+    } catch (err: any) {
+      console.error("Biometric login error:", err);
+      setError(err.message || "Biometric login failed. Please use your password.");
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,6 +288,20 @@ function LoginContent() {
               {loading ? "Signing in..." : "Log In"}
             </button>
 
+            {showBiometric && (
+              <button
+                type="button"
+                onClick={handleBiometricLogin}
+                disabled={biometricLoading}
+                className="w-full text-center block py-3 px-8 rounded-full font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+                style={{ background: '#2d3436', color: '#ffffff', marginTop: '12px' }}
+              >
+                {biometricLoading ? "Verifying..." : (
+                  <>&#x1F9EC; Sign in with Face ID / Touch ID</>
+                )}
+              </button>
+            )}
+
             <p className="text-center text-sm" style={{ color: '#9e9e9e' }}>
               <a href="/forgot-password" className="hover:underline" style={{ color: '#f26522' }}>
                 Forgot your password?
@@ -238,6 +379,19 @@ function LoginContent() {
           >
             {loading ? "Signing in..." : "Log In"}
           </button>
+
+          {showBiometric && (
+            <button
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={biometricLoading}
+              className="w-full text-center block py-3 px-8 rounded-full font-bold transition-all duration-300 border border-accent text-accent hover:bg-accent/10 disabled:opacity-50"
+            >
+              {biometricLoading ? "Verifying..." : (
+                <>&#x1F9EC; Sign in with Face ID / Touch ID</>
+              )}
+            </button>
+          )}
 
           <p className="text-center text-gray-500 text-sm">
             <a href="/forgot-password" className="text-accent hover:underline">

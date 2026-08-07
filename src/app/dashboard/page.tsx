@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
+import BiometricSetup from "@/components/BiometricSetup";
 import { useTheme } from "@/components/ThemeProvider";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
@@ -2608,6 +2609,9 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Biometric Login Setup */}
+            <BiometricSetup />
 
           </div>
         )}
