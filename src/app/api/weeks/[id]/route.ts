@@ -116,6 +116,31 @@ export async function PATCH(
               // Fire and forget
               sendEmail({ to: clientUser.email, ...emailContent, brand }).catch(console.error)
             }
+
+            // Send push notification
+            try {
+              const { createClient: createSupabaseClient2 } = await import('@supabase/supabase-js')
+              const pushAdminClient = createSupabaseClient2(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!,
+                { auth: { autoRefreshToken: false, persistSession: false } }
+              )
+              const { sendPushToUser } = await import('@/lib/push')
+              const { data: coachProfile } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', user.id)
+                .single()
+              const coachName = coachProfile?.name?.split(' ')[0] || 'Your coach'
+              sendPushToUser(pushAdminClient, client.user_id, {
+                title: 'New training plan published!',
+                body: `${coachName} published your plan for ${week.date_range || dateRange || 'this week'}${week.focus || focus ? ' — ' + (week.focus || focus) : ''}`,
+                url: '/dashboard',
+                tag: `plan-${weekId}`,
+              }).catch(console.error)
+            } catch (pushErr) {
+              console.error('Push notification failed for plan publish:', pushErr)
+            }
           }
         }
       }
