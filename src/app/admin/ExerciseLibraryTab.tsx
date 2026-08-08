@@ -105,9 +105,14 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
         resetForm();
         setShowAddForm(false);
         setEditingId(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error("Save exercise failed:", res.status, errData);
+        alert(`Failed to save: ${errData.error || res.statusText}`);
       }
     } catch (err) {
       console.error("Failed to save exercise:", err);
+      alert("Failed to save exercise. Check your connection and try again.");
     } finally {
       setSaving(false);
     }

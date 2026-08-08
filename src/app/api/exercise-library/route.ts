@@ -53,7 +53,8 @@ export async function GET(request: Request) {
   let query = adminClient
     .from('templates')
     .select('id, name, data, created_at, organization_id')
-    .eq('type', 'exercise_library')
+    .eq('type', 'day')
+    .eq('category', '__exercise_library__')
     .order('name', { ascending: true })
 
   if (orgId) {
@@ -125,8 +126,8 @@ export async function POST(request: Request) {
     .from('templates')
     .insert({
       name: data.name,
-      type: 'exercise_library',
-      category: null,
+      type: 'day',
+      category: '__exercise_library__',
       data,
       organization_id: orgId,
     })
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
     .single()
 
   if (error) {
+    console.error('Exercise library insert error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -196,7 +198,8 @@ export async function PATCH(request: Request) {
     .from('templates')
     .update({ name: data.name, data })
     .eq('id', id)
-    .eq('type', 'exercise_library')
+    .eq('type', 'day')
+    .eq('category', '__exercise_library__')
 
   if (orgId) {
     query = query.eq('organization_id', orgId)
@@ -255,7 +258,8 @@ export async function DELETE(request: Request) {
     .from('templates')
     .delete()
     .eq('id', id)
-    .eq('type', 'exercise_library')
+    .eq('type', 'day')
+    .eq('category', '__exercise_library__')
 
   if (orgId) {
     query = query.eq('organization_id', orgId)
