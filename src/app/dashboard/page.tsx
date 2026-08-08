@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
 import BiometricSetup from "@/components/BiometricSetup";
+import VideoModal from "@/components/VideoModal";
 import { useTheme } from "@/components/ThemeProvider";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
@@ -119,6 +120,7 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 export default function DashboardPage() {
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
+  const [videoModal, setVideoModal] = useState<{ url: string; exerciseName: string } | null>(null);
 
   // Check URL params for tab navigation (e.g. from email links)
   useEffect(() => {
@@ -1475,7 +1477,42 @@ export default function DashboardPage() {
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
-                            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure, getWorkoutUnit(workout.id), workout.distanceUnit)}</div>
+                            workout.structure.exercises && Array.isArray(workout.structure.exercises) && workout.structure.exercises.some((ex: any) => ex.demoVideo) ? (
+                              /* Cross-training with video links: render as interactive list */
+                              <div className="mt-1 space-y-1">
+                                {workout.structure.exercises.filter((ex: any) => ex.name).map((ex: any, exIdx: number) => {
+                                  const measure = ex.measureType === 'reps' ? `${ex.measureValue} reps` : ex.measureType === 'time' ? ex.measureValue : `${ex.measureValue}m`;
+                                  const weight = ex.weight ? ` @ ${ex.weight}${ex.weightUnit || 'kg'}` : '';
+                                  const sets = ex.sets > 1 ? `${ex.sets} sets x ` : '';
+                                  const rest = ex.rest && ex.rest !== '00:00' ? ` | Rest: ${ex.rest}` : '';
+                                  return (
+                                    <div key={exIdx} className="flex items-start gap-2">
+                                      {ex.demoVideo ? (
+                                        <button
+                                          onClick={() => setVideoModal({ url: ex.demoVideo, exerciseName: ex.name })}
+                                          className="flex-shrink-0 mt-0.5 text-gold hover:text-yellow-300 transition-colors"
+                                          title="Watch demo video"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                        </button>
+                                      ) : (
+                                        <span className="flex-shrink-0 mt-0.5 w-4" />
+                                      )}
+                                      <div className="text-gray-300 text-sm leading-relaxed">
+                                        <span>{sets}{ex.name} &mdash; {measure}{weight}{rest}</span>
+                                        {ex.notes && <div className="text-gray-500 text-xs mt-0.5 ml-1">{ex.notes}</div>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              /* Standard structure display (no videos, or run structure) */
+                              <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed mt-1">{formatWorkoutStructure(workout.structure, getWorkoutUnit(workout.id), workout.distanceUnit)}</div>
+                            )
                           ) : workout.description ? (
                             <p className="text-gray-400 text-sm">{workout.description}</p>
                           ) : null}
@@ -2641,6 +2678,15 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Video Demo Modal */}
+      {videoModal && (
+        <VideoModal
+          url={videoModal.url}
+          exerciseName={videoModal.exerciseName}
+          onClose={() => setVideoModal(null)}
+        />
       )}
     </div>
   );

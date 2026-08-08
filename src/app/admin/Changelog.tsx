@@ -3,9 +3,19 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-03T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-08T12:00:00Z";
 
 const updates = [
+  {
+    date: "August 8, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Exercise Library — save your go-to exercises (with demo video links and default settings) so you can quickly reuse them when building workouts. Access it from the menu under 'Exercise Library'" },
+      { area: "Admin", text: "NEW: Demo Video Links — when building a cross-training workout, each exercise now has a video icon button where you can paste a YouTube or Vimeo link to show clients proper form" },
+      { area: "Admin", text: "NEW: Exercise Autocomplete — start typing an exercise name and suggestions from your library pop up. Selecting one auto-fills the video link and default settings (sets, reps, weight, rest)" },
+      { area: "Client", text: "NEW: Watch Demo Videos — exercises that have a linked demo video now show a gold play button. Tap it to watch the video right on the platform without leaving the page (YouTube and Vimeo play directly; other links open in a new tab)" },
+      { area: "All", text: "Video links carry through everywhere — templates, program templates, and week plans all preserve demo video links so you only need to set them once" },
+    ],
+  },
   {
     date: "August 3, 2026",
     items: [

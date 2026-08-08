@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Types
 export type MeasureType = "reps" | "time" | "distance";
@@ -15,6 +15,20 @@ export type Exercise = {
   sets: number;
   rest: string; // e.g. "01:00" (mm:ss)
   notes: string;
+  demoVideo?: string; // URL to a YouTube/Vimeo demo video
+};
+
+export type ExerciseLibraryItem = {
+  id: string;
+  name: string;
+  demoVideo?: string;
+  defaultMeasureType?: MeasureType;
+  defaultMeasureValue?: string;
+  defaultSets?: number;
+  defaultRest?: string;
+  defaultWeight?: string;
+  defaultWeightUnit?: WeightUnit;
+  defaultNotes?: string;
 };
 
 export type CrossTrainingStructure = {
@@ -31,6 +45,7 @@ function emptyExercise(weightUnit: WeightUnit = "kg"): Exercise {
     sets: 3,
     rest: "01:00",
     notes: "",
+    demoVideo: "",
   };
 }
 
@@ -59,11 +74,16 @@ interface Props {
   structure: CrossTrainingStructure;
   onChange: (structure: CrossTrainingStructure) => void;
   weightUnit?: WeightUnit;
+  exerciseLibrary?: ExerciseLibraryItem[];
 }
 
-export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg" }: Props) {
+export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [] }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showVideoInput, setShowVideoInput] = useState<Record<number, boolean>>({});
+  const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
+  const [autocompleteResults, setAutocompleteResults] = useState<ExerciseLibraryItem[]>([]);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
 
   const updateExercise = (index: number, changes: Partial<Exercise>) => {
     const exercises = [...structure.exercises];
@@ -79,6 +99,56 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
     const exercises = structure.exercises.filter((_, i) => i !== index);
     onChange({ ...structure, exercises });
   };
+
+  // Autocomplete: search exercise library by name
+  const handleNameChange = (index: number, value: string) => {
+    updateExercise(index, { name: value });
+    if (value.length >= 2 && exerciseLibrary.length > 0) {
+      const lower = value.toLowerCase();
+      const matches = exerciseLibrary.filter(item => item.name.toLowerCase().includes(lower)).slice(0, 6);
+      if (matches.length > 0) {
+        setAutocompleteIndex(index);
+        setAutocompleteResults(matches);
+      } else {
+        setAutocompleteIndex(null);
+        setAutocompleteResults([]);
+      }
+    } else {
+      setAutocompleteIndex(null);
+      setAutocompleteResults([]);
+    }
+  };
+
+  const selectFromLibrary = (index: number, item: ExerciseLibraryItem) => {
+    const changes: Partial<Exercise> = { name: item.name };
+    if (item.demoVideo) changes.demoVideo = item.demoVideo;
+    if (item.defaultMeasureType) changes.measureType = item.defaultMeasureType;
+    if (item.defaultMeasureValue) changes.measureValue = item.defaultMeasureValue;
+    if (item.defaultSets) changes.sets = item.defaultSets;
+    if (item.defaultRest) changes.rest = item.defaultRest;
+    if (item.defaultWeight) changes.weight = item.defaultWeight;
+    if (item.defaultWeightUnit) changes.weightUnit = item.defaultWeightUnit;
+    if (item.defaultNotes) changes.notes = item.defaultNotes;
+    updateExercise(index, changes);
+    setAutocompleteIndex(null);
+    setAutocompleteResults([]);
+    // Show video input if there's a video
+    if (item.demoVideo) {
+      setShowVideoInput(prev => ({ ...prev, [index]: true }));
+    }
+  };
+
+  // Close autocomplete on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+        setAutocompleteIndex(null);
+        setAutocompleteResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleDragStart = (index: number) => {
     setDragIndex(index);
@@ -140,7 +210,7 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
                 : "border-white/5"
             } ${dragIndex === idx ? "opacity-50" : ""}`}
           >
-            {/* Row 1: Drag handle + Name */}
+            {/* Row 1: Drag handle + Name + Video link */}
             <div className="flex items-center gap-2">
               <div className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300 flex-shrink-0">
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -152,13 +222,51 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
                   <circle cx="15" cy="18" r="1.5" />
                 </svg>
               </div>
-              <input
-                type="text"
-                value={ex.name}
-                onChange={(e) => updateExercise(idx, { name: e.target.value })}
-                className="flex-1 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold/50 focus:border-gold/50"
-                placeholder="Exercise name"
-              />
+              <div className="flex-1 relative" ref={autocompleteIndex === idx ? autocompleteRef : undefined}>
+                <input
+                  type="text"
+                  value={ex.name}
+                  onChange={(e) => handleNameChange(idx, e.target.value)}
+                  onFocus={() => { if (ex.name.length >= 2 && exerciseLibrary.length > 0) { handleNameChange(idx, ex.name); } }}
+                  className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold/50 focus:border-gold/50"
+                  placeholder="Exercise name"
+                />
+                {/* Autocomplete dropdown */}
+                {autocompleteIndex === idx && autocompleteResults.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-primary border border-gold/30 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {autocompleteResults.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => selectFromLibrary(idx, item)}
+                        className="w-full text-left px-3 py-2 text-xs text-white hover:bg-gold/10 flex items-center gap-2 border-b border-white/5 last:border-0"
+                      >
+                        <span className="flex-1">{item.name}</span>
+                        {item.demoVideo && (
+                          <svg className="w-3.5 h-3.5 text-gold flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Video link toggle button */}
+              <button
+                type="button"
+                onClick={() => setShowVideoInput(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                className={`flex-shrink-0 p-1 rounded transition-colors ${
+                  ex.demoVideo ? "text-gold hover:text-yellow-300" : "text-gray-500 hover:text-gray-300"
+                }`}
+                title={ex.demoVideo ? "Video linked" : "Add demo video"}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
               {structure.exercises.length > 1 && (
                 <button
                   type="button"
@@ -171,6 +279,34 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
                 </button>
               )}
             </div>
+
+            {/* Video URL input (shown when toggled or when video exists) */}
+            {(showVideoInput[idx] || ex.demoVideo) && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <input
+                  type="url"
+                  value={ex.demoVideo || ""}
+                  onChange={(e) => updateExercise(idx, { demoVideo: e.target.value })}
+                  className="flex-1 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold/50 focus:border-gold/50"
+                  placeholder="Demo video URL (YouTube or Vimeo)"
+                />
+                {ex.demoVideo && (
+                  <button
+                    type="button"
+                    onClick={() => { updateExercise(idx, { demoVideo: "" }); setShowVideoInput(prev => ({ ...prev, [idx]: false })); }}
+                    className="text-red-400 hover:text-red-300 text-xs flex-shrink-0"
+                    title="Remove video"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Row 2: Measure | Weight | Sets | Rest */}
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
