@@ -14,20 +14,29 @@ interface Props {
  */
 function getYouTubeId(url: string): string | null {
   try {
-    const u = new URL(url);
+    let cleanUrl = url.trim();
+    // Add protocol if missing
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+    const u = new URL(cleanUrl);
     if (u.hostname.includes("youtu.be")) {
-      return u.pathname.slice(1).split("/")[0];
+      return u.pathname.slice(1).split("/")[0] || null;
     }
     if (u.hostname.includes("youtube.com") || u.hostname.includes("youtube-nocookie.com")) {
-      if (u.pathname.startsWith("/watch")) {
-        return u.searchParams.get("v");
-      }
-      if (u.pathname.startsWith("/embed/") || u.pathname.startsWith("/shorts/")) {
-        return u.pathname.split("/")[2];
+      // youtube.com/watch?v=ID
+      const vParam = u.searchParams.get("v");
+      if (vParam) return vParam;
+      // youtube.com/embed/ID or youtube.com/shorts/ID or youtube.com/v/ID
+      const pathParts = u.pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 2 && ["embed", "shorts", "v"].includes(pathParts[0])) {
+        return pathParts[1];
       }
     }
   } catch {}
-  return null;
+  // Fallback: try regex for common patterns
+  const regexMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return regexMatch ? regexMatch[1] : null;
 }
 
 /**
@@ -36,7 +45,11 @@ function getYouTubeId(url: string): string | null {
  */
 function getVimeoId(url: string): string | null {
   try {
-    const u = new URL(url);
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+    const u = new URL(cleanUrl);
     if (u.hostname.includes("vimeo.com")) {
       const parts = u.pathname.split("/").filter(Boolean);
       // Handle player.vimeo.com/video/ID
@@ -48,7 +61,9 @@ function getVimeoId(url: string): string | null {
       if (/^\d+$/.test(lastPart)) return lastPart;
     }
   } catch {}
-  return null;
+  // Fallback regex
+  const regexMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return regexMatch ? regexMatch[1] : null;
 }
 
 export default function VideoModal({ url, exerciseName, onClose }: Props) {
