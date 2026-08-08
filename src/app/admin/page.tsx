@@ -9,7 +9,8 @@ import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
 import AvatarUpload from "@/components/AvatarUpload";
 import ClientStatsTab from "./ClientStatsTab";
-import type { CrossTrainingStructure } from "./StructuredCrossTrainingBuilder";
+import ExerciseLibraryTab from "./ExerciseLibraryTab";
+import type { CrossTrainingStructure, ExerciseLibraryItem } from "./StructuredCrossTrainingBuilder";
 import { useTheme } from "@/components/ThemeProvider";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
@@ -42,6 +43,8 @@ export default function AdminPage() {
   const [showTemplatesView, setShowTemplatesView] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showManageCoaches, setShowManageCoaches] = useState(false);
+  const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
+  const [exerciseLibrary, setExerciseLibrary] = useState<ExerciseLibraryItem[]>([]);
   const [showNewUpdatesBadge, setShowNewUpdatesBadge] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
@@ -63,7 +66,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-07-26T12:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-08-08T12:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -717,6 +720,23 @@ export default function AdminPage() {
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
+
+  // Fetch exercise library
+  const fetchExerciseLibrary = useCallback(async () => {
+    try {
+      const res = await fetch('/api/exercise-library');
+      if (res.ok) {
+        const data = await res.json();
+        setExerciseLibrary(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch exercise library:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExerciseLibrary();
+  }, [fetchExerciseLibrary]);
 
   type ProgramTemplate = { id: string; name: string; category: string; data: { totalWeeks: number; weeks: any[] }; created_at: string };
   const weekTemplates = templates.filter(t => t.type === 'week').sort((a, b) => a.name.localeCompare(b.name));
@@ -1441,6 +1461,7 @@ export default function AdminPage() {
     setShowTemplatesView(false);
     setShowNotificationSettings(false);
     setShowChangelog(false);
+    setShowExerciseLibrary(false);
     setAdminStatsFilter("currentWeek");
     // Mark workout comments as viewed for this client (clears purple dot)
     if (clientsWithComments.has(clientId)) {
@@ -2452,7 +2473,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-primary md:flex">
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20`}>
+      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
             {/* Mobile: coach photo */}
@@ -2485,21 +2506,25 @@ export default function AdminPage() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
                   <div className="absolute left-0 top-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[220px] overflow-hidden">
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-08T12:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       Templates
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                      Exercise Library
+                    </button>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
                     {myCoachLevel !== 'coach' && (
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowExerciseLibrary(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
@@ -2537,21 +2562,25 @@ export default function AdminPage() {
                   <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowAdminMenu(false)} />
                   <div className="fixed left-4 right-4 top-20 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
                     <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider px-4 pb-2 border-b border-white/5 mb-1">Settings</p>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-06-25T01:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-08T12:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       Templates
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                      Exercise Library
+                    </button>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
                     {myCoachLevel !== 'coach' && (
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowExerciseLibrary(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
@@ -2732,7 +2761,7 @@ export default function AdminPage() {
       </aside>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto pb-20'}`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto pb-20'}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -3186,6 +3215,7 @@ export default function AdminPage() {
                               <StructuredCrossTrainingBuilder
                                 structure={editCrossTrainingStructures[w.id] || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
                                 weightUnit={adminWeightUnit}
+                                exerciseLibrary={exerciseLibrary}
                                 onChange={(crossTrainingStructure) => {
                                   setEditCrossTrainingStructures(prev => ({ ...prev, [w.id]: crossTrainingStructure }));
                                   const desc = formatCrossTrainingForDisplay(crossTrainingStructure);
@@ -3604,7 +3634,7 @@ export default function AdminPage() {
                             </>
                           )}
                           {wo.type === "walk" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
-                          {wo.type === "cross" && (<><div className="mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional — e.g. Focus on form, Increase weight if comfortable)" /></div></>)}
+                          {wo.type === "cross" && (<><div className="mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} exerciseLibrary={exerciseLibrary} onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional — e.g. Focus on form, Increase weight if comfortable)" /></div></>)}
                           {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
                           {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div>}
                         </div>
@@ -3950,6 +3980,8 @@ export default function AdminPage() {
                 {/* Biometric Login Setup */}
                 <BiometricSetup />
               </>
+            ) : showExerciseLibrary ? (
+              <ExerciseLibraryTab onBack={() => setShowExerciseLibrary(false)} weightUnit={adminWeightUnit} />
             ) : showChangelog ? (
               <Changelog />
             ) : showTemplatesView ? (
@@ -4047,6 +4079,7 @@ export default function AdminPage() {
                                     <StructuredCrossTrainingBuilder
                                       structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
                                       weightUnit={adminWeightUnit}
+                                      exerciseLibrary={exerciseLibrary}
                                       onChange={(crossTrainingStructure) => {
                                         const nd = [...newWeekTemplateDays];
                                         const nw = [...nd[i].workouts];
@@ -4212,6 +4245,7 @@ export default function AdminPage() {
                                             <StructuredCrossTrainingBuilder
                                               structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
                                               weightUnit={adminWeightUnit}
+                                              exerciseLibrary={exerciseLibrary}
                                               onChange={(crossTrainingStructure) => {
                                                 const nd = [...editTemplateDays];
                                                 const nw = [...nd[i].workouts];
@@ -4308,6 +4342,7 @@ export default function AdminPage() {
                           <StructuredCrossTrainingBuilder
                             structure={newDayTemplateData.crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
                             weightUnit={adminWeightUnit}
+                            exerciseLibrary={exerciseLibrary}
                             onChange={(crossTrainingStructure) => {
                               const desc = formatCrossTrainingForDisplay(crossTrainingStructure);
                               setNewDayTemplateData((prev: any) => ({ ...prev, crossTrainingStructure, description: desc }));
