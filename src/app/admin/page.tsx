@@ -740,7 +740,7 @@ export default function AdminPage() {
 
   type ProgramTemplate = { id: string; name: string; category: string; data: { totalWeeks: number; weeks: any[] }; created_at: string };
   const weekTemplates = templates.filter(t => t.type === 'week').sort((a, b) => a.name.localeCompare(b.name));
-  const dayTemplates = templates.filter(t => t.type === 'day').sort((a, b) => a.name.localeCompare(b.name));
+  const dayTemplates = templates.filter(t => t.type === 'day' && t.category !== '__exercise_library__').sort((a, b) => a.name.localeCompare(b.name));
   const programTemplates = templates.filter(t => t.type === 'program').sort((a, b) => a.name.localeCompare(b.name)) as ProgramTemplate[];
 
   // Template search state
