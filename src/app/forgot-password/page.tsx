@@ -28,17 +28,17 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email, brand: brand.slug }),
       });
 
+      const data = await res.json();
+      
+      // Temporary debug - show what the API returned
+      if (data.debug) {
+        alert(`DEBUG: ${JSON.stringify(data.debug)}`);
+      }
+
       if (!res.ok) {
-        const data = await res.json();
         setError(data.error || "Something went wrong. Please try again.");
         setLoading(false);
         return;
-      }
-
-      const data = await res.json();
-      // Temporary debug - show what the API returned
-      if (data.debug) {
-        alert(`DEBUG: hasApiKey=${data.debug.hasApiKey}, keyPrefix=${data.debug.keyPrefix}, sender=${data.debug.sender}, emailSent=${data.debug.emailSent}`);
       }
 
       setSuccess(true);
