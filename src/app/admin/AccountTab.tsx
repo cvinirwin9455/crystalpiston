@@ -255,7 +255,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
                 size="md"
                 readOnly={true}
               />
-              <div className="grid md:grid-cols-4 gap-4 flex-1">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Name</p>
                   <p className="text-white text-sm">{name || "—"}</p>
@@ -278,7 +278,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         ) : (
           /* Edit Mode */
           <>
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-primary/50 border border-accent/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
@@ -305,7 +305,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
                     <option value="" disabled>Day</option>
                     {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
                   </select>
-                  <select value={birthday ? new Date(birthday + 'T00:00:00').getFullYear().toString() : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setFullYear(parseInt(e.target.value)); setBirthday(current.toISOString().split('T')[0]); }} className="w-20 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                  <select value={birthday ? new Date(birthday + 'T00:00:00').getFullYear().toString() : ''} onChange={(e) => { const current = birthday ? new Date(birthday + 'T00:00:00') : new Date(1990, 0, 1); current.setFullYear(parseInt(e.target.value)); setBirthday(current.toISOString().split('T')[0]); }} className="w-24 bg-primary/50 border border-accent/30 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-accent">
                     <option value="" disabled>Year</option>
                     {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
                   </select>
