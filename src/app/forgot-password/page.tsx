@@ -32,6 +32,12 @@ export default function ForgotPasswordPage() {
         return;
       }
 
+      const data = await res.json();
+      // Temporary debug - show what the API returned
+      if (data.debug) {
+        console.log('[forgot-password] API response:', JSON.stringify(data.debug));
+      }
+
       setSuccess(true);
     } catch {
       setError("Network error. Please try again.");

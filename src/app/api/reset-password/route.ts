@@ -21,6 +21,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }
 
+  // Debug: log env var status
+  const hasApiKey = !!process.env.RESEND_API_KEY
+  const apiKeyPrefix = process.env.RESEND_API_KEY?.slice(0, 8) || 'MISSING'
+  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
+  console.log(`[reset-password] email=${email}, brand=${brandSlug}, hasApiKey=${hasApiKey}, keyPrefix=${apiKeyPrefix}, sender=${senderEmail}`)
+
   const adminClient = await getAdminClient()
 
   // Look up user by email to determine their org/brand
@@ -98,9 +104,11 @@ export async function POST(request: Request) {
   })
 
   if (!emailSent) {
-    console.error(`Failed to send password reset email to ${email}`)
+    console.error(`[reset-password] FAILED to send email to ${email}`)
+  } else {
+    console.log(`[reset-password] Email sent successfully to ${email}`)
   }
 
   // Always return success (don't reveal if email exists)
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, debug: { hasApiKey, keyPrefix: apiKeyPrefix, sender: senderEmail, emailSent } })
 }
