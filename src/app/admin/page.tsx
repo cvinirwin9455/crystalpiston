@@ -102,6 +102,58 @@ export default function AdminPage() {
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
+  // Organization feature toggles
+  const [orgFeatures, setOrgFeatures] = useState<{ run: boolean; walk: boolean; cycling: boolean; crossTraining: boolean; stretching: boolean }>({ run: true, walk: true, cycling: true, crossTraining: true, stretching: true });
+  const [orgFeaturesLoaded, setOrgFeaturesLoaded] = useState(false);
+  const [orgFeaturesSaving, setOrgFeaturesSaving] = useState(false);
+
+  // Fetch organization feature toggles
+  useEffect(() => {
+    const fetchOrgFeatures = async () => {
+      try {
+        const res = await fetch('/api/org-features');
+        if (res.ok) {
+          const data = await res.json();
+          setOrgFeatures(data);
+        }
+      } catch {}
+      setOrgFeaturesLoaded(true);
+    };
+    fetchOrgFeatures();
+  }, []);
+
+  // Save organization feature toggles
+  const saveOrgFeatures = async (updated: typeof orgFeatures) => {
+    setOrgFeaturesSaving(true);
+    try {
+      await fetch('/api/org-features', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
+    setOrgFeaturesSaving(false);
+  };
+
+  // Toggle a specific org feature
+  const toggleOrgFeature = (feature: keyof typeof orgFeatures) => {
+    const updated = { ...orgFeatures, [feature]: !orgFeatures[feature] };
+    setOrgFeatures(updated);
+    saveOrgFeatures(updated);
+  };
+
+  // Generate filtered workout type options based on org features
+  const workoutTypeOptions = (() => {
+    const types: { value: string; label: string }[] = [];
+    if (orgFeatures.crossTraining) types.push({ value: "cross", label: "Cross Training" });
+    if (orgFeatures.cycling) types.push({ value: "cycling", label: "Cycling" });
+    types.push({ value: "rest", label: "Rest" });
+    types.push({ value: "run", label: "Run" }); // Always available
+    if (orgFeatures.stretching) types.push({ value: "stretching", label: "Stretching" });
+    if (orgFeatures.walk) types.push({ value: "walk", label: "Walk" });
+    return types;
+  })();
+
   // Fetch admin notification preferences
   useEffect(() => {
     const fetchAdminNotifPrefs = async () => {
@@ -3164,7 +3216,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-3">
                             <span className="text-white font-heading text-sm uppercase w-24">{w.day}</span>
                             <select value={editedWorkouts[w.id]?.type || w.type} onChange={(e) => { const newType = e.target.value; updateEditedWorkout(w.id, 'type', newType); if (newType === 'rest') { updateEditedWorkout(w.id, 'trainingType', 'Rest'); updateEditedWorkout(w.id, 'miles', ''); updateEditedWorkout(w.id, 'title', ''); updateEditedWorkout(w.id, 'description', ''); updateEditedWorkout(w.id, 'paceTarget', ''); } else if (newType !== 'run' && newType !== 'walk') { updateEditedWorkout(w.id, 'trainingType', ''); updateEditedWorkout(w.id, 'miles', ''); updateEditedWorkout(w.id, 'title', ''); updateEditedWorkout(w.id, 'description', ''); updateEditedWorkout(w.id, 'paceTarget', ''); } else { updateEditedWorkout(w.id, 'trainingType', ''); updateEditedWorkout(w.id, 'title', ''); updateEditedWorkout(w.id, 'description', ''); updateEditedWorkout(w.id, 'paceTarget', ''); updateEditedWorkout(w.id, 'miles', ''); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                              <option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                              {workoutTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                             </select>
                             {(editedWorkouts[w.id]?.type || w.type) === "run" && (
                               <>
@@ -3521,7 +3573,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-3">
                             {day.workouts.length > 1 && <span className="text-gray-400 text-xs w-4">{wi + 1}.</span>}
                             <select value={wo.type || ""} onChange={(e) => { const newType = e.target.value; updateDayPlan(i, wi, "type", newType); if (newType === "rest") { updateDayPlan(i, wi, "trainingType", "Rest"); updateDayPlan(i, wi, "title", ""); updateDayPlan(i, wi, "miles", ""); updateDayPlan(i, wi, "description", ""); updateDayPlan(i, wi, "paceTarget", ""); } else { updateDayPlan(i, wi, "trainingType", ""); updateDayPlan(i, wi, "title", ""); updateDayPlan(i, wi, "miles", ""); updateDayPlan(i, wi, "description", ""); updateDayPlan(i, wi, "paceTarget", ""); } }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
-                              <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                              <option value="" disabled>Type</option>{workoutTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                             </select>
                             {wo.type === "rest" && <span className="text-green-400 text-xs">Rest Day</span>}
                             {wo.type === "run" && (
@@ -3923,6 +3975,80 @@ export default function AdminPage() {
                   <p className="text-gray-300 text-xs">Notification emails are automatically sent to all coaches assigned to a client (primary and secondary). Clients can turn off specific notifications from their own Account tab.</p>
                 </div>
 
+                {/* Organization Feature Toggles - Only visible to account owners */}
+                {myCoachLevel !== 'coach' && (
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Workout Types</h3>
+                  <p className="text-gray-300 text-xs mb-4">Toggle which workout types are available across your organization. Disabled types will be hidden from all coaches. Existing workout data is never deleted — if you re-enable a type, historical data will reappear.</p>
+                  <div className="space-y-3">
+                    {/* Run - always on, can't be disabled (core feature) */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-accent"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Run</p>
+                          <p className="text-gray-500 text-xs">Running workouts with structured builder</p>
+                        </div>
+                      </div>
+                      <span className="text-accent text-xs font-medium">Always On</span>
+                    </div>
+                    {/* Walk */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-blue-400"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Walk</p>
+                          <p className="text-gray-500 text-xs">Walking workouts with pace targets</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('walk')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.walk ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.walk ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                    {/* Cycling */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-cyan-400"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Cycling</p>
+                          <p className="text-gray-500 text-xs">Bike rides and cycling sessions</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('cycling')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.cycling ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.cycling ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                    {/* Cross Training */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-gold"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Cross Training</p>
+                          <p className="text-gray-500 text-xs">Strength, gym, and cross-training exercises</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('crossTraining')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.crossTraining ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.crossTraining ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                    {/* Stretching */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-purple-400"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Stretching</p>
+                          <p className="text-gray-500 text-xs">Yoga, foam rolling, and flexibility work</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('stretching')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.stretching ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.stretching ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                  </div>
+                  {orgFeaturesSaving && <p className="text-accent text-xs mt-3 animate-pulse">Saving...</p>}
+                </div>
+                )}
+
                 {/* Biometric Login Setup */}
                 <BiometricSetup />
               </>
@@ -3964,7 +4090,7 @@ export default function AdminPage() {
                               <div key={wi} className="mb-3 last:mb-0">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
                                   <select value={wo.type || ""} onChange={(e) => { const nd = [...newWeekTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], type: e.target.value, structure: undefined, crossTrainingStructure: undefined }; if (e.target.value === 'rest') { nw[wi] = { ...nw[wi], trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '' }; } else { nw[wi] = { ...nw[wi], trainingType: '', title: '', miles: '', description: '', paceTarget: '' }; } nd[i] = { ...nd[i], workouts: nw }; setNewWeekTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                    <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                                    <option value="" disabled>Type</option>{workoutTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                   </select>
                                   {wo.type === "run" && (
                                     <>
@@ -4130,7 +4256,7 @@ export default function AdminPage() {
                                       <div key={wi} className="mb-3 last:mb-0">
                                         <div className="flex items-center gap-2 flex-wrap mb-2">
                                           <select value={wo.type || ""} onChange={(e) => { const nd = [...editTemplateDays]; const nw = [...nd[i].workouts]; nw[wi] = { ...nw[wi], type: e.target.value, structure: undefined, crossTrainingStructure: undefined }; if (e.target.value === 'rest') { nw[wi] = { ...nw[wi], trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '' }; } else { nw[wi] = { ...nw[wi], trainingType: '', title: '', miles: '', description: '', paceTarget: '' }; } nd[i] = { ...nd[i], workouts: nw }; setEditTemplateDays(nd); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                            <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                                            <option value="" disabled>Type</option>{workoutTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                           </select>
                                           {wo.type === "run" && (
                                             <>
@@ -4238,7 +4364,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <select value={newDayTemplateData.type || ""} onChange={(e) => { const newType = e.target.value; setNewDayTemplateData((prev: any) => ({ ...prev, type: newType, trainingType: newType === 'rest' ? 'Rest' : '', title: '', miles: '', description: '', paceTarget: '', structure: undefined, crossTrainingStructure: undefined })); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                          <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                          <option value="" disabled>Type</option>{workoutTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                         {newDayTemplateData.type === "run" && (
                           <>
@@ -4359,7 +4485,7 @@ export default function AdminPage() {
                               </div>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <select value={editDayTemplateData.type || ""} onChange={(e) => { const newType = e.target.value; setEditDayTemplateData((prev: any) => ({ ...prev, type: newType, trainingType: newType === 'rest' ? 'Rest' : '', title: '', miles: '', description: '', paceTarget: '', structure: undefined, crossTrainingStructure: undefined })); }} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                                  <option value="" disabled>Type</option><option value="cross">Cross Training</option><option value="cycling">Cycling</option><option value="rest">Rest</option><option value="run">Run</option><option value="stretching">Stretching</option><option value="walk">Walk</option>
+                                  <option value="" disabled>Type</option>{workoutTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                 </select>
                                 {editDayTemplateData.type === "run" && (
                                   <>

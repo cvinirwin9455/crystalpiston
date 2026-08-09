@@ -158,6 +158,21 @@ export default function DashboardPage() {
   }, []);
   const [showMessageForm, setShowMessageForm] = useState(false);
 
+  // Organization feature toggles (for filtering client workout type options)
+  const [orgFeatures, setOrgFeatures] = useState<{ run: boolean; walk: boolean; cycling: boolean; crossTraining: boolean; stretching: boolean }>({ run: true, walk: true, cycling: true, crossTraining: true, stretching: true });
+  useEffect(() => {
+    const fetchOrgFeatures = async () => {
+      try {
+        const res = await fetch('/api/org-features');
+        if (res.ok) {
+          const data = await res.json();
+          setOrgFeatures(data);
+        }
+      } catch {}
+    };
+    fetchOrgFeatures();
+  }, []);
+
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
   const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; fromName?: string; fromAvatarUrl?: string | null; message: string}[]>([]);
@@ -2152,10 +2167,10 @@ export default function DashboardPage() {
                             <label className="text-gray-400 text-xs block mb-1">Type</label>
                             <select value={addWorkoutForm.type} onChange={(e) => setAddWorkoutForm({ ...addWorkoutForm, type: e.target.value, trainingType: "", miles: "" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                               <option value="run">Run</option>
-                              <option value="walk">Walk</option>
-                              <option value="cross">Cross Training</option>
-                              <option value="cycling">Cycling</option>
-                              <option value="stretching">Stretching</option>
+                              {orgFeatures.walk && <option value="walk">Walk</option>}
+                              {orgFeatures.crossTraining && <option value="cross">Cross Training</option>}
+                              {orgFeatures.cycling && <option value="cycling">Cycling</option>}
+                              {orgFeatures.stretching && <option value="stretching">Stretching</option>}
                               <option value="strength">Strength</option>
                               <option value="other">Other</option>
                             </select>
