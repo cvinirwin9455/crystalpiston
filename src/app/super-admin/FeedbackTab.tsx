@@ -504,10 +504,10 @@ export default function SuperAdminFeedbackTab() {
             </svg>
           </div>
           <p className="text-gray-600 font-medium">
-            {view === "implemented" ? "No improvements logged yet." : "No feedback or bug reports yet."}
+            No feedback or bug reports yet.
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            {view === "inbox" ? "When users submit reports, they'll appear here." : "Items you mark as implemented will show here."}
+            When users submit reports, they&apos;ll appear here.
           </p>
         </div>
       )}
@@ -563,8 +563,8 @@ export default function SuperAdminFeedbackTab() {
                 </svg>
               </div>
 
-              {/* Resolution preview in implemented view */}
-              {view === "implemented" && item.resolution_message && (
+              {/* Resolution preview */}
+              {item.status === "implemented" && item.resolution_message && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <p className="text-gray-500 text-xs">
                     <span className="font-semibold text-gray-600">Resolution:</span> {item.resolution_message.length > 120 ? item.resolution_message.slice(0, 120) + "..." : item.resolution_message}

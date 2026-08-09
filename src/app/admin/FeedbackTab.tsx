@@ -456,10 +456,10 @@ export default function FeedbackTab() {
             </svg>
           </div>
           <p className="text-gray-500 text-sm">
-            {view === "implemented" ? "No improvements logged yet." : "No feedback or bug reports yet."}
+            No feedback or bug reports yet.
           </p>
           <p className="text-gray-600 text-xs mt-1">
-            {view === "inbox" ? "When users submit reports, they'll appear here." : "Items marked as implemented will show here."}
+            When users submit reports, they&apos;ll appear here.
           </p>
         </div>
       )}
@@ -495,8 +495,8 @@ export default function FeedbackTab() {
                 </svg>
               </div>
 
-              {/* Show resolution summary in implemented view */}
-              {view === "implemented" && item.resolution_message && (
+              {/* Show resolution summary for implemented items */}
+              {item.status === "implemented" && item.resolution_message && (
                 <div className="mt-2 pt-2 border-t border-white/5">
                   <p className="text-gray-400 text-xs italic truncate">
                     Resolution: {item.resolution_message}
