@@ -420,7 +420,7 @@ export async function POST(request: Request) {
 
     // Build the URL pointing to our auth callback
     const hashedToken = linkData.properties.hashed_token
-    const impersonateUrl = `https://www.firstmilecoach.com/auth/callback?token_hash=${hashedToken}&type=magiclink&next=/admin`
+    const impersonateUrl = `https://www.firstmilecoach.com/auth/callback?token_hash=${hashedToken}&type=magiclink&next=/admin?superadmin=true`
 
     return NextResponse.json({
       success: true,

@@ -70,6 +70,22 @@ export default function AdminPage() {
       setShowNewUpdatesBadge(true);
     }
   }, []);
+
+  // Detect super-admin impersonation mode
+  const [isSuperAdminViewing, setIsSuperAdminViewing] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('superadmin') === 'true') {
+      setIsSuperAdminViewing(true);
+      sessionStorage.setItem('superadmin_viewing', 'true');
+      // Clean the URL param without reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete('superadmin');
+      window.history.replaceState({}, '', url.toString());
+    } else if (sessionStorage.getItem('superadmin_viewing') === 'true') {
+      setIsSuperAdminViewing(true);
+    }
+  }, []);
   const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -2472,8 +2488,24 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-primary md:flex">
+      {/* Super Admin Impersonation Banner */}
+      {isSuperAdminViewing && (
+        <div className="fixed top-0 left-0 right-0 z-[999] bg-red-600 text-white px-4 py-2.5 flex items-center justify-center gap-3 shadow-lg">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="text-sm font-bold">SUPER ADMIN VIEW</span>
+          <span className="text-xs opacity-90">— You are viewing this account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
+          <button
+            onClick={() => { setIsSuperAdminViewing(false); sessionStorage.removeItem('superadmin_viewing'); }}
+            className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20`}>
+      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20 ${isSuperAdminViewing ? "md:pt-10" : ""}`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3">
             {/* Mobile: coach photo */}
