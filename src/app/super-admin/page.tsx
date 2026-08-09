@@ -571,6 +571,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">View code, pull requests, issues, and deployment history.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> Repo Settings → Collaborators → Add people → enter their GitHub username → set role to Admin</p>
               </a>
 
               {/* Vercel */}
@@ -585,6 +586,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">Manage deployments, domains, environment variables, and build logs.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> Team Settings → Members → Invite Member → enter their email → set role to Admin</p>
               </a>
 
               {/* Supabase */}
@@ -599,6 +601,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">Database tables, SQL editor, authentication users, and storage.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> Project Settings → Team → Invite → enter their email → set role to Admin</p>
               </a>
 
               {/* Resend */}
@@ -613,6 +616,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">Email delivery logs, domains, API keys, and sending analytics.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> Settings → Team → Invite → enter their email</p>
               </a>
 
               {/* Kiro */}
@@ -627,6 +631,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">AI-powered coding, feature development, bug fixes, and platform updates.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> They sign up at kiro.dev → connect their GitHub account → open the crystalpiston repo in a Kiro workspace</p>
               </a>
 
               {/* Spaceship */}
@@ -641,6 +646,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">Domain registration, DNS settings, and domain renewals for firstmilecoach.com.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> Account Settings → Team → Invite → enter their email</p>
               </a>
 
               {/* First Mile Coach (Live Site) */}
@@ -655,6 +661,7 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-400">The production website that coaches and clients use.</p>
+                <p className="text-[10px] text-gray-300 mt-2 pt-2 border-t border-gray-100"><span className="font-semibold">To add someone:</span> Add them as a Super Admin on this page (Super Admins tab) — that gives them admin access to the live platform</p>
               </a>
             </div>
 
