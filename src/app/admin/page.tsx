@@ -236,7 +236,7 @@ export default function AdminPage() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
-  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "" });
+  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "", trackCycle: false });
 
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
@@ -1422,6 +1422,7 @@ export default function AdminPage() {
           email: newClientForm.email,
           gender: newClientForm.gender,
           birthday: newClientForm.birthday || null,
+          trackCycle: newClientForm.gender === 'female' ? newClientForm.trackCycle : false,
         }),
       });
       const data = await res.json();
@@ -1429,7 +1430,7 @@ export default function AdminPage() {
         setCreateError(data.error || 'Failed to create client');
       } else {
         setShowCreateClient(false);
-        setNewClientForm({ name: "", email: "", gender: "female", birthday: "" });
+        setNewClientForm({ name: "", email: "", gender: "female", birthday: "", trackCycle: false });
         fetchClients(); // Refresh the list
       }
     } catch (err) {
@@ -2865,6 +2866,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+            {/* Cycle tracking checkbox — only shows when gender is Female */}
+            {newClientForm.gender === 'female' && (
+            <div className="flex items-center gap-3 mb-4">
+              <button type="button" onClick={() => setNewClientForm({ ...newClientForm, trackCycle: !newClientForm.trackCycle })} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${newClientForm.trackCycle ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{newClientForm.trackCycle && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
+              <div>
+                <span className="text-white text-sm">Track menstrual cycle</span>
+                <p className="text-gray-500 text-xs">Client will be asked to consent on first login</p>
+              </div>
+            </div>
+            )}
             <div className="flex gap-3"><button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button><button onClick={() => setShowCreateClient(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button></div>
             {createError && <p role="alert" className="text-red-400 text-xs mt-2">{createError}</p>}
           </div>
@@ -5051,6 +5062,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+            {/* Cycle tracking checkbox — only shows when gender is Female */}
+            {newClientForm.gender === 'female' && (
+            <div className="flex items-center gap-3 mt-5">
+              <button type="button" onClick={() => setNewClientForm({ ...newClientForm, trackCycle: !newClientForm.trackCycle })} className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${newClientForm.trackCycle ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{newClientForm.trackCycle && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
+              <div>
+                <span className="text-white text-sm">Track menstrual cycle</span>
+                <p className="text-gray-500 text-xs">Client will be asked to consent on first login</p>
+              </div>
+            </div>
+            )}
             <div className="mt-8 space-y-3">
               <button onClick={handleCreateClient} disabled={createLoading || !newClientForm.name || !newClientForm.email || !newClientForm.birthday} className="w-full bg-accent hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg text-base disabled:opacity-50">{createLoading ? "Creating..." : "Create Account & Send Invite"}</button>
               <button onClick={() => setShowCreateClient(false)} className="w-full text-gray-400 hover:text-white text-sm py-2">Cancel</button>
