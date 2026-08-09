@@ -61,6 +61,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Cycle tracking consent state
+  const [cycleTrackingRequested, setCycleTrackingRequested] = useState(false);
+  const [cycleTrackingConsented, setCycleTrackingConsented] = useState<boolean | null>(null);
+  const [cycleTrackingSaving, setCycleTrackingSaving] = useState(false);
+
   // Reset form when client changes
   useEffect(() => {
     setName(clientData.name);
@@ -70,6 +75,40 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
     setBirthday(clientData.birthday || "");
     setSaveSuccess(false);
   }, [clientData.id]);
+
+  // Fetch cycle tracking status when client changes (only for female clients)
+  useEffect(() => {
+    if (!clientData.clientId || clientData.gender !== 'female') return;
+    const fetchCycleTracking = async () => {
+      try {
+        const res = await fetch(`/api/cycle-tracking?client_id=${clientData.clientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCycleTrackingRequested(data.requested || false);
+          setCycleTrackingConsented(data.consented);
+        }
+      } catch {}
+    };
+    fetchCycleTracking();
+  }, [clientData.clientId, clientData.gender]);
+
+  const toggleCycleTracking = async () => {
+    if (!clientData.clientId) return;
+    setCycleTrackingSaving(true);
+    const newValue = !cycleTrackingRequested;
+    try {
+      const res = await fetch('/api/cycle-tracking', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: clientData.clientId, requested: newValue }),
+      });
+      if (res.ok) {
+        setCycleTrackingRequested(newValue);
+        if (!newValue) setCycleTrackingConsented(null);
+      }
+    } catch {}
+    setCycleTrackingSaving(false);
+  };
 
   // Fetch plans for this client
   useEffect(() => {
@@ -322,6 +361,37 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           </>
         )}
       </div>
+
+      {/* Cycle Tracking — only for female clients */}
+      {clientData.gender === 'female' && (
+      <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-pink-400"></span>
+            <div>
+              <h4 className="text-white text-sm font-medium">Menstrual Cycle Tracking</h4>
+              <p className="text-gray-500 text-xs mt-0.5">Track period data to inform training intensity</p>
+            </div>
+          </div>
+          <button onClick={toggleCycleTracking} disabled={cycleTrackingSaving} className={`relative w-11 h-6 rounded-full transition-colors ${cycleTrackingRequested ? 'bg-pink-500' : 'bg-gray-600'} ${cycleTrackingSaving ? 'opacity-50' : ''}`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${cycleTrackingRequested ? 'translate-x-5' : 'translate-x-0'}`}></span>
+          </button>
+        </div>
+        {cycleTrackingRequested && (
+          <div className="mt-3 bg-pink-500/5 border border-pink-500/20 rounded-lg p-3">
+            {cycleTrackingConsented === null && (
+              <p className="text-pink-300 text-xs"><span className="font-medium">Consent pending</span> — {clientData.name} will be asked to opt in the next time she logs in. You won&apos;t see any cycle data unless she consents.</p>
+            )}
+            {cycleTrackingConsented === true && (
+              <p className="text-green-300 text-xs"><span className="font-medium">Client has opted in</span> — cycle data will appear on completed workouts when logged.</p>
+            )}
+            {cycleTrackingConsented === false && (
+              <p className="text-gray-400 text-xs"><span className="font-medium">Client has declined</span> — cycle data will not be tracked or visible.</p>
+            )}
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Plans & Payments */}
       <div className="bg-primary/30 border border-white/5 rounded-xl p-5">

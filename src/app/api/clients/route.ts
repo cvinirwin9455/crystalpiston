@@ -75,7 +75,7 @@ export async function GET() {
   try {
     const { data } = await adminClient
       .from('clients')
-      .select('id, birthday')
+      .select('id, birthday, cycle_tracking_consented')
     trainingProfiles = data || []
   } catch {}
 
@@ -229,6 +229,7 @@ export async function GET() {
       inviteStatus,
       createdAt: u.created_at,
       birthday: trainingProfileMap.get(clientRecord?.id)?.birthday || null,
+      cycleTrackingConsented: trainingProfileMap.get(clientRecord?.id)?.cycle_tracking_consented ?? null,
       coaches,
     })
   }

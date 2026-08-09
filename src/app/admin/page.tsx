@@ -19,7 +19,7 @@ type ClientWorkout = { id: string; day: string; type: string; trainingType: stri
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; coaches: CoachAssignment[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
@@ -1331,6 +1331,7 @@ export default function AdminPage() {
           weeks: [],
           messages: [],
           birthday: c.birthday || null,
+          cycleTrackingConsented: c.cycleTrackingConsented ?? null,
           coaches: (c.coaches || []).map((coach: any) => ({
             coachId: coach.coachId,
             coachName: coach.coachName || 'Unknown',
@@ -3182,7 +3183,7 @@ export default function AdminPage() {
                                 {w.log.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{w.log.maxHeartrate}</span></span>}
                                 {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Sleep</span> <span className="text-white font-medium">{w.log.sleep}/10</span></span>}
                                 {w.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{w.log.stress}</span></span>}
-                                {w.log.onPeriod === "yes" && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
+                                {w.log.onPeriod === "yes" && clients.find(c => c.id === selectedClient)?.cycleTrackingConsented === true && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
                               </div>
                               {w.log.notes && !w.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{w.log.notes}</p>}
                               {w.skipReason && <p className="text-yellow-400 text-xs mt-1.5"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
