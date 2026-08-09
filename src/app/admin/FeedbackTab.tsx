@@ -36,7 +36,13 @@ export default function FeedbackTab() {
   const [selectedItem, setSelectedItem] = useState<FeedbackItem | null>(null);
   const [view, setView] = useState<"inbox" | "implemented">("inbox");
 
-  // Filters
+  // Filters — status now uses checkboxes, default to New + In Progress
+  const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
+    new: true,
+    in_progress: true,
+    reviewed: false,
+    wont_fix: false,
+  });
   const [filters, setFilters] = useState<FilterState>({
     status: "",
     type: "",
@@ -60,7 +66,12 @@ export default function FeedbackTab() {
       if (view === "implemented") {
         params.set("status", "implemented");
       } else {
-        if (filters.status) params.set("status", filters.status);
+        // Build comma-separated status from checkboxes
+        const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
+        if (activeStatuses.length > 0 && activeStatuses.length < 4) {
+          params.set("status", activeStatuses.join(","));
+        }
+        // If all are checked or none are checked, don't filter (show all)
       }
       if (filters.type) params.set("type", filters.type);
       if (filters.platform) params.set("platform", filters.platform);
@@ -81,7 +92,7 @@ export default function FeedbackTab() {
 
   useEffect(() => {
     fetchFeedback();
-  }, [filters, view]);
+  }, [filters, view, statusFilters]);
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
@@ -389,45 +400,67 @@ export default function FeedbackTab() {
 
       {/* Filters (inbox only) */}
       {view === "inbox" && (
-        <div className="flex flex-wrap gap-2">
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
-          >
-            <option value="">All Status</option>
-            <option value="new">New</option>
-            <option value="in_progress">In Progress</option>
-            <option value="implemented">Implemented</option>
-            <option value="wont_fix">Won&apos;t Fix</option>
-          </select>
-          <select
-            value={filters.type}
-            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
-          >
-            <option value="">All Types</option>
-            <option value="bug">Bugs</option>
-            <option value="feedback">Feedback</option>
-          </select>
-          <select
-            value={filters.platform}
-            onChange={(e) => setFilters({ ...filters, platform: e.target.value })}
-            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
-          >
-            <option value="">All Platforms</option>
-            <option value="crystal-pistol">Crystal Pistol</option>
-            <option value="first-mile">First Mile</option>
-          </select>
-          <select
-            value={filters.userRole}
-            onChange={(e) => setFilters({ ...filters, userRole: e.target.value })}
-            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
-          >
-            <option value="">All Roles</option>
-            <option value="coach">Coaches</option>
-            <option value="client">Clients</option>
-          </select>
+        <div className="space-y-3">
+          {/* Status checkbox pills */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "new", label: "New", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+              { key: "in_progress", label: "In Progress", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+              { key: "reviewed", label: "Reviewed", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+              { key: "wont_fix", label: "Won't Fix", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
+            ].map(({ key, label, color }) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilters(prev => ({ ...prev, [key]: !prev[key] }))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  statusFilters[key]
+                    ? color
+                    : "bg-white/5 text-gray-500 border-white/10 hover:border-white/20"
+                }`}
+              >
+                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                  statusFilters[key] ? "bg-current/20 border-current" : "border-gray-500"
+                }`}>
+                  {statusFilters[key] && (
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Other filters */}
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={filters.type}
+              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
+            >
+              <option value="">All Types</option>
+              <option value="bug">Bugs</option>
+              <option value="feedback">Feedback</option>
+            </select>
+            <select
+              value={filters.platform}
+              onChange={(e) => setFilters({ ...filters, platform: e.target.value })}
+              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
+            >
+              <option value="">All Platforms</option>
+              <option value="crystal-pistol">Crystal Pistol</option>
+              <option value="first-mile">First Mile</option>
+            </select>
+            <select
+              value={filters.userRole}
+              onChange={(e) => setFilters({ ...filters, userRole: e.target.value })}
+              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
+            >
+              <option value="">All Roles</option>
+              <option value="coach">Coaches</option>
+              <option value="client">Clients</option>
+            </select>
+          </div>
         </div>
       )}
 

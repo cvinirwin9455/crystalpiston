@@ -30,7 +30,13 @@ export default function SuperAdminFeedbackTab() {
   const [view, setView] = useState<"inbox" | "implemented">("inbox");
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState("");
+  // Filters — status now uses checkboxes, default to New + In Progress
+  const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
+    new: true,
+    in_progress: true,
+    reviewed: false,
+    wont_fix: false,
+  });
   const [typeFilter, setTypeFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -51,8 +57,11 @@ export default function SuperAdminFeedbackTab() {
       const params = new URLSearchParams();
       if (view === "implemented") {
         params.set("status", "implemented");
-      } else if (statusFilter) {
-        params.set("status", statusFilter);
+      } else {
+        const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
+        if (activeStatuses.length > 0 && activeStatuses.length < 4) {
+          params.set("status", activeStatuses.join(","));
+        }
       }
       if (typeFilter) params.set("type", typeFilter);
       if (platformFilter) params.set("platform", platformFilter);
@@ -73,7 +82,7 @@ export default function SuperAdminFeedbackTab() {
 
   useEffect(() => {
     fetchFeedback();
-  }, [statusFilter, typeFilter, platformFilter, roleFilter, view]);
+  }, [statusFilters, typeFilter, platformFilter, roleFilter, view]);
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
@@ -439,45 +448,69 @@ export default function SuperAdminFeedbackTab() {
 
       {/* Filters (inbox only) */}
       {view === "inbox" && (
-        <div className="flex flex-wrap gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
-          >
-            <option value="">All Status</option>
-            <option value="new">New</option>
-            <option value="in_progress">In Progress</option>
-            <option value="implemented">Implemented</option>
-            <option value="wont_fix">Won&apos;t Fix</option>
-          </select>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
-          >
-            <option value="">All Types</option>
-            <option value="bug">Bugs</option>
-            <option value="feedback">Feedback</option>
-          </select>
-          <select
-            value={platformFilter}
-            onChange={(e) => setPlatformFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
-          >
-            <option value="">All Platforms</option>
-            <option value="crystal-pistol">Crystal Pistol</option>
-            <option value="first-mile">First Mile Coach</option>
-          </select>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
-          >
-            <option value="">All Roles</option>
-            <option value="coach">Coaches</option>
-            <option value="client">Clients</option>
-          </select>
+        <div className="space-y-3">
+          {/* Status checkbox pills */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "new", label: "New", color: "bg-blue-100 text-blue-700 border-blue-300" },
+              { key: "in_progress", label: "In Progress", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+              { key: "reviewed", label: "Reviewed", color: "bg-purple-100 text-purple-700 border-purple-300" },
+              { key: "wont_fix", label: "Won't Fix", color: "bg-gray-100 text-gray-600 border-gray-300" },
+            ].map(({ key, label, color }) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilters(prev => ({ ...prev, [key]: !prev[key] }))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  statusFilters[key]
+                    ? color
+                    : "bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                  statusFilters[key] ? "border-current" : "border-gray-300"
+                }`}>
+                  {statusFilters[key] && (
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Other filters */}
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
+            >
+              <option value="">All Types</option>
+              <option value="bug">Bugs</option>
+              <option value="feedback">Feedback</option>
+            </select>
+            <select
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
+            >
+              <option value="">All Platforms</option>
+              <option value="crystal-pistol">Crystal Pistol</option>
+              <option value="first-mile">First Mile Coach</option>
+            </select>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
+            >
+              <option value="">All Roles</option>
+              <option value="coach">Coaches</option>
+              <option value="client">Clients</option>
+            </select>
+          </div>
+        </div>
+      )}
         </div>
       )}
 

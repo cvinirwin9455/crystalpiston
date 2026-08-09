@@ -52,7 +52,13 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (status) query = query.eq('status', status)
+  if (status) {
+    if (status.includes(',')) {
+      query = query.in('status', status.split(','))
+    } else {
+      query = query.eq('status', status)
+    }
+  }
   if (type) query = query.eq('type', type)
   if (platform) query = query.eq('platform', platform)
   if (userRole) query = query.eq('user_role', userRole)

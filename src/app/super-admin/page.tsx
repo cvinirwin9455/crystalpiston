@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import SuperAdminFeedbackTab from "./FeedbackTab";
 import InboxTab from "./InboxTab";
+import Changelog from "@/app/admin/Changelog";
 
 const CRYSTAL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4';
 const LEGACY_FIRSTMILE_ORG_ID = '1eb9b481-b6b6-455c-b733-fee789803a17';
@@ -41,7 +42,7 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "inbox" | "admins">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "inbox" | "admins" | "changelog">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -238,6 +239,7 @@ export default function SuperAdminPage() {
               { key: "beta", label: `Beta Signups (${betaSignups.length})` },
               { key: "inbox", label: "Inbox" },
               { key: "feedback", label: "Feedback & Bugs" },
+              { key: "changelog", label: "Changelog" },
               { key: "admins", label: "Super Admins" },
             ].map((tab) => (
               <button
@@ -572,6 +574,12 @@ export default function SuperAdminPage() {
 
         {activeTab === "feedback" && (
           <SuperAdminFeedbackTab />
+        )}
+
+        {activeTab === "changelog" && (
+          <div className="bg-[#1a1a2e] border border-gray-700 rounded-xl p-6">
+            <Changelog />
+          </div>
         )}
 
         {/* Super Admins Tab */}
