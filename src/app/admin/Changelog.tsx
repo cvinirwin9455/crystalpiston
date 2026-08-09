@@ -3,9 +3,17 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-08T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-09T12:00:00Z";
 
 const updates = [
+  {
+    date: "August 9, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Workout Type Toggles — account owners can now turn workout types on or off for their entire organization from Account Preferences. Go to 'Workout Types' to toggle Walk, Cycling, Cross Training, or Stretching. When a type is off, it disappears from all dropdown menus for all coaches and clients. Existing workout data is never deleted — toggle it back on and everything reappears" },
+      { area: "Admin", text: "Fixed: The 'Year' dropdown on the client details form was getting cut off on the right edge. The form now uses a smarter layout that gives the Birthday field more room on medium-sized screens" },
+      { area: "Client", text: "Improved: The 'Add Your Own Workout' form now only shows workout types that your coach has enabled for your organization" },
+    ],
+  },
   {
     date: "August 8, 2026",
     items: [

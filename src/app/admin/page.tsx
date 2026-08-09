@@ -66,7 +66,7 @@ export default function AdminPage() {
   // Check if there are new updates the admin hasn't seen
   useEffect(() => {
     const lastSeen = localStorage.getItem("changelog_last_seen");
-    if (!lastSeen || lastSeen < "2026-08-08T12:00:00Z") {
+    if (!lastSeen || lastSeen < "2026-08-09T12:00:00Z") {
       setShowNewUpdatesBadge(true);
     }
   }, []);
@@ -2568,7 +2568,7 @@ export default function AdminPage() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
                   <div className="absolute left-0 top-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[220px] overflow-hidden">
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-08T12:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-09T12:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
@@ -2624,7 +2624,7 @@ export default function AdminPage() {
                   <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowAdminMenu(false)} />
                   <div className="fixed left-4 right-4 top-20 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
                     <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider px-4 pb-2 border-b border-white/5 mb-1">Settings</p>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-08T12:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-09T12:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
