@@ -22,10 +22,10 @@ type FeedbackItem = {
 };
 
 export default function SuperAdminFeedbackTab() {
-  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
+  const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeedbackItem | null>(null);
 
   // Filters — status checkboxes, default to New + In Progress
@@ -53,10 +53,6 @@ export default function SuperAdminFeedbackTab() {
     setError("");
     try {
       const params = new URLSearchParams();
-      const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
-      if (activeStatuses.length > 0 && activeStatuses.length < 4) {
-        params.set("status", activeStatuses.join(","));
-      }
       if (typeFilter) params.set("type", typeFilter);
       if (platformFilter) params.set("platform", platformFilter);
       if (roleFilter) params.set("user_role", roleFilter);
@@ -65,7 +61,7 @@ export default function SuperAdminFeedbackTab() {
       const res = await fetch(`/api/feedback/admin?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load feedback");
       const data = await res.json();
-      setFeedback(data.feedback || []);
+      setAllFeedback(data.feedback || []);
       setTotal(data.total || 0);
     } catch (err: any) {
       setError(err.message);
@@ -76,7 +72,22 @@ export default function SuperAdminFeedbackTab() {
 
   useEffect(() => {
     fetchFeedback();
-  }, [statusFilters, typeFilter, roleFilter]);
+  }, [typeFilter, roleFilter]);
+
+  // Filter displayed items by active status checkboxes (client-side)
+  const feedback = allFeedback.filter(f => {
+    const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
+    if (activeStatuses.length === 0) return true;
+    return activeStatuses.includes(f.status);
+  });
+
+  // Counts from ALL feedback (always accurate regardless of filter state)
+  const statusCounts: Record<string, number> = {
+    new: allFeedback.filter(f => f.status === 'new').length,
+    in_progress: allFeedback.filter(f => f.status === 'in_progress').length,
+    implemented: allFeedback.filter(f => f.status === 'implemented').length,
+    wont_fix: allFeedback.filter(f => f.status === 'wont_fix').length,
+  };
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
@@ -150,7 +161,7 @@ export default function SuperAdminFeedbackTab() {
 
       const data = await res.json();
 
-      setFeedback((prev) =>
+      setAllFeedback((prev) =>
         prev.map((f) => (f.id === selectedItem.id ? data.feedback : f))
       );
       setSelectedItem(data.feedback);
@@ -432,7 +443,7 @@ export default function SuperAdminFeedbackTab() {
             { key: "implemented", label: "Implemented", color: "bg-green-100 text-green-700 border-green-300" },
             { key: "wont_fix", label: "Won't Fix", color: "bg-gray-100 text-gray-600 border-gray-300" },
           ].map(({ key, label, color }) => {
-            const count = feedback.filter(f => f.status === key).length;
+            const count = statusCounts[key] || 0;
             return (
               <button
                 key={key}

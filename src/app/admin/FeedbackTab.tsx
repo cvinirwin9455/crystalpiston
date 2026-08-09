@@ -29,10 +29,10 @@ type FilterState = {
 };
 
 export default function FeedbackTab() {
-  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
+  const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeedbackItem | null>(null);
 
   // Filters — status checkboxes, default to New + In Progress
@@ -62,10 +62,6 @@ export default function FeedbackTab() {
     setError("");
     try {
       const params = new URLSearchParams();
-      const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
-      if (activeStatuses.length > 0 && activeStatuses.length < 4) {
-        params.set("status", activeStatuses.join(","));
-      }
       if (filters.type) params.set("type", filters.type);
       if (filters.userRole) params.set("user_role", filters.userRole);
       params.set("limit", "100");
@@ -73,7 +69,7 @@ export default function FeedbackTab() {
       const res = await fetch(`/api/feedback/admin?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load feedback");
       const data = await res.json();
-      setFeedback(data.feedback || []);
+      setAllFeedback(data.feedback || []);
       setTotal(data.total || 0);
     } catch (err: any) {
       setError(err.message);
@@ -84,7 +80,22 @@ export default function FeedbackTab() {
 
   useEffect(() => {
     fetchFeedback();
-  }, [filters, statusFilters]);
+  }, [filters]);
+
+  // Filter displayed items by active status checkboxes (client-side)
+  const feedback = allFeedback.filter(f => {
+    const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
+    if (activeStatuses.length === 0) return true;
+    return activeStatuses.includes(f.status);
+  });
+
+  // Counts from ALL feedback (always accurate regardless of filter state)
+  const statusCounts: Record<string, number> = {
+    new: allFeedback.filter(f => f.status === 'new').length,
+    in_progress: allFeedback.filter(f => f.status === 'in_progress').length,
+    implemented: allFeedback.filter(f => f.status === 'implemented').length,
+    wont_fix: allFeedback.filter(f => f.status === 'wont_fix').length,
+  };
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
@@ -131,7 +142,7 @@ export default function FeedbackTab() {
 
       const data = await res.json();
       // Update local state
-      setFeedback((prev) =>
+      setAllFeedback((prev) =>
         prev.map((f) => (f.id === selectedItem.id ? data.feedback : f))
       );
       setSelectedItem(data.feedback);
@@ -384,7 +395,7 @@ export default function FeedbackTab() {
             { key: "implemented", label: "Implemented", color: "bg-green-500/20 text-green-400 border-green-500/30" },
             { key: "wont_fix", label: "Won't Fix", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
           ].map(({ key, label, color }) => {
-            const count = feedback.filter(f => f.status === key).length;
+            const count = statusCounts[key] || 0;
             return (
               <button
                 key={key}
