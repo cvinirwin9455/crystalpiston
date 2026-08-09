@@ -511,8 +511,6 @@ export default function SuperAdminFeedbackTab() {
           </div>
         </div>
       )}
-        </div>
-      )}
 
       {/* Loading */}
       {loading && (
