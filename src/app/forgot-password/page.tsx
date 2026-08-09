@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { getBrandFromHost } from "@/lib/brand";
 
@@ -9,8 +9,11 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const brand = getBrandFromHost(typeof window !== 'undefined' ? window.location.hostname : '');
+  useEffect(() => { setMounted(true); }, []);
+
+  const brand = getBrandFromHost(mounted ? window.location.hostname : 'firstmilecoach.com');
   const isFirstMile = brand.slug === 'first-mile';
 
   const handleReset = async (e: React.FormEvent) => {
