@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     try {
       const { data } = await adminClient
         .from('clients')
-        .select('experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+        .select('experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes, cycle_tracking_consented')
         .eq('id', clientId)
         .single()
       trainingProfile = data || {}
@@ -273,7 +273,7 @@ export async function POST(request: Request) {
     const avgRecovery = workoutLogs.filter(l => l.recovery).reduce((sum, l) => sum + l.recovery, 0) / (workoutLogs.filter(l => l.recovery).length || 1)
     const avgSleep = workoutLogs.filter(l => l.sleep).reduce((sum, l) => sum + l.sleep, 0) / (workoutLogs.filter(l => l.sleep).length || 1)
     const avgStress = workoutLogs.filter(l => l.stress).reduce((sum, l) => sum + l.stress, 0) / (workoutLogs.filter(l => l.stress).length || 1)
-    const recentOnPeriod = workoutLogs.some(l => l.on_period)
+    const recentOnPeriod = clientRecord.cycle_tracking_consented === true && workoutLogs.some(l => l.on_period)
 
     // Calculate weekly mileage trend
     const weeklyMileage = (pastWeeks || []).map(week => {
@@ -453,7 +453,7 @@ RECENT PERFORMANCE SUMMARY (last ${pastWeeks?.length || 0} weeks):
 - Average Recovery: ${avgRecovery ? avgRecovery.toFixed(1) : 'N/A'}/10
 - Average Sleep: ${avgSleep ? avgSleep.toFixed(1) : 'N/A'}/10
 - Average Stress: ${avgStress ? avgStress.toFixed(1) : 'N/A'}/10
-${clientUser?.gender === 'female' ? `- Recent menstrual cycle reported: ${recentOnPeriod ? 'Yes (in recent logs)' : 'Not recently reported'}` : ''}
+${clientUser?.gender === 'female' && clientRecord.cycle_tracking_consented === true ? `- Recent menstrual cycle reported: ${recentOnPeriod ? 'Yes (in recent logs)' : 'Not recently reported'}` : ''}
 
 WEEKLY MILEAGE TREND (oldest to newest):
 ${weeklyMileage.reverse().map(w => `- ${w.dateRange}: Programmed ${w.programmedMiles}mi / Actual ${w.actualMiles}mi`).join('\n') || '- No mileage data available'}

@@ -9,6 +9,9 @@ const updates = [
   {
     date: "August 9, 2026",
     items: [
+      { area: "Admin", text: "NEW: Menstrual Cycle Tracking Consent — for female clients, coaches can now enable a 'Track menstrual cycle' toggle on the client's Account tab. This sends a consent request to the client. The client will see a prompt on their dashboard asking if they'd like to opt in. If she opts in, the 'On period today' checkbox appears when logging workouts. If she declines, it stays hidden and the coach is never told her choice" },
+      { area: "Client", text: "NEW: Cycle Tracking Consent — if your coach has requested cycle tracking, you'll see a one-time prompt explaining what it does and giving you full control to opt in or out. Your choice is private" },
+      { area: "All", text: "Privacy: Period data is now fully consent-gated. The 'On Period' badge only shows to coaches if the client explicitly opted in. The AI coach assistant also respects this — no cycle data is used for training suggestions unless the client has consented" },
       { area: "Admin", text: "NEW: Workout Type Toggles — account owners can now turn workout types on or off for their entire organization from Account Preferences. Go to 'Workout Types' to toggle Walk, Cycling, Cross Training, or Stretching. When a type is off, it disappears from all dropdown menus for all coaches and clients. Existing workout data is never deleted — toggle it back on and everything reappears" },
       { area: "Admin", text: "Fixed: The 'Year' dropdown on the client details form was getting cut off on the right edge. The form now uses a smarter layout that gives the Birthday field more room on medium-sized screens" },
       { area: "Client", text: "Improved: The 'Add Your Own Workout' form now only shows workout types that your coach has enabled for your organization" },
