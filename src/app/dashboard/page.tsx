@@ -1281,7 +1281,7 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <main id="main-content" className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main id="main-content" className="max-w-7xl mx-auto px-6 py-8 pb-20 space-y-6">
         {/* One-time profile photo banner */}
         {showPhotoBanner && (
           <div className="bg-secondary/80 border border-accent/30 rounded-2xl p-4 sm:p-5">
