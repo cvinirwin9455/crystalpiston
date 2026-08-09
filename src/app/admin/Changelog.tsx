@@ -405,11 +405,56 @@ const updates = [
 
 export default function Changelog() {
   const [expandedDate, setExpandedDate] = useState<string | null>(updates[0]?.date || null);
+  const [dynamicEntries, setDynamicEntries] = useState<{ date: string; area: string; text: string; source: string }[]>([]);
+
+  // Fetch dynamic changelog entries from the API
+  useEffect(() => {
+    const fetchDynamic = async () => {
+      try {
+        const res = await fetch('/api/changelog');
+        if (res.ok) {
+          const data = await res.json();
+          setDynamicEntries(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dynamic changelog:', err);
+      }
+    };
+    fetchDynamic();
+  }, []);
 
   // Mark changelog as seen in localStorage
   useEffect(() => {
     localStorage.setItem("changelog_last_seen", CHANGELOG_LAST_UPDATED);
   }, []);
+
+  // Merge dynamic entries into the static updates grouped by date
+  const mergedUpdates = (() => {
+    // Start with a copy of static updates
+    const merged = updates.map(u => ({ date: u.date, items: [...u.items] }));
+
+    // Group dynamic entries by date and merge
+    for (const entry of dynamicEntries) {
+      const existing = merged.find(u => u.date === entry.date);
+      if (existing) {
+        // Avoid duplicates (by text)
+        if (!existing.items.some(item => item.text === entry.text)) {
+          existing.items.unshift({ area: entry.area, text: entry.text });
+        }
+      } else {
+        // New date group — insert in chronological order (newest first)
+        merged.unshift({ date: entry.date, items: [{ area: entry.area, text: entry.text }] });
+      }
+    }
+
+    // Deduplicate dates (in case multiple dynamic entries created same date group)
+    const seen = new Set<string>();
+    return merged.filter(u => {
+      if (seen.has(u.date)) return false;
+      seen.add(u.date);
+      return true;
+    });
+  })();
 
   const getAreaBadge = (area: string) => {
     switch (area) {
@@ -430,7 +475,7 @@ export default function Changelog() {
       <p className="text-gray-400 text-sm">Updates and improvements to the platform.</p>
 
       <div className="space-y-3">
-        {updates.map((update, updateIdx) => (
+        {mergedUpdates.map((update, updateIdx) => (
           <div key={updateIdx} className="bg-secondary/50 border border-white/10 rounded-xl overflow-hidden">
             <button
               onClick={() => setExpandedDate(expandedDate === update.date ? null : update.date)}

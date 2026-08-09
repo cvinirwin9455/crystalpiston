@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   let query = adminClient
     .from('templates')
     .select('id, name, type, category, data, created_at, organization_id')
-    .neq('category', '__exercise_library__')
+    .not('category', 'in', '("__exercise_library__","__changelog__")')
     .order('name', { ascending: true })
 
   // Scope to the coach's organization

@@ -139,6 +139,38 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Auto-add changelog entry when status changes to "implemented"
+  if (status === 'implemented' && existingFeedback.status !== 'implemented') {
+    try {
+      const changelogText = resolutionMessage?.trim() || existingFeedback.resolution_message || `Fixed: ${existingFeedback.description.slice(0, 150)}`
+      const entryDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      
+      // Determine area based on user role and type
+      let area = 'All'
+      if (existingFeedback.user_role === 'coach') area = 'Admin'
+      else if (existingFeedback.user_role === 'client') area = 'Client'
+
+      await adminClient
+        .from('templates')
+        .insert({
+          name: changelogText.slice(0, 100),
+          type: 'day',
+          category: '__changelog__',
+          data: {
+            date: entryDate,
+            area,
+            text: changelogText,
+            feedbackId,
+            source: 'feedback',
+          },
+          organization_id: null,
+        })
+    } catch (changelogErr) {
+      console.error('Failed to auto-add changelog entry:', changelogErr)
+      // Don't fail the main request if changelog insert fails
+    }
+  }
+
   // If a resolution message was provided, send an update email to the user
   if (resolutionMessage) {
     try {
