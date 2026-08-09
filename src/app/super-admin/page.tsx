@@ -183,8 +183,8 @@ export default function SuperAdminPage() {
   const totalClients = coachOrgs.reduce((sum, o) => sum + o.clients, 0);
   const totalActiveClients = coachOrgs.reduce((sum, o) => sum + o.activeClients, 0);
   const betaSpotsLeft = 50 - betaSignups.length;
-  const coachesActive = betaSignups.filter(s => s.hasSetPassword).length;
-  const avgClientsPerCoach = coachesActive > 0 ? (totalClients / coachesActive).toFixed(1) : "0";
+  const totalAccounts = coachOrgs.length;
+  const avgClientsPerCoach = totalAccounts > 0 ? (totalClients / totalAccounts).toFixed(1) : "0";
 
   const filteredSignups = betaSignups.filter((s) => {
     if (filterStatus === "activated") return s.activated;
@@ -283,8 +283,8 @@ export default function SuperAdminPage() {
                   <div className="text-xs text-orange-600 font-medium mt-1">Beta Spots Left</div>
                 </div>
                 <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-                  <div className="text-2xl font-bold text-emerald-700">{coachesActive}</div>
-                  <div className="text-xs text-emerald-600 font-medium mt-1">Coaches Active</div>
+                  <div className="text-2xl font-bold text-emerald-700">{totalAccounts}</div>
+                  <div className="text-xs text-emerald-600 font-medium mt-1">Total Accounts</div>
                 </div>
                 <div className="text-center p-3 rounded-xl bg-indigo-50 border border-indigo-100">
                   <div className="text-2xl font-bold text-indigo-700">{avgClientsPerCoach}</div>
