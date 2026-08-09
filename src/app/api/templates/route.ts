@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   let query = adminClient
     .from('templates')
     .select('id, name, type, category, data, created_at, organization_id')
-    .not('category', 'in', '("__exercise_library__","__changelog__")')
+    .or('category.is.null,and(category.neq.__exercise_library__,category.neq.__changelog__)')
     .order('name', { ascending: true })
 
   // Scope to the coach's organization
