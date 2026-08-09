@@ -377,19 +377,18 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${cycleTrackingRequested ? 'translate-x-5' : 'translate-x-0'}`}></span>
           </button>
         </div>
-        {cycleTrackingRequested && (
-          <div className="mt-3 bg-pink-500/5 border border-pink-500/20 rounded-lg p-3">
-            {cycleTrackingConsented === null && (
-              <p className="text-pink-300 text-xs"><span className="font-medium">Consent pending</span> — {clientData.name} will be asked to opt in the next time she logs in. You won&apos;t see any cycle data unless she consents.</p>
-            )}
-            {cycleTrackingConsented === true && (
-              <p className="text-green-300 text-xs"><span className="font-medium">Client has opted in</span> — cycle data will appear on completed workouts when logged.</p>
-            )}
-            {cycleTrackingConsented === false && (
-              <p className="text-gray-400 text-xs"><span className="font-medium">Client has declined</span> — cycle data will not be tracked or visible.</p>
-            )}
-          </div>
-        )}
+        {/* Show consent status — client is prompted automatically on her next login */}
+        <div className="mt-3 bg-pink-500/5 border border-pink-500/20 rounded-lg p-3">
+          {cycleTrackingConsented === null && (
+            <p className="text-pink-300 text-xs"><span className="font-medium">Consent pending</span> — {clientData.name} will be asked to opt in the next time she logs in. You won&apos;t see any cycle data unless she consents.</p>
+          )}
+          {cycleTrackingConsented === true && (
+            <p className="text-green-300 text-xs"><span className="font-medium">Client has opted in</span> — cycle data will appear on completed workouts when logged.</p>
+          )}
+          {cycleTrackingConsented === false && (
+            <p className="text-gray-400 text-xs"><span className="font-medium">Client has declined</span> — cycle data will not be tracked or visible.</p>
+          )}
+        </div>
       </div>
       )}
 

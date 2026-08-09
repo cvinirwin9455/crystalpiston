@@ -1372,8 +1372,8 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
-        {/* Cycle Tracking Consent Banner — shows if coach requested but client hasn't responded */}
-        {cycleConsentLoaded && cycleTrackingRequested && cycleTrackingConsented === null && clientGender === 'female' && (
+        {/* Cycle Tracking Consent Banner — shows for all female clients who haven't responded yet */}
+        {cycleConsentLoaded && cycleTrackingConsented === null && clientGender === 'female' && (
           <div className="bg-pink-500/5 border border-pink-500/20 rounded-2xl p-5">
             <div className="flex items-start gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center flex-shrink-0">
@@ -1382,10 +1382,10 @@ export default function DashboardPage() {
               <div className="flex-1">
                 <p className="text-white text-sm font-medium mb-1">Cycle Tracking</p>
                 <p className="text-gray-300 text-xs leading-relaxed mb-3">
-                  Your coach has indicated that tracking your menstrual cycle could help personalize your training plan (e.g., adjusting intensity during your period). This is completely optional and private.
+                  Tracking your menstrual cycle can help personalize your training plan — for example, adjusting intensity during your period. This is completely optional and private.
                 </p>
                 <p className="text-gray-400 text-xs leading-relaxed mb-4">
-                  If you opt in, a simple &quot;On period today&quot; checkbox will appear when you log workouts. If you opt out, this feature stays hidden and your coach will not know your choice.
+                  If you opt in, a simple &quot;On period today&quot; checkbox will appear when you log workouts. Your coach will see this info to help adjust your plan. If you opt out, this feature stays hidden and no one will know your choice.
                 </p>
                 <div className="flex gap-3">
                   <button onClick={() => handleCycleConsent(true)} disabled={cycleConsentSaving} className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-colors disabled:opacity-50">

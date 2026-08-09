@@ -125,11 +125,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Client record not found' }, { status: 404 })
     }
 
-    // Only allow consent if the coach has requested tracking
-    if (!clientRecord.cycle_tracking_requested) {
-      return NextResponse.json({ error: 'Cycle tracking has not been requested by your coach' }, { status: 400 })
-    }
-
+    // Client can always set their own consent preference
     const { error } = await adminClient
       .from('clients')
       .update({ cycle_tracking_consented: body.consented })
