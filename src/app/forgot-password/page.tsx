@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
       const data = await res.json();
       // Temporary debug - show what the API returned
       if (data.debug) {
-        console.log('[forgot-password] API response:', JSON.stringify(data.debug));
+        alert(`DEBUG: hasApiKey=${data.debug.hasApiKey}, keyPrefix=${data.debug.keyPrefix}, sender=${data.debug.sender}, emailSent=${data.debug.emailSent}`);
       }
 
       setSuccess(true);
