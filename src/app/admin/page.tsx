@@ -2791,7 +2791,7 @@ export default function AdminPage() {
           <div className="hidden md:block p-6 bg-secondary/30 border-b border-white/10">
             <h3 className="font-heading text-lg uppercase text-accent mb-4">Create New Client Account</h3>
             <p className="text-gray-400 text-xs mb-4">This will send an invite email. Once they accept, create a plan for them in the Account tab to set their goal, dates, and payment.</p>
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div><label className="text-gray-400 text-xs block mb-1">Full Name <span className="text-accent">*</span></label><input type="text" value={newClientForm.name} onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Sarah Miller" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Email <span className="text-accent">*</span></label><input type="email" value={newClientForm.email} onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="client@email.com" /></div>
               <div><label className="text-gray-400 text-xs block mb-1">Gender <span className="text-accent">*</span></label><select value={newClientForm.gender} onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value as "female" | "male" })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"><option value="female">Female</option><option value="male">Male</option></select></div>
@@ -2805,7 +2805,7 @@ export default function AdminPage() {
                     <option value="" disabled>Day</option>
                     {Array.from({length: 31}, (_, i) => <option key={i+1} value={(i+1).toString()}>{i+1}</option>)}
                   </select>
-                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-20 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                  <select value={newClientForm.birthday ? newClientForm.birthday.split('-')[0] : ''} onChange={(e) => { const parts = newClientForm.birthday ? newClientForm.birthday.split('-') : ['1990', '01', '01']; parts[0] = e.target.value; setNewClientForm({ ...newClientForm, birthday: parts.join('-') }); }} className="w-24 bg-primary/50 border border-white/10 rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
                     <option value="" disabled>Year</option>
                     {Array.from({length: 80}, (_, i) => { const y = new Date().getFullYear() - 12 - i; return <option key={y} value={y.toString()}>{y}</option>; })}
                   </select>
