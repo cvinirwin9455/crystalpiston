@@ -545,7 +545,7 @@ export default function SuperAdminPage() {
         )}
 
         {activeTab === "changelog" && (
-          <div className="bg-[#1a1a2e] border border-gray-700 rounded-xl p-6">
+          <div className="bg-[#1a1a2e] rounded-xl p-6 dark">
             <Changelog />
           </div>
         )}

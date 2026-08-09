@@ -490,7 +490,6 @@ export default function SuperAdminFeedbackTab() {
             </select>
           </div>
         </div>
-      )}
 
       {/* Loading */}
       {loading && (

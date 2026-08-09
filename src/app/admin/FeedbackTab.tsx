@@ -442,7 +442,6 @@ export default function FeedbackTab() {
             </select>
           </div>
         </div>
-      )}
 
       {/* Loading */}
       {loading && (
