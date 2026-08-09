@@ -260,7 +260,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email, gender, goal, startDate, planEnd, owed, birthday } = body
+  const { name, email, gender, goal, startDate, planEnd, owed, birthday, trackCycle } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -352,6 +352,7 @@ export async function POST(request: Request) {
     try {
       const profileUpdates: Record<string, any> = {}
       if (birthday) profileUpdates.birthday = birthday
+      if (trackCycle && gender === 'female') profileUpdates.cycle_tracking_requested = true
       if (Object.keys(profileUpdates).length > 0) {
         await adminClient.from('clients').update(profileUpdates).eq('id', newClientRecord.id)
       }
