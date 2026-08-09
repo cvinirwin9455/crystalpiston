@@ -99,7 +99,17 @@ export default function PushNotificationPrompt() {
       // Request notification permission
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setError("Notification permission was denied.");
+        // Detect iOS for specific instructions
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+        
+        if (isIOS && isStandalone) {
+          setError("iOS_DENIED_STANDALONE");
+        } else if (isIOS) {
+          setError("iOS_DENIED_SAFARI");
+        } else {
+          setError("DENIED_GENERIC");
+        }
         setSubscribing(false);
         return;
       }
@@ -205,15 +215,46 @@ export default function PushNotificationPrompt() {
             </p>
 
             {error && (
-              <p
+              <div
                 style={{
                   margin: "0 0 12px",
                   fontSize: "13px",
                   color: "#c62828",
+                  lineHeight: 1.5,
                 }}
               >
-                {error}
-              </p>
+                {error === "iOS_DENIED_STANDALONE" ? (
+                  <>
+                    <p style={{ fontWeight: 600, marginBottom: "8px" }}>Notifications are blocked. To fix this:</p>
+                    <ol style={{ margin: "0", paddingLeft: "18px", color: "#555b5e" }}>
+                      <li style={{ marginBottom: "4px" }}>Open your iPhone <strong>Settings</strong> app</li>
+                      <li style={{ marginBottom: "4px" }}>Scroll down and tap <strong>Notifications</strong></li>
+                      <li style={{ marginBottom: "4px" }}>Find <strong>First Mile Coach</strong> in the list (it looks like a regular app)</li>
+                      <li style={{ marginBottom: "4px" }}>Toggle <strong>Allow Notifications</strong> on</li>
+                      <li>Come back here and tap Enable again</li>
+                    </ol>
+                  </>
+                ) : error === "iOS_DENIED_SAFARI" ? (
+                  <>
+                    <p style={{ fontWeight: 600, marginBottom: "8px" }}>Notifications only work from the Home Screen app.</p>
+                    <ol style={{ margin: "0", paddingLeft: "18px", color: "#555b5e" }}>
+                      <li style={{ marginBottom: "4px" }}>Tap the <strong>Share</strong> button (square with arrow) at the bottom of Safari</li>
+                      <li style={{ marginBottom: "4px" }}>Tap <strong>&quot;Add to Home Screen&quot;</strong></li>
+                      <li style={{ marginBottom: "4px" }}>Open the app from your <strong>Home Screen</strong></li>
+                      <li>Then tap Enable Notifications again</li>
+                    </ol>
+                  </>
+                ) : error === "DENIED_GENERIC" ? (
+                  <>
+                    <p style={{ fontWeight: 600, marginBottom: "8px" }}>Notification permission was blocked.</p>
+                    <p style={{ margin: "0", color: "#555b5e" }}>
+                      Check your browser settings and allow notifications for this site. Then try again.
+                    </p>
+                  </>
+                ) : (
+                  <p style={{ margin: 0 }}>{error}</p>
+                )}
+              </div>
             )}
 
             <div style={{ display: "flex", gap: "8px" }}>
