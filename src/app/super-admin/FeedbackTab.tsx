@@ -35,6 +35,7 @@ export default function SuperAdminFeedbackTab() {
     new: true,
     in_progress: true,
     reviewed: false,
+    implemented: false,
     wont_fix: false,
   });
   const [typeFilter, setTypeFilter] = useState("");
@@ -59,7 +60,7 @@ export default function SuperAdminFeedbackTab() {
         params.set("status", "implemented");
       } else {
         const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
-        if (activeStatuses.length > 0 && activeStatuses.length < 4) {
+        if (activeStatuses.length > 0 && activeStatuses.length < 5) {
           params.set("status", activeStatuses.join(","));
         }
       }
@@ -455,6 +456,7 @@ export default function SuperAdminFeedbackTab() {
               { key: "new", label: "New", color: "bg-blue-100 text-blue-700 border-blue-300" },
               { key: "in_progress", label: "In Progress", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
               { key: "reviewed", label: "Reviewed", color: "bg-purple-100 text-purple-700 border-purple-300" },
+              { key: "implemented", label: "Implemented", color: "bg-green-100 text-green-700 border-green-300" },
               { key: "wont_fix", label: "Won't Fix", color: "bg-gray-100 text-gray-600 border-gray-300" },
             ].map(({ key, label, color }) => (
               <button
@@ -489,15 +491,6 @@ export default function SuperAdminFeedbackTab() {
               <option value="">All Types</option>
               <option value="bug">Bugs</option>
               <option value="feedback">Feedback</option>
-            </select>
-            <select
-              value={platformFilter}
-              onChange={(e) => setPlatformFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
-            >
-              <option value="">All Platforms</option>
-              <option value="crystal-pistol">Crystal Pistol</option>
-              <option value="first-mile">First Mile Coach</option>
             </select>
             <select
               value={roleFilter}

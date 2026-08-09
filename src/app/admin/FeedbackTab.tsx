@@ -41,6 +41,7 @@ export default function FeedbackTab() {
     new: true,
     in_progress: true,
     reviewed: false,
+    implemented: false,
     wont_fix: false,
   });
   const [filters, setFilters] = useState<FilterState>({
@@ -68,7 +69,7 @@ export default function FeedbackTab() {
       } else {
         // Build comma-separated status from checkboxes
         const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
-        if (activeStatuses.length > 0 && activeStatuses.length < 4) {
+        if (activeStatuses.length > 0 && activeStatuses.length < 5) {
           params.set("status", activeStatuses.join(","));
         }
         // If all are checked or none are checked, don't filter (show all)
@@ -407,6 +408,7 @@ export default function FeedbackTab() {
               { key: "new", label: "New", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
               { key: "in_progress", label: "In Progress", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
               { key: "reviewed", label: "Reviewed", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+              { key: "implemented", label: "Implemented", color: "bg-green-500/20 text-green-400 border-green-500/30" },
               { key: "wont_fix", label: "Won't Fix", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
             ].map(({ key, label, color }) => (
               <button
@@ -441,15 +443,6 @@ export default function FeedbackTab() {
               <option value="">All Types</option>
               <option value="bug">Bugs</option>
               <option value="feedback">Feedback</option>
-            </select>
-            <select
-              value={filters.platform}
-              onChange={(e) => setFilters({ ...filters, platform: e.target.value })}
-              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-300 focus:outline-none focus:border-accent/50"
-            >
-              <option value="">All Platforms</option>
-              <option value="crystal-pistol">Crystal Pistol</option>
-              <option value="first-mile">First Mile</option>
             </select>
             <select
               value={filters.userRole}
