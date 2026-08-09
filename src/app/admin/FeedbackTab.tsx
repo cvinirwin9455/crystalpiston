@@ -34,13 +34,11 @@ export default function FeedbackTab() {
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
   const [selectedItem, setSelectedItem] = useState<FeedbackItem | null>(null);
-  const [view, setView] = useState<"inbox" | "implemented">("inbox");
 
-  // Filters — status now uses checkboxes, default to New + In Progress
+  // Filters — status checkboxes, default to New + In Progress
   const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
     new: true,
     in_progress: true,
-    reviewed: false,
     implemented: false,
     wont_fix: false,
   });
@@ -64,18 +62,11 @@ export default function FeedbackTab() {
     setError("");
     try {
       const params = new URLSearchParams();
-      if (view === "implemented") {
-        params.set("status", "implemented");
-      } else {
-        // Build comma-separated status from checkboxes
-        const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
-        if (activeStatuses.length > 0 && activeStatuses.length < 5) {
-          params.set("status", activeStatuses.join(","));
-        }
-        // If all are checked or none are checked, don't filter (show all)
+      const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
+      if (activeStatuses.length > 0 && activeStatuses.length < 4) {
+        params.set("status", activeStatuses.join(","));
       }
       if (filters.type) params.set("type", filters.type);
-      if (filters.platform) params.set("platform", filters.platform);
       if (filters.userRole) params.set("user_role", filters.userRole);
       params.set("limit", "100");
 
@@ -93,7 +84,7 @@ export default function FeedbackTab() {
 
   useEffect(() => {
     fetchFeedback();
-  }, [filters, view, statusFilters]);
+  }, [filters, statusFilters]);
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
@@ -378,39 +369,23 @@ export default function FeedbackTab() {
   // List View
   return (
     <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(100vh-200px)]">
-      {/* View Toggle */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => setView("inbox")}
-          className={`text-sm font-semibold pb-1 border-b-2 transition-all ${
-            view === "inbox" ? "text-white border-accent" : "text-gray-400 border-transparent hover:text-gray-300"
-          }`}
-        >
-          Inbox
-        </button>
-        <button
-          onClick={() => setView("implemented")}
-          className={`text-sm font-semibold pb-1 border-b-2 transition-all ${
-            view === "implemented" ? "text-white border-accent" : "text-gray-400 border-transparent hover:text-gray-300"
-          }`}
-        >
-          Improvements Log
-        </button>
-        <span className="ml-auto text-xs text-gray-500">{total} total</span>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-white">Feedback & Bugs</h2>
+        <span className="text-xs text-gray-500">{total} total</span>
       </div>
 
-      {/* Filters (inbox only) */}
-      {view === "inbox" && (
-        <div className="space-y-3">
-          {/* Status checkbox pills */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "new", label: "New", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
-              { key: "in_progress", label: "In Progress", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
-              { key: "reviewed", label: "Reviewed", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
-              { key: "implemented", label: "Implemented", color: "bg-green-500/20 text-green-400 border-green-500/30" },
-              { key: "wont_fix", label: "Won't Fix", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
-            ].map(({ key, label, color }) => (
+      {/* Status checkbox pills with counts */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "new", label: "New", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+            { key: "in_progress", label: "In Progress", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+            { key: "implemented", label: "Implemented", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+            { key: "wont_fix", label: "Won't Fix", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
+          ].map(({ key, label, color }) => {
+            const count = feedback.filter(f => f.status === key).length;
+            return (
               <button
                 key={key}
                 onClick={() => setStatusFilters(prev => ({ ...prev, [key]: !prev[key] }))}
@@ -429,10 +404,11 @@ export default function FeedbackTab() {
                     </svg>
                   )}
                 </span>
-                {label}
+                {label} ({count})
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
           {/* Other filters */}
           <div className="flex flex-wrap gap-2">
             <select

@@ -430,8 +430,8 @@ export default function Changelog() {
 
   // Merge dynamic entries into the static updates grouped by date
   const mergedUpdates = (() => {
-    // Start with a copy of static updates
-    const merged = updates.map(u => ({ date: u.date, items: [...u.items] }));
+    // Start with a copy of static updates (these are all "manual" source)
+    const merged = updates.map(u => ({ date: u.date, items: u.items.map(item => ({ ...item, source: 'manual' as string })) }));
 
     // Group dynamic entries by date and merge
     for (const entry of dynamicEntries) {
@@ -439,11 +439,11 @@ export default function Changelog() {
       if (existing) {
         // Avoid duplicates (by text)
         if (!existing.items.some(item => item.text === entry.text)) {
-          existing.items.unshift({ area: entry.area, text: entry.text });
+          existing.items.unshift({ area: entry.area, text: entry.text, source: entry.source || 'manual' });
         }
       } else {
-        // New date group — insert in chronological order (newest first)
-        merged.unshift({ date: entry.date, items: [{ area: entry.area, text: entry.text }] });
+        // New date group — insert at the top (newest first)
+        merged.unshift({ date: entry.date, items: [{ area: entry.area, text: entry.text, source: entry.source || 'manual' }] });
       }
     }
 
@@ -492,7 +492,10 @@ export default function Changelog() {
                 {update.items.map((item, i) => (
                   <div key={i} className="flex items-start gap-3 py-1.5">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${getAreaBadge(item.area)}`}>{item.area}</span>
-                    <p className="text-gray-300 text-sm">{item.text}</p>
+                    <p className="text-gray-300 text-sm flex-1">{item.text}</p>
+                    {(item as any).source === 'feedback' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex-shrink-0 mt-0.5">From Feedback</span>
+                    )}
                   </div>
                 ))}
               </div>

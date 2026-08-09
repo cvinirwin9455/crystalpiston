@@ -27,14 +27,11 @@ export default function SuperAdminFeedbackTab() {
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
   const [selectedItem, setSelectedItem] = useState<FeedbackItem | null>(null);
-  const [view, setView] = useState<"inbox" | "implemented">("inbox");
 
-  // Filters
-  // Filters — status now uses checkboxes, default to New + In Progress
+  // Filters — status checkboxes, default to New + In Progress
   const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
     new: true,
     in_progress: true,
-    reviewed: false,
     implemented: false,
     wont_fix: false,
   });
@@ -56,13 +53,9 @@ export default function SuperAdminFeedbackTab() {
     setError("");
     try {
       const params = new URLSearchParams();
-      if (view === "implemented") {
-        params.set("status", "implemented");
-      } else {
-        const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
-        if (activeStatuses.length > 0 && activeStatuses.length < 5) {
-          params.set("status", activeStatuses.join(","));
-        }
+      const activeStatuses = Object.entries(statusFilters).filter(([_, v]) => v).map(([k]) => k);
+      if (activeStatuses.length > 0 && activeStatuses.length < 4) {
+        params.set("status", activeStatuses.join(","));
       }
       if (typeFilter) params.set("type", typeFilter);
       if (platformFilter) params.set("platform", platformFilter);
@@ -83,7 +76,7 @@ export default function SuperAdminFeedbackTab() {
 
   useEffect(() => {
     fetchFeedback();
-  }, [statusFilters, typeFilter, platformFilter, roleFilter, view]);
+  }, [statusFilters, typeFilter, roleFilter]);
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
@@ -424,41 +417,23 @@ export default function SuperAdminFeedbackTab() {
   // List View
   return (
     <div className="space-y-6">
-      {/* View Toggle */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => setView("inbox")}
-            className={`text-sm font-semibold pb-1 border-b-2 transition ${
-              view === "inbox" ? "text-purple-600 border-purple-600" : "text-gray-400 border-transparent hover:text-gray-600"
-            }`}
-          >
-            Inbox
-          </button>
-          <button
-            onClick={() => setView("implemented")}
-            className={`text-sm font-semibold pb-1 border-b-2 transition ${
-              view === "implemented" ? "text-purple-600 border-purple-600" : "text-gray-400 border-transparent hover:text-gray-600"
-            }`}
-          >
-            Improvements Log
-          </button>
-        </div>
+        <h2 className="text-sm font-semibold text-purple-600">Feedback & Bugs</h2>
         <span className="text-xs text-gray-400 font-medium">{total} total</span>
       </div>
 
-      {/* Filters (inbox only) */}
-      {view === "inbox" && (
-        <div className="space-y-3">
-          {/* Status checkbox pills */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "new", label: "New", color: "bg-blue-100 text-blue-700 border-blue-300" },
-              { key: "in_progress", label: "In Progress", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-              { key: "reviewed", label: "Reviewed", color: "bg-purple-100 text-purple-700 border-purple-300" },
-              { key: "implemented", label: "Implemented", color: "bg-green-100 text-green-700 border-green-300" },
-              { key: "wont_fix", label: "Won't Fix", color: "bg-gray-100 text-gray-600 border-gray-300" },
-            ].map(({ key, label, color }) => (
+      {/* Status checkbox pills with counts */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "new", label: "New", color: "bg-blue-100 text-blue-700 border-blue-300" },
+            { key: "in_progress", label: "In Progress", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+            { key: "implemented", label: "Implemented", color: "bg-green-100 text-green-700 border-green-300" },
+            { key: "wont_fix", label: "Won't Fix", color: "bg-gray-100 text-gray-600 border-gray-300" },
+          ].map(({ key, label, color }) => {
+            const count = feedback.filter(f => f.status === key).length;
+            return (
               <button
                 key={key}
                 onClick={() => setStatusFilters(prev => ({ ...prev, [key]: !prev[key] }))}
@@ -477,22 +452,23 @@ export default function SuperAdminFeedbackTab() {
                     </svg>
                   )}
                 </span>
-                {label}
+                {label} ({count})
               </button>
-            ))}
-          </div>
-          {/* Other filters */}
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
-            >
-              <option value="">All Types</option>
-              <option value="bug">Bugs</option>
-              <option value="feedback">Feedback</option>
-            </select>
-            <select
+            );
+          })}
+        </div>
+        {/* Other filters */}
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
+          >
+            <option value="">All Types</option>
+            <option value="bug">Bugs</option>
+            <option value="feedback">Feedback</option>
+          </select>
+          <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
               className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-purple-300"
