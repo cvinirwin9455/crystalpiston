@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     if (linkError) {
       console.error('Password reset link error:', linkError.message)
-      return NextResponse.json({ success: true, debug: { hasApiKey, keyPrefix: apiKeyPrefix, sender: senderEmailEnv, emailSent: false, error: 'generateLink failed: ' + linkError.message } })
+      return NextResponse.json({ success: true })
     }
 
     // Build the reset URL using token_hash format
@@ -100,9 +100,9 @@ export async function POST(request: Request) {
       brand,
     })
 
-    return NextResponse.json({ success: true, debug: { hasApiKey, keyPrefix: apiKeyPrefix, sender: senderEmailEnv, emailSent, brand, domain } })
+    return NextResponse.json({ success: true })
   } catch (err: any) {
     console.error('[reset-password] Unhandled error:', err)
-    return NextResponse.json({ success: false, debug: { error: err.message || 'Unknown error' } }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

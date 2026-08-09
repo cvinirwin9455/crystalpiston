@@ -29,11 +29,6 @@ export default function ForgotPasswordPage() {
       });
 
       const data = await res.json();
-      
-      // Temporary debug - show what the API returned
-      if (data.debug) {
-        alert(`DEBUG: ${JSON.stringify(data.debug)}`);
-      }
 
       if (!res.ok) {
         setError(data.error || "Something went wrong. Please try again.");
