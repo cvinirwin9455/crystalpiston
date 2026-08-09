@@ -175,9 +175,8 @@ export default function SuperAdminPage() {
     router.push("/login");
   }
 
-  // Filter out the legacy shared First Mile org (Crystal is treated as a coach on the platform)
+  // Filter out the legacy shared First Mile org
   const coachOrgs = organizations.filter(o => o.id !== LEGACY_FIRSTMILE_ORG_ID);
-  const crystalOrg = organizations.find(o => o.id === CRYSTAL_ORG_ID);
 
   // Aggregate metrics across ALL coach orgs (including Crystal)
   const totalCoaches = coachOrgs.reduce((sum, o) => sum + o.admins, 0);
@@ -293,48 +292,16 @@ export default function SuperAdminPage() {
               </div>
             </div>
 
-            {/* Crystal's org (special card) */}
-            {crystalOrg && (
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Crystal Pistol Performance</h3>
-                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-gray-900">{crystalOrg.admins}</div>
-                      <div className="text-xs text-gray-500">Coaches</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-gray-900">{crystalOrg.activeClients}</div>
-                      <div className="text-xs text-gray-500">Active Clients</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-gray-900">{crystalOrg.totalUsers}</div>
-                      <div className="text-xs text-gray-500">Total Users</div>
-                    </div>
-                  </div>
-                  {crystalOrg.accountCoachId && (
-                    <button
-                      onClick={() => viewAsCoach(crystalOrg.accountCoachId!)}
-                      disabled={impersonatingId === crystalOrg.accountCoachId}
-                      className="text-sm bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
-                    >
-                      {impersonatingId === crystalOrg.accountCoachId ? "Opening..." : "View as Crystal \u2192"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Coach Orgs (excluding Crystal since she has her own card above) */}
+            {/* All Coaches */}
             <div>
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">First Mile Coaches ({coachOrgs.filter(o => o.id !== CRYSTAL_ORG_ID).length})</h3>
-              {coachOrgs.filter(o => o.id !== CRYSTAL_ORG_ID).length === 0 ? (
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">First Mile Coaches ({coachOrgs.length})</h3>
+              {coachOrgs.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                   <p className="text-gray-500">No coaches activated yet. Go to Beta Signups to activate coaches.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {coachOrgs.filter(o => o.id !== CRYSTAL_ORG_ID).map((org) => (
+                  {coachOrgs.map((org) => (
                     <div key={org.id} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-bold text-gray-900 text-sm">{org.name}</h4>
