@@ -42,7 +42,7 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "inbox" | "admins" | "changelog">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "inbox" | "admins" | "changelog" | "tools">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -239,6 +239,7 @@ export default function SuperAdminPage() {
               { key: "inbox", label: "Inbox" },
               { key: "feedback", label: "Feedback & Bugs" },
               { key: "changelog", label: "Changelog" },
+              { key: "tools", label: "Tools" },
               { key: "admins", label: "Super Admins" },
             ].map((tab) => (
               <button
@@ -546,6 +547,118 @@ export default function SuperAdminPage() {
         {activeTab === "changelog" && (
           <div className="bg-[#1a1a2e] border border-gray-700 rounded-xl p-6">
             <Changelog />
+          </div>
+        )}
+
+        {/* Tools & Services Tab */}
+        {activeTab === "tools" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Tools & Services</h2>
+              <p className="text-sm text-gray-500">Quick access to all the platforms that power First Mile Coach. Each super admin needs their own account on these services.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* GitHub */}
+              <a href="https://github.com/cvinirwin9455/crystalpiston" target="_blank" rel="noopener noreferrer" className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition-colors">GitHub</h3>
+                    <p className="text-xs text-gray-500">Source code & version control</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">View code, pull requests, issues, and deployment history.</p>
+              </a>
+
+              {/* Vercel */}
+              <a href="https://vercel.com/cvinirwin9455s-projects/crystalpiston" target="_blank" rel="noopener noreferrer" className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L24 22H0L12 1z"/></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition-colors">Vercel</h3>
+                    <p className="text-xs text-gray-500">Hosting & deployments</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">Manage deployments, domains, environment variables, and build logs.</p>
+              </a>
+
+              {/* Supabase */}
+              <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M21.362 9.354H12V.396a.396.396 0 0 0-.716-.233L2.203 12.424l-.401.562a1.04 1.04 0 0 0 .836 1.659H12v8.959a.396.396 0 0 0 .716.233l9.081-12.261.401-.562a1.04 1.04 0 0 0-.836-1.66z"/></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition-colors">Supabase</h3>
+                    <p className="text-xs text-gray-500">Database & auth</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">Database tables, SQL editor, authentication users, and storage.</p>
+              </a>
+
+              {/* Resend */}
+              <a href="https://resend.com/overview" target="_blank" rel="noopener noreferrer" className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition-colors">Resend</h3>
+                    <p className="text-xs text-gray-500">Transactional email</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">Email delivery logs, domains, API keys, and sending analytics.</p>
+              </a>
+
+              {/* Kiro */}
+              <a href="https://kiro.dev" target="_blank" rel="noopener noreferrer" className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition-colors">Kiro</h3>
+                    <p className="text-xs text-gray-500">AI development assistant</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">AI-powered coding, feature development, bug fixes, and platform updates.</p>
+              </a>
+
+              {/* First Mile Coach (Live Site) */}
+              <a href="https://www.firstmilecoach.com" target="_blank" rel="noopener noreferrer" className="bg-white border border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition-colors">Live Site</h3>
+                    <p className="text-xs text-gray-500">firstmilecoach.com</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">The production website that coaches and clients use.</p>
+              </a>
+            </div>
+
+            {/* Access Instructions */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-bold text-yellow-800 mb-1">Access Note</h4>
+                  <p className="text-xs text-yellow-700 leading-relaxed">
+                    Each super admin needs their own account on these services. Ask the account owner to invite you as a team member on each platform. 
+                    Being a super admin on First Mile Coach does not automatically grant access to these external services.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
