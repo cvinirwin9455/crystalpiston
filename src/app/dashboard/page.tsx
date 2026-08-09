@@ -1479,32 +1479,30 @@ export default function DashboardPage() {
                           {workout.structure ? (
                             workout.structure.exercises && Array.isArray(workout.structure.exercises) && workout.structure.exercises.some((ex: any) => ex.demoVideo) ? (
                               /* Cross-training with video links: render as interactive list */
-                              <div className="mt-1 space-y-1">
+                              <div className="mt-1 space-y-2.5">
                                 {workout.structure.exercises.filter((ex: any) => ex.name).map((ex: any, exIdx: number) => {
                                   const measure = ex.measureType === 'reps' ? `${ex.measureValue} reps` : ex.measureType === 'time' ? ex.measureValue : `${ex.measureValue}m`;
                                   const weight = ex.weight ? ` @ ${ex.weight}${ex.weightUnit || 'kg'}` : '';
                                   const sets = ex.sets > 1 ? `${ex.sets} sets x ` : '';
                                   const rest = ex.rest && ex.rest !== '00:00' ? ` | Rest: ${ex.rest}` : '';
                                   return (
-                                    <div key={exIdx} className="flex items-start gap-2">
-                                      {ex.demoVideo ? (
-                                        <button
-                                          onClick={() => setVideoModal({ url: ex.demoVideo, exerciseName: ex.name })}
-                                          className="flex-shrink-0 mt-0.5 text-gold hover:text-yellow-300 transition-colors"
-                                          title="Watch demo video"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                          </svg>
-                                        </button>
-                                      ) : (
-                                        <span className="flex-shrink-0 mt-0.5 w-4" />
-                                      )}
+                                    <div key={exIdx}>
                                       <div className="text-gray-300 text-sm leading-relaxed">
                                         <span>{sets}{ex.name} &mdash; {measure}{weight}{rest}</span>
-                                        {ex.notes && <div className="text-gray-500 text-xs mt-0.5 ml-1">{ex.notes}</div>}
+                                        {ex.notes && <div className="text-gray-500 text-xs mt-0.5">{ex.notes}</div>}
                                       </div>
+                                      {ex.demoVideo && (
+                                        <button
+                                          onClick={() => setVideoModal({ url: ex.demoVideo, exerciseName: ex.name })}
+                                          className="mt-1.5 inline-flex items-center gap-1.5 bg-gold/10 hover:bg-gold/20 border border-gold/30 text-gold hover:text-yellow-300 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                                          title="Watch demo video"
+                                        >
+                                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z" />
+                                          </svg>
+                                          Watch Demo
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 })}

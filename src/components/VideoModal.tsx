@@ -66,6 +66,45 @@ function getVimeoId(url: string): string | null {
   return regexMatch ? regexMatch[1] : null;
 }
 
+/**
+ * Checks if a URL is a Facebook video/reel.
+ * Supports: facebook.com/watch, facebook.com/reel, facebook.com/.../videos/ID, fb.watch
+ */
+function isFacebookVideoUrl(url: string): boolean {
+  try {
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+    const u = new URL(cleanUrl);
+    if (u.hostname.includes("facebook.com") || u.hostname.includes("fb.com") || u.hostname.includes("fb.watch")) {
+      // fb.watch short links
+      if (u.hostname.includes("fb.watch")) return true;
+      // facebook.com/watch, /reel/, /videos/
+      if (u.pathname.includes("/watch") || u.pathname.includes("/reel") || u.pathname.includes("/videos/")) return true;
+    }
+  } catch {}
+  return /(?:facebook\.com|fb\.com|fb\.watch).*(?:watch|reel|video)/i.test(url);
+}
+
+/**
+ * Checks if a URL is an Instagram post/reel.
+ * Supports: instagram.com/reel/ID, instagram.com/p/ID, instagram.com/tv/ID
+ */
+function isInstagramVideoUrl(url: string): boolean {
+  try {
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+    const u = new URL(cleanUrl);
+    if (u.hostname.includes("instagram.com")) {
+      if (u.pathname.includes("/reel/") || u.pathname.includes("/p/") || u.pathname.includes("/tv/")) return true;
+    }
+  } catch {}
+  return /instagram\.com\/(?:reel|p|tv)\//i.test(url);
+}
+
 export default function VideoModal({ url, exerciseName, onClose }: Props) {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -89,6 +128,8 @@ export default function VideoModal({ url, exerciseName, onClose }: Props) {
 
   const youtubeId = getYouTubeId(url);
   const vimeoId = getVimeoId(url);
+  const isFacebookVideo = isFacebookVideoUrl(url);
+  const isInstagramVideo = isInstagramVideoUrl(url);
 
   const renderEmbed = () => {
     if (youtubeId) {
@@ -109,6 +150,34 @@ export default function VideoModal({ url, exerciseName, onClose }: Props) {
           src={`https://player.vimeo.com/video/${vimeoId}?autoplay=1`}
           className="w-full aspect-video rounded-lg"
           allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          title={`${exerciseName} demo video`}
+        />
+      );
+    }
+
+    if (isFacebookVideo) {
+      const encodedUrl = encodeURIComponent(url.trim());
+      return (
+        <iframe
+          src={`https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=false&width=560`}
+          className="w-full aspect-video rounded-lg"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          allowFullScreen
+          title={`${exerciseName} demo video`}
+        />
+      );
+    }
+
+    if (isInstagramVideo) {
+      // Instagram embeds use their oEmbed format
+      const cleanUrl = url.trim().replace(/\/$/, '');
+      return (
+        <iframe
+          src={`${cleanUrl}/embed`}
+          className="w-full rounded-lg"
+          style={{ minHeight: '480px' }}
+          allow="autoplay; clipboard-write; encrypted-media"
           allowFullScreen
           title={`${exerciseName} demo video`}
         />
