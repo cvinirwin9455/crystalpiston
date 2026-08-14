@@ -8,7 +8,6 @@ import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
 import AvatarUpload from "@/components/AvatarUpload";
-import { getCurrencySymbol } from "@/lib/currency";
 import ClientStatsTab from "./ClientStatsTab";
 import ExerciseLibraryTab from "./ExerciseLibraryTab";
 import type { CrossTrainingStructure, ExerciseLibraryItem } from "./StructuredCrossTrainingBuilder";
@@ -24,6 +23,12 @@ type Client = { id: string; clientId: string | null; name: string; email: string
 
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
+
+  // Inline currency symbol helper to avoid module TDZ issues in large bundled components
+  const getCurrencySymbol = (code: string = 'USD') => {
+    const map: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' };
+    return map[code] || '$';
+  };
 
   // Restore state from URL params on initial load
   const getInitialParams = () => {

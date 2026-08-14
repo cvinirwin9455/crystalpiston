@@ -5,7 +5,6 @@ import AvatarUpload from "@/components/AvatarUpload";
 import BiometricSetup from "@/components/BiometricSetup";
 import VideoModal from "@/components/VideoModal";
 import { useTheme } from "@/components/ThemeProvider";
-import { getCurrencySymbol } from "@/lib/currency";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
@@ -120,6 +119,12 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 
 export default function DashboardPage() {
   const { theme, setTheme } = useTheme();
+
+  // Inline currency symbol helper
+  const getCurrencySymbol = (code: string = 'USD') => {
+    const map: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' };
+    return map[code] || '$';
+  };
 
   // Initialize active tab from URL params (survives refresh)
   const getInitialTab = (): "training" | "messages" | "account" => {
