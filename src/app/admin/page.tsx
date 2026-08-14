@@ -2933,20 +2933,18 @@ export default function AdminPage() {
                       {showCoachDropdown && (
                         <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowCoachDropdown(false)} />
-                        <div className="fixed left-4 right-4 top-32 md:absolute md:top-full md:left-auto md:right-0 md:mt-1 md:min-w-56 md:max-w-none z-50 bg-secondary border border-white/10 rounded-lg shadow-xl p-2 max-h-[60vh] overflow-y-auto always-dark">
-                          <p className="text-gray-400 text-xs font-heading uppercase mb-2 px-2">Manage Coaches</p>
+                        <div className="fixed left-4 right-4 top-32 md:absolute md:top-full md:left-auto md:right-0 md:mt-1 md:min-w-64 md:max-w-none z-50 bg-secondary border border-white/10 rounded-lg shadow-xl p-3 max-h-[60vh] overflow-y-auto">
+                          <p className="text-gray-400 text-xs font-heading uppercase mb-2 px-1">Manage Coaches</p>
                           {/* Current coaches with remove/default options */}
                           {selectedClientData.coaches.length > 0 && (
-                            <div className="mb-2 pb-2 border-b border-white/5">
+                            <div className="mb-2 pb-2 border-b border-white/5 space-y-1">
                               {selectedClientData.coaches.map(coach => (
-                                <div key={coach.coachId} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-white/5">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`text-xs ${coach.isDefault ? 'text-gold font-medium' : 'text-gray-300'}`}>{coach.coachName}</span>
-                                    {coach.isDefault && <span className="text-[10px] text-gold bg-gold/10 px-1.5 rounded">Default</span>}
-                                  </div>
-                                  <div className="flex items-center gap-1">
+                                <div key={coach.coachId} className="flex items-center gap-2 px-1 py-1.5 rounded hover:bg-white/5">
+                                  <span className={`text-sm font-medium flex-1 text-left ${coach.isDefault ? 'text-accent' : 'text-white'}`}>{coach.coachName}</span>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {coach.isDefault && <span className="text-[10px] text-accent bg-accent/10 px-1.5 py-0.5 rounded">Default</span>}
                                     {!coach.isDefault && (
-                                      <button onClick={() => handleSetDefaultCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-gold px-1.5 py-0.5 rounded border border-white/10 hover:border-gold/30">Set Default</button>
+                                      <button onClick={() => handleSetDefaultCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-accent px-1.5 py-0.5 rounded border border-white/10 hover:border-accent/30">Set Default</button>
                                     )}
                                     {selectedClientData.coaches.length > 1 && (
                                       <button onClick={() => handleRemoveCoach(coach.coachId)} className="text-[10px] text-gray-400 hover:text-red-400 px-1.5 py-0.5 rounded border border-white/10 hover:border-red-500/30">Remove</button>
@@ -2959,16 +2957,16 @@ export default function AdminPage() {
                           {/* Available coaches to add */}
                           {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length > 0 && (
                             <>
-                              <p className="text-gray-500 text-[10px] uppercase px-2 mb-1">Add Coach</p>
+                              <p className="text-gray-500 text-[10px] uppercase px-1 mb-1">Add Coach</p>
                               {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).map(coach => (
-                                <button key={coach.id} onClick={() => handleAssignCoach(coach.id)} disabled={coachAssigning} className="w-full text-left px-2 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-accent/10 rounded transition-colors disabled:opacity-50">
+                                <button key={coach.id} onClick={() => handleAssignCoach(coach.id)} disabled={coachAssigning} className="w-full text-left px-1 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-accent/10 rounded transition-colors disabled:opacity-50">
                                   + {coach.name}
                                 </button>
                               ))}
                             </>
                           )}
                           {allCoaches.filter(c => !selectedClientData.coaches.some(cc => cc.coachId === c.id)).length === 0 && selectedClientData.coaches.length > 0 && (
-                            <p className="text-gray-500 text-xs px-2 py-1">All coaches assigned</p>
+                            <p className="text-gray-500 text-xs px-1 py-1">All coaches assigned</p>
                           )}
                           <button onClick={() => setShowCoachDropdown(false)} className="w-full text-center text-gray-500 hover:text-white text-xs mt-2 pt-2 border-t border-white/5 py-1">Close</button>
                         </div>
