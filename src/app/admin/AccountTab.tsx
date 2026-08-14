@@ -458,10 +458,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             </div>
             {/* Program Assignment */}
             {programTemplates && programTemplates.length > 0 && (
-              <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 mb-3">
+              <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mb-3">
                 <div>
-                  <label className="text-purple-300 text-xs block mb-1">Training Program (optional)</label>
-                  <select value={newPlanProgramId} onChange={(e) => setNewPlanProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
+                  <label className="text-accent text-xs block mb-1">Training Program (optional)</label>
+                  <select value={newPlanProgramId} onChange={(e) => setNewPlanProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
                     <option value="">No Program</option>
                     {programTemplates.map(p => (
                       <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
@@ -738,10 +738,10 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           </div>
           {/* Program Assignment (Edit) */}
           {programTemplates && programTemplates.length > 0 && (
-            <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 mt-3">
+            <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mt-3">
               <div>
-                <label className="text-purple-300 text-xs block mb-1">Training Program (optional)</label>
-                <select value={editProgramId} onChange={(e) => setEditProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
+                <label className="text-accent text-xs block mb-1">Training Program (optional)</label>
+                <select value={editProgramId} onChange={(e) => setEditProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
                   <option value="">No Program</option>
                   {programTemplates.map(p => (
                     <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>

@@ -139,21 +139,40 @@ html.light svg { color: inherit; }
 html.brand-firstmile:not(.light) .bg-primary { background-color: rgb(28 31 32) !important; }
 html.brand-firstmile:not(.light) .bg-secondary { background-color: rgb(38 42 43) !important; }
 html.brand-firstmile:not(.light) .text-gold { color: #f26522 !important; }
+html.brand-firstmile:not(.light) .text-gold\/60 { color: rgba(242,101,34,0.6) !important; }
 html.brand-firstmile:not(.light) .text-purple-400 { color: #f26522 !important; }
 html.brand-firstmile:not(.light) .text-purple-300 { color: #f26522 !important; }
-html.brand-firstmile:not(.light) .border-gold\/30 { border-color: rgba(242,101,34,0.3) !important; }
-html.brand-firstmile:not(.light) .border-gold\/20 { border-color: rgba(242,101,34,0.2) !important; }
-html.brand-firstmile:not(.light) .border-purple-500\/10 { border-color: rgba(242,101,34,0.1) !important; }
-html.brand-firstmile:not(.light) .border-purple-500\/20 { border-color: rgba(242,101,34,0.2) !important; }
-html.brand-firstmile:not(.light) .border-purple-500\/30 { border-color: rgba(242,101,34,0.3) !important; }
-html.brand-firstmile:not(.light) .bg-gold\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.brand-firstmile:not(.light) .bg-gold { background-color: #f26522 !important; color: #ffffff !important; }
 html.brand-firstmile:not(.light) .bg-gold\/5 { background-color: rgba(242,101,34,0.05) !important; }
+html.brand-firstmile:not(.light) .bg-gold\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.brand-firstmile:not(.light) .bg-gold\/20 { background-color: rgba(242,101,34,0.15) !important; }
+html.brand-firstmile:not(.light) .bg-purple-400 { background-color: rgba(242,101,34,0.8) !important; }
+html.brand-firstmile:not(.light) .bg-purple-500 { background-color: #f26522 !important; }
+html.brand-firstmile:not(.light) .bg-purple-500\/5 { background-color: rgba(242,101,34,0.05) !important; }
 html.brand-firstmile:not(.light) .bg-purple-500\/10 { background-color: rgba(242,101,34,0.1) !important; }
 html.brand-firstmile:not(.light) .bg-purple-500\/20 { background-color: rgba(242,101,34,0.2) !important; }
 html.brand-firstmile:not(.light) .bg-purple-600 { background-color: #f26522 !important; }
+html.brand-firstmile:not(.light) .bg-purple-700 { background-color: #d4540f !important; }
 html.brand-firstmile:not(.light) .hover\:bg-purple-700:hover { background-color: #d4540f !important; }
+html.brand-firstmile:not(.light) .hover\:bg-gold\/10:hover { background-color: rgba(242,101,34,0.1) !important; }
+html.brand-firstmile:not(.light) .hover\:bg-gold\/20:hover { background-color: rgba(242,101,34,0.2) !important; }
+html.brand-firstmile:not(.light) .hover\:text-gold:hover { color: #f26522 !important; }
+html.brand-firstmile:not(.light) .hover\:text-yellow-300:hover { color: #ff7b3a !important; }
+html.brand-firstmile:not(.light) .hover\:bg-yellow-600:hover { background-color: #d4540f !important; }
+html.brand-firstmile:not(.light) .border-gold { border-color: #f26522 !important; }
+html.brand-firstmile:not(.light) .border-gold\/10 { border-color: rgba(242,101,34,0.1) !important; }
+html.brand-firstmile:not(.light) .border-gold\/20 { border-color: rgba(242,101,34,0.2) !important; }
+html.brand-firstmile:not(.light) .border-gold\/30 { border-color: rgba(242,101,34,0.3) !important; }
+html.brand-firstmile:not(.light) .border-gold\/40 { border-color: rgba(242,101,34,0.4) !important; }
+html.brand-firstmile:not(.light) .border-gold\/50 { border-color: rgba(242,101,34,0.5) !important; }
+html.brand-firstmile:not(.light) .border-purple-500 { border-color: #f26522 !important; }
+html.brand-firstmile:not(.light) .border-purple-500\/10 { border-color: rgba(242,101,34,0.1) !important; }
+html.brand-firstmile:not(.light) .border-purple-500\/20 { border-color: rgba(242,101,34,0.2) !important; }
+html.brand-firstmile:not(.light) .border-purple-500\/30 { border-color: rgba(242,101,34,0.3) !important; }
+html.brand-firstmile:not(.light) .border-purple-500\/50 { border-color: rgba(242,101,34,0.5) !important; }
 html.brand-firstmile:not(.light) .focus\:ring-purple-500:focus { --tw-ring-color: rgba(242,101,34,0.5) !important; }
 html.brand-firstmile:not(.light) .focus\:border-purple-500:focus { border-color: #f26522 !important; }
+html.brand-firstmile:not(.light) .focus\:border-gold:focus { border-color: #f26522 !important; }
 
 /* Shadows — soften in light mode */
 html.light .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.05) !important; }
@@ -229,23 +248,41 @@ html.light.brand-firstmile [data-sidebar] .text-purple-300 { color: #e55b1e !imp
 
 /* First Mile light mode — main content */
 html.light.brand-firstmile .text-gold { color: #e55b1e !important; }
+html.light.brand-firstmile .text-gold\/60 { color: rgba(229,91,30,0.6) !important; }
 html.light.brand-firstmile .text-purple-400 { color: #e55b1e !important; }
 html.light.brand-firstmile .text-purple-300 { color: #e55b1e !important; }
-html.light.brand-firstmile .border-gold\/30 { border-color: rgba(242,101,34,0.3) !important; }
+html.light.brand-firstmile .bg-gold { background-color: #f26522 !important; color: #ffffff !important; }
+html.light.brand-firstmile .bg-gold\/5 { background-color: rgba(242,101,34,0.05) !important; }
+html.light.brand-firstmile .bg-gold\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.light.brand-firstmile .bg-gold\/20 { background-color: rgba(242,101,34,0.15) !important; }
+html.light.brand-firstmile .bg-purple-400 { background-color: rgba(242,101,34,0.8) !important; }
+html.light.brand-firstmile .bg-purple-500 { background-color: #f26522 !important; }
+html.light.brand-firstmile .bg-purple-500\/5 { background-color: rgba(242,101,34,0.05) !important; }
+html.light.brand-firstmile .bg-purple-500\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.light.brand-firstmile .bg-purple-500\/20 { background-color: rgba(242,101,34,0.15) !important; }
+html.light.brand-firstmile .bg-purple-600 { background-color: #f26522 !important; color: #ffffff !important; }
+html.light.brand-firstmile .bg-purple-700 { background-color: #d4540f !important; }
+html.light.brand-firstmile .hover\:bg-purple-700:hover { background-color: #d4540f !important; }
+html.light.brand-firstmile .hover\:bg-gold\/10:hover { background-color: rgba(242,101,34,0.1) !important; }
+html.light.brand-firstmile .hover\:bg-gold\/20:hover { background-color: rgba(242,101,34,0.2) !important; }
+html.light.brand-firstmile .hover\:text-gold:hover { color: #e55b1e !important; }
+html.light.brand-firstmile .hover\:text-yellow-300:hover { color: #d4540f !important; }
+html.light.brand-firstmile .hover\:bg-yellow-600:hover { background-color: #d4540f !important; }
+html.light.brand-firstmile .border-gold { border-color: #f26522 !important; }
+html.light.brand-firstmile .border-gold\/10 { border-color: rgba(242,101,34,0.1) !important; }
 html.light.brand-firstmile .border-gold\/20 { border-color: rgba(242,101,34,0.2) !important; }
+html.light.brand-firstmile .border-gold\/30 { border-color: rgba(242,101,34,0.3) !important; }
+html.light.brand-firstmile .border-gold\/40 { border-color: rgba(242,101,34,0.4) !important; }
+html.light.brand-firstmile .border-gold\/50 { border-color: rgba(242,101,34,0.5) !important; }
+html.light.brand-firstmile .border-purple-500 { border-color: #f26522 !important; }
 html.light.brand-firstmile .border-purple-500\/10 { border-color: rgba(242,101,34,0.1) !important; }
 html.light.brand-firstmile .border-purple-500\/20 { border-color: rgba(242,101,34,0.2) !important; }
 html.light.brand-firstmile .border-purple-500\/30 { border-color: rgba(242,101,34,0.3) !important; }
 html.light.brand-firstmile .border-purple-500\/40 { border-color: rgba(242,101,34,0.4) !important; }
-html.light.brand-firstmile .bg-gold\/10 { background-color: rgba(242,101,34,0.1) !important; }
-html.light.brand-firstmile .bg-gold\/5 { background-color: rgba(242,101,34,0.05) !important; }
-html.light.brand-firstmile .bg-gold\/20 { background-color: rgba(242,101,34,0.15) !important; }
-html.light.brand-firstmile .bg-purple-500\/10 { background-color: rgba(242,101,34,0.1) !important; }
-html.light.brand-firstmile .bg-purple-500\/20 { background-color: rgba(242,101,34,0.15) !important; }
-html.light.brand-firstmile .bg-purple-600 { background-color: #f26522 !important; color: #ffffff !important; }
-html.light.brand-firstmile .hover\:bg-purple-700:hover { background-color: #d4540f !important; }
+html.light.brand-firstmile .border-purple-500\/50 { border-color: rgba(242,101,34,0.5) !important; }
 html.light.brand-firstmile .focus\:ring-purple-500:focus { --tw-ring-color: rgba(242,101,34,0.5) !important; }
 html.light.brand-firstmile .focus\:border-purple-500:focus { border-color: #f26522 !important; }
+html.light.brand-firstmile .focus\:border-gold:focus { border-color: #f26522 !important; }
 
 /* ============================================================
    ALWAYS-DARK — Modals, floating panels, dropdowns
