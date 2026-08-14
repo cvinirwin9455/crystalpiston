@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCurrencySymbol } from "@/lib/currency";
 import AvatarUpload from "@/components/AvatarUpload";
 
 type Plan = {
@@ -36,7 +35,10 @@ type ClientData = {
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat, programTemplates, orgCurrency }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[]; orgCurrency?: string }) {
-  const cs = getCurrencySymbol(orgCurrency || 'USD');
+  const cs = (() => {
+    const map: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' };
+    return map[orgCurrency || 'USD'] || '$';
+  })();
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
