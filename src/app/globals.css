@@ -121,59 +121,58 @@ html.light .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1) !importan
 html.light .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05) !important; }
 
 /* ============================================================
-   SIDEBAR — Always stays dark with light text.
-   Uses [data-sidebar] attribute selector which gives HIGHER
-   specificity than the global rules above (0,1,1 vs 0,1,0 for
-   the class part). Combined with html.light this guarantees
-   sidebar overrides always win.
+   SIDEBAR — Follows the theme like the rest of the app.
+   Uses [data-sidebar] attribute for targeted styling when needed.
+   In light mode, the sidebar gets a slightly tinted background
+   to visually separate it from the main content area.
    ============================================================ */
 
-/* Sidebar container itself */
-html.light [data-sidebar] { background-color: #1a1a2e !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
-html.light [data-sidebar].bg-secondary\/50 { background-color: #1a1a2e !important; box-shadow: none !important; }
+/* Sidebar container — slightly off-white for visual separation */
+html.light [data-sidebar] { background-color: #f1f5f9 !important; border-color: #e2e8f0 !important; color: #1e293b !important; }
+html.light [data-sidebar].bg-secondary\/50 { background-color: #f1f5f9 !important; box-shadow: none !important; }
 
 /* Text colors inside sidebar */
-html.light [data-sidebar] .text-white { color: #ffffff !important; }
-html.light [data-sidebar] .text-gray-200 { color: #e5e7eb !important; }
-html.light [data-sidebar] .text-gray-300 { color: #d1d5db !important; }
-html.light [data-sidebar] .text-gray-400 { color: #9ca3af !important; }
-html.light [data-sidebar] .text-gray-500 { color: #a1a1aa !important; }
-html.light [data-sidebar] .text-gold { color: #d4a853 !important; }
-html.light [data-sidebar] .text-accent { color: #f26522 !important; }
-html.light [data-sidebar] .text-green-400 { color: #4ade80 !important; }
-html.light [data-sidebar] .text-red-400 { color: #f87171 !important; }
-html.light [data-sidebar] .text-red-500 { color: #f87171 !important; }
-html.light [data-sidebar] .text-purple-400 { color: #c084fc !important; }
-html.light [data-sidebar] .text-yellow-400 { color: #facc15 !important; }
-html.light [data-sidebar] .text-blue-400 { color: #60a5fa !important; }
-html.light [data-sidebar] .text-orange-500 { color: #f97316 !important; }
+html.light [data-sidebar] .text-white { color: #1e293b !important; }
+html.light [data-sidebar] .text-gray-200 { color: #1f2937 !important; }
+html.light [data-sidebar] .text-gray-300 { color: #4b5563 !important; }
+html.light [data-sidebar] .text-gray-400 { color: #6b7280 !important; }
+html.light [data-sidebar] .text-gray-500 { color: #9ca3af !important; }
+html.light [data-sidebar] .text-gold { color: #92640f !important; }
+html.light [data-sidebar] .text-accent { color: #e55b1e !important; }
+html.light [data-sidebar] .text-green-400 { color: #16a34a !important; }
+html.light [data-sidebar] .text-red-400 { color: #dc2626 !important; }
+html.light [data-sidebar] .text-red-500 { color: #dc2626 !important; }
+html.light [data-sidebar] .text-purple-400 { color: #7c3aed !important; }
+html.light [data-sidebar] .text-yellow-400 { color: #ca8a04 !important; }
+html.light [data-sidebar] .text-blue-400 { color: #2563eb !important; }
+html.light [data-sidebar] .text-orange-500 { color: #ea580c !important; }
 
 /* Borders inside sidebar */
-html.light [data-sidebar] .border-white\/5 { border-color: rgba(255,255,255,0.05) !important; }
-html.light [data-sidebar] .border-white\/10 { border-color: rgba(255,255,255,0.1) !important; }
-html.light [data-sidebar] .border-white\/20 { border-color: rgba(255,255,255,0.2) !important; }
+html.light [data-sidebar] .border-white\/5 { border-color: #e2e8f0 !important; }
+html.light [data-sidebar] .border-white\/10 { border-color: #cbd5e1 !important; }
+html.light [data-sidebar] .border-white\/20 { border-color: #94a3b8 !important; }
 html.light [data-sidebar] .border-l-accent { border-left-color: #f26522 !important; }
 
 /* Backgrounds inside sidebar */
-html.light [data-sidebar] .bg-primary { background-color: #1a1a2e !important; }
-html.light [data-sidebar] .bg-primary\/50 { background-color: rgba(26,26,46,0.5) !important; }
-html.light [data-sidebar] .bg-primary\/30 { background-color: rgba(26,26,46,0.3) !important; }
-html.light [data-sidebar] .bg-secondary { background-color: #16213e !important; }
-html.light [data-sidebar] .bg-secondary\/50 { background-color: rgba(22,33,62,0.5) !important; box-shadow: none !important; }
-html.light [data-sidebar] .bg-white\/5 { background-color: rgba(255,255,255,0.05) !important; }
-html.light [data-sidebar] .bg-white\/10 { background-color: rgba(255,255,255,0.1) !important; }
+html.light [data-sidebar] .bg-primary { background-color: #f1f5f9 !important; }
+html.light [data-sidebar] .bg-primary\/50 { background-color: #e2e8f0 !important; }
+html.light [data-sidebar] .bg-primary\/30 { background-color: #e8ecf1 !important; }
+html.light [data-sidebar] .bg-secondary { background-color: #ffffff !important; }
+html.light [data-sidebar] .bg-secondary\/50 { background-color: rgba(255,255,255,0.7) !important; box-shadow: none !important; }
+html.light [data-sidebar] .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
+html.light [data-sidebar] .bg-white\/10 { background-color: rgba(0,0,0,0.05) !important; }
 html.light [data-sidebar] .bg-accent { background-color: #f26522 !important; color: #ffffff !important; }
-html.light [data-sidebar] .bg-accent\/20 { background-color: rgba(242,101,34,0.2) !important; }
-html.light [data-sidebar] .bg-accent\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.light [data-sidebar] .bg-accent\/20 { background-color: rgba(242,101,34,0.12) !important; }
+html.light [data-sidebar] .bg-accent\/10 { background-color: rgba(242,101,34,0.08) !important; }
 
 /* Hover states inside sidebar */
-html.light [data-sidebar] .hover\:text-white:hover { color: #ffffff !important; }
-html.light [data-sidebar] .hover\:bg-white\/5:hover { background-color: rgba(255,255,255,0.05) !important; }
+html.light [data-sidebar] .hover\:text-white:hover { color: #111827 !important; }
+html.light [data-sidebar] .hover\:bg-white\/5:hover { background-color: rgba(0,0,0,0.04) !important; }
 
 /* Inputs inside sidebar */
-html.light [data-sidebar] input { background-color: rgba(26,26,46,0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
-html.light [data-sidebar] input::placeholder { color: rgba(255,255,255,0.5) !important; }
-html.light [data-sidebar] select { background-color: rgba(26,26,46,0.5) !important; border-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
+html.light [data-sidebar] input { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #1e293b !important; }
+html.light [data-sidebar] input::placeholder { color: #9ca3af !important; }
+html.light [data-sidebar] select { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #1e293b !important; }
 
 /* SVG inside sidebar */
 html.light [data-sidebar] svg { color: inherit; }
