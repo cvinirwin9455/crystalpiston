@@ -24,7 +24,8 @@ export async function middleware(request: NextRequest) {
   // Rewrite /favicon.ico based on domain
   if (pathname === '/favicon.ico') {
     if (host.includes('firstmilecoach')) {
-      return NextResponse.rewrite(new URL('/firstmile/favicon.png', request.url))
+      // Redirect to the correct favicon for First Mile Coach
+      return NextResponse.redirect(new URL('/firstmile/favicon.png', request.url), 302)
     }
     // Crystal Pistol: serve the default /favicon.ico from public/
     return NextResponse.next()
