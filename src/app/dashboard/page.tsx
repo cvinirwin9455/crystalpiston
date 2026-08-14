@@ -120,12 +120,6 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 export default function DashboardPage() {
   const { theme, setTheme } = useTheme();
 
-  // Inline currency symbol helper
-  const getCurrencySymbol = (code: string = 'USD') => {
-    const map: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' };
-    return map[code] || '$';
-  };
-
   // Initialize active tab from URL params (survives refresh)
   const getInitialTab = (): "training" | "messages" | "account" => {
     if (typeof window === 'undefined') return 'training';
@@ -254,7 +248,6 @@ export default function DashboardPage() {
   const [clientInfo, setClientInfo] = useState<{goal: string; planEnd: string; startDate: string; owed: number; paid: number; status: string; targetDistance?: string | null; raceDate?: string | null} | null>(null);
   const [allPlans, setAllPlans] = useState<{goal: string; startDate: string; planEnd: string; owed: number; paid: number; status: string; targetDistance?: string | null; raceDate?: string | null}[]>([]);
   const [clientGender, setClientGender] = useState<string | null>(null);
-  const [orgCurrency, setOrgCurrency] = useState<string>("USD");
   const [trainingProfile, setTrainingProfile] = useState<{birthday?: string | null} | null>(null);
   const [coachName, setCoachName] = useState<string>("your coach");
   const [coachAvatarUrl, setCoachAvatarUrl] = useState<string | null>(null);
@@ -651,20 +644,6 @@ export default function DashboardPage() {
       }
     };
     fetchPlanInfo();
-  }, []);
-
-  // Fetch org currency
-  useEffect(() => {
-    const fetchCurrency = async () => {
-      try {
-        const res = await fetch('/api/org-currency');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.currency) setOrgCurrency(data.currency);
-        }
-      } catch {}
-    };
-    fetchCurrency();
   }, []);
 
   // Fetch cycle tracking consent status (only for female clients)
@@ -2561,9 +2540,9 @@ export default function DashboardPage() {
                     </div>
                   )}
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">{getCurrencySymbol(orgCurrency)}{clientInfo.owed.toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">{getCurrencySymbol(orgCurrency)}{clientInfo.paid.toFixed(2)}</span></div>
-                    {(clientInfo.owed - clientInfo.paid) > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">{getCurrencySymbol(orgCurrency)}{(clientInfo.owed - clientInfo.paid).toFixed(2)}</span></div>}
+                    <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">${clientInfo.owed.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
+                    {(clientInfo.owed - clientInfo.paid) > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">${(clientInfo.owed - clientInfo.paid).toFixed(2)}</span></div>}
                   </div>
                   <div className="w-full bg-primary/50 rounded-full h-2 mt-4"><div className={`h-2 rounded-full ${(clientInfo.owed - clientInfo.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${clientInfo.owed > 0 ? Math.min(100, (clientInfo.paid / clientInfo.owed) * 100) : 100}%` }} /></div>
                   <p className="text-gray-400 text-xs mt-1 text-right">{clientInfo.owed > 0 ? Math.round((clientInfo.paid / clientInfo.owed) * 100) : 100}% paid</p>
@@ -2594,9 +2573,9 @@ export default function DashboardPage() {
                         {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(plan.planEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">Cost: {getCurrencySymbol(orgCurrency)}{plan.owed.toFixed(2)}</span>
+                        <span className="text-gray-400">Cost: ${plan.owed.toFixed(2)}</span>
                         <span className={`font-medium ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-                          {(plan.owed - plan.paid) > 0 ? `${getCurrencySymbol(orgCurrency)}${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+                          {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
                         </span>
                       </div>
                     </div>

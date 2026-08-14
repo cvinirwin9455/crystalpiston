@@ -24,12 +24,6 @@ type Client = { id: string; clientId: string | null; name: string; email: string
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
 
-  // Inline currency symbol helper to avoid module TDZ issues in large bundled components
-  const getCurrencySymbol = (code: string = 'USD') => {
-    const map: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' };
-    return map[code] || '$';
-  };
-
   // Restore state from URL params on initial load
   const getInitialParams = () => {
     if (typeof window === 'undefined') return { client: null, tab: 'plan' };
@@ -131,7 +125,6 @@ export default function AdminPage() {
   const [adminDistanceUnit, setAdminDistanceUnit] = useState<"mi" | "km">("mi");
   const [adminWeightUnit, setAdminWeightUnit] = useState<"kg" | "lbs">("kg");
   const [adminDateFormat, setAdminDateFormat] = useState<"MM/DD/YYYY" | "DD/MM/YYYY">("MM/DD/YYYY");
-  const [orgCurrency, setOrgCurrency] = useState<string>("USD");
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
@@ -214,20 +207,6 @@ export default function AdminPage() {
       }
     };
     fetchAdminNotifPrefs();
-  }, []);
-
-  // Fetch org currency
-  useEffect(() => {
-    const fetchOrgCurrency = async () => {
-      try {
-        const res = await fetch('/api/org-currency');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.currency) setOrgCurrency(data.currency);
-        }
-      } catch {}
-    };
-    fetchOrgCurrency();
   }, []);
 
   // When admin preferences load, update the weekPlan distance defaults
@@ -3519,7 +3498,7 @@ export default function AdminPage() {
                       <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
                       <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
                     </div>
-                    <p className="text-gray-400 text-xs">{getCurrencySymbol(orgCurrency)}{activePlan.paid}/{getCurrencySymbol(orgCurrency)}{activePlan.owed} paid</p>
+                    <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
                   </div>
                 </div>
                 <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
@@ -3941,7 +3920,6 @@ export default function AdminPage() {
                 }}
                 dateFormat={adminDateFormat}
                 programTemplates={programTemplates}
-                orgCurrency={orgCurrency}
               />
             )}
           </div>
@@ -4041,30 +4019,6 @@ export default function AdminPage() {
                     <button onClick={() => { setAdminDateFormat("DD/MM/YYYY"); saveAdminNotifPrefs(notifications, undefined, undefined, undefined, "DD/MM/YYYY"); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDateFormat === "DD/MM/YYYY" ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}><span>23 June 2026</span><br/><span className="text-xs opacity-60">Day first</span></button>
                   </div>
                 </div>
-
-                {/* Currency Preference (org-level) */}
-                {myCoachLevel !== 'coach' && (
-                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Currency</h3>
-                  <p className="text-gray-300 text-xs mb-4">Set the currency displayed on payment amounts. Applies to all coaches and clients in your organization.</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { code: 'USD', symbol: '$', label: 'USD', flag: '🇺🇸' },
-                      { code: 'GBP', symbol: '£', label: 'GBP', flag: '🇬🇧' },
-                      { code: 'EUR', symbol: '€', label: 'EUR', flag: '🇪🇺' },
-                      { code: 'AUD', symbol: 'A$', label: 'AUD', flag: '🇦🇺' },
-                      { code: 'NZD', symbol: 'NZ$', label: 'NZD', flag: '🇳🇿' },
-                      { code: 'CAD', symbol: 'C$', label: 'CAD', flag: '🇨🇦' },
-                    ] as const).map((c) => (
-                      <button key={c.code} onClick={async () => { setOrgCurrency(c.code); try { await fetch('/api/org-currency', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currency: c.code }) }); } catch {} }} className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${orgCurrency === c.code ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>
-                        <span>{c.flag}</span>
-                        <span>{c.symbol}</span>
-                        <span className="text-xs opacity-70">{c.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                )}
 
                 {/* Default Week View Preference */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
@@ -5048,8 +5002,8 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{activeVisible.length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{activeVisible.reduce((s, c) => s + c.weeks.filter((w: any) => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">{getCurrencySymbol(orgCurrency)}{activeVisible.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">{getCurrencySymbol(orgCurrency)}{activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${activeVisible.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
                 </div>
               );
             })()}
@@ -5145,7 +5099,7 @@ export default function AdminPage() {
                               </div>
                               <p className="text-white text-sm">{c.name}</p>
                             </div>
-                            <div className="text-right"><p className="text-white text-sm font-medium">{getCurrencySymbol(orgCurrency)}{(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-300 text-xs">{getCurrencySymbol(orgCurrency)}{c.paid}/{getCurrencySymbol(orgCurrency)}{c.owed} paid</p></div>
+                            <div className="text-right"><p className="text-white text-sm font-medium">${(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-300 text-xs">${c.paid}/${c.owed} paid</p></div>
                           </button>
                         ))}
                       </div>
