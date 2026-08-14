@@ -4299,17 +4299,33 @@ export default function AdminPage() {
                             </div>
                           </div>
                           {expandedTemplateItems.has(t.id) && (
-                          <div className="mt-3">
-                          {/* Preview grid */}
-                          <div className="grid grid-cols-7 gap-1">
-                            {normDays.map((d: any, i: number) => (
-                              <div key={i} className={`rounded p-2 text-center ${d.type === 'run' ? 'bg-accent/10' : d.type === 'cross' ? 'bg-gold/10' : d.type === 'walk' ? 'bg-blue-500/10' : d.type === 'cycling' ? 'bg-cyan-500/10' : d.type === 'stretching' ? 'bg-purple-500/10' : 'bg-green-500/10'}`}>
-                                <p className="text-gray-300 text-xs">{d.day?.slice(0, 3)}</p>
-                                <p className="text-white text-xs font-medium truncate">{d.title || d.trainingType || getTypeLabel(d.type)}</p>
-                                {d.miles && <p className="text-accent text-xs">{convertDist(Number(d.miles))}{distUnitShort}</p>}
+                          <div className="mt-3 space-y-2">
+                          {/* Detailed day-by-day breakdown */}
+                          {normDays.map((d: any, i: number) => {
+                            const workouts = d.workouts || [{ type: d.type, trainingType: d.trainingType, title: d.title, miles: d.miles, description: d.description || '', paceTarget: d.paceTarget || '', coachNotes: d.coachNotes || '', location: d.location || '' }];
+                            return (
+                              <div key={i} className={`border-l-2 rounded-r-lg p-3 ${d.type === 'run' ? 'border-l-accent bg-accent/5' : d.type === 'cross' ? 'border-l-gold bg-gold/5' : d.type === 'walk' ? 'border-l-blue-500 bg-blue-500/5' : d.type === 'cycling' ? 'border-l-cyan-500 bg-cyan-500/5' : d.type === 'stretching' ? 'border-l-purple-500 bg-purple-500/5' : 'border-l-green-500 bg-green-500/5'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-white font-heading text-xs uppercase">{d.day}</span>
+                                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${d.type === 'run' ? 'bg-accent/20 text-accent' : d.type === 'cross' ? 'bg-gold/20 text-gold' : d.type === 'walk' ? 'bg-blue-500/20 text-blue-400' : d.type === 'cycling' ? 'bg-cyan-500/20 text-cyan-400' : d.type === 'stretching' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400'}`}>{getTypeLabel(d.type)}</span>
+                                  {d.trainingType && d.trainingType !== 'Rest' && <span className="text-gray-400 text-xs">{getTrainingTypeLabel(d.trainingType)}</span>}
+                                  {d.miles && <span className="text-accent text-xs font-medium">{convertDist(Number(d.miles))}{distUnitShort}</span>}
+                                </div>
+                                {workouts.map((wo: any, wi: number) => (
+                                  <div key={wi} className={`${wi > 0 ? 'mt-2 pt-2 border-t border-white/5' : ''}`}>
+                                    {wo.title && <p className="text-white text-sm font-medium">{wo.title}</p>}
+                                    {wo.description && <p className="text-gray-300 text-xs mt-0.5">{wo.description}</p>}
+                                    {wo.structure && (
+                                      <p className="text-gray-300 text-xs mt-1 whitespace-pre-line">{wo.structure.exercises ? formatCrossTrainingForDisplay(wo.structure) : formatStructureForDisplay(wo.structure)}</p>
+                                    )}
+                                    {wo.paceTarget && <p className="text-accent text-xs mt-0.5">Target: {wo.paceTarget}</p>}
+                                    {wo.location && <p className="text-gray-500 text-xs mt-0.5">📍 {wo.location}</p>}
+                                    {wo.coachNotes && <p className="text-gold text-xs mt-0.5 italic">Notes: {wo.coachNotes}</p>}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })}
                           {t.data.coachMessage && (
                             <div className="mt-2 bg-gold/5 border border-gold/10 rounded-lg p-2">
                               <p className="text-gold text-xs">Coach message: {t.data.coachMessage}</p>
