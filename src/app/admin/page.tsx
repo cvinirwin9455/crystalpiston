@@ -3809,7 +3809,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Input Area - fixed at bottom */}
-                <div className="px-4 py-3 border-t border-white/10 bg-secondary/50">
+                <div className="px-4 py-3 pb-12 border-t border-white/10 bg-secondary/50">
                   <div className="flex items-end gap-3">
                     <textarea
                       value={newMessage}
