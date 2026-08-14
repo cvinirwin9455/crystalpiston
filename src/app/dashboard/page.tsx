@@ -1322,7 +1322,7 @@ export default function DashboardPage() {
               {showUpdatesDropdown && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => { setShowUpdatesDropdown(false); setShowNewBadge(false); localStorage.setItem("changelog_last_seen_client", new Date().toISOString()); setLastSeenUpdates(new Date().toISOString()); }} />
-                  <div className="absolute right-0 top-8 w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                  <div className="fixed left-4 right-4 top-16 md:absolute md:right-0 md:left-auto md:top-8 md:w-80 max-h-96 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                     <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                       <h3 className="text-white text-sm font-heading uppercase">What&apos;s New</h3>
                       {showNewBadge && <span className="text-accent text-[10px] font-bold">New updates!</span>}

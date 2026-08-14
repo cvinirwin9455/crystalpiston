@@ -2865,7 +2865,7 @@ export default function AdminPage() {
           })()}
         </div>
         {/* Theme toggle — bottom of sidebar, always visible */}
-        <div className="p-3 border-t border-white/10 flex items-center justify-between">
+        <div className="p-3 pb-14 md:pb-3 border-t border-white/10 flex items-center justify-between">
           <span className="text-gray-500 text-xs">Appearance</span>
           <button onClick={() => adminSetTheme(adminTheme === "dark" ? "light" : "dark")} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/50 border border-white/10 hover:border-accent/30 transition-colors" title={adminTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {adminTheme === "dark" ? (
