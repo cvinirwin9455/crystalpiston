@@ -2539,7 +2539,7 @@ export default function AdminPage() {
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
       <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20 ${isSuperAdminViewing ? "md:pt-10" : ""}`}>
         <div className="p-4 border-b border-white/10">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-3 relative">
             {/* Mobile: coach photo */}
             <div className="md:hidden w-14 h-14 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
               {adminAvatarUrl ? (
@@ -2564,8 +2564,8 @@ export default function AdminPage() {
               <svg className={`w-4 h-4 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               {showNewUpdatesBadge && <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full"></span>}
             </button>
-            {/* Desktop-only dropdown */}
-            <div className="hidden md:block relative">
+            {/* Desktop-only dropdown — absolute to not affect flex layout */}
+            <div className="hidden md:block absolute left-0 right-0 top-full z-50">
               {showAdminMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
