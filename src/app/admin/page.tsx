@@ -2913,7 +2913,7 @@ export default function AdminPage() {
             {/* Cycle tracking checkbox — only shows when gender is Female */}
             {newClientForm.gender === 'female' && (
             <div className="flex items-center gap-3 mb-4">
-              <button type="button" onClick={() => setNewClientForm({ ...newClientForm, trackCycle: !newClientForm.trackCycle })} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${newClientForm.trackCycle ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{newClientForm.trackCycle && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
+              <button type="button" onClick={() => setNewClientForm({ ...newClientForm, trackCycle: !newClientForm.trackCycle })} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${newClientForm.trackCycle ? "bg-accent border-accent" : "border-gray-500 hover:border-accent"}`}>{newClientForm.trackCycle && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
               <div>
                 <span className="text-white text-sm">Track menstrual cycle</span>
                 <p className="text-gray-500 text-xs">Client will be asked to consent on first login</p>
@@ -3236,7 +3236,7 @@ export default function AdminPage() {
                                 {w.log.maxHeartrate && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Max</span> <span className="text-red-400 font-medium">{w.log.maxHeartrate}</span></span>}
                                 {w.log.sleep && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Sleep</span> <span className="text-white font-medium">{w.log.sleep}/10</span></span>}
                                 {w.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{w.log.stress}</span></span>}
-                                {w.log.onPeriod === "yes" && clients.find(c => c.id === selectedClient)?.cycleTrackingConsented === true && <span className="text-xs bg-pink-500/10 rounded px-2 py-1 text-pink-400 font-medium">On Period</span>}
+                                {w.log.onPeriod === "yes" && clients.find(c => c.id === selectedClient)?.cycleTrackingConsented === true && <span className="text-xs bg-accent/10 rounded px-2 py-1 text-accent font-medium">On Period</span>}
                               </div>
                               {w.log.notes && !w.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{w.log.notes}</p>}
                               {w.skipReason && <p className="text-yellow-400 text-xs mt-1.5"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
@@ -5134,7 +5134,7 @@ export default function AdminPage() {
             {/* Cycle tracking checkbox — only shows when gender is Female */}
             {newClientForm.gender === 'female' && (
             <div className="flex items-center gap-3 mt-5">
-              <button type="button" onClick={() => setNewClientForm({ ...newClientForm, trackCycle: !newClientForm.trackCycle })} className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${newClientForm.trackCycle ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{newClientForm.trackCycle && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
+              <button type="button" onClick={() => setNewClientForm({ ...newClientForm, trackCycle: !newClientForm.trackCycle })} className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${newClientForm.trackCycle ? "bg-accent border-accent" : "border-gray-500 hover:border-accent"}`}>{newClientForm.trackCycle && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
               <div>
                 <span className="text-white text-sm">Track menstrual cycle</span>
                 <p className="text-gray-500 text-xs">Client will be asked to consent on first login</p>

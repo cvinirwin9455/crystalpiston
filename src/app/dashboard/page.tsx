@@ -1388,10 +1388,10 @@ export default function DashboardPage() {
         )}
         {/* Cycle Tracking Consent Banner — shows only if coach requested and client hasn't responded yet */}
         {cycleConsentLoaded && cycleTrackingRequested && cycleTrackingConsented === null && clientGender === 'female' && (
-          <div className="bg-pink-500/5 border border-pink-500/20 rounded-2xl p-5">
+          <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+              <div className="w-10 h-10 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
               </div>
               <div className="flex-1">
                 <p className="text-white text-sm font-medium mb-1">Cycle Tracking</p>
@@ -1402,7 +1402,7 @@ export default function DashboardPage() {
                   If you opt in, a simple &quot;On period today&quot; checkbox will appear when you log workouts. Your coach will see this info to help adjust your plan. If you opt out, this feature stays hidden and your coach will not be told your choice.
                 </p>
                 <div className="flex gap-3">
-                  <button onClick={() => handleCycleConsent(true)} disabled={cycleConsentSaving} className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-colors disabled:opacity-50">
+                  <button onClick={() => handleCycleConsent(true)} disabled={cycleConsentSaving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-colors disabled:opacity-50">
                     {cycleConsentSaving ? 'Saving...' : 'Yes, enable tracking'}
                   </button>
                   <button onClick={() => handleCycleConsent(false)} disabled={cycleConsentSaving} className="bg-primary/50 border border-white/10 hover:border-white/20 text-gray-300 font-medium py-2.5 px-5 rounded-lg text-xs transition-colors disabled:opacity-50">
@@ -1774,7 +1774,7 @@ export default function DashboardPage() {
                       {/* Period tracking - show only if client has consented to cycle tracking */}
                       {cycleTrackingConsented === true && (
                       <div className="mb-4 flex items-center gap-3">
-                        <button onClick={() => updateWorkoutLog(workout.id, "onPeriod", (workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "no" : "yes")} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "bg-pink-500 border-pink-500" : "border-gray-500 hover:border-pink-400"}`}>{(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
+                        <button onClick={() => updateWorkoutLog(workout.id, "onPeriod", (workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "no" : "yes")} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" ? "bg-accent border-accent" : "border-gray-500 hover:border-accent"}`}>{(workout.log as Record<string, string> | undefined)?.onPeriod === "yes" && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}</button>
                         <span className="text-gray-400 text-xs">On period today</span>
                       </div>
                       )}
