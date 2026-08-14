@@ -73,10 +73,18 @@ export async function GET() {
   // Try to fetch training profile fields (columns may not exist yet)
   let trainingProfiles: any[] = []
   try {
-    const { data } = await adminClient
+    const { data, error } = await adminClient
       .from('clients')
       .select('id, birthday, cycle_tracking_consented')
-    trainingProfiles = data || []
+    if (error) {
+      // Column likely doesn't exist — fall back to just birthday
+      const { data: fallbackData } = await adminClient
+        .from('clients')
+        .select('id, birthday')
+      trainingProfiles = fallbackData || []
+    } else {
+      trainingProfiles = data || []
+    }
   } catch {}
 
   const trainingProfileMap = new Map<string, any>()
@@ -350,11 +358,16 @@ export async function POST(request: Request) {
   // Try to update training profile fields (columns may not exist yet)
   if (newClientRecord) {
     try {
-      const profileUpdates: Record<string, any> = {}
-      if (birthday) profileUpdates.birthday = birthday
-      if (trackCycle && gender === 'female') profileUpdates.cycle_tracking_requested = true
-      if (Object.keys(profileUpdates).length > 0) {
-        await adminClient.from('clients').update(profileUpdates).eq('id', newClientRecord.id)
+      // Update birthday (safe — column always exists)
+      if (birthday) {
+        await adminClient.from('clients').update({ birthday }).eq('id', newClientRecord.id)
+      }
+      // Update cycle tracking flag (may fail if column doesn't exist yet — that's OK)
+      if (trackCycle && gender === 'female') {
+        const { error } = await adminClient.from('clients').update({ cycle_tracking_requested: true }).eq('id', newClientRecord.id)
+        if (error) {
+          console.warn('Could not set cycle_tracking_requested (column may not exist):', error.message)
+        }
       }
     } catch {}
   }

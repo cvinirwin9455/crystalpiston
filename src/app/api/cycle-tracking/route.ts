@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getOrgIdForUser } from '@/lib/org'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -36,36 +35,38 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { data: client } = await adminClient
+    const { data: client, error } = await adminClient
       .from('clients')
       .select('cycle_tracking_requested, cycle_tracking_consented')
       .eq('id', clientId)
       .single()
 
-    if (!client) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    // If columns don't exist or query fails, return safe defaults
+    if (error || !client) {
+      return NextResponse.json({ requested: false, consented: null })
     }
 
     return NextResponse.json({
       requested: client.cycle_tracking_requested || false,
-      consented: client.cycle_tracking_consented,
+      consented: client.cycle_tracking_consented ?? null,
     })
   }
 
   // Client is querying their own status
-  const { data: clientRecord } = await adminClient
+  const { data: clientRecord, error } = await adminClient
     .from('clients')
     .select('cycle_tracking_requested, cycle_tracking_consented')
     .eq('user_id', user.id)
     .single()
 
-  if (!clientRecord) {
+  // If columns don't exist or client not found, return safe defaults
+  if (error || !clientRecord) {
     return NextResponse.json({ requested: false, consented: null })
   }
 
   return NextResponse.json({
     requested: clientRecord.cycle_tracking_requested || false,
-    consented: clientRecord.cycle_tracking_consented,
+    consented: clientRecord.cycle_tracking_consented ?? null,
   })
 }
 
@@ -107,6 +108,10 @@ export async function PUT(request: Request) {
       .eq('id', body.clientId)
 
     if (error) {
+      // If columns don't exist yet, return a helpful message
+      if (error.code === '42703' || error.message?.includes('column')) {
+        return NextResponse.json({ error: 'Cycle tracking columns not found. Please run the migration first.' }, { status: 500 })
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -115,23 +120,28 @@ export async function PUT(request: Request) {
 
   // Client updating their own consent
   if (body.consented !== undefined) {
-    const { data: clientRecord } = await adminClient
+    // First get the client's ID (use basic columns that always exist)
+    const { data: clientRecord, error: selectError } = await adminClient
       .from('clients')
-      .select('id, cycle_tracking_requested')
+      .select('id')
       .eq('user_id', user.id)
       .single()
 
-    if (!clientRecord) {
+    if (selectError || !clientRecord) {
       return NextResponse.json({ error: 'Client record not found' }, { status: 404 })
     }
 
-    // Client can always set their own consent preference
+    // Update the consent column
     const { error } = await adminClient
       .from('clients')
       .update({ cycle_tracking_consented: body.consented })
       .eq('id', clientRecord.id)
 
     if (error) {
+      // If column doesn't exist yet, return a helpful message
+      if (error.code === '42703' || error.message?.includes('column')) {
+        return NextResponse.json({ error: 'Cycle tracking columns not found. Please run the migration first.' }, { status: 500 })
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
