@@ -6,6 +6,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Force chunk hash regeneration
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
   headers: async () => {
     return [
       {
