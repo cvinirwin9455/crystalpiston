@@ -2864,16 +2864,15 @@ export default function AdminPage() {
             );
           })()}
         </div>
-        {/* Theme toggle — bottom of sidebar on desktop only */}
-        <div className="p-3 border-t border-white/10 hidden md:flex items-center justify-between">
-          <span className="text-gray-500 text-xs">Appearance</span>
-          <button onClick={() => adminSetTheme(adminTheme === "dark" ? "light" : "dark")} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/50 border border-white/10 hover:border-accent/30 transition-colors" title={adminTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+        {/* Theme + Feedback — bottom of sidebar, pill buttons side by side */}
+        <div className="p-3 border-t border-white/10 hidden md:flex items-center gap-2">
+          <button onClick={() => adminSetTheme(adminTheme === "dark" ? "light" : "dark")} className="flex items-center gap-2 px-3 py-2 rounded-full shadow-lg bg-primary/50 border border-white/10 hover:border-accent/30 transition-all text-white text-sm font-medium" title={adminTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {adminTheme === "dark" ? (
               <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
             ) : (
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             )}
-            <span className="text-xs text-gray-400">{adminTheme === "dark" ? "Light" : "Dark"}</span>
+            {adminTheme === "dark" ? "Light" : "Dark"}
           </button>
         </div>
       </aside>
