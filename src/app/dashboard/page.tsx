@@ -302,11 +302,71 @@ export default function DashboardPage() {
   }, []);
 
   const clientUpdates = [
+    { date: "August 14, 2026", items: [
+      "Improved: Platform branding — colors and styling now match the First Mile Coach marketing page in both dark and light modes",
+      "Fixed: Refreshing or pull-to-refresh no longer resets you back to the Training tab — your current view is preserved",
+      "Improved: Account dropdown menu items are properly left-aligned and easier to read",
+    ]},
+    { date: "August 9, 2026", items: [
+      "NEW: Cycle Tracking Consent — if your coach has requested cycle tracking, you'll see a one-time prompt explaining what it does and giving you full control to opt in or out. Your choice is private",
+      "Privacy: Period data is now fully consent-gated. The 'On Period' checkbox only appears if you've explicitly opted in",
+      "Improved: The 'Add Your Own Workout' form now only shows workout types that your coach has enabled for your organization",
+    ]},
+    { date: "August 8, 2026", items: [
+      "NEW: Watch Demo Videos — exercises that have a linked demo video now show a play button. Tap it to watch the video right on the platform without leaving the page",
+    ]},
+    { date: "August 3, 2026", items: [
+      "Fixed: The Feedback button was covering the Account menu on mobile — it's been moved so it no longer blocks anything",
+    ]},
+    { date: "July 28, 2026", items: [
+      "Fixed: Light mode text visibility — all text is now properly readable in light mode",
+      "Improved: Light mode sticky headers are now white/translucent as expected",
+      "Improved: Shadows in light mode are softer and less harsh",
+    ]},
+    { date: "July 27, 2026", items: [
+      "NEW: Dark/Light mode toggle — switch between dark and light mode from your Account settings (under 'Appearance'). Your preference syncs across devices",
+    ]},
+    { date: "July 26, 2026", items: [
+      "NEW: Feedback & Bug Report button — a floating 'Feedback' button appears on every page. Click it to submit a bug report or feature suggestion with an optional screenshot",
+      "NEW: When you submit feedback, you'll get a confirmation email. When the team has an update, you'll get another email",
+    ]},
+    { date: "July 16, 2026", items: [
+      "Fixed: Strava sync catch-up now properly matches missed workouts to your programmed plan",
+      "NEW: If your Strava connection expires, you'll see a clear orange banner on your dashboard telling you to reconnect in Settings",
+    ]},
+    { date: "July 15, 2026", items: [
+      "Fixed: All notification emails now show the correct First Mile Coach logo",
+    ]},
+    { date: "July 9, 2026", items: [
+      "NEW: First Mile Coach branding — the platform, login, and all emails now use First Mile Coach branding",
+      "NEW: Login page shows First Mile Coach styling with the orange/light theme",
+    ]},
+    { date: "July 7, 2026", items: [
+      "Your coach's full name now shows in the dashboard header",
+      "Banner notifications you dismiss now stay dismissed across all your devices",
+      "Target pace now shows inline with each workout block (e.g. '3 mi @ Tempo (7:30/mi)')",
+      "Fixed: Pace conversion now handles ranges like '7:00-7:30/mi' correctly",
+    ]},
     { date: "July 6, 2026", items: [
       "NEW: Profile Photo Upload — tap your avatar in Account to upload a profile photo",
       "Your photo shows in the header and anywhere your name appears",
       "Priority: uploaded photo first, then Strava photo (if connected), then initials",
       "Coach's profile photo now shows in the Messages chat header",
+    ]},
+    { date: "June 29, 2026", items: [
+      "Fixed: Email notifications now only go to coaches assigned to you — removed coaches no longer get your emails",
+      "Date format preference (MM/DD or DD/MM) now applies everywhere",
+      "Date format preference buttons now visually indicate which format is selected",
+    ]},
+    { date: "June 28, 2026", items: [
+      "All references to 'Crystal' throughout the app now dynamically show your actual coach's name",
+      "Notification settings now reference your actual coach name",
+      "Workout comment threads show the actual coach name who commented",
+    ]},
+    { date: "June 27, 2026", items: [
+      "Fixed: If your coach changes a workout to KM, it now shows KM on your side too",
+      "NEW: 'Your Profile' section in Account tab — you can now see your training info (age, mileage, paces, notes)",
+      "Target Distance and Race Date now show under 'Your Plan' so you know what you're training for",
     ]},
     { date: "June 25, 2026", items: [
       "New Help Center — tap the ? icon in the header to search guides on how to use every feature",
@@ -383,7 +443,7 @@ export default function DashboardPage() {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
     // Show badge if user hasn't seen the latest updates (use current timestamp as threshold)
-    const latestUpdateTimestamp = "2026-06-29T01:00:00Z";
+    const latestUpdateTimestamp = "2026-08-14T12:00:00Z";
     if (!lastSeen || lastSeen < latestUpdateTimestamp) {
       setShowNewBadge(true);
     }
