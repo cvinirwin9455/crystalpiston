@@ -23,9 +23,35 @@ type Client = { id: string; clientId: string | null; name: string; email: string
 
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">("plan");
+
+  // Restore state from URL params on initial load
+  const getInitialParams = () => {
+    if (typeof window === 'undefined') return { client: null, tab: 'plan' };
+    const params = new URLSearchParams(window.location.search);
+    return {
+      client: params.get('client') || null,
+      tab: (params.get('tab') || 'plan') as "plan" | "create" | "messages" | "drafts" | "account" | "stats",
+    };
+  };
+  const initialParams = getInitialParams();
+
+  const [selectedClient, setSelectedClient] = useState<string | null>(initialParams.client);
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">(initialParams.tab);
   const [editingWeek, setEditingWeek] = useState(false);
+
+  // Persist navigation state in URL (survives refresh)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (selectedClient) {
+      params.set('client', selectedClient);
+      params.set('tab', clientTab);
+    } else {
+      params.delete('client');
+      params.delete('tab');
+    }
+    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [selectedClient, clientTab]);
   const [editedWorkouts, setEditedWorkouts] = useState<Record<string, { type: string; trainingType: string; miles: string; title: string; description: string; paceTarget: string; location: string; coachNotes: string }>>({});
   const [editDistanceUnits, setEditDistanceUnits] = useState<Record<string, "mi" | "km">>({});
   const [editCrossTrainingStructures, setEditCrossTrainingStructures] = useState<Record<string, CrossTrainingStructure>>({});

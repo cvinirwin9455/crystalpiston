@@ -119,17 +119,29 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 
 export default function DashboardPage() {
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">("training");
-  const [videoModal, setVideoModal] = useState<{ url: string; exerciseName: string } | null>(null);
 
-  // Check URL params for tab navigation (e.g. from email links)
-  useEffect(() => {
+  // Initialize active tab from URL params (survives refresh)
+  const getInitialTab = (): "training" | "messages" | "account" => {
+    if (typeof window === 'undefined') return 'training';
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab === 'messages' || tab === 'account') {
-      setActiveTab(tab);
+    if (tab === 'messages' || tab === 'account') return tab;
+    return 'training';
+  };
+  const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">(getInitialTab);
+  const [videoModal, setVideoModal] = useState<{ url: string; exerciseName: string } | null>(null);
+
+  // Persist tab in URL (survives refresh/pull-to-refresh)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (activeTab !== 'training') {
+      params.set('tab', activeTab);
+    } else {
+      params.delete('tab');
     }
-  }, []);
+    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [activeTab]);
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
   const [editingWorkoutLog, setEditingWorkoutLog] = useState<string | null>(null);
   const [showLinkOptions, setShowLinkOptions] = useState<string | null>(null);
