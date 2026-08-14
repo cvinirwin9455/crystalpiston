@@ -35,7 +35,7 @@ type ClientData = {
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat, programTemplates, orgCurrency }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[]; orgCurrency?: string }) {
-  const cs = (() => {
+  const currencySymbol = (() => {
     const map: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' };
     return map[orgCurrency || 'USD'] || '$';
   })();
@@ -446,7 +446,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
                 <input type="date" value={newPlanEnd} onChange={(e) => setNewPlanEnd(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
               </div>
               <div>
-                <label className="text-gray-500 text-xs block mb-1">Plan Cost ({cs})</label>
+                <label className="text-gray-500 text-xs block mb-1">Plan Cost ({currencySymbol})</label>
                 <input type="number" value={newPlanOwed} onChange={(e) => setNewPlanOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
               </div>
             </div>
@@ -722,7 +722,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
               <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Plan Cost ({cs})</label>
+              <label className="text-gray-500 text-xs block mb-1">Plan Cost ({currencySymbol})</label>
               <input type="number" value={editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
             </div>
           </div>
@@ -764,7 +764,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           {hasOutstandingBalance ? (
             <>
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
-                <p className="text-yellow-400 text-sm font-medium mb-1">Outstanding Balance: {cs}{(plan.owed - plan.paid).toFixed(2)}</p>
+                <p className="text-yellow-400 text-sm font-medium mb-1">Outstanding Balance: {currencySymbol}{(plan.owed - plan.paid).toFixed(2)}</p>
                 <p className="text-gray-300 text-xs">This plan has an unpaid balance. Please explain why the plan is being completed with outstanding payment, and why the client didn&apos;t finish (if applicable). This will be saved for your records.</p>
               </div>
               <div className="mb-3">
@@ -801,16 +801,16 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       <div className="grid md:grid-cols-3 gap-4">
         <div>
           <p className="text-gray-500 text-xs">Plan Cost</p>
-          <p className="text-white font-medium">{cs}{plan.owed.toFixed(2)}</p>
+          <p className="text-white font-medium">{currencySymbol}{plan.owed.toFixed(2)}</p>
         </div>
         <div>
           <p className="text-gray-500 text-xs">Total Paid</p>
-          <p className="text-white font-medium">{cs}{plan.paid.toFixed(2)}</p>
+          <p className="text-white font-medium">{currencySymbol}{plan.paid.toFixed(2)}</p>
         </div>
         <div>
           <p className="text-gray-500 text-xs">Balance</p>
           <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-            {(plan.owed - plan.paid) > 0 ? `${cs}${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+            {(plan.owed - plan.paid) > 0 ? `${currencySymbol}${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
           </p>
         </div>
       </div>
@@ -840,7 +840,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         <div className="mt-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
           <div className="flex items-center justify-between mb-1">
             <p className="text-yellow-400 text-xs font-heading uppercase">Completed with Balance Due</p>
-            <p className="text-yellow-400 text-xs font-bold">{cs}{(plan.owed - plan.paid).toFixed(2)} unpaid</p>
+            <p className="text-yellow-400 text-xs font-bold">{currencySymbol}{(plan.owed - plan.paid).toFixed(2)} unpaid</p>
           </div>
           {plan.completionReason && <p className="text-gray-300 text-xs mt-1">{plan.completionReason}</p>}
         </div>
@@ -860,7 +860,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             {paymentHistory.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-xs">
                 <span className="text-gray-400">{formatDate(p.date)}</span>
-                <span className="text-green-400 font-medium">+{cs}{p.amount.toFixed(2)}</span>
+                <span className="text-green-400 font-medium">+{currencySymbol}{p.amount.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -881,7 +881,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             <div className="bg-secondary/50 border border-white/10 rounded-lg p-3 mt-2">
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label className="text-gray-500 text-xs block mb-1">Amount ({cs})</label>
+                  <label className="text-gray-500 text-xs block mb-1">Amount ({currencySymbol})</label>
                   <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
                 </div>
                 <div>
