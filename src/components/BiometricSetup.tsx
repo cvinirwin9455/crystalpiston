@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
 
 export default function BiometricSetup() {
   const [available, setAvailable] = useState(false);
@@ -57,6 +56,7 @@ export default function BiometricSetup() {
       const options = await optionsRes.json();
 
       // Trigger biometric prompt
+      const { startRegistration } = await import("@simplewebauthn/browser");
       const regResponse = await startRegistration({ optionsJSON: options });
 
       // Verify with server
