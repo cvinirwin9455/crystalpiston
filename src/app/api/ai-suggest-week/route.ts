@@ -49,12 +49,22 @@ export async function POST(request: Request) {
     // Try to get training profile fields (columns may not exist yet)
     let trainingProfile: any = {}
     try {
-      const { data } = await adminClient
+      const { data, error } = await adminClient
         .from('clients')
         .select('experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes, cycle_tracking_consented')
         .eq('id', clientId)
         .single()
-      trainingProfile = data || {}
+      if (error) {
+        // Column likely doesn't exist — fall back without cycle_tracking_consented
+        const { data: fallbackData } = await adminClient
+          .from('clients')
+          .select('experience_level, current_mileage, target_distance, race_date, easy_pace, goal_pace, days_per_week, age, injury_notes')
+          .eq('id', clientId)
+          .single()
+        trainingProfile = fallbackData || {}
+      } else {
+        trainingProfile = data || {}
+      }
     } catch {}
     // Merge training profile into client record for prompt usage
     Object.assign(clientRecord, trainingProfile)
