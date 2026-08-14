@@ -793,6 +793,24 @@ export default function AdminPage() {
   const [weekTemplateSearch, setWeekTemplateSearch] = useState("");
   const [showWeekTemplateDropdown, setShowWeekTemplateDropdown] = useState(false);
   const [dayTemplateSearch, setDayTemplateSearch] = useState("");
+
+  // Template library expand/collapse state (default: all collapsed)
+  const [expandedTemplateCategories, setExpandedTemplateCategories] = useState<Set<string>>(new Set());
+  const [expandedTemplateItems, setExpandedTemplateItems] = useState<Set<string>>(new Set());
+  const toggleTemplateCategory = (cat: string) => {
+    setExpandedTemplateCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  };
+  const toggleTemplateItem = (id: string) => {
+    setExpandedTemplateItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const weekTemplateDropdownRef = useRef<HTMLDivElement>(null);
 
   // Filtered week templates based on search
@@ -4078,10 +4096,15 @@ export default function AdminPage() {
 
                 {/* Week Templates */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-heading text-sm uppercase text-gold">Week Templates ({weekTemplates.length})</h3>
-                    <button onClick={() => { setCreatingWeekTemplate(!creatingWeekTemplate); setCreatingDayTemplate(false); }} className="bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingWeekTemplate ? "Cancel" : "+ Create Week Template"}</button>
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => toggleTemplateCategory('week')} className="flex items-center gap-2 text-left">
+                      <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedTemplateCategories.has('week') ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      <h3 className="font-heading text-sm uppercase text-gold">Week Templates ({weekTemplates.length})</h3>
+                    </button>
+                    {expandedTemplateCategories.has('week') && <button onClick={() => { setCreatingWeekTemplate(!creatingWeekTemplate); setCreatingDayTemplate(false); }} className="bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingWeekTemplate ? "Cancel" : "+ Create Week Template"}</button>}
                   </div>
+                  {expandedTemplateCategories.has('week') && (
+                  <div className="mt-4">
                   {/* Create Week Template Form */}
                   {creatingWeekTemplate && (
                     <div className="bg-primary/30 border border-gold/20 rounded-xl p-4 mb-4 space-y-4">
@@ -4215,16 +4238,21 @@ export default function AdminPage() {
                         <div key={t.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
                           {!isEditing ? (
                             <>
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <h4 className="text-white font-medium">{t.name}</h4>
-                              <p className="text-gray-300 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{runCount} run{runCount !== 1 ? 's' : ''}{crossCount > 0 ? `, ${crossCount} cross` : ''}{walkCount > 0 ? `, ${walkCount} walk` : ''}, {restCount} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
-                            </div>
+                          <div className="flex items-center justify-between">
+                            <button onClick={() => toggleTemplateItem(t.id)} className="flex items-center gap-2 text-left flex-1">
+                              <svg className={`w-3 h-3 text-gray-500 transition-transform ${expandedTemplateItems.has(t.id) ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                              <div>
+                                <h4 className="text-white font-medium">{t.name}</h4>
+                                <p className="text-gray-300 text-xs">{t.category && <span className="text-gold">{t.category} · </span>}{runCount} run{runCount !== 1 ? 's' : ''}{crossCount > 0 ? `, ${crossCount} cross` : ''}{walkCount > 0 ? `, ${walkCount} walk` : ''}, {restCount} rest{t.data.focus && ` · Focus: ${t.data.focus}`}</p>
+                              </div>
+                            </button>
                             <div className="flex items-center gap-2">
                               <button onClick={() => startEditingTemplate(t)} className="text-gray-500 hover:text-white text-xs transition-colors border border-white/10 px-3 py-1 rounded">Edit</button>
                               <button onClick={() => handleDeleteTemplate(t.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
                             </div>
                           </div>
+                          {expandedTemplateItems.has(t.id) && (
+                          <div className="mt-3">
                           {/* Preview grid */}
                           <div className="grid grid-cols-7 gap-1">
                             {normDays.map((d: any, i: number) => (
@@ -4239,6 +4267,8 @@ export default function AdminPage() {
                             <div className="mt-2 bg-gold/5 border border-gold/10 rounded-lg p-2">
                               <p className="text-gold text-xs">Coach message: {t.data.coachMessage}</p>
                             </div>
+                          )}
+                          </div>
                           )}
                             </>
                           ) : (
@@ -4359,14 +4389,21 @@ export default function AdminPage() {
                       );})}
                     </div>
                   )}
+                  </div>
+                  )}
                 </div>
 
                 {/* Day Templates */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-heading text-sm uppercase text-gold">Day Templates ({dayTemplates.length})</h3>
-                    <button onClick={() => { setCreatingDayTemplate(!creatingDayTemplate); setCreatingWeekTemplate(false); }} className="bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingDayTemplate ? "Cancel" : "+ Create Day Template"}</button>
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => toggleTemplateCategory('day')} className="flex items-center gap-2 text-left">
+                      <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedTemplateCategories.has('day') ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      <h3 className="font-heading text-sm uppercase text-gold">Day Templates ({dayTemplates.length})</h3>
+                    </button>
+                    {expandedTemplateCategories.has('day') && <button onClick={() => { setCreatingDayTemplate(!creatingDayTemplate); setCreatingWeekTemplate(false); }} className="bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingDayTemplate ? "Cancel" : "+ Create Day Template"}</button>}
                   </div>
+                  {expandedTemplateCategories.has('day') && (
+                  <div className="mt-4">
                   {/* Create Day Template Form */}
                   {creatingDayTemplate && (
                     <div className="bg-primary/30 border border-gold/20 rounded-xl p-4 mb-4 space-y-3">
@@ -4570,24 +4607,30 @@ export default function AdminPage() {
                       );})}
                     </div>
                   )}
+                  </div>
+                  )}
                 </div>
 
                 {/* Program Templates */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-heading text-sm uppercase text-purple-400">Program Templates ({programTemplates.length})</h3>
-                      <p className="text-gray-500 text-xs mt-0.5">Multi-week structured training programs that auto-populate when creating weeks for assigned clients</p>
-                    </div>
-                    <button onClick={() => {
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => toggleTemplateCategory('program')} className="flex items-center gap-2 text-left">
+                      <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedTemplateCategories.has('program') ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      <div>
+                        <h3 className="font-heading text-sm uppercase text-purple-400">Program Templates ({programTemplates.length})</h3>
+                        <p className="text-gray-500 text-xs mt-0.5">Multi-week structured training programs that auto-populate when creating weeks for assigned clients</p>
+                      </div>
+                    </button>
+                    {expandedTemplateCategories.has('program') && <button onClick={() => {
                       if (creatingProgram) { setCreatingProgram(false); } else {
                         setCreatingProgram(true); setEditingProgramId(null);
                         setProgramName(""); setProgramCategory(""); setProgramTotalWeeks(20);
                         setProgramWeeks(initProgramWeeks(20)); setProgramExpandedWeek(null);
                       }
-                    }} className="bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingProgram ? "Cancel" : "+ Create Program"}</button>
+                    }} className="bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 text-xs px-3 py-1.5 rounded-lg transition-colors">{creatingProgram ? "Cancel" : "+ Create Program"}</button>}
                   </div>
-
+                  {expandedTemplateCategories.has('program') && (
+                  <div className="mt-4">
                   {/* Create / Edit Program Form */}
                   {(creatingProgram || editingProgramId) && (
                     <div className="bg-primary/30 border border-purple-500/20 rounded-xl p-4 mb-4 space-y-4">
@@ -4735,6 +4778,8 @@ export default function AdminPage() {
                         </div>
                       ))}
                     </div>
+                  )}
+                  </div>
                   )}
                 </div>
               </>
