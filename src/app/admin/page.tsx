@@ -4816,28 +4816,69 @@ export default function AdminPage() {
                     <div className="space-y-3">
                       {programTemplates.map((prog) => (
                         <div key={prog.id} className="bg-primary/30 border border-purple-500/10 rounded-xl p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <h4 className="text-white font-medium">{prog.name}</h4>
-                              <p className="text-gray-400 text-xs">{prog.category && <span className="text-purple-300">{prog.category} · </span>}{prog.data.totalWeeks} weeks</p>
-                            </div>
+                          <div className="flex items-center justify-between">
+                            <button onClick={() => toggleTemplateItem(prog.id)} className="flex items-center gap-2 text-left flex-1">
+                              <svg className={`w-3 h-3 text-gray-500 transition-transform ${expandedTemplateItems.has(prog.id) ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                              <div>
+                                <h4 className="text-white font-medium">{prog.name}</h4>
+                                <p className="text-gray-400 text-xs">{prog.category && <span className="text-purple-300">{prog.category} · </span>}{prog.data.totalWeeks} weeks</p>
+                              </div>
+                            </button>
                             <div className="flex items-center gap-2">
                               <button onClick={() => { setCreatingProgram(false); startEditingProgram(prog); }} className="text-gray-500 hover:text-white text-xs transition-colors border border-white/10 px-3 py-1 rounded">Edit</button>
                               <button onClick={() => handleDeleteProgram(prog.id)} className="text-gray-500 hover:text-red-400 text-xs transition-colors border border-white/10 px-3 py-1 rounded">Delete</button>
                             </div>
                           </div>
-                          {/* Compact week overview */}
-                          <div className="grid grid-cols-5 md:grid-cols-10 gap-1">
-                            {(prog.data.weeks || []).map((w: any, i: number) => {
-                              const wm = w.days?.reduce((t: number, d: any) => t + d.workouts.reduce((dt: number, wo: any) => dt + (parseFloat(wo.miles) || 0), 0), 0) || 0;
+                          {/* Expanded: week-by-week detailed view */}
+                          {expandedTemplateItems.has(prog.id) && (
+                          <div className="mt-3 space-y-1 max-h-[500px] overflow-y-auto">
+                            {(prog.data.weeks || []).map((w: any, wi: number) => {
+                              const weekMiles = w.days?.reduce((t: number, d: any) => t + d.workouts.reduce((dt: number, wo: any) => dt + (parseFloat(wo.miles) || 0), 0), 0) || 0;
+                              const weekItemId = `${prog.id}-w${wi}`;
                               return (
-                                <div key={i} className="bg-primary/50 rounded px-1 py-1 text-center" title={`Week ${w.weekNumber}${w.label ? ': ' + w.label : ''}`}>
-                                  <p className="text-gray-500 text-[9px]">W{w.weekNumber}</p>
-                                  {wm > 0 && <p className="text-accent text-[10px] font-bold">{Math.round(wm)}</p>}
+                                <div key={wi} className="border border-white/5 rounded-lg">
+                                  <button onClick={() => toggleTemplateItem(weekItemId)} className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors">
+                                    <div className="flex items-center gap-2">
+                                      <svg className={`w-2.5 h-2.5 text-gray-500 transition-transform ${expandedTemplateItems.has(weekItemId) ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                      <span className="text-white text-xs font-bold">Week {w.weekNumber}</span>
+                                      {w.label && <span className="text-purple-300 text-xs">{w.label}</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {weekMiles > 0 && <span className="text-accent text-xs font-medium">{Math.round(weekMiles)} {distUnitShort}</span>}
+                                      <span className="text-gray-500 text-[10px]">{w.days?.filter((d: any) => d.workouts.some((wo: any) => wo.type === 'run')).length || 0} runs</span>
+                                    </div>
+                                  </button>
+                                  {expandedTemplateItems.has(weekItemId) && (
+                                    <div className="px-3 pb-3 space-y-1.5">
+                                      {(w.days || []).map((d: any, di: number) => {
+                                        const wo = d.workouts?.[0] || {};
+                                        return (
+                                          <div key={di} className={`border-l-2 rounded-r-lg p-2 ${wo.type === 'run' ? 'border-l-accent bg-accent/5' : wo.type === 'cross' ? 'border-l-gold bg-gold/5' : wo.type === 'walk' ? 'border-l-blue-500 bg-blue-500/5' : wo.type === 'cycling' ? 'border-l-cyan-500 bg-cyan-500/5' : wo.type === 'stretching' ? 'border-l-purple-500 bg-purple-500/5' : 'border-l-green-500 bg-green-500/5'}`}>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-white font-heading text-[10px] uppercase w-12">{d.day?.slice(0, 3)}</span>
+                                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${wo.type === 'run' ? 'bg-accent/20 text-accent' : wo.type === 'cross' ? 'bg-gold/20 text-gold' : wo.type === 'walk' ? 'bg-blue-500/20 text-blue-400' : wo.type === 'stretching' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400'}`}>{getTypeLabel(wo.type || 'rest')}</span>
+                                              {wo.trainingType && wo.trainingType !== 'Rest' && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo.trainingType)}</span>}
+                                              {wo.miles && <span className="text-accent text-[10px] font-medium">{convertDist(Number(wo.miles))}{distUnitShort}</span>}
+                                              {wo.title && <span className="text-white text-[10px] truncate">{wo.title}</span>}
+                                            </div>
+                                            {d.workouts?.length > 1 && d.workouts.slice(1).map((wo2: any, wi2: number) => (
+                                              <div key={wi2} className="flex items-center gap-2 mt-1 ml-12">
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${wo2.type === 'run' ? 'bg-accent/20 text-accent' : wo2.type === 'cross' ? 'bg-gold/20 text-gold' : 'bg-gray-500/20 text-gray-400'}`}>{getTypeLabel(wo2.type || 'rest')}</span>
+                                                {wo2.trainingType && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo2.trainingType)}</span>}
+                                                {wo2.miles && <span className="text-accent text-[10px]">{convertDist(Number(wo2.miles))}{distUnitShort}</span>}
+                                                {wo2.title && <span className="text-white text-[10px] truncate">{wo2.title}</span>}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>
