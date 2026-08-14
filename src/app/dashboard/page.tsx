@@ -173,45 +173,6 @@ export default function DashboardPage() {
     fetchOrgFeatures();
   }, []);
 
-  // Cycle tracking consent state
-  const [cycleTrackingRequested, setCycleTrackingRequested] = useState(false);
-  const [cycleTrackingConsented, setCycleTrackingConsented] = useState<boolean | null>(null);
-  const [cycleConsentLoaded, setCycleConsentLoaded] = useState(false);
-  const [cycleConsentSaving, setCycleConsentSaving] = useState(false);
-
-  // Fetch cycle tracking consent status (only for female clients)
-  useEffect(() => {
-    if (clientGender !== 'female') return;
-    const fetchCycleConsent = async () => {
-      try {
-        const res = await fetch('/api/cycle-tracking');
-        if (res.ok) {
-          const data = await res.json();
-          setCycleTrackingRequested(data.requested || false);
-          setCycleTrackingConsented(data.consented);
-          setCycleConsentLoaded(true);
-        }
-        // If API fails, don't set cycleConsentLoaded — banner stays hidden
-      } catch {}
-    };
-    fetchCycleConsent();
-  }, [clientGender]);
-
-  const handleCycleConsent = async (consent: boolean) => {
-    setCycleConsentSaving(true);
-    try {
-      const res = await fetch('/api/cycle-tracking', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consented: consent }),
-      });
-      if (res.ok) {
-        setCycleTrackingConsented(consent);
-      }
-    } catch {}
-    setCycleConsentSaving(false);
-  };
-
   const [statsFilter, setStatsFilter] = useState<"thisWeek" | "allTime">("thisWeek");
 
   const [clientMessages, setClientMessages] = useState<{id: string; date: string; from: string; fromName?: string; fromAvatarUrl?: string | null; message: string}[]>([]);
@@ -279,6 +240,13 @@ export default function DashboardPage() {
   const [coachName, setCoachName] = useState<string>("your coach");
   const [coachAvatarUrl, setCoachAvatarUrl] = useState<string | null>(null);
   const [coachStravaUrl, setCoachStravaUrl] = useState<string | null>(null);
+
+  // Cycle tracking consent state (declared after clientGender to avoid TDZ issues)
+  const [cycleTrackingRequested, setCycleTrackingRequested] = useState(false);
+  const [cycleTrackingConsented, setCycleTrackingConsented] = useState<boolean | null>(null);
+  const [cycleConsentLoaded, setCycleConsentLoaded] = useState(false);
+  const [cycleConsentSaving, setCycleConsentSaving] = useState(false);
+
   const [notifPlanPublished, setNotifPlanPublished] = useState(true);
   const [notifMessages, setNotifMessages] = useState<"immediate" | "daily" | "off">("immediate");
   const [notifStravaSynced, setNotifStravaSynced] = useState(true);
@@ -605,6 +573,39 @@ export default function DashboardPage() {
     };
     fetchPlanInfo();
   }, []);
+
+  // Fetch cycle tracking consent status (only for female clients)
+  useEffect(() => {
+    if (clientGender !== 'female') return;
+    const fetchCycleConsent = async () => {
+      try {
+        const res = await fetch('/api/cycle-tracking');
+        if (res.ok) {
+          const data = await res.json();
+          setCycleTrackingRequested(data.requested || false);
+          setCycleTrackingConsented(data.consented);
+          setCycleConsentLoaded(true);
+        }
+        // If API fails, don't set cycleConsentLoaded — banner stays hidden
+      } catch {}
+    };
+    fetchCycleConsent();
+  }, [clientGender]);
+
+  const handleCycleConsent = async (consent: boolean) => {
+    setCycleConsentSaving(true);
+    try {
+      const res = await fetch('/api/cycle-tracking', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consented: consent }),
+      });
+      if (res.ok) {
+        setCycleTrackingConsented(consent);
+      }
+    } catch {}
+    setCycleConsentSaving(false);
+  };
 
   const [weeks, setWeeks] = useState<WeekData[]>([]); // All published weeks from API
   const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, -1 = last week, +1 = next week

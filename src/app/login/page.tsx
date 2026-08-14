@@ -5,7 +5,6 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getBrandFromHost } from "@/lib/brand";
-import { startAuthentication } from "@simplewebauthn/browser";
 
 function LoginContent() {
   const [email, setEmail] = useState("");
@@ -105,6 +104,9 @@ function LoginContent() {
     setBiometricLoading(true);
 
     try {
+      // Dynamically import to prevent SSR/chunk loading issues
+      const { startAuthentication } = await import("@simplewebauthn/browser");
+
       // Step 1: Get authentication options
       const optionsRes = await fetch("/api/webauthn/authenticate", {
         method: "POST",
