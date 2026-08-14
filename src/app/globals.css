@@ -135,19 +135,6 @@ html.light .bg-blue-600 { color: #ffffff !important; }
 /* SVG icons in light mode — inherit from parent */
 html.light svg { color: inherit; }
 
-/* First Mile light mode — gold/purple becomes orange (First Mile only uses orange) */
-html.light.brand-firstmile .text-gold { color: #e55b1e !important; }
-html.light.brand-firstmile .text-purple-400 { color: #e55b1e !important; }
-html.light.brand-firstmile .text-purple-300 { color: #e55b1e !important; }
-html.light.brand-firstmile .border-gold\/30 { border-color: rgba(242,101,34,0.3) !important; }
-html.light.brand-firstmile .border-purple-500\/10 { border-color: rgba(242,101,34,0.1) !important; }
-html.light.brand-firstmile .border-purple-500\/20 { border-color: rgba(242,101,34,0.2) !important; }
-html.light.brand-firstmile .border-purple-500\/30 { border-color: rgba(242,101,34,0.3) !important; }
-html.light.brand-firstmile .bg-gold\/10 { background-color: rgba(242,101,34,0.1) !important; }
-html.light.brand-firstmile .bg-purple-500\/10 { background-color: rgba(242,101,34,0.1) !important; }
-html.light.brand-firstmile .bg-purple-500\/20 { background-color: rgba(242,101,34,0.15) !important; }
-html.light.brand-firstmile .bg-purple-600 { background-color: #f26522 !important; }
-
 /* First Mile dark mode — use darker charcoal for more contrast */
 html.brand-firstmile:not(.light) .bg-primary { background-color: rgb(28 31 32) !important; }
 html.brand-firstmile:not(.light) .bg-secondary { background-color: rgb(38 42 43) !important; }
@@ -229,6 +216,36 @@ html.light [data-sidebar] select { background-color: #ffffff !important; border-
 
 /* SVG inside sidebar */
 html.light [data-sidebar] svg { color: inherit; }
+
+/* ============================================================
+   FIRST MILE BRAND — Override gold/purple to orange everywhere
+   Higher specificity with .brand-firstmile to override all above rules
+   ============================================================ */
+
+/* First Mile light mode — sidebar */
+html.light.brand-firstmile [data-sidebar] .text-gold { color: #e55b1e !important; }
+html.light.brand-firstmile [data-sidebar] .text-purple-400 { color: #e55b1e !important; }
+html.light.brand-firstmile [data-sidebar] .text-purple-300 { color: #e55b1e !important; }
+
+/* First Mile light mode — main content */
+html.light.brand-firstmile .text-gold { color: #e55b1e !important; }
+html.light.brand-firstmile .text-purple-400 { color: #e55b1e !important; }
+html.light.brand-firstmile .text-purple-300 { color: #e55b1e !important; }
+html.light.brand-firstmile .border-gold\/30 { border-color: rgba(242,101,34,0.3) !important; }
+html.light.brand-firstmile .border-gold\/20 { border-color: rgba(242,101,34,0.2) !important; }
+html.light.brand-firstmile .border-purple-500\/10 { border-color: rgba(242,101,34,0.1) !important; }
+html.light.brand-firstmile .border-purple-500\/20 { border-color: rgba(242,101,34,0.2) !important; }
+html.light.brand-firstmile .border-purple-500\/30 { border-color: rgba(242,101,34,0.3) !important; }
+html.light.brand-firstmile .border-purple-500\/40 { border-color: rgba(242,101,34,0.4) !important; }
+html.light.brand-firstmile .bg-gold\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.light.brand-firstmile .bg-gold\/5 { background-color: rgba(242,101,34,0.05) !important; }
+html.light.brand-firstmile .bg-gold\/20 { background-color: rgba(242,101,34,0.15) !important; }
+html.light.brand-firstmile .bg-purple-500\/10 { background-color: rgba(242,101,34,0.1) !important; }
+html.light.brand-firstmile .bg-purple-500\/20 { background-color: rgba(242,101,34,0.15) !important; }
+html.light.brand-firstmile .bg-purple-600 { background-color: #f26522 !important; color: #ffffff !important; }
+html.light.brand-firstmile .hover\:bg-purple-700:hover { background-color: #d4540f !important; }
+html.light.brand-firstmile .focus\:ring-purple-500:focus { --tw-ring-color: rgba(242,101,34,0.5) !important; }
+html.light.brand-firstmile .focus\:border-purple-500:focus { border-color: #f26522 !important; }
 
 /* ============================================================
    ALWAYS-DARK — Modals, floating panels, dropdowns
