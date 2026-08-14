@@ -16,6 +16,16 @@
     --color-text: 255 255 255;
   }
 
+  /* First Mile Coach dark mode — warm charcoal matching marketing page */
+  .brand-firstmile {
+    --color-primary: 45 52 54;
+    --color-secondary: 61 68 71;
+    --color-accent: 242 101 34;
+    --color-gold: 242 101 34;
+    --color-light: 245 245 245;
+    --color-text: 255 255 255;
+  }
+
   .light {
     --color-primary: 249 250 251;
     --color-secondary: 255 255 255;
@@ -23,6 +33,16 @@
     --color-gold: 180 130 50;
     --color-light: 26 26 46;
     --color-text: 31 41 55;
+  }
+
+  /* First Mile Coach light mode — warm off-white matching marketing page */
+  .brand-firstmile.light {
+    --color-primary: 250 251 252;
+    --color-secondary: 255 255 255;
+    --color-accent: 242 101 34;
+    --color-gold: 242 101 34;
+    --color-light: 45 52 54;
+    --color-text: 45 52 54;
   }
 
   body {
@@ -114,6 +134,14 @@ html.light .bg-blue-600 { color: #ffffff !important; }
 
 /* SVG icons in light mode — inherit from parent */
 html.light svg { color: inherit; }
+
+/* First Mile light mode — gold becomes orange (no gold in First Mile brand) */
+html.light.brand-firstmile .text-gold { color: #e55b1e !important; }
+
+/* First Mile dark mode — adjust colors that reference navy/gold */
+html.brand-firstmile:not(.light) .bg-primary { background-color: rgb(45 52 54) !important; }
+html.brand-firstmile:not(.light) .bg-secondary { background-color: rgb(61 68 71) !important; }
+html.brand-firstmile:not(.light) .text-gold { color: #f26522 !important; }
 
 /* Shadows — soften in light mode */
 html.light .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.05) !important; }

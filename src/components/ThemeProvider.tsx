@@ -45,6 +45,14 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
       html.classList.add("dark");
       html.classList.remove("light");
     }
+
+    // Apply brand-specific class for First Mile Coach
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname.includes('firstmilecoach')) {
+      html.classList.add("brand-firstmile");
+    } else {
+      html.classList.remove("brand-firstmile");
+    }
   }, []);
 
   // On mount: ensure the class is applied (in case hydration wiped it)

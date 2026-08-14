@@ -110,7 +110,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Apply theme immediately to prevent flash (only on platform pages)
+              // Apply theme and brand immediately to prevent flash (only on platform pages)
               (function() {
                 try {
                   var path = window.location.pathname;
@@ -122,6 +122,10 @@ export default function RootLayout({
                   } else {
                     document.documentElement.classList.add('dark');
                     document.documentElement.classList.remove('light');
+                  }
+                  // Apply brand class for First Mile Coach
+                  if (window.location.hostname.toLowerCase().indexOf('firstmilecoach') !== -1) {
+                    document.documentElement.classList.add('brand-firstmile');
                   }
                 } catch(e) {}
               })();
