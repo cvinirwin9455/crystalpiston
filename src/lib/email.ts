@@ -23,8 +23,8 @@ function getEmailBrandAssets(brand: EmailBrand): EmailBrandAssets {
       logoUrl: 'https://www.crystalpistolperformance.com/IMG_5861.PNG',
       logoAlt: 'Pistol Performance Coaching',
       footerText: 'Pistol Performance Coaching &bull; crystalpistolperformance.com',
-      bgColor: '#1a1a2e',
-      cardBgColor: '#16213e',
+      bgColor: '#1c1f20',
+      cardBgColor: '#262a2b',
       borderColor: 'rgba(255,255,255,0.1)',
     }
   }
@@ -36,8 +36,8 @@ function getEmailBrandAssets(brand: EmailBrand): EmailBrandAssets {
     logoUrl: 'https://www.firstmilecoach.com/firstmile/logo.png',
     logoAlt: 'First Mile Coach',
     footerText: 'First Mile Coach &bull; firstmilecoach.com',
-    bgColor: '#1a1a2e',
-    cardBgColor: '#16213e',
+    bgColor: '#1c1f20',
+    cardBgColor: '#262a2b',
     borderColor: 'rgba(255,255,255,0.1)',
   }
 }
