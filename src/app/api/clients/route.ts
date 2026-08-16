@@ -14,7 +14,7 @@ async function createAdminClient() {
 }
 
 // GET /api/clients - List all clients
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
 
   // Verify the requesting user is admin
@@ -25,7 +25,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, access_level, coach_level')
+    .select('role, access_level, coach_level, is_super_admin')
     .eq('id', user.id)
     .single()
 
@@ -38,9 +38,16 @@ export async function GET() {
 
   const adminClient = await createAdminClient()
 
-  // Get org scope for this user
-  const orgId = await getOrgIdForUser(adminClient, user.id)
+  // Super admin org override: if ?org= param is passed and user is super admin, use that org
+  const { searchParams } = new URL(request.url)
+  const orgOverride = searchParams.get('org')
+  let orgId: string | null = null
 
+  if (orgOverride && profile?.is_super_admin) {
+    orgId = orgOverride
+  } else {
+    orgId = await getOrgIdForUser(adminClient, user.id)
+  }
   // Query users and clients separately to avoid join issues
   let clientQuery = adminClient
     .from('users')

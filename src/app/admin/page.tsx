@@ -99,15 +99,28 @@ export default function AdminPage() {
 
   // Detect super-admin impersonation mode
   const [isSuperAdminViewing, setIsSuperAdminViewing] = useState(false);
+  const [superAdminTargetOrgId, setSuperAdminTargetOrgId] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('superadmin') === 'true') {
       setIsSuperAdminViewing(true);
       sessionStorage.setItem('superadmin_viewing', 'true');
-      // Clean the URL param without reload
+      // Store the target org if provided
+      const targetOrg = params.get('org');
+      if (targetOrg) {
+        setSuperAdminTargetOrgId(targetOrg);
+        sessionStorage.setItem('superadmin_target_org', targetOrg);
+      }
+      // Clean the URL params without reload
       const url = new URL(window.location.href);
       url.searchParams.delete('superadmin');
+      url.searchParams.delete('org');
       window.history.replaceState({}, '', url.toString());
+    } else if (sessionStorage.getItem('superadmin_viewing') === 'true') {
+      setIsSuperAdminViewing(true);
+      const storedOrg = sessionStorage.getItem('superadmin_target_org');
+      if (storedOrg) setSuperAdminTargetOrgId(storedOrg);
+    }
     } else if (sessionStorage.getItem('superadmin_viewing') === 'true') {
       setIsSuperAdminViewing(true);
     }
@@ -1356,7 +1369,8 @@ export default function AdminPage() {
   // Fetch clients from API
   const fetchClients = useCallback(async () => {
     try {
-      const res = await fetch('/api/clients');
+      const orgParam = superAdminTargetOrgId ? `?org=${superAdminTargetOrgId}` : '';
+      const res = await fetch(`/api/clients${orgParam}`);
       const data = await res.json();
       if (res.ok) {
         const mapped: Client[] = data.map((c: any) => ({
@@ -1450,7 +1464,7 @@ export default function AdminPage() {
     } finally {
       setLoadingClients(false);
     }
-  }, []);
+  }, [superAdminTargetOrgId]);
 
   useEffect(() => {
     fetchClients();
@@ -2625,7 +2639,7 @@ export default function AdminPage() {
           <span className="text-sm font-bold">SUPER ADMIN VIEW</span>
           <span className="text-xs opacity-90">— You are viewing this account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
           <button
-            onClick={() => { setIsSuperAdminViewing(false); sessionStorage.removeItem('superadmin_viewing'); }}
+            onClick={() => { setIsSuperAdminViewing(false); setSuperAdminTargetOrgId(null); sessionStorage.removeItem('superadmin_viewing'); sessionStorage.removeItem('superadmin_target_org'); }}
             className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0"
           >
             Dismiss

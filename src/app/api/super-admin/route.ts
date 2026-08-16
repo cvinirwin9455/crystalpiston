@@ -394,37 +394,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
 
-    // Generate a magic link for the target user (allows super admin to sign in as them)
+    // Get the target user's organization
+    const { getOrgIdForUser } = await import('@/lib/org')
+    const targetOrgId = await getOrgIdForUser(adminClient, targetUserId)
+
+    if (!targetOrgId) {
+      return NextResponse.json({ error: 'Target user has no organization' }, { status: 404 })
+    }
+
+    // Get target user's name for display
     const { data: targetUser } = await adminClient
       .from('users')
-      .select('email')
+      .select('name, email')
       .eq('id', targetUserId)
       .single()
 
-    if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Generate a magic link that signs in as the target user
-    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-      type: 'magiclink',
-      email: targetUser.email,
-      options: {
-        redirectTo: 'https://www.firstmilecoach.com/admin',
-      },
-    })
-
-    if (linkError) {
-      return NextResponse.json({ error: `Failed to generate link: ${linkError.message}` }, { status: 500 })
-    }
-
-    // Build the URL pointing to our auth callback
-    const hashedToken = linkData.properties.hashed_token
-    const impersonateUrl = `https://www.firstmilecoach.com/auth/callback?token_hash=${hashedToken}&type=magiclink&next=/admin?superadmin=true`
+    // Return a direct URL to the admin page with superadmin + org params
+    // No magic link needed — the super admin is already authenticated and has is_super_admin=true
+    const impersonateUrl = `https://www.firstmilecoach.com/admin?superadmin=true&org=${targetOrgId}`
 
     return NextResponse.json({
       success: true,
       url: impersonateUrl,
+      targetName: targetUser?.name || targetUser?.email || 'Unknown',
     })
   }
 
