@@ -121,9 +121,6 @@ export default function AdminPage() {
       const storedOrg = sessionStorage.getItem('superadmin_target_org');
       if (storedOrg) setSuperAdminTargetOrgId(storedOrg);
     }
-    } else if (sessionStorage.getItem('superadmin_viewing') === 'true') {
-      setIsSuperAdminViewing(true);
-    }
   }, []);
   const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
