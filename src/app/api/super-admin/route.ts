@@ -12,7 +12,7 @@ async function getAdminClient() {
 }
 
 // GET /api/super-admin - Get overview data for super admin
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,6 +28,47 @@ export async function GET() {
 
   if (!profile?.is_super_admin) {
     return NextResponse.json({ error: 'Super admin access required' }, { status: 403 })
+  }
+
+  // Handle specific actions via query params
+  const { searchParams } = new URL(request.url)
+  const action = searchParams.get('action')
+
+  if (action === 'org-owner') {
+    const orgId = searchParams.get('orgId')
+    if (!orgId) return NextResponse.json({ error: 'orgId required' }, { status: 400 })
+
+    // Find the account_coach (owner) for this org
+    const { data: owner } = await adminClient
+      .from('users')
+      .select('id, name, email, avatar_url')
+      .eq('organization_id', orgId)
+      .eq('role', 'admin')
+      .eq('coach_level', 'account_coach')
+      .maybeSingle()
+
+    if (!owner) {
+      // Fallback: get any admin in that org
+      const { data: anyAdmin } = await adminClient
+        .from('users')
+        .select('id, name, email, avatar_url')
+        .eq('organization_id', orgId)
+        .eq('role', 'admin')
+        .limit(1)
+        .single()
+
+      return NextResponse.json({
+        name: anyAdmin?.name || 'Unknown Coach',
+        email: anyAdmin?.email || '',
+        avatarUrl: anyAdmin?.avatar_url || null,
+      })
+    }
+
+    return NextResponse.json({
+      name: owner.name || owner.email || 'Unknown Coach',
+      email: owner.email || '',
+      avatarUrl: owner.avatar_url || null,
+    })
   }
 
   // Get organizations

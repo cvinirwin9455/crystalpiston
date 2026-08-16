@@ -100,6 +100,8 @@ export default function AdminPage() {
   // Detect super-admin impersonation mode
   const [isSuperAdminViewing, setIsSuperAdminViewing] = useState(false);
   const [superAdminTargetOrgId, setSuperAdminTargetOrgId] = useState<string | null>(null);
+  const [superAdminTargetCoachName, setSuperAdminTargetCoachName] = useState<string | null>(null);
+  const [superAdminTargetCoachAvatar, setSuperAdminTargetCoachAvatar] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('superadmin') === 'true') {
@@ -122,6 +124,23 @@ export default function AdminPage() {
       if (storedOrg) setSuperAdminTargetOrgId(storedOrg);
     }
   }, []);
+
+  // Fetch target coach info when viewing as super admin
+  useEffect(() => {
+    if (!superAdminTargetOrgId) return;
+    const fetchTargetCoach = async () => {
+      try {
+        const res = await fetch(`/api/super-admin?action=org-owner&orgId=${superAdminTargetOrgId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.name) setSuperAdminTargetCoachName(data.name);
+          if (data.avatarUrl) setSuperAdminTargetCoachAvatar(data.avatarUrl);
+        }
+      } catch {}
+    };
+    fetchTargetCoach();
+  }, [superAdminTargetOrgId]);
+
   const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -2658,15 +2677,15 @@ export default function AdminPage() {
             {/* Desktop: coach photo replacing pistol logo */}
             <button onClick={() => setShowAdminMenu(!showAdminMenu)} className="hidden md:flex items-center gap-3 flex-1 hover:bg-white/5 transition-all cursor-pointer text-left rounded-lg px-2 py-1.5 border border-white/10 hover:border-white/20">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex items-center justify-center flex-shrink-0">
-                {adminAvatarUrl ? (
-                  <img src={adminAvatarUrl} alt={loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                {(isSuperAdminViewing && superAdminTargetCoachAvatar || adminAvatarUrl) ? (
+                  <img src={(isSuperAdminViewing && superAdminTargetCoachAvatar) || adminAvatarUrl!} alt={(isSuperAdminViewing && superAdminTargetCoachName) || loggedInUser || 'Coach'} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <svg className="w-10 h-10" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#2d4a5a"/><circle cx="18" cy="13" r="6" fill="#a0c4d4"/><path d="M8 32c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="#a0c4d4"/><circle cx="18" cy="13" r="4.5" fill="#d0e8f0"/></svg>
                 )}
               </div>
               <div className="flex-1 text-left">
                 <p className="text-white font-heading text-sm uppercase">Coach Admin</p>
-                <p className="text-gold text-xs">{loggedInUser || "Loading..."}</p>
+                <p className="text-gold text-xs">{(isSuperAdminViewing && superAdminTargetCoachName) ? superAdminTargetCoachName : (loggedInUser || "Loading...")}</p>
               </div>
               <svg className={`w-4 h-4 text-gray-400 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               {showNewUpdatesBadge && <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full"></span>}
