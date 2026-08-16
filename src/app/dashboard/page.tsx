@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
 import BiometricSetup from "@/components/BiometricSetup";
 import VideoModal from "@/components/VideoModal";
 import { useTheme } from "@/components/ThemeProvider";
+import { DragDropProvider, DraggableWorkout, DroppableDay, MoveToModal, MoveButton, Toast, ResetWeekButton, AutoSaveNotice } from "@/components/WorkoutDragDrop";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
@@ -149,6 +150,11 @@ export default function DashboardPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [defaultExpanded, setDefaultExpanded] = useState(true);
+
+  // Drag-and-drop workout rescheduling state
+  const [moveModal, setMoveModal] = useState<{ workoutId: string; workoutType: "programmed" | "client"; title: string; currentDay: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info"; visible: boolean }>({ message: "", type: "success", visible: false });
+  const [hasMovedWorkouts, setHasMovedWorkouts] = useState(false);
 
   // Fetch unread message count
   useEffect(() => {
@@ -695,6 +701,121 @@ export default function DashboardPage() {
     targetMonday.setDate(thisMonday.getDate() + (offset * 7));
     return targetMonday;
   };
+
+  // Handler: move a workout to a different day (called by DragDropProvider and MoveToModal)
+  const handleMoveWorkout = useCallback(async (workoutId: string, workoutType: "programmed" | "client", fromDay: string, toDay: string): Promise<boolean> => {
+    if (fromDay === toDay) return false;
+    const currentWeekData = weeks.find(w => {
+      const monday = getMondayForOffset(weekOffset);
+      const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return w.dateRange.startsWith(mondayStr);
+    }) || weeks.find(w => {
+      const monday = getMondayForOffset(weekOffset);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() - 1);
+      const sundayStr = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return w.dateRange.startsWith(sundayStr);
+    });
+    if (!currentWeekData) return false;
+
+    // Optimistic update - move the workout in local state
+    setWeeks(prev => prev.map(w => {
+      if (w.weekId !== currentWeekData.weekId) return w;
+      if (workoutType === 'programmed') {
+        return { ...w, workouts: w.workouts.map(wo => wo.id === workoutId ? { ...wo, day: toDay } : wo) };
+      } else {
+        return { ...w, clientWorkouts: w.clientWorkouts.map(cw => cw.id === workoutId ? { ...cw, day: toDay } : cw) };
+      }
+    }));
+
+    try {
+      const res = await fetch('/api/workout-move', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId, weekId: currentWeekData.weekId, newDay: toDay, workoutType }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        // Revert optimistic update
+        setWeeks(prev => prev.map(w => {
+          if (w.weekId !== currentWeekData.weekId) return w;
+          if (workoutType === 'programmed') {
+            return { ...w, workouts: w.workouts.map(wo => wo.id === workoutId ? { ...wo, day: fromDay } : wo) };
+          } else {
+            return { ...w, clientWorkouts: w.clientWorkouts.map(cw => cw.id === workoutId ? { ...cw, day: fromDay } : cw) };
+          }
+        }));
+        setToast({ message: data.error || 'Failed to move workout', type: 'error', visible: true });
+        return false;
+      }
+      setToast({ message: `Moved to ${toDay} — auto-saved`, type: 'success', visible: true });
+      setHasMovedWorkouts(true);
+      return true;
+    } catch (err) {
+      // Revert on network error
+      setWeeks(prev => prev.map(w => {
+        if (w.weekId !== currentWeekData.weekId) return w;
+        if (workoutType === 'programmed') {
+          return { ...w, workouts: w.workouts.map(wo => wo.id === workoutId ? { ...wo, day: fromDay } : wo) };
+        } else {
+          return { ...w, clientWorkouts: w.clientWorkouts.map(cw => cw.id === workoutId ? { ...cw, day: fromDay } : cw) };
+        }
+      }));
+      setToast({ message: 'Network error — workout not moved', type: 'error', visible: true });
+      return false;
+    }
+  }, [weeks, weekOffset]);
+
+  // Handler: reset week to coach's original schedule
+  const handleResetWeek = useCallback(async () => {
+    const currentWeekData = weeks.find(w => {
+      const monday = getMondayForOffset(weekOffset);
+      const mondayStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return w.dateRange.startsWith(mondayStr);
+    }) || weeks.find(w => {
+      const monday = getMondayForOffset(weekOffset);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() - 1);
+      const sundayStr = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return w.dateRange.startsWith(sundayStr);
+    });
+    if (!currentWeekData) return;
+
+    try {
+      const res = await fetch('/api/workout-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekId: currentWeekData.weekId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.resetCount > 0) {
+          // Refresh week data from server
+          const refreshRes = await fetch('/api/my-weeks');
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            const mapped: WeekData[] = refreshData.map((w: any) => ({
+              weekId: w.weekId,
+              label: w.dateRange,
+              dateRange: w.dateRange,
+              focus: w.focus || '',
+              coachMessage: w.coachMessage || '',
+              stravaActivities: (w.stravaActivities || []).map((sa: any) => ({ id: sa.id, day: sa.day, type: sa.type, miles: sa.miles, duration: sa.duration, averagePace: sa.averagePace, activityName: sa.activityName, matchStatus: sa.matchStatus, suggestedMatchId: sa.suggestedMatchId || null, suggestedClientMatchId: sa.suggestedClientMatchId || null })),
+              clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({ id: cw.id, day: cw.day, type: cw.type, trainingType: cw.trainingType || null, miles: cw.miles, notes: cw.notes, createdAt: cw.createdAt, isClientAdded: true as const, completed: cw.completed || false, completedNotes: cw.completedNotes || cw.completed_notes || null, source: cw.source || 'manual', stravaActivityId: cw.stravaActivityId || null, duration: cw.duration || null, averagePace: cw.averagePace || null, activityName: cw.activityName || null, avgHeartrate: cw.avgHeartrate || null, maxHeartrate: cw.maxHeartrate || null })),
+              workouts: (w.workouts || []).map((wo: any) => ({ id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi', description: wo.description || '', paceTarget: wo.paceTarget || '', location: wo.location || '', coachNotes: wo.coachNotes || '', completed: wo.completed || false, stravaSynced: wo.stravaSynced || false, stravaActivityName: wo.stravaActivityName || null, structure: wo.structure || null, status: wo.status || undefined, skipReason: wo.skipReason || undefined, log: wo.log || undefined })),
+            }));
+            setWeeks(mapped);
+          }
+          setToast({ message: `Reset ${data.resetCount} workout${data.resetCount > 1 ? 's' : ''} to original schedule`, type: 'success', visible: true });
+          setHasMovedWorkouts(false);
+        } else {
+          setToast({ message: 'No workouts to reset', type: 'info', visible: true });
+        }
+      }
+    } catch (err) {
+      setToast({ message: 'Failed to reset week', type: 'error', visible: true });
+    }
+  }, [weeks, weekOffset]);
 
   // Helper: format a date range for a given offset
   const getWeekLabel = (offset: number) => {
@@ -1564,17 +1685,24 @@ export default function DashboardPage() {
             )}
 
             {/* Workout Cards - Grouped by Day (Collapsible) */}
+            <DragDropProvider weekId={currentWeek.weekId} onMoveWorkout={handleMoveWorkout}>
             <div className="space-y-3">
-              {/* Expand/Collapse All */}
-              <div className="flex justify-end mb-2">
-                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
-                <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+              {/* Expand/Collapse All + Reset + Auto-save notice */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <ResetWeekButton weekId={currentWeek.weekId} hasMovedWorkouts={hasMovedWorkouts} onReset={handleResetWeek} />
+                  <AutoSaveNotice />
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = true); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs mr-2">Expand All</button>
+                  <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
+                </div>
               </div>
 
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
                 const dayWorkouts = currentWeek.workouts.filter(w => w.day === day);
                 const dayClientWorkouts = (currentWeek.clientWorkouts || []).filter(cw => cw.day === day);
-                if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                const isDayEmpty = dayWorkouts.length === 0 && dayClientWorkouts.length === 0;
                 const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                 const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
                 const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
@@ -1589,16 +1717,19 @@ export default function DashboardPage() {
                   : dayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
                 return (
-                  <div key={day} className="border border-white/10 rounded-2xl overflow-hidden">
+                  <DroppableDay key={day} day={day} isEmpty={isDayEmpty}>
+                  <div className="border border-white/10 rounded-2xl overflow-hidden">
                     {/* Day Header - always visible */}
                     <button aria-expanded={isExpanded} onClick={() => setExpandedDays(prev => ({ ...prev, [day]: !isExpanded }))} className="w-full flex items-center justify-between p-4 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                       <div>
                         <span className="text-white font-heading uppercase text-sm">{day}</span>
                         <span className="text-gray-300 text-xs ml-2">{dayDateStr}</span>
-                        {!isExpanded && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                        {!isExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                        {isDayEmpty && <span className="text-gray-500 text-xs ml-3">Rest Day</span>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                        {!isDayEmpty && <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>}
+                        {isDayEmpty && <span className="text-green-400/60 text-xs">Rest</span>}
                         <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </div>
                     </button>
@@ -1616,8 +1747,11 @@ export default function DashboardPage() {
                         return suggestion && suggestion.suggestedMatchId === workout.id;
                       });
                       
+                      const canMoveThisWorkout = !workout.completed && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
+
                       return (
-                <div key={workout.id}>
+                <DraggableWorkout key={workout.id} workoutId={workout.id} workoutType="programmed" day={day} title={workout.title || `${workout.trainingType || workout.type}`} disabled={!canMoveThisWorkout}>
+                <div>
                 <div className={`border rounded-2xl overflow-hidden transition-all ${getTypeColor(workout.type)} ${workout.completed ? "opacity-80" : ""}`}>
                   <div className="p-5">
                     <div className="flex items-start justify-between">
@@ -1636,6 +1770,7 @@ export default function DashboardPage() {
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
+                            {canMoveThisWorkout && <MoveButton onClick={() => setMoveModal({ workoutId: workout.id, workoutType: 'programmed', title: workout.title || `${workout.trainingType || workout.type}`, currentDay: day })} disabled={!canMoveThisWorkout} />}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
@@ -1957,6 +2092,7 @@ export default function DashboardPage() {
                 </div>
               ))}
               </div>
+              </DraggableWorkout>
               );
               })}
 
@@ -1979,8 +2115,11 @@ export default function DashboardPage() {
                         if (matchTarget) return false; // will be rendered attached to the client workout below
                       }
                       return true;
-                    }).map(cw => (
-                      <div key={cw.id}>
+                    }).map(cw => {
+                      const canMoveClientWorkout = !completedClientWorkouts[cw.id] && !(cw.source === 'strava' && cw.stravaActivityId);
+                      return (
+                      <DraggableWorkout key={cw.id} workoutId={cw.id} workoutType="client" day={day} title={cw.activityName || cw.notes || `${cw.trainingType || cw.type}`} disabled={!canMoveClientWorkout}>
+                      <div>
                       <div className={`border rounded-2xl p-4 mt-2 ${cw.source === 'strava' && !completedClientWorkouts[cw.id] && !stravaMatchDecisions[cw.stravaActivityId || ''] && (currentWeek as any)?.stravaActivities?.some((sa: any) => sa.id === cw.stravaActivityId) ? 'border-2 border-dashed border-orange-400/30 bg-orange-500/5' : completedClientWorkouts[cw.id] ? 'border-green-500/30 bg-green-500/5 opacity-80' : 'border-cyan-500/30 bg-cyan-500/5'}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
@@ -2002,6 +2141,7 @@ export default function DashboardPage() {
                                     {cw.activityName || (clientWorkoutNotes[cw.id]?.startsWith('Synced from Strava:') ? clientWorkoutNotes[cw.id].replace('Synced from Strava: ', '') : 'Synced')}
                                   </span>
                                 )}
+                                {canMoveClientWorkout && <MoveButton onClick={() => setMoveModal({ workoutId: cw.id, workoutType: 'client', title: cw.activityName || cw.notes || `${cw.trainingType || cw.type}`, currentDay: day })} disabled={!canMoveClientWorkout} />}
                               </div>
                               {cw.notes && !cw.activityName && !cw.notes.startsWith('Kept as extra') && <p className="text-gray-400 text-sm">{cw.notes}</p>}
                               {/* Strava/synced activity details */}
@@ -2302,7 +2442,9 @@ export default function DashboardPage() {
                         ));
                       })()}
                     </div>
-                    ))}
+                    </DraggableWorkout>
+                    );
+                    })}
 
                     {/* Add Workout Button for this day (current week and past weeks) */}
                     {weekOffset <= 0 && (
@@ -2377,9 +2519,11 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
+                  </DroppableDay>
                 );
               })}
             </div>
+            </DragDropProvider>
 
           </>)}
           </>)}
@@ -2839,6 +2983,30 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Drag-and-Drop Move Modal (Mobile) */}
+      {moveModal && (
+        <MoveToModal
+          isOpen={!!moveModal}
+          workoutId={moveModal.workoutId}
+          workoutType={moveModal.workoutType}
+          workoutTitle={moveModal.title}
+          currentDay={moveModal.currentDay}
+          onMove={async (toDay) => {
+            await handleMoveWorkout(moveModal.workoutId, moveModal.workoutType, moveModal.currentDay, toDay);
+            setMoveModal(null);
+          }}
+          onClose={() => setMoveModal(null)}
+        />
+      )}
+
+      {/* Auto-save Toast */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.visible}
+        onDismiss={() => setToast(prev => ({ ...prev, visible: false }))}
+      />
 
       {/* Video Demo Modal */}
       {videoModal && (
