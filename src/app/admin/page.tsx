@@ -14,7 +14,7 @@ import type { CrossTrainingStructure, ExerciseLibraryItem } from "./StructuredCr
 import { useTheme } from "@/components/ThemeProvider";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest" | "walk" | "cycling" | "stretching" | "strength" | "hiit" | "swimming"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
@@ -3857,7 +3857,7 @@ export default function AdminPage() {
                                             <button key={t.id} type="button" onClick={() => { loadDayTemplate(i, t); setDayTemplateSearch(""); }} className="w-full text-left px-3 py-2 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
                                               <div className="flex items-center justify-between">
                                                 <span className="text-white text-xs font-medium">{t.name}</span>
-                                                <span className={`text-[10px] font-bold ${t.data.type === 'run' ? 'text-accent' : t.data.type === 'cross' ? 'text-gold' : t.data.type === 'walk' ? 'text-blue-400' : 'text-green-400'}`}>{(t.data.type || '').toUpperCase()}</span>
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeBadge(t.data.type || 'rest')}`}>{getTypeLabel(t.data.type || 'rest')}</span>
                                               </div>
                                               {t.data.title && <p className="text-gray-400 text-[10px] mt-0.5 truncate">{t.data.title}</p>}
                                             </button>
@@ -4447,10 +4447,10 @@ export default function AdminPage() {
                           {normDays.map((d: any, i: number) => {
                             const workouts = d.workouts || [{ type: d.type, trainingType: d.trainingType, title: d.title, miles: d.miles, description: d.description || '', paceTarget: d.paceTarget || '', coachNotes: d.coachNotes || '', location: d.location || '' }];
                             return (
-                              <div key={i} className={`border-l-2 rounded-r-lg p-3 ${d.type === 'run' ? 'border-l-accent bg-accent/5' : d.type === 'cross' ? 'border-l-gold bg-gold/5' : d.type === 'walk' ? 'border-l-blue-500 bg-blue-500/5' : d.type === 'cycling' ? 'border-l-cyan-500 bg-cyan-500/5' : d.type === 'stretching' ? 'border-l-purple-500 bg-purple-500/5' : 'border-l-green-500 bg-green-500/5'}`}>
+                              <div key={i} className={`border-l-2 rounded-r-lg p-3 ${d.type === 'run' ? 'border-l-accent bg-accent/5' : d.type === 'cross' ? 'border-l-gold bg-gold/5' : d.type === 'walk' ? 'border-l-blue-500 bg-blue-500/5' : d.type === 'cycling' ? 'border-l-cyan-500 bg-cyan-500/5' : d.type === 'stretching' ? 'border-l-teal-500 bg-teal-500/5' : d.type === 'strength' ? 'border-l-rose-500 bg-rose-500/5' : d.type === 'hiit' ? 'border-l-orange-500 bg-orange-500/5' : d.type === 'swimming' ? 'border-l-indigo-500 bg-indigo-500/5' : 'border-l-green-500 bg-green-500/5'}`}>
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="text-white font-heading text-xs uppercase">{d.day}</span>
-                                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${d.type === 'run' ? 'bg-accent/20 text-accent' : d.type === 'cross' ? 'bg-gold/20 text-gold' : d.type === 'walk' ? 'bg-blue-500/20 text-blue-400' : d.type === 'cycling' ? 'bg-cyan-500/20 text-cyan-400' : d.type === 'stretching' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400'}`}>{getTypeLabel(d.type)}</span>
+                                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(d.type || 'rest')}`}>{getTypeLabel(d.type)}</span>
                                   {d.trainingType && d.trainingType !== 'Rest' && <span className="text-gray-400 text-xs">{getTrainingTypeLabel(d.trainingType)}</span>}
                                   {d.miles && <span className="text-accent text-xs font-medium">{convertDist(Number(d.miles))}{distUnitShort}</span>}
                                 </div>
@@ -4713,7 +4713,7 @@ export default function AdminPage() {
                           <div className="space-y-1 text-xs">
                             {t.category && <p className="text-gold">{t.category}</p>}
                             <p className="text-gray-400">
-                              <span className={`font-bold ${t.data.type === 'run' ? 'text-accent' : t.data.type === 'cross' ? 'text-gold' : t.data.type === 'walk' ? 'text-blue-400' : t.data.type === 'stretching' ? 'text-purple-400' : 'text-green-400'}`}>{getTypeLabel(t.data.type)}</span>
+                              <span className={`font-bold px-1.5 py-0.5 rounded ${getTypeBadge(t.data.type || 'rest')}`}>{getTypeLabel(t.data.type)}</span>
                               {t.data.trainingType && t.data.trainingType !== 'Rest' && <span> · {getTrainingTypeLabel(t.data.trainingType)}</span>}
                               {t.data.miles && <span> · {convertDist(Number(t.data.miles))} {distUnitShort}</span>}
                             </p>
@@ -4999,14 +4999,14 @@ export default function AdminPage() {
                                           <div key={di} className={`border-l-2 rounded-r-lg p-2 ${wo.type === 'run' ? 'border-l-accent bg-accent/5' : wo.type === 'cross' ? 'border-l-gold bg-gold/5' : wo.type === 'walk' ? 'border-l-blue-500 bg-blue-500/5' : wo.type === 'cycling' ? 'border-l-cyan-500 bg-cyan-500/5' : wo.type === 'stretching' ? 'border-l-purple-500 bg-purple-500/5' : 'border-l-green-500 bg-green-500/5'}`}>
                                             <div className="flex items-center gap-2">
                                               <span className="text-white font-heading text-[10px] uppercase w-12">{d.day?.slice(0, 3)}</span>
-                                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${wo.type === 'run' ? 'bg-accent/20 text-accent' : wo.type === 'cross' ? 'bg-gold/20 text-gold' : wo.type === 'walk' ? 'bg-blue-500/20 text-blue-400' : wo.type === 'stretching' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400'}`}>{getTypeLabel(wo.type || 'rest')}</span>
+                                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeBadge(wo.type || 'rest')}`}>{getTypeLabel(wo.type || 'rest')}</span>
                                               {wo.trainingType && wo.trainingType !== 'Rest' && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo.trainingType)}</span>}
                                               {wo.miles && <span className="text-accent text-[10px] font-medium">{convertDist(Number(wo.miles))}{distUnitShort}</span>}
                                               {wo.title && <span className="text-white text-[10px] truncate">{wo.title}</span>}
                                             </div>
                                             {d.workouts?.length > 1 && d.workouts.slice(1).map((wo2: any, wi2: number) => (
                                               <div key={wi2} className="flex items-center gap-2 mt-1 ml-12">
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${wo2.type === 'run' ? 'bg-accent/20 text-accent' : wo2.type === 'cross' ? 'bg-gold/20 text-gold' : 'bg-gray-500/20 text-gray-400'}`}>{getTypeLabel(wo2.type || 'rest')}</span>
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeBadge(wo2.type || 'rest')}`}>{getTypeLabel(wo2.type || 'rest')}</span>
                                                 {wo2.trainingType && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo2.trainingType)}</span>}
                                                 {wo2.miles && <span className="text-accent text-[10px]">{convertDist(Number(wo2.miles))}{distUnitShort}</span>}
                                                 {wo2.title && <span className="text-white text-[10px] truncate">{wo2.title}</span>}
