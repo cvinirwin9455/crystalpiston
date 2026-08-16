@@ -62,6 +62,9 @@ export async function GET(request: Request) {
     const supabase = await createClient()
 
     if (type === 'invite' || type === 'magiclink') {
+      // Sign out any existing session first (important for super-admin impersonation)
+      await supabase.auth.signOut()
+
       const { error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type: type as any,
