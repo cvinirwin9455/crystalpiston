@@ -718,13 +718,15 @@ export default function DashboardPage() {
     });
     if (!currentWeekData) return false;
 
-    // Optimistic update - move the workout in local state
+    // Optimistic update - move the workout in local state and remove rest days on target
     setWeeks(prev => prev.map(w => {
       if (w.weekId !== currentWeekData.weekId) return w;
+      // Remove rest-type workouts on the target day (they get replaced)
+      const filteredWorkouts = w.workouts.filter(wo => !(wo.day === toDay && wo.type === 'rest'));
       if (workoutType === 'programmed') {
-        return { ...w, workouts: w.workouts.map(wo => wo.id === workoutId ? { ...wo, day: toDay } : wo) };
+        return { ...w, workouts: filteredWorkouts.map(wo => wo.id === workoutId ? { ...wo, day: toDay } : wo) };
       } else {
-        return { ...w, clientWorkouts: w.clientWorkouts.map(cw => cw.id === workoutId ? { ...cw, day: toDay } : cw) };
+        return { ...w, workouts: filteredWorkouts, clientWorkouts: w.clientWorkouts.map(cw => cw.id === workoutId ? { ...cw, day: toDay } : cw) };
       }
     }));
 
@@ -1747,7 +1749,7 @@ export default function DashboardPage() {
                         return suggestion && suggestion.suggestedMatchId === workout.id;
                       });
                       
-                      const canMoveThisWorkout = !workout.completed && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
+                      const canMoveThisWorkout = weekOffset >= 0 && !workout.completed && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
 
                       return (
                 <DraggableWorkout key={workout.id} workoutId={workout.id} workoutType="programmed" day={day} title={workout.title || `${workout.trainingType || workout.type}`} disabled={!canMoveThisWorkout}>
@@ -2116,7 +2118,7 @@ export default function DashboardPage() {
                       }
                       return true;
                     }).map(cw => {
-                      const canMoveClientWorkout = !completedClientWorkouts[cw.id] && !(cw.source === 'strava' && cw.stravaActivityId);
+                      const canMoveClientWorkout = weekOffset >= 0 && !completedClientWorkouts[cw.id] && !(cw.source === 'strava' && cw.stravaActivityId);
                       return (
                       <DraggableWorkout key={cw.id} workoutId={cw.id} workoutType="client" day={day} title={cw.activityName || cw.notes || `${cw.trainingType || cw.type}`} disabled={!canMoveClientWorkout}>
                       <div>

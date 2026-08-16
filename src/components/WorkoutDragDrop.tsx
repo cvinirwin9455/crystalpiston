@@ -177,6 +177,8 @@ export function DraggableWorkout({ workoutId, workoutType, day, title, disabled,
       draggable={!disabled}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragOver={(e) => { e.preventDefault(); }}
+      onDrop={(e) => { e.preventDefault(); }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
