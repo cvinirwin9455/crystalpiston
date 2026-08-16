@@ -31,7 +31,7 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 
   // Cross-training structure (has exercises array)
   if (structure.exercises && Array.isArray(structure.exercises)) {
-    return structure.exercises
+    const exerciseLines = structure.exercises
       .filter((ex: any) => ex.name)
       .map((ex: any) => {
         const measure = ex.measureType === 'reps' ? `${ex.measureValue} reps` : ex.measureType === 'time' ? ex.measureValue : `${ex.measureValue}m`;
@@ -42,6 +42,49 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
         return `${sets}${ex.name} \u2014 ${measure}${weight}${rest}${notes}`;
       })
       .join('\n');
+
+    // HIIT Timer format header for client display
+    if (structure.hiitTimer) {
+      const t = structure.hiitTimer;
+      switch (t.format) {
+        case "emom": {
+          const interval = t.intervalMinutes || 1;
+          const label = interval === 1 ? "EMOM" : `E${interval}MOM`;
+          const duration = t.totalMinutes || 12;
+          const alt = t.alternating ? " (alternating)" : "";
+          return `\u23F1 ${label} \u00D7 ${duration} min${alt}\n${exerciseLines}`;
+        }
+        case "tabata": {
+          const work = t.workSeconds || 20;
+          const restSec = t.restSeconds || 10;
+          const rounds = t.tabataRounds || 8;
+          const sets = (t.tabataSets || 1) > 1 ? ` \u2014 ${t.tabataSets} sets` : "";
+          return `\u23F1 Tabata: ${work}s on / ${restSec}s off \u00D7 ${rounds}${sets}\n${exerciseLines}`;
+        }
+        case "amrap": {
+          const cap = t.timeCap || 12;
+          return `\u23F1 AMRAP ${cap} min \u2014 as many rounds as possible\n${exerciseLines}`;
+        }
+        case "circuit": {
+          const rounds = structure.rounds || 3;
+          const roundRest = structure.roundRest && structure.roundRest !== "00:00" ? ` | Rest: ${structure.roundRest}` : "";
+          return `\uD83D\uDD01 ${rounds} Rounds${roundRest}\n${exerciseLines}`;
+        }
+        case "intervals": {
+          const work = t.intervalWorkSeconds || 30;
+          const restSec = t.intervalRestSeconds || 30;
+          const rounds = t.intervalRounds || 6;
+          return `\u23F1 ${work}s work / ${restSec}s rest \u00D7 ${rounds}\n${exerciseLines}`;
+        }
+      }
+    }
+
+    // Fallback: simple rounds
+    if (structure.rounds && structure.rounds > 1) {
+      const roundRest = structure.roundRest && structure.roundRest !== "00:00" ? ` | Rest: ${structure.roundRest}` : "";
+      return `\uD83D\uDD01 ${structure.rounds} Rounds${roundRest}\n${exerciseLines}`;
+    }
+    return exerciseLines;
   }
 
   // Run structure (has blocks array)
@@ -1779,6 +1822,25 @@ export default function DashboardPage() {
                             workout.structure.exercises && Array.isArray(workout.structure.exercises) && workout.structure.exercises.some((ex: any) => ex.demoVideo) ? (
                               /* Cross-training with video links: render as interactive list */
                               <div className="mt-1 space-y-2.5">
+                                {/* HIIT Timer header for client */}
+                                {workout.structure.hiitTimer && (() => {
+                                  const t = workout.structure.hiitTimer;
+                                  let timerText = '';
+                                  let timerDesc = '';
+                                  switch (t.format) {
+                                    case 'emom': { const iv = t.intervalMinutes || 1; timerText = `${iv === 1 ? 'EMOM' : `E${iv}MOM`} × ${t.totalMinutes || 12} min`; timerDesc = t.alternating ? 'Rotate through exercises — one per interval' : 'Complete all exercises each interval, rest the remainder'; break; }
+                                    case 'tabata': { timerText = `Tabata: ${t.workSeconds || 20}s on / ${t.restSeconds || 10}s off × ${t.tabataRounds || 8}`; timerDesc = (t.tabataSets || 1) > 1 ? `${t.tabataSets} sets with ${t.tabataSetRest || '1:00'} rest between` : 'Max effort during work, full rest during off'; break; }
+                                    case 'amrap': { timerText = `AMRAP ${t.timeCap || 12} min`; timerDesc = 'Complete as many rounds as possible within the time cap'; break; }
+                                    case 'circuit': { timerText = `${workout.structure.rounds || 3} Rounds`; timerDesc = workout.structure.roundRest ? `Rest ${workout.structure.roundRest} between rounds` : 'Complete all exercises, then repeat'; break; }
+                                    case 'intervals': { timerText = `${t.intervalWorkSeconds || 30}s work / ${t.intervalRestSeconds || 30}s rest × ${t.intervalRounds || 6}`; timerDesc = 'Perform exercises during work periods'; break; }
+                                  }
+                                  return timerText ? (
+                                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 mb-2">
+                                      <p className="text-orange-400 text-xs font-bold">⏱ {timerText}</p>
+                                      <p className="text-gray-400 text-[11px] mt-0.5">{timerDesc}</p>
+                                    </div>
+                                  ) : null;
+                                })()}
                                 {workout.structure.exercises.filter((ex: any) => ex.name).map((ex: any, exIdx: number) => {
                                   const measure = ex.measureType === 'reps' ? `${ex.measureValue} reps` : ex.measureType === 'time' ? ex.measureValue : `${ex.measureValue}m`;
                                   const weight = ex.weight ? ` @ ${ex.weight}${ex.weightUnit || 'kg'}` : '';

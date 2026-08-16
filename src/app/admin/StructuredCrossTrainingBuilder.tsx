@@ -31,10 +31,34 @@ export type ExerciseLibraryItem = {
   defaultNotes?: string;
 };
 
+export type HiitFormat = "emom" | "tabata" | "amrap" | "circuit" | "intervals";
+
+export type HiitTimerSettings = {
+  format: HiitFormat;
+  // EMOM / E2MOM / E3MOM etc.
+  intervalMinutes?: number; // 1 = EMOM, 2 = E2MOM, 3 = E3MOM, etc.
+  totalMinutes?: number; // Total duration in minutes
+  alternating?: boolean; // If true, exercises rotate each interval
+  // Tabata
+  workSeconds?: number; // e.g. 20
+  restSeconds?: number; // e.g. 10
+  tabataRounds?: number; // e.g. 8
+  tabataSets?: number; // Number of different exercises/sets (each gets full rounds)
+  tabataSetRest?: string; // Rest between sets e.g. "01:00"
+  // AMRAP
+  timeCap?: number; // Minutes
+  // Circuit (already supported via rounds/roundRest, kept for clarity)
+  // Intervals (work/rest alternating)
+  intervalWorkSeconds?: number;
+  intervalRestSeconds?: number;
+  intervalRounds?: number;
+};
+
 export type CrossTrainingStructure = {
   exercises: Exercise[];
-  rounds?: number; // Number of circuit rounds (for HIIT)
+  rounds?: number; // Number of circuit rounds (for Circuit format)
   roundRest?: string; // Rest between rounds e.g. "01:00" (mm:ss)
+  hiitTimer?: HiitTimerSettings; // HIIT-specific timer configuration
 };
 
 function emptyExercise(weightUnit: WeightUnit = "kg"): Exercise {
@@ -70,7 +94,43 @@ export function formatCrossTrainingForDisplay(structure: CrossTrainingStructure)
     })
     .join("\n");
   
-  // Add rounds info if present
+  // HIIT Timer format header
+  if (structure.hiitTimer) {
+    const t = structure.hiitTimer;
+    switch (t.format) {
+      case "emom": {
+        const interval = t.intervalMinutes || 1;
+        const label = interval === 1 ? "EMOM" : `E${interval}MOM`;
+        const duration = t.totalMinutes || 12;
+        const alt = t.alternating ? " (alternating)" : "";
+        return `${label} × ${duration} minutes${alt}\n${exerciseLines}`;
+      }
+      case "tabata": {
+        const work = t.workSeconds || 20;
+        const rest = t.restSeconds || 10;
+        const rounds = t.tabataRounds || 8;
+        const sets = (t.tabataSets || 1) > 1 ? ` — ${t.tabataSets} sets, ${t.tabataSetRest || '1:00'} rest between` : "";
+        return `Tabata: ${work}s work / ${rest}s rest × ${rounds} rounds${sets}\n${exerciseLines}`;
+      }
+      case "amrap": {
+        const cap = t.timeCap || 12;
+        return `AMRAP ${cap} minutes\n${exerciseLines}`;
+      }
+      case "circuit": {
+        const rounds = structure.rounds || 3;
+        const roundRest = structure.roundRest && structure.roundRest !== "00:00" ? ` | Rest: ${structure.roundRest} between rounds` : "";
+        return `${rounds} Rounds${roundRest}\n${exerciseLines}`;
+      }
+      case "intervals": {
+        const work = t.intervalWorkSeconds || 30;
+        const rest = t.intervalRestSeconds || 30;
+        const rounds = t.intervalRounds || 6;
+        return `${work}s work / ${rest}s rest × ${rounds} rounds\n${exerciseLines}`;
+      }
+    }
+  }
+
+  // Fallback: simple rounds (non-HIIT or legacy data)
   if (structure.rounds && structure.rounds > 1) {
     const roundRest = structure.roundRest && structure.roundRest !== "00:00" ? ` | Rest between rounds: ${structure.roundRest}` : "";
     return `${structure.rounds} Rounds${roundRest}\n${exerciseLines}`;
@@ -85,9 +145,10 @@ interface Props {
   weightUnit?: WeightUnit;
   exerciseLibrary?: ExerciseLibraryItem[];
   showRounds?: boolean; // Show rounds/circuit fields (for HIIT)
+  hiitSubtype?: string; // The specific HIIT subtype (AMRAP, EMOM, Tabata, Circuit, Intervals)
 }
 
-export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [], showRounds = false }: Props) {
+export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [], showRounds = false, hiitSubtype }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showVideoInput, setShowVideoInput] = useState<Record<number, boolean>>({});
@@ -204,31 +265,230 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
         </button>
       </div>
 
-      {/* Rounds / Circuit settings (for HIIT) */}
+      {/* HIIT Timer Configuration */}
       {showRounds && (
-        <div className="flex items-center gap-3 pb-2 border-b border-gold/10">
-          <div className="flex items-center gap-1.5">
-            <label className="text-gray-400 text-[10px] uppercase">Rounds</label>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={structure.rounds || 1}
-              onChange={(e) => onChange({ ...structure, rounds: parseInt(e.target.value) || 1 })}
-              className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <label className="text-gray-400 text-[10px] uppercase">Rest between rounds</label>
-            <input
-              type="text"
-              value={structure.roundRest || "01:00"}
-              onChange={(e) => onChange({ ...structure, roundRest: e.target.value })}
-              className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              placeholder="mm:ss"
-            />
-          </div>
-          <span className="text-gray-500 text-[10px]">Complete all exercises below, then rest and repeat</span>
+        <div className="pb-3 border-b border-gold/10 space-y-2">
+          {/* EMOM / E2MOM / E3MOM */}
+          {(hiitSubtype === "EMOM") && (
+            <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-orange-400 text-[10px] font-heading uppercase tracking-wider">EMOM — Every</span>
+                <select
+                  value={structure.hiitTimer?.intervalMinutes || 1}
+                  onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "emom", intervalMinutes: parseInt(e.target.value) } as any })}
+                  className="w-14 bg-primary/50 border border-orange-500/30 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option><option value={5}>5</option>
+                </select>
+                <span className="text-orange-400 text-[10px] font-heading uppercase">Minute(s) On the Minute</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Total Duration</label>
+                  <input
+                    type="number" min={1} max={60}
+                    value={structure.hiitTimer?.totalMinutes || 12}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "emom", totalMinutes: parseInt(e.target.value) || 12 } as any })}
+                    className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">min</span>
+                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={structure.hiitTimer?.alternating || false}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "emom", alternating: e.target.checked } as any })}
+                    className="w-3.5 h-3.5 rounded border-gray-500 bg-primary/50 text-orange-500 focus:ring-orange-500"
+                  />
+                  <span className="text-gray-400 text-[10px] uppercase">Alternating exercises each interval</span>
+                </label>
+              </div>
+              <p className="text-gray-500 text-[10px]">
+                {structure.hiitTimer?.alternating 
+                  ? "Client rotates through exercises below — one per interval, then repeats" 
+                  : "Client completes ALL exercises below within each interval, rests remainder"}
+              </p>
+            </div>
+          )}
+
+          {/* Tabata */}
+          {hiitSubtype === "Tabata" && (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 space-y-2">
+              <span className="text-red-400 text-[10px] font-heading uppercase tracking-wider">Tabata Timer</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Work</label>
+                  <input
+                    type="number" min={5} max={120} step={5}
+                    value={structure.hiitTimer?.workSeconds || 20}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "tabata", workSeconds: parseInt(e.target.value) || 20 } as any })}
+                    className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">sec</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rest</label>
+                  <input
+                    type="number" min={5} max={120} step={5}
+                    value={structure.hiitTimer?.restSeconds || 10}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "tabata", restSeconds: parseInt(e.target.value) || 10 } as any })}
+                    className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">sec</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rounds</label>
+                  <input
+                    type="number" min={1} max={20}
+                    value={structure.hiitTimer?.tabataRounds || 8}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "tabata", tabataRounds: parseInt(e.target.value) || 8 } as any })}
+                    className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Exercise Sets</label>
+                  <input
+                    type="number" min={1} max={10}
+                    value={structure.hiitTimer?.tabataSets || 1}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "tabata", tabataSets: parseInt(e.target.value) || 1 } as any })}
+                    className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">(rotate through exercises)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rest between sets</label>
+                  <input
+                    type="text"
+                    value={structure.hiitTimer?.tabataSetRest || "01:00"}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "tabata", tabataSetRest: e.target.value } as any })}
+                    className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="mm:ss"
+                  />
+                </div>
+              </div>
+              <p className="text-gray-500 text-[10px]">
+                {structure.hiitTimer?.workSeconds || 20}s on / {structure.hiitTimer?.restSeconds || 10}s off × {structure.hiitTimer?.tabataRounds || 8} rounds
+                {(structure.hiitTimer?.tabataSets || 1) > 1 ? ` — ${structure.hiitTimer?.tabataSets} sets with ${structure.hiitTimer?.tabataSetRest || '1:00'} rest between` : ''}
+              </p>
+            </div>
+          )}
+
+          {/* AMRAP */}
+          {hiitSubtype === "AMRAP" && (
+            <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3 space-y-2">
+              <span className="text-green-400 text-[10px] font-heading uppercase tracking-wider">AMRAP — As Many Rounds As Possible</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Time Cap</label>
+                  <input
+                    type="number" min={1} max={60}
+                    value={structure.hiitTimer?.timeCap || 12}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "amrap", timeCap: parseInt(e.target.value) || 12 } as any })}
+                    className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">minutes</span>
+                </div>
+              </div>
+              <p className="text-gray-500 text-[10px]">Client completes as many rounds of the exercises below as possible within the time cap. No programmed rest — they rest as needed.</p>
+            </div>
+          )}
+
+          {/* Circuit */}
+          {hiitSubtype === "Circuit" && (
+            <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 space-y-2">
+              <span className="text-purple-400 text-[10px] font-heading uppercase tracking-wider">Circuit</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rounds</label>
+                  <input
+                    type="number" min={1} max={20}
+                    value={structure.rounds || 3}
+                    onChange={(e) => onChange({ ...structure, rounds: parseInt(e.target.value) || 3, hiitTimer: { ...structure.hiitTimer, format: "circuit" } as any })}
+                    className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rest between rounds</label>
+                  <input
+                    type="text"
+                    value={structure.roundRest || "01:00"}
+                    onChange={(e) => onChange({ ...structure, roundRest: e.target.value, hiitTimer: { ...structure.hiitTimer, format: "circuit" } as any })}
+                    className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="mm:ss"
+                  />
+                </div>
+              </div>
+              <p className="text-gray-500 text-[10px]">Complete all exercises below in order, rest between rounds, then repeat.</p>
+            </div>
+          )}
+
+          {/* Intervals (work/rest alternating) */}
+          {hiitSubtype === "Intervals" && (
+            <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3 space-y-2">
+              <span className="text-cyan-400 text-[10px] font-heading uppercase tracking-wider">Intervals — Work / Rest</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Work</label>
+                  <input
+                    type="number" min={5} max={300} step={5}
+                    value={structure.hiitTimer?.intervalWorkSeconds || 30}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "intervals", intervalWorkSeconds: parseInt(e.target.value) || 30 } as any })}
+                    className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">sec</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rest</label>
+                  <input
+                    type="number" min={5} max={300} step={5}
+                    value={structure.hiitTimer?.intervalRestSeconds || 30}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "intervals", intervalRestSeconds: parseInt(e.target.value) || 30 } as any })}
+                    className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <span className="text-gray-500 text-[10px]">sec</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-gray-400 text-[10px] uppercase">Rounds</label>
+                  <input
+                    type="number" min={1} max={30}
+                    value={structure.hiitTimer?.intervalRounds || 6}
+                    onChange={(e) => onChange({ ...structure, hiitTimer: { ...structure.hiitTimer, format: "intervals", intervalRounds: parseInt(e.target.value) || 6 } as any })}
+                    className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+              </div>
+              <p className="text-gray-500 text-[10px]">
+                {structure.hiitTimer?.intervalWorkSeconds || 30}s work / {structure.hiitTimer?.intervalRestSeconds || 30}s rest × {structure.hiitTimer?.intervalRounds || 6} rounds — perform exercises below during work periods
+              </p>
+            </div>
+          )}
+
+          {/* Fallback: if no subtype selected yet, show generic rounds */}
+          {!hiitSubtype && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <label className="text-gray-400 text-[10px] uppercase">Rounds</label>
+                <input
+                  type="number" min={1} max={20}
+                  value={structure.rounds || 1}
+                  onChange={(e) => onChange({ ...structure, rounds: parseInt(e.target.value) || 1 })}
+                  className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-gray-400 text-[10px] uppercase">Rest between rounds</label>
+                <input
+                  type="text"
+                  value={structure.roundRest || "01:00"}
+                  onChange={(e) => onChange({ ...structure, roundRest: e.target.value })}
+                  className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="mm:ss"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
