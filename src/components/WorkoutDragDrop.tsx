@@ -379,12 +379,12 @@ export function Toast({ message, type = "success", isVisible, onDismiss }: Toast
 
   if (!isVisible) return null;
 
-  const bgColor = type === "success" ? "bg-green-500/20 border-green-500/50 text-green-300"
-    : type === "error" ? "bg-red-500/20 border-red-500/50 text-red-300"
-    : "bg-blue-500/20 border-blue-500/50 text-blue-300";
+  const bgColor = type === "success" ? "bg-green-600 border-green-700 text-white"
+    : type === "error" ? "bg-red-600 border-red-700 text-white"
+    : "bg-blue-600 border-blue-700 text-white";
 
   return (
-    <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl border shadow-lg text-sm font-medium ${bgColor} animate-in fade-in slide-in-from-bottom-4`}>
+    <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl border shadow-2xl text-sm font-medium ${bgColor} animate-in fade-in slide-in-from-bottom-4`}>
       <div className="flex items-center gap-2">
         {type === "success" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
         {type === "error" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>}
