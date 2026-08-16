@@ -69,9 +69,8 @@ export function DragDropProvider({ weekId, onMoveWorkout, children }: DragDropPr
   }, [dragItem, onMoveWorkout, endDrag]);
 
   const canDrag = useCallback((workout: { completed?: boolean; stravaSynced?: boolean; status?: string; source?: string; stravaActivityId?: string | null }) => {
-    // Cannot drag completed, partial, skipped, or strava-synced workouts
+    // Cannot drag completed (status-based), or strava-synced workouts
     if (workout.status === "complete" || workout.status === "partial" || workout.status === "skipped") return false;
-    if (workout.completed) return false;
     if (workout.stravaSynced) return false;
     if (workout.source === "strava" && workout.stravaActivityId) return false;
     return true;

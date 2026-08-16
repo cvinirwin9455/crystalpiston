@@ -1749,7 +1749,7 @@ export default function DashboardPage() {
                         return suggestion && suggestion.suggestedMatchId === workout.id;
                       });
                       
-                      const canMoveThisWorkout = weekOffset >= 0 && !workout.completed && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
+                      const canMoveThisWorkout = weekOffset >= 0 && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
 
                       return (
                 <DraggableWorkout key={workout.id} workoutId={workout.id} workoutType="programmed" day={day} title={workout.title || `${workout.trainingType || workout.type}`} disabled={!canMoveThisWorkout}>
