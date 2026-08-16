@@ -129,7 +129,7 @@ export default function AdminPage() {
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
   // Organization feature toggles
-  const [orgFeatures, setOrgFeatures] = useState<{ run: boolean; walk: boolean; cycling: boolean; crossTraining: boolean; stretching: boolean }>({ run: true, walk: true, cycling: true, crossTraining: true, stretching: true });
+  const [orgFeatures, setOrgFeatures] = useState<{ run: boolean; walk: boolean; cycling: boolean; crossTraining: boolean; stretching: boolean; strength: boolean; hiit: boolean; swimming: boolean }>({ run: true, walk: true, cycling: true, crossTraining: true, stretching: true, strength: true, hiit: true, swimming: true });
   const [orgFeaturesLoaded, setOrgFeaturesLoaded] = useState(false);
   const [orgFeaturesSaving, setOrgFeaturesSaving] = useState(false);
 
@@ -173,9 +173,12 @@ export default function AdminPage() {
     const types: { value: string; label: string }[] = [];
     if (orgFeatures.crossTraining) types.push({ value: "cross", label: "Cross Training" });
     if (orgFeatures.cycling) types.push({ value: "cycling", label: "Cycling" });
+    if (orgFeatures.hiit) types.push({ value: "hiit", label: "HIIT" });
     types.push({ value: "rest", label: "Rest" });
-    types.push({ value: "run", label: "Run" }); // Always available
-    if (orgFeatures.stretching) types.push({ value: "stretching", label: "Stretching" });
+    if (orgFeatures.run) types.push({ value: "run", label: "Run" });
+    if (orgFeatures.strength) types.push({ value: "strength", label: "Strength" });
+    if (orgFeatures.stretching) types.push({ value: "stretching", label: "Stretching / Mobility" });
+    if (orgFeatures.swimming) types.push({ value: "swimming", label: "Swimming" });
     if (orgFeatures.walk) types.push({ value: "walk", label: "Walk" });
     return types;
   })();
@@ -2492,9 +2495,29 @@ export default function AdminPage() {
       case "Stretching": return "Stretching";
       case "FoamRoll": return "Foam Roll";
       case "Yoga": return "Yoga";
+      case "DynamicWarmUp": return "Dynamic Warm-Up";
+      case "JointMobility": return "Joint Mobility";
       case "CrossTraining": return "Cross Training";
       case "OrangeTheory": return "Cross Training";
       case "Rest": return "Rest";
+      // Strength subtypes
+      case "UpperBody": return "Upper Body";
+      case "LowerBody": return "Lower Body";
+      case "FullBody": return "Full Body";
+      case "Core": return "Core";
+      case "OlympicLifts": return "Olympic Lifts";
+      case "Powerlifting": return "Powerlifting";
+      // HIIT subtypes
+      case "AMRAP": return "AMRAP";
+      case "EMOM": return "EMOM";
+      case "Tabata": return "Tabata";
+      case "Circuit": return "Circuit";
+      // Swimming subtypes
+      case "Endurance": return "Endurance";
+      case "Sprint": return "Sprint";
+      case "Drills": return "Drills";
+      case "OpenWater": return "Open Water";
+      case "SwimRecovery": return "Recovery";
       default: return tt;
     }
   };
@@ -2506,7 +2529,10 @@ export default function AdminPage() {
       case "rest": return "bg-green-500/20 text-green-400";
       case "walk": return "bg-blue-500/20 text-blue-400";
       case "cycling": return "bg-cyan-500/20 text-cyan-400";
-      case "stretching": return "bg-purple-500/20 text-purple-400";
+      case "stretching": return "bg-teal-500/20 text-teal-400";
+      case "strength": return "bg-rose-500/20 text-rose-400";
+      case "hiit": return "bg-orange-500/20 text-orange-400";
+      case "swimming": return "bg-indigo-500/20 text-indigo-400";
       default: return "bg-gray-500/20 text-gray-400";
     }
   };
@@ -2515,9 +2541,12 @@ export default function AdminPage() {
     switch (type) {
       case "cross": return "Cross Training";
       case "cycling": return "Cycling";
+      case "hiit": return "HIIT";
       case "rest": return "Rest";
       case "run": return "Run";
-      case "stretching": return "Stretching";
+      case "strength": return "Strength";
+      case "stretching": return "Stretching / Mobility";
+      case "swimming": return "Swimming";
       case "walk": return "Walk";
       default: return type;
     }
@@ -2554,9 +2583,32 @@ export default function AdminPage() {
       case "Stretching":
       case "FoamRoll":
       case "Yoga":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      case "DynamicWarmUp":
+      case "JointMobility":
+        return "bg-teal-500/20 text-teal-400 border-teal-500/30";
       case "CrossTraining":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+        return "bg-gold/20 text-gold border-gold/30";
+      // Strength subtypes
+      case "UpperBody":
+      case "LowerBody":
+      case "FullBody":
+      case "Core":
+      case "OlympicLifts":
+      case "Powerlifting":
+        return "bg-rose-500/20 text-rose-400 border-rose-500/30";
+      // HIIT subtypes
+      case "AMRAP":
+      case "EMOM":
+      case "Tabata":
+      case "Circuit":
+        return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+      // Swimming subtypes
+      case "Endurance":
+      case "Sprint":
+      case "Drills":
+      case "OpenWater":
+      case "SwimRecovery":
+        return "bg-indigo-500/20 text-indigo-400 border-indigo-500/30";
       default:
         return "bg-gray-500/20 text-gray-400 border-gray-500/30";
     }
@@ -3366,6 +3418,33 @@ export default function AdminPage() {
                               </div>
                             </>
                           )}
+                          {((editedWorkouts[w.id]?.type || w.type) === "strength" || (editedWorkouts[w.id]?.type || w.type) === "hiit" || (editedWorkouts[w.id]?.type || w.type) === "stretching") && (
+                            <>
+                              <div className="mt-1">
+                                <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" />
+                              </div>
+                              <StructuredCrossTrainingBuilder
+                                structure={editCrossTrainingStructures[w.id] || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
+                                weightUnit={adminWeightUnit}
+                                exerciseLibrary={exerciseLibrary}
+                                onChange={(crossTrainingStructure) => {
+                                  setEditCrossTrainingStructures(prev => ({ ...prev, [w.id]: crossTrainingStructure }));
+                                  const desc = formatCrossTrainingForDisplay(crossTrainingStructure);
+                                  updateEditedWorkout(w.id, 'description', desc);
+                                }}
+                              />
+                              <div className="mt-2">
+                                <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" />
+                              </div>
+                            </>
+                          )}
+                          {(editedWorkouts[w.id]?.type || w.type) === "swimming" && (
+                            <div className="grid md:grid-cols-2 gap-2 mt-1">
+                              <input type="text" value={editedWorkouts[w.id]?.title || ''} onChange={(e) => updateEditedWorkout(w.id, 'title', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title (e.g. 10x100m sprints)" />
+                              <input type="text" value={editedWorkouts[w.id]?.coachNotes || ''} onChange={(e) => updateEditedWorkout(w.id, 'coachNotes', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" />
+                              <textarea value={editedWorkouts[w.id]?.description || ''} onChange={(e) => updateEditedWorkout(w.id, 'description', e.target.value)} className="md:col-span-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Workout details (e.g. Warm-up 200m easy, Main set 10x100m @ 1:45, Cool-down 200m easy)" />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -3679,8 +3758,29 @@ export default function AdminPage() {
                             )}
                             {wo.type === "stretching" && (
                               <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
-                                <option value="" disabled>Type *</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
+                                <option value="" disabled>Type *</option><option value="DynamicWarmUp">Dynamic Warm-Up</option><option value="FoamRoll">Foam Roll</option><option value="JointMobility">Joint Mobility</option><option value="Recovery">Recovery</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
                               </select>
+                            )}
+                            {wo.type === "strength" && (
+                              <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
+                                <option value="" disabled>Type *</option><option value="UpperBody">Upper Body</option><option value="LowerBody">Lower Body</option><option value="FullBody">Full Body</option><option value="Core">Core</option><option value="OlympicLifts">Olympic Lifts</option><option value="Powerlifting">Powerlifting</option>
+                              </select>
+                            )}
+                            {wo.type === "hiit" && (
+                              <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
+                                <option value="" disabled>Type *</option><option value="AMRAP">AMRAP</option><option value="EMOM">EMOM</option><option value="Tabata">Tabata</option><option value="Circuit">Circuit</option><option value="Intervals">Intervals</option>
+                              </select>
+                            )}
+                            {wo.type === "swimming" && (
+                              <>
+                                <select value={wo.trainingType || ""} onChange={(e) => updateDayPlan(i, wi, "trainingType", e.target.value)} className={`bg-primary/50 border rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.trainingType ? "border-accent/50" : "border-white/10"}`}>
+                                  <option value="" disabled>Type *</option><option value="Endurance">Endurance</option><option value="Sprint">Sprint</option><option value="Drills">Drills</option><option value="OpenWater">Open Water</option><option value="SwimRecovery">Recovery</option>
+                                </select>
+                                <div className="flex items-center gap-1">
+                                  <input type="text" value={wo.miles} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateDayPlan(i, wi, "miles", v); }} className={`w-16 bg-primary/50 border rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${!wo.miles ? "border-accent/50" : "border-white/10"}`} placeholder="Meters" />
+                                  <span className="text-gray-400 text-xs">m</span>
+                                </div>
+                              </>
                             )}
                             {day.workouts.length > 1 && <button type="button" onClick={() => removeWorkoutFromDay(i, wi)} className="text-red-400 hover:text-red-300 text-xs ml-auto">Remove</button>}
                           </div>
@@ -3710,7 +3810,9 @@ export default function AdminPage() {
                           )}
                           {wo.type === "walk" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /></div>)}
                           {wo.type === "cross" && (<><div className="mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} exerciseLibrary={exerciseLibrary} onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional — e.g. Focus on form, Increase weight if comfortable)" /></div></>)}
-                          {(wo.type === "cycling" || wo.type === "stretching") && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
+                          {(wo.type === "strength" || wo.type === "hiit" || wo.type === "stretching") && (<><div className="mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title" /></div><StructuredCrossTrainingBuilder structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }} weightUnit={adminWeightUnit} exerciseLibrary={exerciseLibrary} showRounds={wo.type === "hiit"} onChange={(crossTrainingStructure) => { const updated = [...weekPlan.days]; const workouts = [...updated[i].workouts]; (workouts[wi] as any).crossTrainingStructure = crossTrainingStructure; const desc = formatCrossTrainingForDisplay(crossTrainingStructure); (workouts[wi] as any).description = desc; updated[i] = { ...updated[i], workouts }; setWeekPlan({ ...weekPlan, days: updated }); }} /><div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div></>)}
+                          {wo.type === "swimming" && (<div className="grid md:grid-cols-2 gap-2 mt-2"><input type="text" value={wo.title} onChange={(e) => updateDayPlan(i, wi, "title", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Title (e.g. 10x100m sprints)" /><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes" /><textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="md:col-span-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Workout details (e.g. Warm-up 200m easy, Main set 10x100m @ 1:45, Cool-down 200m easy)" /></div>)}
+                          {wo.type === "cycling" && (<textarea value={wo.description} onChange={(e) => updateDayPlan(i, wi, "description", e.target.value)} className="w-full mt-2 bg-primary/50 border border-white/10 rounded px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none" rows={2} placeholder="Full workout details..." />)}
                           {wo.type === "rest" && <div className="mt-2"><input type="text" value={wo.coachNotes} onChange={(e) => updateDayPlan(i, wi, "coachNotes", e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Coach notes (optional)" /></div>}
                         </div>
                       ))}
@@ -4058,7 +4160,7 @@ export default function AdminPage() {
                   <h3 className="font-heading text-sm uppercase text-gray-400 mb-2">Workout Types</h3>
                   <p className="text-gray-300 text-xs mb-4">Toggle which workout types are available across your organization. Disabled types will be hidden from all coaches. Existing workout data is never deleted — if you re-enable a type, historical data will reappear.</p>
                   <div className="space-y-3">
-                    {/* Run - always on, can't be disabled (core feature) */}
+                    {/* Run */}
                     <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span className="w-3 h-3 rounded-full bg-accent"></span>
@@ -4067,7 +4169,9 @@ export default function AdminPage() {
                           <p className="text-gray-500 text-xs">Running workouts with structured builder</p>
                         </div>
                       </div>
-                      <span className="text-accent text-xs font-medium">Always On</span>
+                      <button onClick={() => toggleOrgFeature('run')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.run ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.run ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
                     </div>
                     {/* Walk */}
                     <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
@@ -4080,6 +4184,45 @@ export default function AdminPage() {
                       </div>
                       <button onClick={() => toggleOrgFeature('walk')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.walk ? 'bg-accent' : 'bg-gray-600'}`}>
                         <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.walk ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                    {/* Strength */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-rose-400"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Strength</p>
+                          <p className="text-gray-500 text-xs">Resistance training with exercise library</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('strength')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.strength ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.strength ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                    {/* HIIT */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-orange-400"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">HIIT</p>
+                          <p className="text-gray-500 text-xs">High-intensity intervals, circuits, and timed workouts</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('hiit')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.hiit ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.hiit ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      </button>
+                    </div>
+                    {/* Cross Training */}
+                    <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-gold"></span>
+                        <div>
+                          <p className="text-white text-sm font-medium">Cross Training</p>
+                          <p className="text-gray-500 text-xs">General cross-training and supplemental exercises</p>
+                        </div>
+                      </div>
+                      <button onClick={() => toggleOrgFeature('crossTraining')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.crossTraining ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.crossTraining ? 'translate-x-5' : 'translate-x-0'}`}></span>
                       </button>
                     </div>
                     {/* Cycling */}
@@ -4095,26 +4238,26 @@ export default function AdminPage() {
                         <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.cycling ? 'translate-x-5' : 'translate-x-0'}`}></span>
                       </button>
                     </div>
-                    {/* Cross Training */}
+                    {/* Swimming */}
                     <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="w-3 h-3 rounded-full bg-gold"></span>
+                        <span className="w-3 h-3 rounded-full bg-indigo-400"></span>
                         <div>
-                          <p className="text-white text-sm font-medium">Cross Training</p>
-                          <p className="text-gray-500 text-xs">Strength, gym, and cross-training exercises</p>
+                          <p className="text-white text-sm font-medium">Swimming</p>
+                          <p className="text-gray-500 text-xs">Pool and open water swim sessions</p>
                         </div>
                       </div>
-                      <button onClick={() => toggleOrgFeature('crossTraining')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.crossTraining ? 'bg-accent' : 'bg-gray-600'}`}>
-                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.crossTraining ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                      <button onClick={() => toggleOrgFeature('swimming')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.swimming ? 'bg-accent' : 'bg-gray-600'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${orgFeatures.swimming ? 'translate-x-5' : 'translate-x-0'}`}></span>
                       </button>
                     </div>
-                    {/* Stretching */}
+                    {/* Stretching / Mobility */}
                     <div className="flex items-center justify-between bg-primary/30 border border-white/5 rounded-lg px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="w-3 h-3 rounded-full bg-purple-400"></span>
+                        <span className="w-3 h-3 rounded-full bg-teal-400"></span>
                         <div>
-                          <p className="text-white text-sm font-medium">Stretching</p>
-                          <p className="text-gray-500 text-xs">Yoga, foam rolling, and flexibility work</p>
+                          <p className="text-white text-sm font-medium">Stretching / Mobility</p>
+                          <p className="text-gray-500 text-xs">Flexibility, foam rolling, yoga, and mobility work</p>
                         </div>
                       </div>
                       <button onClick={() => toggleOrgFeature('stretching')} className={`relative w-11 h-6 rounded-full transition-colors ${orgFeatures.stretching ? 'bg-accent' : 'bg-gray-600'}`}>

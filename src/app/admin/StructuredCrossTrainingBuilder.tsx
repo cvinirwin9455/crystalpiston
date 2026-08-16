@@ -33,6 +33,8 @@ export type ExerciseLibraryItem = {
 
 export type CrossTrainingStructure = {
   exercises: Exercise[];
+  rounds?: number; // Number of circuit rounds (for HIIT)
+  roundRest?: string; // Rest between rounds e.g. "01:00" (mm:ss)
 };
 
 function emptyExercise(weightUnit: WeightUnit = "kg"): Exercise {
@@ -52,7 +54,7 @@ function emptyExercise(weightUnit: WeightUnit = "kg"): Exercise {
 // Format for client display
 export function formatCrossTrainingForDisplay(structure: CrossTrainingStructure): string {
   if (!structure || !structure.exercises || structure.exercises.length === 0) return "";
-  return structure.exercises
+  const exerciseLines = structure.exercises
     .filter((ex) => ex.name)
     .map((ex) => {
       const measure =
@@ -67,6 +69,13 @@ export function formatCrossTrainingForDisplay(structure: CrossTrainingStructure)
       return `${sets}${ex.name} — ${measure}${weight}${rest}`;
     })
     .join("\n");
+  
+  // Add rounds info if present
+  if (structure.rounds && structure.rounds > 1) {
+    const roundRest = structure.roundRest && structure.roundRest !== "00:00" ? ` | Rest between rounds: ${structure.roundRest}` : "";
+    return `${structure.rounds} Rounds${roundRest}\n${exerciseLines}`;
+  }
+  return exerciseLines;
 }
 
 // ===== COMPONENT =====
@@ -75,9 +84,10 @@ interface Props {
   onChange: (structure: CrossTrainingStructure) => void;
   weightUnit?: WeightUnit;
   exerciseLibrary?: ExerciseLibraryItem[];
+  showRounds?: boolean; // Show rounds/circuit fields (for HIIT)
 }
 
-export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [] }: Props) {
+export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [], showRounds = false }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showVideoInput, setShowVideoInput] = useState<Record<number, boolean>>({});
@@ -193,6 +203,34 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
           Add
         </button>
       </div>
+
+      {/* Rounds / Circuit settings (for HIIT) */}
+      {showRounds && (
+        <div className="flex items-center gap-3 pb-2 border-b border-gold/10">
+          <div className="flex items-center gap-1.5">
+            <label className="text-gray-400 text-[10px] uppercase">Rounds</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={structure.rounds || 1}
+              onChange={(e) => onChange({ ...structure, rounds: parseInt(e.target.value) || 1 })}
+              className="w-12 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-gray-400 text-[10px] uppercase">Rest between rounds</label>
+            <input
+              type="text"
+              value={structure.roundRest || "01:00"}
+              onChange={(e) => onChange({ ...structure, roundRest: e.target.value })}
+              className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              placeholder="mm:ss"
+            />
+          </div>
+          <span className="text-gray-500 text-[10px]">Complete all exercises below, then rest and repeat</span>
+        </div>
+      )}
 
       {/* Exercise Rows */}
       <div className="space-y-1.5">

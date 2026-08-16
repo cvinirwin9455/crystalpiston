@@ -19,6 +19,9 @@ const DEFAULT_FEATURES = {
   cycling: true,
   crossTraining: true,
   stretching: true,
+  strength: true,
+  hiit: true,
+  swimming: true,
 }
 
 // GET /api/org-features - Get feature toggles for current user's org
@@ -51,11 +54,14 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    run: features.feature_run,
-    walk: features.feature_walk,
-    cycling: features.feature_cycling,
-    crossTraining: features.feature_cross_training,
-    stretching: features.feature_stretching,
+    run: features.feature_run ?? true,
+    walk: features.feature_walk ?? true,
+    cycling: features.feature_cycling ?? true,
+    crossTraining: features.feature_cross_training ?? true,
+    stretching: features.feature_stretching ?? true,
+    strength: features.feature_strength ?? true,
+    hiit: features.feature_hiit ?? true,
+    swimming: features.feature_swimming ?? true,
   })
 }
 
@@ -91,6 +97,9 @@ export async function PUT(request: Request) {
   if (body.cycling !== undefined) updates.feature_cycling = body.cycling
   if (body.crossTraining !== undefined) updates.feature_cross_training = body.crossTraining
   if (body.stretching !== undefined) updates.feature_stretching = body.stretching
+  if (body.strength !== undefined) updates.feature_strength = body.strength
+  if (body.hiit !== undefined) updates.feature_hiit = body.hiit
+  if (body.swimming !== undefined) updates.feature_swimming = body.swimming
 
   // Upsert: update if exists, insert if not
   const { error } = await adminClient

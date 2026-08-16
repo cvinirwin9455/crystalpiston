@@ -83,6 +83,13 @@ export async function POST(request: Request) {
   if ((type === 'run' || type === 'walk') && !miles) {
     return NextResponse.json({ error: 'Run and Walk types require distance' }, { status: 400 })
   }
+  // Validate swimming requires trainingType and distance (meters)
+  if (type === 'swimming' && !trainingType) {
+    return NextResponse.json({ error: 'Swimming requires a subtype' }, { status: 400 })
+  }
+  if (type === 'swimming' && !miles) {
+    return NextResponse.json({ error: 'Swimming requires distance (meters)' }, { status: 400 })
+  }
 
   const { data, error } = await supabase
     .from('client_workouts')
