@@ -109,19 +109,15 @@ export function DraggableWorkout({ workoutId, workoutType, day, title, disabled,
     }
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", JSON.stringify({ workoutId, workoutType, fromDay: day, title }));
-    // Set ghost image
+    // Use the element itself as the drag image (no custom ghost to avoid DOM issues)
     if (elementRef.current) {
-      const ghost = elementRef.current.cloneNode(true) as HTMLElement;
-      ghost.style.opacity = "0.8";
-      ghost.style.transform = "rotate(2deg)";
-      ghost.style.position = "absolute";
-      ghost.style.top = "-1000px";
-      document.body.appendChild(ghost);
-      e.dataTransfer.setDragImage(ghost, 20, 20);
-      setTimeout(() => document.body.removeChild(ghost), 0);
+      e.dataTransfer.setDragImage(elementRef.current, 20, 20);
     }
-    startDrag({ workoutId, workoutType, fromDay: day, title });
-    setIsThisItemDragging(true);
+    // Small delay to let the browser capture the drag image before we change opacity
+    requestAnimationFrame(() => {
+      startDrag({ workoutId, workoutType, fromDay: day, title });
+      setIsThisItemDragging(true);
+    });
   };
 
   const handleDragEnd = () => {
@@ -182,9 +178,13 @@ export function DraggableWorkout({ workoutId, workoutType, day, title, disabled,
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       className={`relative transition-all duration-200 ${
-        disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+        disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing select-none"
       } ${isBeingDragged ? "opacity-40 scale-95" : ""}`}
-      style={{ touchAction: disabled ? "auto" : "manipulation" }}
+      style={{ 
+        touchAction: disabled ? "auto" : "manipulation",
+        userSelect: disabled ? "auto" : "none",
+        WebkitUserSelect: disabled ? "auto" : "none",
+      }}
     >
       {/* Drag handle indicator for non-disabled workouts */}
       {!disabled && (
