@@ -680,50 +680,6 @@ export default function SuperAdminPage() {
                 </div>
               </div>
             </div>
-
-            {/* Platform Actions */}
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-1 mt-8">Platform Actions</h2>
-              <p className="text-sm text-gray-500 mb-4">One-off admin tasks for managing the platform.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-sm">Seed Exercise Library</h3>
-                    <p className="text-xs text-gray-500">Add default exercises to all coaches</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 mb-4">Populates all coach accounts with the curated default exercise library (63 exercises). Skips coaches who already have exercises.</p>
-                <button
-                  onClick={async () => {
-                    if (!confirm('This will add the default exercise library to all coaches who don\'t have one yet. Continue?')) return;
-                    setActionMessage(null);
-                    try {
-                      const res = await fetch('/api/seed-exercises', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ all: true }),
-                      });
-                      const data = await res.json();
-                      if (res.ok && data.success) {
-                        setActionMessage({ text: `Done! Seeded ${data.summary.seeded} org(s) with exercises. ${data.summary.skipped} already had them.`, type: 'success' });
-                      } else {
-                        setActionMessage({ text: data.error || `Seeded with some issues: ${data.summary?.failed || 0} failed`, type: 'error' });
-                      }
-                    } catch {
-                      setActionMessage({ text: 'Failed to seed exercises. Check your connection.', type: 'error' });
-                    }
-                  }}
-                  className="w-full px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Seed All Coaches
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
