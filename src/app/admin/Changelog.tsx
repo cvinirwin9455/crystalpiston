@@ -10,6 +10,7 @@ const updates = [
     date: "August 17, 2026",
     items: [
       { area: "Marketing", text: "Fixed: The logo on the First Mile Coach home page was pushing up into the header bar. Added more spacing so the logo sits comfortably below the top banner" },
+      { area: "Admin", text: "NEW: Default Exercise Library — every new coach now gets a curated library of 63 exercises pre-loaded when their account is activated. Covers Stretching/Mobility, Strength, HIIT, and Cross Training with sensible default sets, reps, rest times, and form notes. Coaches can add their own demo video links and create additional exercises on top" },
     ],
   },
   {

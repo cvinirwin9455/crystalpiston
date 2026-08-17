@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendCoachInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
+import { seedExerciseLibrary } from '@/lib/seed-exercise-library'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -274,6 +275,12 @@ export async function POST(request: Request) {
         access_level: 'all_clients',
       })
       .eq('id', newUserId)
+
+    // Seed the default exercise library for this new coach's organization
+    const seedResult = await seedExerciseLibrary(adminClient, newOrgId)
+    if (!seedResult.success) {
+      console.error(`Failed to seed exercise library for org ${newOrgId}:`, seedResult.error)
+    }
 
     return NextResponse.json({
       success: true,
