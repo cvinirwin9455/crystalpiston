@@ -18,25 +18,196 @@ type Exercise = {
   defaultNotes: string;
 };
 
+// ─── Separate Form Component ─────────────────────────────────────────────────
+// Using a separate component with key={exercise.id} forces React to fully 
+// re-mount it with fresh initial state whenever the exercise changes.
+
+function ExerciseForm({
+  exercise,
+  onSave,
+  onCancel,
+}: {
+  exercise: Exercise | null;
+  onSave: (data: any) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(exercise?.name || "");
+  const [demoVideo, setDemoVideo] = useState(exercise?.demoVideo || "");
+  const [measureType, setMeasureType] = useState<MeasureType>(exercise?.defaultMeasureType || "reps");
+  const [measureValue, setMeasureValue] = useState(exercise?.defaultMeasureValue || "");
+  const [sets, setSets] = useState(typeof exercise?.defaultSets === "number" ? exercise.defaultSets : 3);
+  const [rest, setRest] = useState(exercise?.defaultRest || "01:00");
+  const [weight, setWeight] = useState(exercise?.defaultWeight || "");
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>(exercise?.defaultWeightUnit || "kg");
+  const [notes, setNotes] = useState(exercise?.defaultNotes || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave({
+      name: name.trim(),
+      demoVideo: demoVideo.trim(),
+      defaultMeasureType: measureType,
+      defaultMeasureValue: measureValue,
+      defaultSets: sets,
+      defaultRest: rest,
+      defaultWeight: weight,
+      defaultWeightUnit: weightUnit,
+      defaultNotes: notes,
+      ...(exercise ? { originalName: exercise.name } : {}),
+    });
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+      <h3 className="text-sm font-bold text-gray-900">
+        {exercise ? `Edit: ${exercise.name}` : "Add New Exercise"}
+      </h3>
+
+      {/* Name */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Exercise Name *</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Barbell Back Squat"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
+      </div>
+
+      {/* Demo Video */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Demo Video URL</label>
+        <input
+          type="url"
+          value={demoVideo}
+          onChange={(e) => setDemoVideo(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
+      </div>
+
+      {/* Measure Type + Value + Sets row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Measure Type</label>
+          <select
+            value={measureType}
+            onChange={(e) => setMeasureType(e.target.value as MeasureType)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="reps">Reps</option>
+            <option value="time">Time</option>
+            <option value="distance">Distance</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            {measureType === "reps" ? "Reps" : measureType === "time" ? "Duration" : "Distance"}
+          </label>
+          <input
+            type="text"
+            value={measureValue}
+            onChange={(e) => setMeasureValue(e.target.value)}
+            placeholder={measureType === "reps" ? "12" : measureType === "time" ? "0:30" : "20m"}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Sets</label>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSets(Math.max(1, sets - 1))} className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-900">−</button>
+            <span className="text-sm font-medium w-6 text-center text-gray-900">{sets}</span>
+            <button onClick={() => setSets(sets + 1)} className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-900">+</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Rest + Weight + Unit row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Rest (mm:ss)</label>
+          <input
+            type="text"
+            value={rest}
+            onChange={(e) => setRest(e.target.value)}
+            placeholder="01:00"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Default Weight</label>
+          <input
+            type="text"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="Optional"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setWeightUnit("kg")}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${weightUnit === "kg" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            >
+              kg
+            </button>
+            <button
+              onClick={() => setWeightUnit("lbs")}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${weightUnit === "lbs" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            >
+              lbs
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Form Notes</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="e.g. Brace core. Break at hips and knees together."
+          rows={2}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={handleSubmit}
+          disabled={saving || !name.trim()}
+          className="px-5 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Saving..." : exercise ? "Update All Coaches" : "Add to All Coaches"}
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-5 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function SuperAdminExerciseLibrary() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
-
-  // Form state
-  const [formName, setFormName] = useState("");
-  const [formDemoVideo, setFormDemoVideo] = useState("");
-  const [formMeasureType, setFormMeasureType] = useState<MeasureType>("reps");
-  const [formMeasureValue, setFormMeasureValue] = useState("");
-  const [formSets, setFormSets] = useState(3);
-  const [formRest, setFormRest] = useState("01:00");
-  const [formWeight, setFormWeight] = useState("");
-  const [formWeightUnit, setFormWeightUnit] = useState<WeightUnit>("kg");
-  const [formNotes, setFormNotes] = useState("");
 
   useEffect(() => {
     fetchExercises();
@@ -56,56 +227,23 @@ export default function SuperAdminExerciseLibrary() {
     }
   };
 
-  const resetForm = () => {
-    setFormName("");
-    setFormDemoVideo("");
-    setFormMeasureType("reps");
-    setFormMeasureValue("");
-    setFormSets(3);
-    setFormRest("01:00");
-    setFormWeight("");
-    setFormWeightUnit("kg");
-    setFormNotes("");
-    setEditingExercise(null);
-  };
-
   const openAddForm = () => {
-    resetForm();
+    setEditingExercise(null);
     setShowForm(true);
   };
 
   const openEditForm = (ex: Exercise) => {
     setEditingExercise(ex);
-    setFormName(ex.name || "");
-    setFormDemoVideo(ex.demoVideo || "");
-    setFormMeasureType(ex.defaultMeasureType || "reps");
-    setFormMeasureValue(ex.defaultMeasureValue || "");
-    setFormSets(typeof ex.defaultSets === "number" ? ex.defaultSets : 3);
-    setFormRest(ex.defaultRest || "01:00");
-    setFormWeight(ex.defaultWeight || "");
-    setFormWeightUnit(ex.defaultWeightUnit || "kg");
-    setFormNotes(ex.defaultNotes || "");
     setShowForm(true);
   };
 
-  const handleSave = async () => {
-    if (!formName.trim()) return;
-    setSaving(true);
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingExercise(null);
+  };
+
+  const handleSave = async (payload: any) => {
     setMessage(null);
-
-    const payload = {
-      name: formName.trim(),
-      demoVideo: formDemoVideo.trim(),
-      defaultMeasureType: formMeasureType,
-      defaultMeasureValue: formMeasureValue,
-      defaultSets: formSets,
-      defaultRest: formRest,
-      defaultWeight: formWeight,
-      defaultWeightUnit: formWeightUnit,
-      defaultNotes: formNotes,
-      ...(editingExercise ? { originalName: editingExercise.name } : {}),
-    };
-
     try {
       const res = await fetch("/api/super-admin/exercise-library", {
         method: editingExercise ? "PATCH" : "POST",
@@ -117,7 +255,7 @@ export default function SuperAdminExerciseLibrary() {
 
       if (res.ok && data.success) {
         if (editingExercise) {
-          setMessage({ text: `Updated "${formName}" across ${data.updated} coach(es). ${data.skippedModified || 0} skipped (coach-modified).`, type: "success" });
+          setMessage({ text: `Updated "${payload.name}" across ${data.updated} coach(es). ${data.skippedModified || 0} skipped (coach-modified).`, type: "success" });
           setExercises((prev) =>
             prev.map((ex) =>
               ex.name === editingExercise.name
@@ -126,18 +264,15 @@ export default function SuperAdminExerciseLibrary() {
             )
           );
         } else {
-          setMessage({ text: `Added "${formName}" to ${data.orgsUpdated} coach(es).`, type: "success" });
+          setMessage({ text: `Added "${payload.name}" to ${data.orgsUpdated} coach(es).`, type: "success" });
           setExercises((prev) => [...prev, { id: Date.now().toString(), ...data.exercise }].sort((a, b) => a.name.localeCompare(b.name)));
         }
-        resetForm();
-        setShowForm(false);
+        closeForm();
       } else {
         setMessage({ text: data.error || "Failed to save", type: "error" });
       }
     } catch {
       setMessage({ text: "Network error. Try again.", type: "error" });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -215,143 +350,14 @@ export default function SuperAdminExerciseLibrary() {
         </div>
       )}
 
-      {/* Add/Edit Form */}
+      {/* Form — key forces full remount when switching between exercises */}
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h3 className="text-sm font-bold text-gray-900">
-            {editingExercise ? `Edit: ${editingExercise.name}` : "Add New Exercise"}
-          </h3>
-
-          {/* Name */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Exercise Name *</label>
-            <input
-              type="text"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              placeholder="e.g. Barbell Back Squat"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
-          {/* Demo Video */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Demo Video URL</label>
-            <input
-              type="url"
-              value={formDemoVideo}
-              onChange={(e) => setFormDemoVideo(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
-          {/* Measure Type + Value + Sets row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Measure Type</label>
-              <select
-                value={formMeasureType}
-                onChange={(e) => setFormMeasureType(e.target.value as MeasureType)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="reps">Reps</option>
-                <option value="time">Time</option>
-                <option value="distance">Distance</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                {formMeasureType === "reps" ? "Reps" : formMeasureType === "time" ? "Duration" : "Distance"}
-              </label>
-              <input
-                type="text"
-                value={formMeasureValue}
-                onChange={(e) => setFormMeasureValue(e.target.value)}
-                placeholder={formMeasureType === "reps" ? "12" : formMeasureType === "time" ? "0:30" : "20m"}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Sets</label>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setFormSets(Math.max(1, formSets - 1))} className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 text-sm font-bold">−</button>
-                <span className="text-sm font-medium w-6 text-center">{formSets}</span>
-                <button onClick={() => setFormSets(formSets + 1)} className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 text-sm font-bold">+</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Rest + Weight + Unit row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Rest (mm:ss)</label>
-              <input
-                type="text"
-                value={formRest}
-                onChange={(e) => setFormRest(e.target.value)}
-                placeholder="01:00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Default Weight</label>
-              <input
-                type="text"
-                value={formWeight}
-                onChange={(e) => setFormWeight(e.target.value)}
-                placeholder="Optional"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Unit</label>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setFormWeightUnit("kg")}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${formWeightUnit === "kg" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-                >
-                  kg
-                </button>
-                <button
-                  onClick={() => setFormWeightUnit("lbs")}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${formWeightUnit === "lbs" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-                >
-                  lbs
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Form Notes</label>
-            <textarea
-              value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-              placeholder="e.g. Brace core. Break at hips and knees together."
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={handleSave}
-              disabled={saving || !formName.trim()}
-              className="px-5 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
-            >
-              {saving ? "Saving..." : editingExercise ? "Update All Coaches" : "Add to All Coaches"}
-            </button>
-            <button
-              onClick={() => { setShowForm(false); resetForm(); }}
-              className="px-5 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ExerciseForm
+          key={editingExercise?.id || "new"}
+          exercise={editingExercise}
+          onSave={handleSave}
+          onCancel={closeForm}
+        />
       )}
 
       {/* Search */}
@@ -361,7 +367,7 @@ export default function SuperAdminExerciseLibrary() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search exercises..."
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
         />
       </div>
 
