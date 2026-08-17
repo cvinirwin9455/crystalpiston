@@ -148,7 +148,7 @@ const stretchingExercises: SeedExercise[] = [
   },
   {
     name: '90/90 Hip Stretch',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=VYvMMw8z3rE',
     defaultMeasureType: 'time',
     defaultMeasureValue: '0:30',
     defaultSets: 2,
@@ -170,7 +170,7 @@ const stretchingExercises: SeedExercise[] = [
   },
   {
     name: 'Banded Shoulder Dislocates',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=a9rqTzZaI7s',
     defaultMeasureType: 'reps',
     defaultMeasureValue: '10',
     defaultSets: 2,
@@ -186,7 +186,7 @@ const stretchingExercises: SeedExercise[] = [
 const strengthExercises: SeedExercise[] = [
   {
     name: 'Barbell Back Squat',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=rrJIyZGlK8c',
     defaultMeasureType: 'reps',
     defaultMeasureValue: '8',
     defaultSets: 4,
@@ -252,7 +252,7 @@ const strengthExercises: SeedExercise[] = [
   },
   {
     name: 'Bench Press (Barbell)',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=9_JPTA3ie7k',
     defaultMeasureType: 'reps',
     defaultMeasureValue: '8',
     defaultSets: 4,
@@ -296,7 +296,7 @@ const strengthExercises: SeedExercise[] = [
   },
   {
     name: 'Bent-Over Row (Barbell)',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=9Gf-Ourup_k',
     defaultMeasureType: 'reps',
     defaultMeasureValue: '10',
     defaultSets: 3,
@@ -395,7 +395,7 @@ const strengthExercises: SeedExercise[] = [
   },
   {
     name: 'Bicep Curls (Dumbbell)',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=6DeLZ6cbgWQ',
     defaultMeasureType: 'reps',
     defaultMeasureValue: '12',
     defaultSets: 3,
@@ -477,7 +477,7 @@ const hiitExercises: SeedExercise[] = [
   },
   {
     name: 'Battle Ropes — Alternating Waves',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=ZujykKeVZpM',
     defaultMeasureType: 'time',
     defaultMeasureValue: '0:30',
     defaultSets: 3,
@@ -713,7 +713,7 @@ const crossTrainingExercises: SeedExercise[] = [
   },
   {
     name: 'Bear Crawl',
-    demoVideo: '',
+    demoVideo: 'https://www.youtube.com/watch?v=4d52Y9W2M0g',
     defaultMeasureType: 'distance',
     defaultMeasureValue: '20m',
     defaultSets: 3,
