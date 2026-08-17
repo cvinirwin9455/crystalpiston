@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-09T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-17T12:00:00Z";
 
 const updates = [
+  {
+    date: "August 17, 2026",
+    items: [
+      { area: "Marketing", text: "Fixed: The logo on the First Mile Coach home page was pushing up into the header bar. Added more spacing so the logo sits comfortably below the top banner" },
+    ],
+  },
   {
     date: "August 9, 2026",
     items: [
