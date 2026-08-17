@@ -62,6 +62,8 @@ export async function seedExerciseLibrary(
         defaultWeight: exercise.defaultWeight,
         defaultWeightUnit: exercise.defaultWeightUnit,
         defaultNotes: exercise.defaultNotes,
+        is_seed: true,
+        is_seed_modified: false,
       },
     }))
 

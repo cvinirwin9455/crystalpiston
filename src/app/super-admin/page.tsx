@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import SuperAdminFeedbackTab from "./FeedbackTab";
 import InboxTab from "./InboxTab";
+import SuperAdminExerciseLibrary from "./ExerciseLibraryTab";
 import Changelog from "@/app/admin/Changelog";
 
 const CRYSTAL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4';
@@ -42,7 +43,7 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "inbox" | "admins" | "changelog" | "tools">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "beta" | "feedback" | "inbox" | "admins" | "changelog" | "tools" | "exercises">("overview");
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -238,6 +239,7 @@ export default function SuperAdminPage() {
               { key: "beta", label: `Beta Signups (${betaSignups.length})` },
               { key: "inbox", label: "Inbox" },
               { key: "feedback", label: "Feedback & Bugs" },
+              { key: "exercises", label: "Exercise Library" },
               { key: "changelog", label: "Changelog" },
               { key: "tools", label: "Tools" },
               { key: "admins", label: "Super Admins" },
@@ -542,6 +544,10 @@ export default function SuperAdminPage() {
 
         {activeTab === "feedback" && (
           <SuperAdminFeedbackTab />
+        )}
+
+        {activeTab === "exercises" && (
+          <SuperAdminExerciseLibrary />
         )}
 
         {activeTab === "changelog" && (

@@ -182,7 +182,18 @@ export async function PATCH(request: Request) {
   const adminClient = await getAdminClient()
   const orgId = await getOrgIdForUser(adminClient, user.id)
 
-  const data = {
+  // Check if this is a seed exercise (to mark as modified)
+  const { data: existingExercise } = await adminClient
+    .from('templates')
+    .select('data')
+    .eq('id', id)
+    .eq('type', 'day')
+    .eq('category', '__exercise_library__')
+    .single()
+
+  const isSeed = existingExercise?.data?.is_seed === true
+
+  const data: Record<string, any> = {
     name: name?.trim() || '',
     demoVideo: demoVideo || '',
     defaultMeasureType: defaultMeasureType || 'reps',
@@ -192,6 +203,12 @@ export async function PATCH(request: Request) {
     defaultWeight: defaultWeight || '',
     defaultWeightUnit: defaultWeightUnit || 'kg',
     defaultNotes: defaultNotes || '',
+  }
+
+  // If this is a seed exercise, preserve the flag and mark as modified by coach
+  if (isSeed) {
+    data.is_seed = true
+    data.is_seed_modified = true
   }
 
   let query = adminClient

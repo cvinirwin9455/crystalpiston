@@ -20,6 +20,7 @@ export type SeedExercise = {
   defaultWeight: string
   defaultWeightUnit: 'kg' | 'lbs'
   defaultNotes: string
+  is_seed?: boolean
 }
 
 // ─── STRETCHING / MOBILITY ───────────────────────────────────────────────────
