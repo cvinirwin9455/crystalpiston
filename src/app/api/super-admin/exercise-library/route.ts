@@ -36,8 +36,8 @@ export async function GET() {
   const user = await verifySuperAdmin(supabase, adminClient)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
-  // Get distinct seed exercises — group by name, take the first org's version
-  const { data: exercises, error } = await adminClient
+  // Get seed exercises — try is_seed=true first, fall back to all exercises if none marked yet
+  let { data: exercises, error } = await adminClient
     .from('templates')
     .select('id, name, data, created_at')
     .eq('type', 'day')
@@ -47,6 +47,21 @@ export async function GET() {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // If no exercises have is_seed flag yet, show all exercises as the master list
+  if (!exercises || exercises.length === 0) {
+    const fallback = await adminClient
+      .from('templates')
+      .select('id, name, data, created_at')
+      .eq('type', 'day')
+      .eq('category', '__exercise_library__')
+      .order('name', { ascending: true })
+
+    if (fallback.error) {
+      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    }
+    exercises = fallback.data || []
   }
 
   // Deduplicate by name (multiple orgs have the same exercise)

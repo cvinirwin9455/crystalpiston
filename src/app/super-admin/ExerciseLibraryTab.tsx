@@ -76,11 +76,11 @@ export default function SuperAdminExerciseLibrary() {
 
   const openEditForm = (ex: Exercise) => {
     setEditingExercise(ex);
-    setFormName(ex.name);
+    setFormName(ex.name || "");
     setFormDemoVideo(ex.demoVideo || "");
     setFormMeasureType(ex.defaultMeasureType || "reps");
     setFormMeasureValue(ex.defaultMeasureValue || "");
-    setFormSets(ex.defaultSets || 3);
+    setFormSets(typeof ex.defaultSets === "number" ? ex.defaultSets : 3);
     setFormRest(ex.defaultRest || "01:00");
     setFormWeight(ex.defaultWeight || "");
     setFormWeightUnit(ex.defaultWeightUnit || "kg");
