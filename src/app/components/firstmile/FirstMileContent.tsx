@@ -263,7 +263,7 @@ export default function FirstMileContent() {
 
           <div className="fmc-features-showcase-cta fmc-fade-in">
             <Link href="/features" className="fmc-features-showcase-btn">
-              Explore All 14 Features &rarr;
+              Explore All 13 Features &rarr;
             </Link>
             <p className="fmc-features-showcase-more">See full screenshots and details of every feature</p>
           </div>

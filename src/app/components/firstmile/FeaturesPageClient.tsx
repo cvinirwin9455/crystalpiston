@@ -449,36 +449,6 @@ export default function FeaturesPageClient() {
         </div>
       </section>
 
-      {/* Feature 15: Data Export & No Lock-in */}
-      <section className="fmc-feature-section fmc-feature-light">
-        <div className="fmc-container">
-          <div className="fmc-feature-row fmc-fade-in">
-            <div className="fmc-feature-text">
-              <span className="fmc-feature-badge fmc-feature-badge-coach">Coach</span>
-              <h2>Your Data is Yours. Always.</h2>
-              <p>
-                We&apos;ll never hold your data hostage. Export your entire client list, training history, plans, and notes anytime as a spreadsheet. If you outgrow us and want to move to a bigger platform — take everything with you. No lock-in, no hostage situation, no guilt trip.
-              </p>
-              <ul className="fmc-feature-bullets">
-                <li>Full data export anytime (CSV/spreadsheet)</li>
-                <li>Client data, plans, messages — all exportable</li>
-                <li>No contracts, cancel anytime</li>
-                <li>We celebrate when you outgrow us</li>
-              </ul>
-            </div>
-            <div className="fmc-feature-image-wrap">
-              <Image
-                src="/firstmile/features/data-export.svg"
-                alt="Data export settings showing CSV export options and no lock-in guarantee"
-                width={800}
-                height={600}
-                className="fmc-feature-img"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="fmc-features-cta">
         <div className="fmc-container">
