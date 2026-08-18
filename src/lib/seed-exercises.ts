@@ -15,7 +15,7 @@ export type ExerciseCategory = 'stretching' | 'strength' | 'hiit' | 'cross'
 export const EXERCISE_CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   stretching: 'Stretching/Mobility',
   strength: 'Strength',
-  hiit: 'HIIT',
+  hiit: 'HIIT/CrossFit',
   cross: 'Cross Training',
 }
 

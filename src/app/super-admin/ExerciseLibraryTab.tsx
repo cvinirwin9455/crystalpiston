@@ -9,7 +9,7 @@ type ExerciseCategory = "stretching" | "strength" | "hiit" | "cross";
 const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   stretching: "Stretching/Mobility",
   strength: "Strength",
-  hiit: "HIIT",
+  hiit: "HIIT/CrossFit",
   cross: "Cross Training",
 };
 

@@ -202,7 +202,7 @@ export default function AdminPage() {
     const types: { value: string; label: string }[] = [];
     if (orgFeatures.crossTraining) types.push({ value: "cross", label: "Cross Training" });
     if (orgFeatures.cycling) types.push({ value: "cycling", label: "Cycling" });
-    if (orgFeatures.hiit) types.push({ value: "hiit", label: "HIIT" });
+    if (orgFeatures.hiit) types.push({ value: "hiit", label: "HIIT/CrossFit" });
     types.push({ value: "rest", label: "Rest" });
     if (orgFeatures.run) types.push({ value: "run", label: "Run" });
     if (orgFeatures.strength) types.push({ value: "strength", label: "Strength" });
@@ -2571,7 +2571,7 @@ export default function AdminPage() {
     switch (type) {
       case "cross": return "Cross Training";
       case "cycling": return "Cycling";
-      case "hiit": return "HIIT";
+      case "hiit": return "HIIT/CrossFit";
       case "rest": return "Rest";
       case "run": return "Run";
       case "strength": return "Strength";
@@ -4237,7 +4237,7 @@ export default function AdminPage() {
                       <div className="flex items-center gap-3">
                         <span className="w-3 h-3 rounded-full bg-orange-400"></span>
                         <div>
-                          <p className="text-white text-sm font-medium">HIIT</p>
+                          <p className="text-white text-sm font-medium">HIIT/CrossFit</p>
                           <p className="text-gray-500 text-xs">High-intensity intervals, circuits, and timed workouts</p>
                         </div>
                       </div>
