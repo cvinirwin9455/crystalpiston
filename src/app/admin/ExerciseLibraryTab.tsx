@@ -82,7 +82,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
     setFormWeightUnit(ex.defaultWeightUnit || weightUnit);
     setFormNotes(ex.defaultNotes || "");
     setFormCategories((ex.categories as ExerciseCategory[]) || []);
-    setShowAddForm(true);
+    setShowAddForm(false); // Close the add form if open
   };
 
   const handleSave = async () => {
@@ -206,12 +206,10 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
         />
       </div>
 
-      {/* Add/Edit Form */}
-      {showAddForm && (
+      {/* Add Form (new exercises only — editing is inline) */}
+      {showAddForm && !editingId && (
         <div className="bg-secondary/50 border border-gold/20 rounded-xl p-4 mb-6">
-          <h3 className="text-gold font-heading text-sm uppercase mb-3">
-            {editingId ? "Edit Exercise" : "New Exercise"}
-          </h3>
+          <h3 className="text-gold font-heading text-sm uppercase mb-3">New Exercise</h3>
 
           <div className="space-y-3">
             {/* Name */}
@@ -398,9 +396,75 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
           {filteredExercises.map((ex) => (
             <div
               key={ex.id}
-              className="bg-secondary/30 border border-white/5 rounded-xl p-4 hover:border-gold/20 transition-colors"
+              className={`bg-secondary/30 border rounded-xl p-4 transition-colors ${editingId === ex.id ? 'border-gold/30' : 'border-white/5 hover:border-gold/20'}`}
             >
-              <div className="flex items-start justify-between gap-3">
+              {editingId === ex.id ? (
+                /* Inline Edit Form */
+                <div className="space-y-3">
+                  <h3 className="text-gold font-heading text-sm uppercase">Edit Exercise</h3>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Exercise Name *</label>
+                    <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-gold/50" placeholder="e.g. Bird Dog, Clamshell, Deadlift" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Demo Video URL</label>
+                    <input type="url" value={formDemoVideo} onChange={(e) => setFormDemoVideo(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-gold/50" placeholder="https://www.youtube.com/watch?v=..." />
+                    {formDemoVideo && (
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        {getVideoHostname(formDemoVideo)} video linked — clients will see this in their plan
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Default Settings</label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select value={formMeasureType} onChange={(e) => setFormMeasureType(e.target.value as MeasureType)} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold/50">
+                        <option value="reps">Reps</option>
+                        <option value="time">Time</option>
+                        <option value="distance">Distance</option>
+                      </select>
+                      <input type="text" value={formMeasureValue} onChange={(e) => setFormMeasureValue(e.target.value)} className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-gold/50" placeholder={formMeasureType === "time" ? "0:30" : "12"} />
+                      <span className="text-gray-600">|</span>
+                      <span className="text-gray-400 text-xs">Sets</span>
+                      <div className="flex items-center">
+                        <button type="button" onClick={() => setFormSets(Math.max(1, formSets - 1))} className="bg-primary/50 border border-white/10 rounded-l px-2 py-1.5 text-white text-xs hover:bg-white/5">-</button>
+                        <span className="bg-primary/50 border-t border-b border-white/10 px-3 py-1.5 text-white text-xs text-center min-w-[24px]">{formSets}</span>
+                        <button type="button" onClick={() => setFormSets(formSets + 1)} className="bg-primary/50 border border-white/10 rounded-r px-2 py-1.5 text-white text-xs hover:bg-white/5">+</button>
+                      </div>
+                      <span className="text-gray-600">|</span>
+                      <span className="text-gray-400 text-xs">Rest</span>
+                      <input type="text" value={formRest} onChange={(e) => setFormRest(e.target.value)} className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-gold/50" placeholder="1:00" />
+                      <span className="text-gray-600">|</span>
+                      <span className="text-gray-400 text-xs">Weight</span>
+                      <input type="text" value={formWeight} onChange={(e) => setFormWeight(e.target.value)} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-gold/50" placeholder="--" />
+                      <button type="button" onClick={() => setFormWeightUnit(formWeightUnit === "kg" ? "lbs" : "kg")} className="bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-xs font-bold text-gold hover:border-gold/50 transition-colors">{formWeightUnit}</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Default Notes</label>
+                    <input type="text" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-gold/50" placeholder="e.g. Slow tempo, hold 2 sec at top" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-2">Categories</label>
+                    <div className="flex flex-wrap gap-2">
+                      {ALL_CATEGORIES.map((cat) => (
+                        <button key={cat} type="button" onClick={() => setFormCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat])} className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${formCategories.includes(cat) ? "bg-gold text-black" : "bg-white/5 text-gray-400 hover:bg-white/10"}`}>
+                          {CATEGORY_LABELS[cat]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button onClick={handleSave} disabled={saving || !formName.trim()} className="bg-gold hover:bg-yellow-500 text-black font-bold py-2 px-5 rounded-lg text-sm transition-colors disabled:opacity-50">
+                      {saving ? "Saving..." : "Update Exercise"}
+                    </button>
+                    <button onClick={() => { setEditingId(null); resetForm(); }} className="text-gray-400 hover:text-white text-sm">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                /* Normal Exercise Display */
+                <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="text-white font-medium text-sm truncate">{ex.name}</h3>
@@ -459,6 +523,10 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
                   </button>
                 </div>
               </div>
+              )}
+            </div>
+          ))}
+        </div>              </div>
             </div>
           ))}
         </div>
