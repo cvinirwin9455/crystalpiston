@@ -3,6 +3,17 @@
 import { useState, useEffect } from "react";
 import type { ExerciseLibraryItem, MeasureType, WeightUnit } from "./StructuredCrossTrainingBuilder";
 
+type ExerciseCategory = "stretching" | "strength" | "hiit" | "cross";
+
+const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
+  stretching: "Stretching/Mobility",
+  strength: "Strength",
+  hiit: "HIIT",
+  cross: "Cross Training",
+};
+
+const ALL_CATEGORIES: ExerciseCategory[] = ["stretching", "strength", "hiit", "cross"];
+
 interface Props {
   onBack: () => void;
   weightUnit?: WeightUnit;
@@ -26,6 +37,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
   const [formWeight, setFormWeight] = useState("");
   const [formWeightUnit, setFormWeightUnit] = useState<WeightUnit>(weightUnit);
   const [formNotes, setFormNotes] = useState("");
+  const [formCategories, setFormCategories] = useState<ExerciseCategory[]>([]);
 
   useEffect(() => {
     fetchExercises();
@@ -55,6 +67,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
     setFormWeight("");
     setFormWeightUnit(weightUnit);
     setFormNotes("");
+    setFormCategories([]);
   };
 
   const startEdit = (ex: ExerciseLibraryItem) => {
@@ -68,6 +81,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
     setFormWeight(ex.defaultWeight || "");
     setFormWeightUnit(ex.defaultWeightUnit || weightUnit);
     setFormNotes(ex.defaultNotes || "");
+    setFormCategories((ex.categories as ExerciseCategory[]) || []);
     setShowAddForm(true);
   };
 
@@ -86,6 +100,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
       defaultWeight: formWeight,
       defaultWeightUnit: formWeightUnit,
       defaultNotes: formNotes,
+      categories: formCategories,
     };
 
     try {
@@ -320,6 +335,27 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
               />
             </div>
 
+            {/* Categories */}
+            <div>
+              <label className="text-gray-400 text-xs block mb-2">Categories</label>
+              <div className="flex flex-wrap gap-2">
+                {ALL_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setFormCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat])}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                      formCategories.includes(cat)
+                        ? "bg-gold text-black"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    {CATEGORY_LABELS[cat]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="flex items-center gap-3 pt-2">
               <button
@@ -366,7 +402,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="text-white font-medium text-sm truncate">{ex.name}</h3>
                     {ex.demoVideo && (
                       <span className="flex items-center gap-1 text-gold text-[10px] bg-gold/10 px-1.5 py-0.5 rounded-full flex-shrink-0">
@@ -377,6 +413,11 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
                         {getVideoHostname(ex.demoVideo)}
                       </span>
                     )}
+                    {((ex as any).categories || []).map((cat: string) => (
+                      <span key={cat} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/5 text-gray-400">
+                        {CATEGORY_LABELS[cat as ExerciseCategory] || cat}
+                      </span>
+                    ))}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
                     {ex.defaultSets && ex.defaultSets > 1 && <span>{ex.defaultSets} sets</span>}

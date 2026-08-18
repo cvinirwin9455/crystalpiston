@@ -102,7 +102,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes } = body
+  const { name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes, categories } = body
 
   if (!name || !name.trim()) {
     return NextResponse.json({ error: 'Exercise name is required' }, { status: 400 })
@@ -121,6 +121,7 @@ export async function POST(request: Request) {
     defaultWeight: defaultWeight || '',
     defaultWeightUnit: defaultWeightUnit || 'kg',
     defaultNotes: defaultNotes || '',
+    categories: categories || [],
   }
 
   const { data: exercise, error } = await adminClient
@@ -153,6 +154,7 @@ export async function POST(request: Request) {
       defaultWeight: data.defaultWeight,
       defaultWeightUnit: data.defaultWeightUnit,
       defaultNotes: data.defaultNotes,
+      categories: data.categories,
     },
   })
 }
@@ -174,7 +176,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { id, name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes } = body
+  const { id, name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes, categories } = body
 
   if (!id) {
     return NextResponse.json({ error: 'Exercise id is required' }, { status: 400 })
@@ -204,6 +206,7 @@ export async function PATCH(request: Request) {
     defaultWeight: defaultWeight || '',
     defaultWeightUnit: defaultWeightUnit || 'kg',
     defaultNotes: defaultNotes || '',
+    categories: categories || [],
   }
 
   // If this is a seed exercise, preserve the flag and mark as modified by coach
@@ -242,6 +245,7 @@ export async function PATCH(request: Request) {
       defaultWeight: data.defaultWeight,
       defaultWeightUnit: data.defaultWeightUnit,
       defaultNotes: data.defaultNotes,
+      categories: data.categories,
     },
   })
 }
