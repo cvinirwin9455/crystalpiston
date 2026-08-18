@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import FirstMileAnimations from './FirstMileAnimations'
 import './firstmile.css'
@@ -13,14 +12,8 @@ export default function FeaturesPageClient() {
       {/* Sticky Nav Banner */}
       <div className="fmc-beta-banner">
         <div className="fmc-beta-banner-content">
-          <Link href="/" className="fmc-features-nav-logo">
-            <Image
-              src="/firstmile/logo.png"
-              alt="First Mile Coach"
-              width={32}
-              height={32}
-              className="fmc-features-nav-logo-img"
-            />
+          <Link href="/" className="fmc-features-nav-brand">
+            First Mile Coach
           </Link>
           <Link href="/" className="fmc-features-nav-link">Home</Link>
           <Link href="/features" className="fmc-features-nav-link fmc-features-nav-link-active">Features</Link>

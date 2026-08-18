@@ -1122,6 +1122,20 @@
    ============================================ */
 
 /* Features Nav */
+.fmc-features-nav-brand {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--fmc-color-white);
+  text-decoration: none;
+  margin-right: 12px;
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+}
+
+.fmc-features-nav-brand:hover {
+  color: var(--fmc-color-primary);
+}
+
 .fmc-features-nav-logo {
   display: flex;
   align-items: center;
@@ -1489,7 +1503,7 @@
     display: none;
   }
 
-  .fmc-features-nav-logo {
+  .fmc-features-nav-brand {
     margin-right: auto;
   }
 }
