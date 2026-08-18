@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import BetaSignupForm from './BetaSignupForm'
 import FirstMileAnimations from './FirstMileAnimations'
 import RegionToggle from './RegionToggle'
@@ -17,6 +18,7 @@ export default function FirstMileContent() {
         <div className="fmc-beta-banner-content">
           <span className="fmc-beta-banner-badge">BETA</span>
           <span className="fmc-beta-banner-text">Now accepting the first 50 coaches — free until June 30, 2027</span>
+          <Link href="/features" className="fmc-features-nav-link">Features</Link>
           <a href="#beta" className="fmc-beta-banner-link">Apply Now &rarr;</a>
           <div className="fmc-banner-divider" />
           <RegionToggle />
