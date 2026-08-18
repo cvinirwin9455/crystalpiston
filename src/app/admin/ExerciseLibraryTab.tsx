@@ -463,9 +463,8 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
                   </div>
                 </div>
               ) : (
-                /* Normal Exercise Display */
                 <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="text-white font-medium text-sm truncate">{ex.name}</h3>
                     {ex.demoVideo && (
@@ -524,9 +523,6 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
                 </div>
               </div>
               )}
-            </div>
-          ))}
-        </div>              </div>
             </div>
           ))}
         </div>
