@@ -274,7 +274,7 @@ export default function SuperAdminExerciseLibrary() {
 
   const openEditForm = (ex: Exercise) => {
     setEditingExercise(ex);
-    setShowForm(true);
+    setShowForm(false);
   };
 
   const closeForm = () => {
@@ -390,11 +390,11 @@ export default function SuperAdminExerciseLibrary() {
         </div>
       )}
 
-      {/* Form — key forces full remount when switching between exercises */}
-      {showForm && (
+      {/* Form — only for adding new exercises (editing is inline) */}
+      {showForm && !editingExercise && (
         <ExerciseForm
-          key={editingExercise?.id || "new"}
-          exercise={editingExercise}
+          key="new"
+          exercise={null}
           onSave={handleSave}
           onCancel={closeForm}
         />
@@ -419,45 +419,56 @@ export default function SuperAdminExerciseLibrary() {
           </div>
         ) : (
           filteredExercises.map((ex) => (
-            <div key={ex.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-gray-900 truncate">{ex.name}</span>
-                  {ex.demoVideo && (
-                    <a href={ex.demoVideo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded hover:bg-orange-100">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                      {getVideoHostname(ex.demoVideo)}
-                    </a>
-                  )}
-                  {(ex.categories || []).map((cat) => (
-                    <span key={cat} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">
-                      {CATEGORY_LABELS[cat]}
-                    </span>
-                  ))}
+            <div key={ex.id} className={`px-5 py-3 transition-colors ${editingExercise?.id === ex.id ? 'bg-purple-50 border-l-4 border-l-purple-500' : 'hover:bg-gray-50'}`}>
+              {editingExercise?.id === ex.id ? (
+                <ExerciseForm
+                  key={ex.id}
+                  exercise={ex}
+                  onSave={handleSave}
+                  onCancel={closeForm}
+                />
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-gray-900 truncate">{ex.name}</span>
+                      {ex.demoVideo && (
+                        <a href={ex.demoVideo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded hover:bg-orange-100">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                          {getVideoHostname(ex.demoVideo)}
+                        </a>
+                      )}
+                      {(ex.categories || []).map((cat) => (
+                        <span key={cat} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">
+                          {CATEGORY_LABELS[cat]}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                      <span>{ex.defaultSets} sets × {ex.defaultMeasureValue || "—"} {ex.defaultMeasureType}</span>
+                      {ex.defaultWeight && <span>{ex.defaultWeight} {ex.defaultWeightUnit}</span>}
+                      <span>Rest: {ex.defaultRest}</span>
+                    </div>
+                    {ex.defaultNotes && (
+                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-lg">{ex.defaultNotes}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                    <button
+                      onClick={() => openEditForm(ex)}
+                      className="px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(ex)}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                  <span>{ex.defaultSets} sets × {ex.defaultMeasureValue || "—"} {ex.defaultMeasureType}</span>
-                  {ex.defaultWeight && <span>{ex.defaultWeight} {ex.defaultWeightUnit}</span>}
-                  <span>Rest: {ex.defaultRest}</span>
-                </div>
-                {ex.defaultNotes && (
-                  <p className="text-xs text-gray-400 mt-0.5 truncate max-w-lg">{ex.defaultNotes}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                <button
-                  onClick={() => openEditForm(ex)}
-                  className="px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(ex)}
-                  className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
+              )}
             </div>
           ))
         )}
