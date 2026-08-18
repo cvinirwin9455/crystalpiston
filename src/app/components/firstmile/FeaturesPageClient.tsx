@@ -299,40 +299,10 @@ export default function FeaturesPageClient() {
         </div>
       </section>
 
-      {/* Feature 9: AI-Powered Week Planning */}
+      {/* Feature 9: Client Progress & Stats */}
       <section className="fmc-feature-section fmc-feature-dark">
         <div className="fmc-container">
           <div className="fmc-feature-row fmc-fade-in">
-            <div className="fmc-feature-text">
-              <span className="fmc-feature-badge fmc-feature-badge-coach">Coach</span>
-              <h2>AI-Powered Week Suggestions</h2>
-              <p>
-                Stuck on what to program next? Our AI assistant can suggest a full training week based on your client&apos;s goals, recent history, and your coaching style. You stay in control — review, tweak, and approve before anything goes to your client. Think of it as a brainstorming partner, not a replacement.
-              </p>
-              <ul className="fmc-feature-bullets">
-                <li>AI suggests a full week based on context</li>
-                <li>Takes into account recent training load</li>
-                <li>You review and edit before publishing</li>
-                <li>Learn your coaching patterns over time</li>
-              </ul>
-            </div>
-            <div className="fmc-feature-image-wrap">
-              <Image
-                src="/firstmile/features/ai-suggestions.svg"
-                alt="AI suggestion panel showing client context on left and generated training week on right"
-                width={800}
-                height={600}
-                className="fmc-feature-img"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature 10: Client Progress & Stats */}
-      <section className="fmc-feature-section fmc-feature-light">
-        <div className="fmc-container">
-          <div className="fmc-feature-row fmc-feature-row-reverse fmc-fade-in">
             <div className="fmc-feature-text">
               <span className="fmc-feature-badge fmc-feature-badge-coach">Coach</span>
               <h2>Client Progress Tracking</h2>

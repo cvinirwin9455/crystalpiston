@@ -238,14 +238,14 @@ export default function FirstMileContent() {
 
             <div className="fmc-features-showcase-card">
               <Image
-                src="/firstmile/features/ai-suggestions.svg"
-                alt="AI Week Suggestions"
+                src="/firstmile/features/draft-publish.svg"
+                alt="Draft & Publish Workflow"
                 width={400}
                 height={300}
                 className="fmc-features-showcase-img"
               />
-              <h3>AI Assistant</h3>
-              <p>Get smart week suggestions based on your client&apos;s goals and history.</p>
+              <h3>Draft &amp; Publish</h3>
+              <p>Prep plans in advance, publish with one click when you&apos;re ready.</p>
             </div>
 
             <div className="fmc-features-showcase-card">
@@ -263,7 +263,7 @@ export default function FirstMileContent() {
 
           <div className="fmc-features-showcase-cta fmc-fade-in">
             <Link href="/features" className="fmc-features-showcase-btn">
-              Explore All 15 Features &rarr;
+              Explore All 14 Features &rarr;
             </Link>
             <p className="fmc-features-showcase-more">See full screenshots and details of every feature</p>
           </div>
