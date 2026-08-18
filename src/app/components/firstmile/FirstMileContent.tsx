@@ -189,73 +189,37 @@ export default function FirstMileContent() {
 
           <div className="fmc-features-showcase-grid fmc-fade-in">
             <div className="fmc-features-showcase-card">
-              <Image
-                src="/firstmile/features/weekly-plan-builder.svg"
-                alt="Weekly Plan Builder"
-                width={400}
-                height={300}
-                className="fmc-features-showcase-img"
-              />
+              <div className="fmc-features-showcase-icon">📅</div>
               <h3>Weekly Plan Builder</h3>
               <p>Drag-and-drop training plans with pace, distance, and coaching notes.</p>
             </div>
 
             <div className="fmc-features-showcase-card">
-              <Image
-                src="/firstmile/features/client-dashboard.svg"
-                alt="Client Dashboard"
-                width={400}
-                height={300}
-                className="fmc-features-showcase-img"
-              />
+              <div className="fmc-features-showcase-icon">📱</div>
               <h3>Client Dashboard</h3>
               <p>Mobile-first view for your clients — today&apos;s workout, weekly plan, progress.</p>
             </div>
 
             <div className="fmc-features-showcase-card">
-              <Image
-                src="/firstmile/features/messaging.svg"
-                alt="In-App Messaging"
-                width={400}
-                height={300}
-                className="fmc-features-showcase-img"
-              />
+              <div className="fmc-features-showcase-icon">💬</div>
               <h3>In-App Messaging</h3>
               <p>Threaded conversations with email notifications. No more WhatsApp chaos.</p>
             </div>
 
             <div className="fmc-features-showcase-card">
-              <Image
-                src="/firstmile/features/structured-run-builder.svg"
-                alt="Structured Run Builder"
-                width={400}
-                height={300}
-                className="fmc-features-showcase-img"
-              />
+              <div className="fmc-features-showcase-icon">⚡</div>
               <h3>Structured Workouts</h3>
               <p>Visual interval, tempo, and strength session builders with video links.</p>
             </div>
 
             <div className="fmc-features-showcase-card">
-              <Image
-                src="/firstmile/features/draft-publish.svg"
-                alt="Draft & Publish Workflow"
-                width={400}
-                height={300}
-                className="fmc-features-showcase-img"
-              />
+              <div className="fmc-features-showcase-icon">📝</div>
               <h3>Draft &amp; Publish</h3>
               <p>Prep plans in advance, publish with one click when you&apos;re ready.</p>
             </div>
 
             <div className="fmc-features-showcase-card">
-              <Image
-                src="/firstmile/features/progress-tracking.svg"
-                alt="Progress Tracking"
-                width={400}
-                height={300}
-                className="fmc-features-showcase-img"
-              />
+              <div className="fmc-features-showcase-icon">📊</div>
               <h3>Progress Tracking</h3>
               <p>Volume charts, completion rates, and trend indicators at a glance.</p>
             </div>
