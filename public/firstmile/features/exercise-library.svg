@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <!-- Background -->
+  <rect width="800" height="600" rx="12" fill="#fafbfc"/>
+  
+  <!-- Header -->
+  <rect width="800" height="56" fill="#2d3436"/>
+  <text x="24" y="35" fill="#fff" font-family="Inter, sans-serif" font-size="15" font-weight="700">Exercise Library</text>
+  <rect x="640" y="14" width="130" height="30" rx="6" fill="#f26522"/>
+  <text x="664" y="34" fill="#fff" font-family="Inter, sans-serif" font-size="12" font-weight="700">+ Add Exercise</text>
+  
+  <!-- Category tabs -->
+  <rect y="56" width="800" height="44" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+  <rect x="24" y="66" width="60" height="26" rx="13" fill="#2d3436"/>
+  <text x="54" y="83" fill="#fff" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">All</text>
+  <rect x="94" y="66" width="72" height="26" rx="13" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="130" y="83" fill="#555b5e" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Strength</text>
+  <rect x="176" y="66" width="54" height="26" rx="13" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="203" y="83" fill="#555b5e" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Core</text>
+  <rect x="240" y="66" width="72" height="26" rx="13" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="276" y="83" fill="#555b5e" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Mobility</text>
+  <rect x="322" y="66" width="52" height="26" rx="13" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="348" y="83" fill="#555b5e" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Plyo</text>
+  
+  <!-- Exercise grid -->
+  <g transform="translate(24, 118)">
+    <!-- Exercise 1 -->
+    <rect width="240" height="140" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+    <rect x="12" y="12" width="216" height="60" rx="8" fill="#f0f4f8"/>
+    <text x="120" y="36" fill="#f26522" font-family="Inter, sans-serif" font-size="20" text-anchor="middle">🏋️</text>
+    <text x="120" y="56" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Video linked</text>
+    <text x="16" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="12" font-weight="700">Barbell Back Squat</text>
+    <rect x="16" y="100" width="60" height="18" rx="9" fill="#ede7f6"/>
+    <text x="26" y="113" fill="#5e35b1" font-family="Inter, sans-serif" font-size="8" font-weight="600">Strength</text>
+    <rect x="82" y="100" width="50" height="18" rx="9" fill="#e8f5e9"/>
+    <text x="90" y="113" fill="#2e7d32" font-family="Inter, sans-serif" font-size="8" font-weight="600">Legs</text>
+    <text x="16" y="132" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Compound lower body movement</text>
+    
+    <!-- Exercise 2 -->
+    <g transform="translate(256, 0)">
+      <rect width="240" height="140" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="12" y="12" width="216" height="60" rx="8" fill="#f0f4f8"/>
+      <text x="120" y="36" fill="#f26522" font-family="Inter, sans-serif" font-size="20" text-anchor="middle">🦵</text>
+      <text x="120" y="56" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Video linked</text>
+      <text x="16" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="12" font-weight="700">Bulgarian Split Squat</text>
+      <rect x="16" y="100" width="60" height="18" rx="9" fill="#ede7f6"/>
+      <text x="26" y="113" fill="#5e35b1" font-family="Inter, sans-serif" font-size="8" font-weight="600">Strength</text>
+      <rect x="82" y="100" width="70" height="18" rx="9" fill="#e8f5e9"/>
+      <text x="90" y="113" fill="#2e7d32" font-family="Inter, sans-serif" font-size="8" font-weight="600">Unilateral</text>
+      <text x="16" y="132" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Single leg strength and balance</text>
+    </g>
+    
+    <!-- Exercise 3 -->
+    <g transform="translate(512, 0)">
+      <rect width="240" height="140" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="12" y="12" width="216" height="60" rx="8" fill="#f0f4f8"/>
+      <text x="120" y="36" fill="#f26522" font-family="Inter, sans-serif" font-size="20" text-anchor="middle">🧘</text>
+      <text x="120" y="56" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Video linked</text>
+      <text x="16" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="12" font-weight="700">Dead Bug</text>
+      <rect x="16" y="100" width="44" height="18" rx="9" fill="#fff3e0"/>
+      <text x="24" y="113" fill="#e65100" font-family="Inter, sans-serif" font-size="8" font-weight="600">Core</text>
+      <rect x="66" y="100" width="60" height="18" rx="9" fill="#e8f5e9"/>
+      <text x="74" y="113" fill="#2e7d32" font-family="Inter, sans-serif" font-size="8" font-weight="600">Stability</text>
+      <text x="16" y="132" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Anti-extension core exercise</text>
+    </g>
+    
+    <!-- Exercise 4 -->
+    <g transform="translate(0, 156)">
+      <rect width="240" height="140" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="12" y="12" width="216" height="60" rx="8" fill="#f0f4f8"/>
+      <text x="120" y="36" fill="#f26522" font-family="Inter, sans-serif" font-size="20" text-anchor="middle">💪</text>
+      <text x="120" y="56" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Video linked</text>
+      <text x="16" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="12" font-weight="700">Romanian Deadlift</text>
+      <rect x="16" y="100" width="60" height="18" rx="9" fill="#ede7f6"/>
+      <text x="26" y="113" fill="#5e35b1" font-family="Inter, sans-serif" font-size="8" font-weight="600">Strength</text>
+      <rect x="82" y="100" width="70" height="18" rx="9" fill="#e8f5e9"/>
+      <text x="90" y="113" fill="#2e7d32" font-family="Inter, sans-serif" font-size="8" font-weight="600">Posterior</text>
+      <text x="16" y="132" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Hamstring and glute dominant</text>
+    </g>
+    
+    <!-- Exercise 5 -->
+    <g transform="translate(256, 156)">
+      <rect width="240" height="140" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="12" y="12" width="216" height="60" rx="8" fill="#f0f4f8"/>
+      <text x="120" y="36" fill="#f26522" font-family="Inter, sans-serif" font-size="20" text-anchor="middle">🏃</text>
+      <text x="120" y="56" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Video linked</text>
+      <text x="16" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="12" font-weight="700">Box Jumps</text>
+      <rect x="16" y="100" width="44" height="18" rx="9" fill="#fce4ec"/>
+      <text x="26" y="113" fill="#c62828" font-family="Inter, sans-serif" font-size="8" font-weight="600">Plyo</text>
+      <rect x="66" y="100" width="50" height="18" rx="9" fill="#fff3e0"/>
+      <text x="74" y="113" fill="#e65100" font-family="Inter, sans-serif" font-size="8" font-weight="600">Power</text>
+      <text x="16" y="132" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Explosive lower body power</text>
+    </g>
+    
+    <!-- Exercise 6 -->
+    <g transform="translate(512, 156)">
+      <rect width="240" height="140" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="12" y="12" width="216" height="60" rx="8" fill="#f0f4f8"/>
+      <text x="120" y="36" fill="#f26522" font-family="Inter, sans-serif" font-size="20" text-anchor="middle">🦶</text>
+      <text x="120" y="56" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Video linked</text>
+      <text x="16" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="12" font-weight="700">Calf Raises (Single Leg)</text>
+      <rect x="16" y="100" width="60" height="18" rx="9" fill="#ede7f6"/>
+      <text x="26" y="113" fill="#5e35b1" font-family="Inter, sans-serif" font-size="8" font-weight="600">Strength</text>
+      <rect x="82" y="100" width="70" height="18" rx="9" fill="#e3f2fd"/>
+      <text x="90" y="113" fill="#1565c0" font-family="Inter, sans-serif" font-size="8" font-weight="600">Rehab/Prev</text>
+      <text x="16" y="132" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Runner-specific calf strength</text>
+    </g>
+  </g>
+  
+  <!-- Count -->
+  <text x="24" y="580" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="11">Showing 6 of 24 exercises</text>
+</svg>

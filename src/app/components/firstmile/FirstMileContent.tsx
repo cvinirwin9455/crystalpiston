@@ -176,6 +176,100 @@ export default function FirstMileContent() {
         </div>
       </section>
 
+      {/* Features Showcase */}
+      <section className="fmc-features-showcase" id="features">
+        <div className="fmc-container">
+          <div className="fmc-features-showcase-header fmc-fade-in">
+            <span className="fmc-features-showcase-badge">FEATURES</span>
+            <h2>See what&apos;s inside the platform</h2>
+            <p className="fmc-features-showcase-sub">
+              Everything you need to manage clients professionally — built for simplicity, designed for coaches who are just getting started.
+            </p>
+          </div>
+
+          <div className="fmc-features-showcase-grid fmc-fade-in">
+            <div className="fmc-features-showcase-card">
+              <Image
+                src="/firstmile/features/weekly-plan-builder.svg"
+                alt="Weekly Plan Builder"
+                width={400}
+                height={300}
+                className="fmc-features-showcase-img"
+              />
+              <h3>Weekly Plan Builder</h3>
+              <p>Drag-and-drop training plans with pace, distance, and coaching notes.</p>
+            </div>
+
+            <div className="fmc-features-showcase-card">
+              <Image
+                src="/firstmile/features/client-dashboard.svg"
+                alt="Client Dashboard"
+                width={400}
+                height={300}
+                className="fmc-features-showcase-img"
+              />
+              <h3>Client Dashboard</h3>
+              <p>Mobile-first view for your clients — today&apos;s workout, weekly plan, progress.</p>
+            </div>
+
+            <div className="fmc-features-showcase-card">
+              <Image
+                src="/firstmile/features/messaging.svg"
+                alt="In-App Messaging"
+                width={400}
+                height={300}
+                className="fmc-features-showcase-img"
+              />
+              <h3>In-App Messaging</h3>
+              <p>Threaded conversations with email notifications. No more WhatsApp chaos.</p>
+            </div>
+
+            <div className="fmc-features-showcase-card">
+              <Image
+                src="/firstmile/features/structured-run-builder.svg"
+                alt="Structured Run Builder"
+                width={400}
+                height={300}
+                className="fmc-features-showcase-img"
+              />
+              <h3>Structured Workouts</h3>
+              <p>Visual interval, tempo, and strength session builders with video links.</p>
+            </div>
+
+            <div className="fmc-features-showcase-card">
+              <Image
+                src="/firstmile/features/ai-suggestions.svg"
+                alt="AI Week Suggestions"
+                width={400}
+                height={300}
+                className="fmc-features-showcase-img"
+              />
+              <h3>AI Assistant</h3>
+              <p>Get smart week suggestions based on your client&apos;s goals and history.</p>
+            </div>
+
+            <div className="fmc-features-showcase-card">
+              <Image
+                src="/firstmile/features/progress-tracking.svg"
+                alt="Progress Tracking"
+                width={400}
+                height={300}
+                className="fmc-features-showcase-img"
+              />
+              <h3>Progress Tracking</h3>
+              <p>Volume charts, completion rates, and trend indicators at a glance.</p>
+            </div>
+          </div>
+
+          <div className="fmc-features-showcase-cta fmc-fade-in">
+            <Link href="/features" className="fmc-features-showcase-btn">
+              Explore All 15 Features &rarr;
+            </Link>
+            <p className="fmc-features-showcase-more">See full screenshots and details of every feature</p>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section className="fmc-pricing-section" id="pricing">
         <div className="fmc-container">

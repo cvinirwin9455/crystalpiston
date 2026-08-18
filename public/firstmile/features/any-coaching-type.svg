@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <!-- Background -->
+  <rect width="800" height="600" rx="12" fill="#fafbfc"/>
+  
+  <!-- Two-panel split -->
+  <!-- Left: Running Coach -->
+  <rect x="24" y="24" width="368" height="552" rx="16" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="24" y="24" width="368" height="56" rx="16" fill="#2d3436"/>
+  <text x="60" y="56" fill="#fff" font-family="Inter, sans-serif" font-size="14" font-weight="700">🏃 Running Coach View</text>
+  
+  <!-- Running features -->
+  <g transform="translate(40, 96)">
+    <rect width="336" height="44" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+    <text x="16" y="28" fill="#2e7d32" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Structured Run Builder</text>
+    
+    <g transform="translate(0, 52)">
+      <rect width="336" height="44" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+      <text x="16" y="28" fill="#2e7d32" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Interval / Tempo Sessions</text>
+    </g>
+    
+    <g transform="translate(0, 104)">
+      <rect width="336" height="44" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+      <text x="16" y="28" fill="#2e7d32" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Distance &amp; Pace Targets</text>
+    </g>
+    
+    <g transform="translate(0, 156)">
+      <rect width="336" height="44" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+      <text x="16" y="28" fill="#2e7d32" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Weekly Mileage Tracking</text>
+    </g>
+    
+    <g transform="translate(0, 208)">
+      <rect width="336" height="44" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+      <text x="16" y="28" fill="#2e7d32" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Race Goal Planning (5K to Ultra)</text>
+    </g>
+    
+    <!-- Preview -->
+    <rect y="268" width="336" height="120" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="168" y="20" fill="#f26522" font-family="Inter, sans-serif" font-size="11" font-weight="600" text-anchor="middle" transform="translate(0, 280)">Sample Week</text>
+    <text x="16" y="308" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">Mon: Easy 5km</text>
+    <text x="16" y="324" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">Wed: Intervals 6×800m</text>
+    <text x="16" y="340" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">Fri: Tempo 8km</text>
+    <text x="16" y="356" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">Sat: Long Run 16km</text>
+    <text x="200" y="374" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Total: 34km</text>
+  </g>
+  
+  <!-- Right: Personal Trainer -->
+  <rect x="408" y="24" width="368" height="552" rx="16" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="408" y="24" width="368" height="56" rx="16" fill="#f26522"/>
+  <text x="444" y="56" fill="#fff" font-family="Inter, sans-serif" font-size="14" font-weight="700">💪 Personal Trainer View</text>
+  
+  <!-- PT features -->
+  <g transform="translate(424, 96)">
+    <rect width="336" height="44" rx="8" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+    <text x="16" y="28" fill="#e65100" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Cross-Training Builder</text>
+    
+    <g transform="translate(0, 52)">
+      <rect width="336" height="44" rx="8" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+      <text x="16" y="28" fill="#e65100" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Sets × Reps × Rest</text>
+    </g>
+    
+    <g transform="translate(0, 104)">
+      <rect width="336" height="44" rx="8" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+      <text x="16" y="28" fill="#e65100" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Supersets &amp; Circuits</text>
+    </g>
+    
+    <g transform="translate(0, 156)">
+      <rect width="336" height="44" rx="8" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+      <text x="16" y="28" fill="#e65100" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ Exercise Library with Videos</text>
+    </g>
+    
+    <g transform="translate(0, 208)">
+      <rect width="336" height="44" rx="8" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+      <text x="16" y="28" fill="#e65100" font-family="Inter, sans-serif" font-size="12" font-weight="600">✓ RPE &amp; Load Tracking</text>
+    </g>
+    
+    <!-- Preview -->
+    <rect y="268" width="336" height="120" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="168" y="20" fill="#f26522" font-family="Inter, sans-serif" font-size="11" font-weight="600" text-anchor="middle" transform="translate(0, 280)">Sample Session</text>
+    <text x="16" y="308" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">A1. Back Squat — 4×8 @ RPE 7</text>
+    <text x="16" y="324" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">A2. RDL — 3×10</text>
+    <text x="16" y="340" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">B1. Split Squat — 3×12/leg</text>
+    <text x="16" y="356" fill="#2d3436" font-family="Inter, sans-serif" font-size="10">B2. Dead Bug — 3×10/side</text>
+    <text x="200" y="374" fill="#555b5e" font-family="Inter, sans-serif" font-size="9">Est. 45min</text>
+  </g>
+  
+  <!-- Shared features banner at bottom -->
+  <rect x="200" y="540" width="400" height="36" rx="18" fill="#2d3436"/>
+  <text x="400" y="563" fill="#fff" font-family="Inter, sans-serif" font-size="11" font-weight="600" text-anchor="middle">Both get: Messaging · Email · Client Portal · Data Export</text>
+</svg>

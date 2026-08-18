@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <!-- Background -->
+  <rect width="800" height="600" rx="12" fill="#f0f4f8"/>
+  
+  <!-- Three device mockups -->
+  
+  <!-- iPhone -->
+  <g transform="translate(80, 60)">
+    <rect width="180" height="360" rx="24" fill="#2d3436"/>
+    <rect x="6" y="6" width="168" height="348" rx="20" fill="#fafbfc"/>
+    <rect x="6" y="6" width="168" height="32" rx="20" fill="#fff"/>
+    <text x="90" y="26" fill="#2d3436" font-family="Inter, sans-serif" font-size="9" font-weight="600" text-anchor="middle">9:41</text>
+    
+    <!-- App content -->
+    <rect x="6" y="38" width="168" height="36" fill="#2d3436"/>
+    <text x="16" y="60" fill="#fff" font-family="Inter, sans-serif" font-size="10" font-weight="700">My Training</text>
+    
+    <rect x="14" y="82" width="152" height="60" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="22" y="98" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="7" font-weight="600">TODAY</text>
+    <text x="22" y="112" fill="#2d3436" font-family="Inter, sans-serif" font-size="9" font-weight="700">Easy Run — 5km</text>
+    <text x="22" y="126" fill="#555b5e" font-family="Inter, sans-serif" font-size="8">Zone 2 · ~30min</text>
+    <rect x="22" y="132" width="56" height="0" rx="3" fill="#f26522"/>
+    
+    <rect x="14" y="150" width="152" height="44" rx="8" fill="#fff8f4" stroke="#f26522" stroke-width="0.5"/>
+    <text x="22" y="168" fill="#f26522" font-family="Inter, sans-serif" font-size="7" font-weight="600">💬 Coach Notes</text>
+    <text x="22" y="182" fill="#555b5e" font-family="Inter, sans-serif" font-size="7">Keep it easy today - legs...</text>
+    
+    <!-- Phone label -->
+    <text x="90" y="392" fill="#2d3436" font-family="Inter, sans-serif" font-size="11" font-weight="700" text-anchor="middle">iPhone</text>
+    <text x="90" y="408" fill="#555b5e" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Add to Homescreen</text>
+  </g>
+  
+  <!-- iPad -->
+  <g transform="translate(300, 30)">
+    <rect width="260" height="380" rx="16" fill="#2d3436"/>
+    <rect x="6" y="6" width="248" height="368" rx="12" fill="#fafbfc"/>
+    <rect x="6" y="6" width="248" height="32" rx="12" fill="#fff"/>
+    <text x="130" y="26" fill="#2d3436" font-family="Inter, sans-serif" font-size="9" font-weight="600" text-anchor="middle">iPad</text>
+    
+    <!-- App content -->
+    <rect x="6" y="38" width="248" height="36" fill="#2d3436"/>
+    <text x="18" y="60" fill="#fff" font-family="Inter, sans-serif" font-size="10" font-weight="700">Week Planner — Sarah M.</text>
+    
+    <!-- Mini week view -->
+    <g transform="translate(14, 82)">
+      <rect width="56" height="80" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="28" y="16" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="7" font-weight="600" text-anchor="middle">MON</text>
+      <rect x="6" y="22" width="44" height="4" rx="2" fill="#f26522"/>
+      <text x="8" y="38" fill="#2d3436" font-family="Inter, sans-serif" font-size="6" font-weight="600">Easy</text>
+      <text x="8" y="48" fill="#555b5e" font-family="Inter, sans-serif" font-size="6">5km</text>
+      
+      <g transform="translate(62, 0)">
+        <rect width="56" height="80" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="28" y="16" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="7" font-weight="600" text-anchor="middle">TUE</text>
+        <rect x="6" y="22" width="44" height="4" rx="2" fill="#6c5ce7"/>
+        <text x="8" y="38" fill="#2d3436" font-family="Inter, sans-serif" font-size="6" font-weight="600">Strength</text>
+        <text x="8" y="48" fill="#555b5e" font-family="Inter, sans-serif" font-size="6">45min</text>
+      </g>
+      
+      <g transform="translate(124, 0)">
+        <rect width="56" height="80" rx="6" fill="#fff" stroke="#f26522" stroke-width="1.5"/>
+        <text x="28" y="16" fill="#f26522" font-family="Inter, sans-serif" font-size="7" font-weight="700" text-anchor="middle">WED</text>
+        <rect x="6" y="22" width="44" height="4" rx="2" fill="#f26522"/>
+        <text x="8" y="38" fill="#2d3436" font-family="Inter, sans-serif" font-size="6" font-weight="600">Intervals</text>
+        <text x="8" y="48" fill="#555b5e" font-family="Inter, sans-serif" font-size="6">6×800m</text>
+      </g>
+      
+      <g transform="translate(186, 0)">
+        <rect width="46" height="80" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="23" y="16" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="7" font-weight="600" text-anchor="middle">THU</text>
+        <rect x="6" y="22" width="34" height="4" rx="2" fill="#00b894"/>
+        <text x="8" y="38" fill="#2d3436" font-family="Inter, sans-serif" font-size="6" font-weight="600">Rest</text>
+      </g>
+    </g>
+    
+    <!-- Tablet label -->
+    <text x="130" y="440" fill="#2d3436" font-family="Inter, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Tablet</text>
+    <text x="130" y="456" fill="#555b5e" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Full app experience</text>
+  </g>
+  
+  <!-- Desktop browser window -->
+  <g transform="translate(580, 60)">
+    <rect width="200" height="340" rx="8" fill="#2d3436"/>
+    <!-- Browser chrome -->
+    <rect x="4" y="4" width="192" height="24" fill="#3d4447" rx="6"/>
+    <circle cx="16" cy="16" r="4" fill="#ff5f56"/>
+    <circle cx="28" cy="16" r="4" fill="#ffbd2e"/>
+    <circle cx="40" cy="16" r="4" fill="#27c93f"/>
+    <rect x="56" y="10" width="100" height="12" rx="3" fill="#2d3436"/>
+    <text x="80" y="19" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="6">firstmilecoach.com</text>
+    
+    <!-- Page content -->
+    <rect x="4" y="28" width="192" height="308" fill="#fafbfc" rx="0"/>
+    <rect x="4" y="28" width="192" height="28" fill="#2d3436"/>
+    <text x="14" y="46" fill="#fff" font-family="Inter, sans-serif" font-size="8" font-weight="700">Coach Dashboard</text>
+    
+    <rect x="12" y="62" width="88" height="40" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="18" y="76" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="6">Active Clients</text>
+    <text x="18" y="92" fill="#2d3436" font-family="Inter, sans-serif" font-size="14" font-weight="900">7</text>
+    
+    <rect x="106" y="62" width="84" height="40" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="112" y="76" fill="#9e9e9e" font-family="Inter, sans-serif" font-size="6">Drafts</text>
+    <text x="112" y="92" fill="#f26522" font-family="Inter, sans-serif" font-size="14" font-weight="900">3</text>
+    
+    <!-- Desktop label -->
+    <text x="100" y="380" fill="#2d3436" font-family="Inter, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Desktop</text>
+    <text x="100" y="396" fill="#555b5e" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Full browser access</text>
+  </g>
+  
+  <!-- Bottom banner -->
+  <rect x="100" y="510" width="600" height="60" rx="12" fill="#2d3436"/>
+  <text x="400" y="536" fill="#fff" font-family="Inter, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Works everywhere. No app store needed.</text>
+  <text x="400" y="556" fill="rgba(255,255,255,0.6)" font-family="Inter, sans-serif" font-size="11" text-anchor="middle">No 30% app store tax = savings passed directly to you</text>
+</svg>

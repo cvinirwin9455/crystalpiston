@@ -77,10 +77,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
-                <span>Weekly Plan Builder</span>
-              </div>
+              <Image
+                src="/firstmile/features/weekly-plan-builder.svg"
+                alt="Weekly training plan builder showing a full week with different workout types assigned to each day"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -104,10 +107,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder fmc-feature-placeholder-dark">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="9" x2="14" y2="9"/><line x1="8" y1="12" x2="12" y2="12"/></svg>
-                <span>Client Dashboard</span>
-              </div>
+              <Image
+                src="/firstmile/features/client-dashboard.svg"
+                alt="Client mobile dashboard showing today's workout, weekly progress, and coach notes"
+                width={400}
+                height={700}
+                className="fmc-feature-img fmc-feature-img-phone"
+              />
             </div>
           </div>
         </div>
@@ -131,10 +137,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-                <span>Client Management</span>
-              </div>
+              <Image
+                src="/firstmile/features/client-management.svg"
+                alt="Client management list showing active clients with status indicators and quick actions"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -158,10 +167,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                <span>Structured Run Builder</span>
-              </div>
+              <Image
+                src="/firstmile/features/structured-run-builder.svg"
+                alt="Structured run builder showing warm-up, 6x800m intervals with recovery, and cool-down"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -185,10 +197,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
-                <span>In-App Messaging</span>
-              </div>
+              <Image
+                src="/firstmile/features/messaging.svg"
+                alt="In-app messaging conversation between coach and client with email notification indicator"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -212,10 +227,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder fmc-feature-placeholder-dark">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <span>Email Notifications</span>
-              </div>
+              <Image
+                src="/firstmile/features/email-notifications.svg"
+                alt="Email notification showing a new training plan published with plan preview and call-to-action"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -239,10 +257,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
-                <span>Exercise Library</span>
-              </div>
+              <Image
+                src="/firstmile/features/exercise-library.svg"
+                alt="Exercise library grid showing categorized exercises with video links and tags"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -266,10 +287,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6.5 6.5h11M6.5 17.5h11"/><rect x="2" y="4" width="4" height="5" rx="1"/><rect x="18" y="4" width="4" height="5" rx="1"/><rect x="2" y="15" width="4" height="5" rx="1"/><rect x="18" y="15" width="4" height="5" rx="1"/><line x1="4" y1="9" x2="4" y2="15"/><line x1="20" y1="9" x2="20" y2="15"/></svg>
-                <span>Cross-Training Builder</span>
-              </div>
+              <Image
+                src="/firstmile/features/cross-training-builder.svg"
+                alt="Cross-training builder showing circuits with exercises, sets, reps, and video links"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -293,10 +317,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder fmc-feature-placeholder-dark">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2a4 4 0 014 4c0 1.5-.8 2.8-2 3.5v1h-4v-1c-1.2-.7-2-2-2-3.5a4 4 0 014-4z"/><path d="M10 10.5v1.5h4v-1.5"/><line x1="10" y1="14" x2="14" y2="14"/><line x1="10" y1="16" x2="14" y2="16"/><path d="M10 18h4l-1 3h-2l-1-3z"/></svg>
-                <span>AI Week Suggestions</span>
-              </div>
+              <Image
+                src="/firstmile/features/ai-suggestions.svg"
+                alt="AI suggestion panel showing client context on left and generated training week on right"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -320,10 +347,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
-                <span>Progress Tracking</span>
-              </div>
+              <Image
+                src="/firstmile/features/progress-tracking.svg"
+                alt="Client progress stats showing weekly volume chart, completion rate circle, and recent sessions"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -347,10 +377,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                <span>Draft & Publish</span>
-              </div>
+              <Image
+                src="/firstmile/features/draft-publish.svg"
+                alt="Coach dashboard showing 3 draft plans ready to publish with one-click publish buttons"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -374,10 +407,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder fmc-feature-placeholder-dark">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-                <span>Session Logging</span>
-              </div>
+              <Image
+                src="/firstmile/features/session-logging.svg"
+                alt="Mobile session logging screen with RPE slider, energy level selector, and notes field"
+                width={400}
+                height={700}
+                className="fmc-feature-img fmc-feature-img-phone"
+              />
             </div>
           </div>
         </div>
@@ -401,10 +437,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-                <span>Any Coaching Type</span>
-              </div>
+              <Image
+                src="/firstmile/features/any-coaching-type.svg"
+                alt="Split view showing running coach features on left and personal trainer features on right"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -428,10 +467,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/><path d="M9 9l3-3 3 3"/><line x1="12" y1="6" x2="12" y2="14"/></svg>
-                <span>Add to Homescreen</span>
-              </div>
+              <Image
+                src="/firstmile/features/pwa-homescreen.svg"
+                alt="Three devices showing the app working on iPhone, tablet, and desktop browser"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
@@ -455,10 +497,13 @@ export default function FeaturesPageClient() {
               </ul>
             </div>
             <div className="fmc-feature-image-wrap">
-              <div className="fmc-feature-placeholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Data Export</span>
-              </div>
+              <Image
+                src="/firstmile/features/data-export.svg"
+                alt="Data export settings showing CSV export options and no lock-in guarantee"
+                width={800}
+                height={600}
+                className="fmc-feature-img"
+              />
             </div>
           </div>
         </div>
