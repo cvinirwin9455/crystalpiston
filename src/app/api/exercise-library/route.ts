@@ -79,6 +79,7 @@ export async function GET(request: Request) {
     defaultWeight: row.data?.defaultWeight || '',
     defaultWeightUnit: row.data?.defaultWeightUnit || 'kg',
     defaultNotes: row.data?.defaultNotes || '',
+    categories: row.data?.categories || [],
   }))
 
   return NextResponse.json(items)

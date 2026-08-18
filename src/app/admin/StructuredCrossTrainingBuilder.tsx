@@ -29,6 +29,7 @@ export type ExerciseLibraryItem = {
   defaultWeight?: string;
   defaultWeightUnit?: WeightUnit;
   defaultNotes?: string;
+  categories?: string[];
 };
 
 export type HiitFormat = "emom" | "tabata" | "amrap" | "circuit" | "intervals";
@@ -146,9 +147,10 @@ interface Props {
   exerciseLibrary?: ExerciseLibraryItem[];
   showRounds?: boolean; // Show rounds/circuit fields (for HIIT)
   hiitSubtype?: string; // The specific HIIT subtype (AMRAP, EMOM, Tabata, Circuit, Intervals)
+  workoutType?: string; // The workout type (cross, strength, hiit, stretching) — used to filter exercise suggestions
 }
 
-export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [], showRounds = false, hiitSubtype }: Props) {
+export default function StructuredCrossTrainingBuilder({ structure, onChange, weightUnit = "kg", exerciseLibrary = [], showRounds = false, hiitSubtype, workoutType }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showVideoInput, setShowVideoInput] = useState<Record<number, boolean>>({});
@@ -171,12 +173,31 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
     onChange({ ...structure, exercises });
   };
 
-  // Autocomplete: search exercise library by name
+  // Autocomplete: filter exercise library by workout type category, then by name
+  const getFilteredLibrary = (searchText: string) => {
+    let filtered = exerciseLibrary;
+    // Filter by workout type category if provided
+    if (workoutType && filtered.length > 0) {
+      const categoryFiltered = filtered.filter(item =>
+        item.categories && item.categories.includes(workoutType)
+      );
+      // Only apply filter if it returns results (graceful fallback for untagged exercises)
+      if (categoryFiltered.length > 0) {
+        filtered = categoryFiltered;
+      }
+    }
+    // Filter by search text
+    if (searchText.length > 0) {
+      const lower = searchText.toLowerCase();
+      filtered = filtered.filter(item => item.name.toLowerCase().includes(lower));
+    }
+    return filtered.slice(0, 8);
+  };
+
   const handleNameChange = (index: number, value: string) => {
     updateExercise(index, { name: value });
-    if (value.length >= 2 && exerciseLibrary.length > 0) {
-      const lower = value.toLowerCase();
-      const matches = exerciseLibrary.filter(item => item.name.toLowerCase().includes(lower)).slice(0, 6);
+    if (exerciseLibrary.length > 0) {
+      const matches = getFilteredLibrary(value);
       if (matches.length > 0) {
         setAutocompleteIndex(index);
         setAutocompleteResults(matches);
@@ -187,6 +208,17 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
     } else {
       setAutocompleteIndex(null);
       setAutocompleteResults([]);
+    }
+  };
+
+  const handleNameFocus = (index: number) => {
+    if (exerciseLibrary.length > 0) {
+      const currentName = structure.exercises[index]?.name || "";
+      const matches = getFilteredLibrary(currentName);
+      if (matches.length > 0) {
+        setAutocompleteIndex(index);
+        setAutocompleteResults(matches);
+      }
     }
   };
 
@@ -525,7 +557,7 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
                   type="text"
                   value={ex.name}
                   onChange={(e) => handleNameChange(idx, e.target.value)}
-                  onFocus={() => { if (ex.name.length >= 2 && exerciseLibrary.length > 0) { handleNameChange(idx, ex.name); } }}
+                  onFocus={() => handleNameFocus(idx)}
                   className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-gold/50 focus:border-gold/50"
                   placeholder="Exercise name"
                 />

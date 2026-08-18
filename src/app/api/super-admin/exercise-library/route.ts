@@ -84,6 +84,7 @@ export async function GET() {
     defaultWeight: row.data?.defaultWeight || '',
     defaultWeightUnit: row.data?.defaultWeightUnit || 'kg',
     defaultNotes: row.data?.defaultNotes || '',
+    categories: row.data?.categories || [],
   }))
 
   return NextResponse.json(items)
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const body = await request.json()
-  const { name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes } = body
+  const { name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes, categories } = body
 
   if (!name || !name.trim()) {
     return NextResponse.json({ error: 'Exercise name is required' }, { status: 400 })
@@ -126,6 +127,7 @@ export async function POST(request: Request) {
     defaultWeight: defaultWeight || '',
     defaultWeightUnit: defaultWeightUnit || 'kg',
     defaultNotes: defaultNotes || '',
+    categories: categories || [],
     is_seed: true,
     is_seed_modified: false,
   }
@@ -171,7 +173,7 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const body = await request.json()
-  const { originalName, name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes } = body
+  const { originalName, name, demoVideo, defaultMeasureType, defaultMeasureValue, defaultSets, defaultRest, defaultWeight, defaultWeightUnit, defaultNotes, categories } = body
 
   if (!originalName) {
     return NextResponse.json({ error: 'originalName is required to identify the exercise' }, { status: 400 })
@@ -187,6 +189,7 @@ export async function PATCH(request: Request) {
     defaultWeight: defaultWeight || '',
     defaultWeightUnit: defaultWeightUnit || 'kg',
     defaultNotes: defaultNotes || '',
+    categories: categories || [],
     is_seed: true,
     is_seed_modified: false,
   }

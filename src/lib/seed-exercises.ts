@@ -10,6 +10,15 @@
  * type='day', category='__exercise_library__').
  */
 
+export type ExerciseCategory = 'stretching' | 'strength' | 'hiit' | 'cross'
+
+export const EXERCISE_CATEGORY_LABELS: Record<ExerciseCategory, string> = {
+  stretching: 'Stretching/Mobility',
+  strength: 'Strength',
+  hiit: 'HIIT',
+  cross: 'Cross Training',
+}
+
 export type SeedExercise = {
   name: string
   demoVideo: string
@@ -21,6 +30,7 @@ export type SeedExercise = {
   defaultWeightUnit: 'kg' | 'lbs'
   defaultNotes: string
   is_seed?: boolean
+  categories: ExerciseCategory[]
 }
 
 // ─── STRETCHING / MOBILITY ───────────────────────────────────────────────────
@@ -36,6 +46,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Keep hips square, gently push forward.',
+    categories: ['stretching'],
   },
   {
     name: 'Pigeon Stretch',
@@ -47,6 +58,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Sink into the stretch gradually.',
+    categories: ['stretching'],
   },
   {
     name: 'Hamstring Stretch (Standing)',
@@ -58,6 +70,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Hinge at hips, keep back flat.',
+    categories: ['stretching'],
   },
   {
     name: 'Quad Stretch (Standing)',
@@ -69,6 +82,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Keep knees together, hold something for balance if needed.',
+    categories: ['stretching'],
   },
   {
     name: 'Calf Stretch (Wall)',
@@ -80,6 +94,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Straight back leg, heel pressed down.',
+    categories: ['stretching'],
   },
   {
     name: 'Cat-Cow',
@@ -91,6 +106,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Slow controlled movement. Breathe in on cow, out on cat.',
+    categories: ['stretching'],
   },
   {
     name: 'World\'s Greatest Stretch',
@@ -102,6 +118,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Lunge, rotate, reach. Full range of motion.',
+    categories: ['stretching'],
   },
   {
     name: 'Thoracic Spine Rotation',
@@ -113,6 +130,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. On all fours, hand behind head, rotate open.',
+    categories: ['stretching'],
   },
   {
     name: 'Foam Roll — IT Band',
@@ -124,6 +142,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Slow rolls from hip to just above knee.',
+    categories: ['stretching'],
   },
   {
     name: 'Foam Roll — Quads',
@@ -135,6 +154,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Face down. Roll from hip to above kneecap.',
+    categories: ['stretching'],
   },
   {
     name: 'Foam Roll — Upper Back',
@@ -146,6 +166,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Arms crossed over chest. Roll mid to upper back.',
+    categories: ['stretching'],
   },
   {
     name: '90/90 Hip Stretch',
@@ -157,6 +178,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Sit tall, lean into front hip.',
+    categories: ['stretching'],
   },
   {
     name: 'Downward Dog',
@@ -168,6 +190,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Pedal feet to loosen calves. Push hips high.',
+    categories: ['stretching'],
   },
   {
     name: 'Banded Shoulder Dislocates',
@@ -179,6 +202,7 @@ const stretchingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Wide grip. Slow controlled arc over and behind head.',
+    categories: ['stretching'],
   },
 ]
 
@@ -195,6 +219,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Brace core. Break at hips and knees together. Depth to parallel or below.',
+    categories: ['strength'],
   },
   {
     name: 'Goblet Squat',
@@ -206,6 +231,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Hold dumbbell at chest. Elbows inside knees at bottom.',
+    categories: ['strength', 'cross'],
   },
   {
     name: 'Romanian Deadlift (RDL)',
@@ -217,6 +243,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Soft knees, hinge at hips. Feel stretch in hamstrings. Bar/DB stays close to legs.',
+    categories: ['strength'],
   },
   {
     name: 'Conventional Deadlift',
@@ -228,6 +255,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Flat back, brace core. Drive through floor. Lockout hips at top.',
+    categories: ['strength'],
   },
   {
     name: 'Walking Lunges',
@@ -239,6 +267,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each leg. Long stride, back knee close to floor.',
+    categories: ['strength', 'cross'],
   },
   {
     name: 'Bulgarian Split Squat',
@@ -250,6 +279,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each leg. Rear foot elevated on bench. Upright torso.',
+    categories: ['strength'],
   },
   {
     name: 'Bench Press (Barbell)',
@@ -261,6 +291,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Shoulder blades pinched. Bar to chest, drive up. Feet flat on floor.',
+    categories: ['strength'],
   },
   {
     name: 'Dumbbell Bench Press',
@@ -272,6 +303,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Full range of motion. Control the descent.',
+    categories: ['strength'],
   },
   {
     name: 'Overhead Press (Barbell)',
@@ -283,6 +315,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Brace core tight. Press straight up, head through at top.',
+    categories: ['strength'],
   },
   {
     name: 'Dumbbell Shoulder Press',
@@ -294,6 +327,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Seated or standing. Full lockout overhead.',
+    categories: ['strength'],
   },
   {
     name: 'Bent-Over Row (Barbell)',
@@ -305,6 +339,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Hinge forward ~45°. Pull to lower chest. Squeeze shoulder blades.',
+    categories: ['strength'],
   },
   {
     name: 'Single-Arm Dumbbell Row',
@@ -316,6 +351,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each arm. Pull elbow back past torso. No rotation.',
+    categories: ['strength'],
   },
   {
     name: 'Pull-Ups',
@@ -327,6 +363,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Full hang to chin over bar. Control the descent.',
+    categories: ['strength', 'cross'],
   },
   {
     name: 'Lat Pulldown',
@@ -338,6 +375,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Wide grip. Pull to upper chest. Squeeze lats at bottom.',
+    categories: ['strength'],
   },
   {
     name: 'Hip Thrust',
@@ -349,6 +387,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Upper back on bench. Drive hips to full extension. Squeeze glutes at top.',
+    categories: ['strength'],
   },
   {
     name: 'Leg Press',
@@ -360,6 +399,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Feet shoulder width. Full depth without lower back lifting.',
+    categories: ['strength'],
   },
   {
     name: 'Calf Raises (Standing)',
@@ -371,6 +411,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Full range — stretch at bottom, pause at top. Slow tempo.',
+    categories: ['strength'],
   },
   {
     name: 'Face Pulls',
@@ -382,6 +423,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Pull to eye level, externally rotate at end. Light weight, squeeze rear delts.',
+    categories: ['strength'],
   },
   {
     name: 'Lateral Raises',
@@ -393,6 +435,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Slight bend in elbows. Raise to shoulder height, control down.',
+    categories: ['strength'],
   },
   {
     name: 'Bicep Curls (Dumbbell)',
@@ -404,6 +447,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'No swinging. Full extension at bottom, squeeze at top.',
+    categories: ['strength'],
   },
   {
     name: 'Tricep Dips',
@@ -415,6 +459,7 @@ const strengthExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Bench dips or parallel bars. Elbows back, not flared.',
+    categories: ['strength', 'cross'],
   },
 ]
 
@@ -431,6 +476,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Chest to floor, jump at top. Keep moving.',
+    categories: ['hiit', 'cross'],
   },
   {
     name: 'Mountain Climbers',
@@ -442,6 +488,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Fast pace. Hips level, core tight.',
+    categories: ['hiit', 'cross'],
   },
   {
     name: 'Jump Squats',
@@ -453,6 +500,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Squat to parallel, explode up. Soft landing.',
+    categories: ['hiit'],
   },
   {
     name: 'Box Jumps',
@@ -464,6 +512,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Land softly with both feet fully on box. Step down.',
+    categories: ['hiit', 'cross'],
   },
   {
     name: 'Kettlebell Swings',
@@ -475,6 +524,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Hip hinge, not a squat. Snap hips forward. Arms are just along for the ride.',
+    categories: ['hiit', 'strength', 'cross'],
   },
   {
     name: 'Battle Ropes — Alternating Waves',
@@ -486,6 +536,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Slight squat stance. Fast alternating arms. Keep waves consistent.',
+    categories: ['hiit', 'cross'],
   },
   {
     name: 'High Knees',
@@ -497,6 +548,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Drive knees to hip height. Pump arms. Stay on balls of feet.',
+    categories: ['hiit'],
   },
   {
     name: 'Tuck Jumps',
@@ -508,6 +560,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Jump and drive knees to chest. Land soft.',
+    categories: ['hiit'],
   },
   {
     name: 'Skater Jumps',
@@ -519,6 +572,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side counts as 1. Bound laterally, land on one leg.',
+    categories: ['hiit', 'cross'],
   },
   {
     name: 'Thruster (Dumbbell)',
@@ -530,6 +584,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Front squat into overhead press in one fluid movement.',
+    categories: ['hiit', 'strength'],
   },
   {
     name: 'Sprint Intervals',
@@ -541,6 +596,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'All-out effort. Full recovery between reps.',
+    categories: ['hiit'],
   },
   {
     name: 'Rowing Machine Intervals',
@@ -552,6 +608,7 @@ const hiitExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Max effort strokes. Focus on power from legs first.',
+    categories: ['hiit', 'cross'],
   },
 ]
 
@@ -568,6 +625,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Forearms or hands. Straight line from head to heels. No sagging.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Side Plank',
@@ -579,6 +637,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Stack hips. Keep body in a straight line.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Dead Bug',
@@ -590,6 +649,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Lower back pressed into floor throughout. Slow and controlled.',
+    categories: ['cross'],
   },
   {
     name: 'Bird Dog',
@@ -601,6 +661,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Opposite arm and leg extend. Keep hips level.',
+    categories: ['cross'],
   },
   {
     name: 'Glute Bridge',
@@ -612,6 +673,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Squeeze glutes at top. Pause 1-2 seconds. Don\'t hyperextend lower back.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Single-Leg Glute Bridge',
@@ -623,6 +685,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each leg. Keep hips level. Slow controlled descent.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Clamshells',
@@ -634,6 +697,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each side. Band above knees if available. Rotate from hip, feet stay together.',
+    categories: ['cross'],
   },
   {
     name: 'Russian Twist',
@@ -645,6 +709,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Total reps (L+R = 1). Lean back slightly, rotate from core not arms.',
+    categories: ['cross'],
   },
   {
     name: 'Bicycle Crunches',
@@ -656,6 +721,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Slow and controlled. Opposite elbow to knee. Full leg extension.',
+    categories: ['cross'],
   },
   {
     name: 'Superman Hold',
@@ -667,6 +733,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Face down. Lift arms and legs off floor. Squeeze glutes.',
+    categories: ['cross'],
   },
   {
     name: 'Push-Ups',
@@ -678,6 +745,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Full range. Elbows at ~45°. Body straight throughout.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'TRX Row',
@@ -689,6 +757,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Body straight. Pull chest to handles. Control the release.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Step-Ups',
@@ -700,6 +769,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each leg. Drive through front heel. Don\'t push off back foot.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Single-Leg Deadlift',
@@ -711,6 +781,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Each leg. Hinge at hip, back leg extends behind. Balance and control.',
+    categories: ['cross', 'strength'],
   },
   {
     name: 'Bear Crawl',
@@ -722,6 +793,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Knees hovering just off ground. Opposite hand and foot move together.',
+    categories: ['cross', 'hiit'],
   },
   {
     name: 'Wall Sit',
@@ -733,6 +805,7 @@ const crossTrainingExercises: SeedExercise[] = [
     defaultWeight: '',
     defaultWeightUnit: 'kg',
     defaultNotes: 'Back flat against wall. Thighs parallel to floor. Don\'t push on knees.',
+    categories: ['cross', 'strength'],
   },
 ]
 

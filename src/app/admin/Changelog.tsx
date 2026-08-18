@@ -12,6 +12,7 @@ const updates = [
       { area: "Marketing", text: "Fixed: The logo on the First Mile Coach home page was pushing up into the header bar. Added more spacing so the logo sits comfortably below the top banner" },
       { area: "Admin", text: "NEW: Default Exercise Library — every new coach now gets a curated library of 63 exercises pre-loaded when their account is activated. Covers Stretching/Mobility, Strength, HIIT, and Cross Training with sensible default sets, reps, rest times, and form notes. Coaches can add their own demo video links and create additional exercises on top" },
       { area: "Admin", text: "NEW: Super Admin Exercise Library — a new 'Exercise Library' tab on the super admin page lets you manage the master exercise list. Add, edit, or remove exercises and the change pushes to all coaches automatically. If a coach has customized an exercise, their version is left untouched" },
+      { area: "Admin", text: "NEW: Exercise Category Tags — each exercise is now tagged with one or more categories (Stretching/Mobility, Strength, HIIT, Cross Training). When programming a workout, the exercise autocomplete dropdown now shows immediately on focus and only suggests exercises relevant to the workout type you're building" },
     ],
   },
   {

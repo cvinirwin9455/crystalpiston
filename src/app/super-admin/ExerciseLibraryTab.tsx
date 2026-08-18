@@ -4,6 +4,16 @@ import { useState, useEffect } from "react";
 
 type MeasureType = "reps" | "time" | "distance";
 type WeightUnit = "kg" | "lbs";
+type ExerciseCategory = "stretching" | "strength" | "hiit" | "cross";
+
+const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
+  stretching: "Stretching/Mobility",
+  strength: "Strength",
+  hiit: "HIIT",
+  cross: "Cross Training",
+};
+
+const ALL_CATEGORIES: ExerciseCategory[] = ["stretching", "strength", "hiit", "cross"];
 
 type Exercise = {
   id: string;
@@ -16,6 +26,7 @@ type Exercise = {
   defaultWeight: string;
   defaultWeightUnit: WeightUnit;
   defaultNotes: string;
+  categories: ExerciseCategory[];
 };
 
 // ─── Separate Form Component ─────────────────────────────────────────────────
@@ -41,6 +52,13 @@ function ExerciseForm({
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(exercise?.defaultWeightUnit || "kg");
   const [notes, setNotes] = useState(exercise?.defaultNotes || "");
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<ExerciseCategory[]>(exercise?.categories || []);
+
+  const toggleCategory = (cat: ExerciseCategory) => {
+    setCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -55,6 +73,7 @@ function ExerciseForm({
       defaultWeight: weight,
       defaultWeightUnit: weightUnit,
       defaultNotes: notes,
+      categories,
       ...(exercise ? { originalName: exercise.name } : {}),
     });
     setSaving(false);
@@ -76,6 +95,27 @@ function ExerciseForm({
           placeholder="e.g. Barbell Back Squat"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
+      </div>
+
+      {/* Categories */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-2">Categories</label>
+        <div className="flex flex-wrap gap-2">
+          {ALL_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => toggleCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                categories.includes(cat)
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Demo Video */}
@@ -381,7 +421,7 @@ export default function SuperAdminExerciseLibrary() {
           filteredExercises.map((ex) => (
             <div key={ex.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-gray-900 truncate">{ex.name}</span>
                   {ex.demoVideo && (
                     <a href={ex.demoVideo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded hover:bg-orange-100">
@@ -389,6 +429,11 @@ export default function SuperAdminExerciseLibrary() {
                       {getVideoHostname(ex.demoVideo)}
                     </a>
                   )}
+                  {(ex.categories || []).map((cat) => (
+                    <span key={cat} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">
+                      {CATEGORY_LABELS[cat]}
+                    </span>
+                  ))}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
                   <span>{ex.defaultSets} sets × {ex.defaultMeasureValue || "—"} {ex.defaultMeasureType}</span>
