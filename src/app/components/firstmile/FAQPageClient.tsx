@@ -484,7 +484,7 @@ function ContactForm() {
         setResult({ type: 'error', text: data.error || 'Something went wrong. Please try again or email us directly.' });
       }
     } catch {
-      setResult({ type: 'error', text: 'Network error. Please try emailing hello@firstmilecoach.com directly.' });
+      setResult({ type: 'error', text: 'Network error. Please try again later.' });
     } finally {
       setSending(false);
     }
@@ -675,24 +675,6 @@ export default function FAQPageClient() {
             <p>Get in touch — we respond to every message personally.</p>
             <div className="fmc-faq-contact-methods">
               <ContactForm />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="fmc-features-cta">
-        <div className="fmc-container">
-          <div className="fmc-features-cta-content fmc-fade-in">
-            <h2>Still have questions?</h2>
-            <p>Apply for beta access and we&apos;ll be happy to answer anything personally.</p>
-            <div className="fmc-features-cta-buttons">
-              <a href="/#beta" className="fmc-features-cta-btn fmc-features-cta-btn-primary">
-                Apply for Beta Access &rarr;
-              </a>
-              <Link href="/" className="fmc-features-cta-btn fmc-features-cta-btn-secondary">
-                &larr; Back to Home
-              </Link>
             </div>
           </div>
         </div>
