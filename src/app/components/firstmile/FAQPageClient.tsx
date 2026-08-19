@@ -506,67 +506,43 @@ export default function FAQPageClient() {
           <span className="fmc-features-hero-badge">FAQ</span>
           <h1>Frequently Asked<br />Questions</h1>
           <p className="fmc-features-hero-sub">
-            Everything you need to know about First Mile Coach. Can&apos;t find your answer? Use the search below or <a href="/#beta" style={{ color: '#f26522' }}>get in touch</a>.
+            Everything you need to know about First Mile Coach. Can&apos;t find your answer? <a href="/#beta" className="fmc-faq-link">Get in touch</a>.
           </p>
         </div>
       </section>
 
       {/* FAQ Content */}
-      <section className="fmc-feature-section fmc-feature-light">
+      <section className="fmc-faq-section">
         <div className="fmc-container">
           {/* Search */}
-          <div className="fmc-fade-in" style={{ marginBottom: '2rem' }}>
-            <div style={{ position: 'relative', maxWidth: '600px', margin: '0 auto' }}>
-              <svg style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', color: '#888' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <div className="fmc-faq-search-wrapper fmc-fade-in">
+            <div className="fmc-faq-search-box">
+              <svg className="fmc-faq-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search FAQs... (e.g. 'pricing', 'strava', 'client')"
-                style={{
-                  width: '100%',
-                  padding: '16px 16px 16px 48px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  background: 'rgba(0,0,0,0.2)',
-                  color: '#fff',
-                  fontSize: '15px',
-                  outline: 'none',
-                }}
+                className="fmc-faq-search-input"
               />
               {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}
-                >
-                  ✕
-                </button>
+                <button onClick={() => setSearchQuery('')} className="fmc-faq-search-clear">✕</button>
               )}
             </div>
             {searchQuery && (
-              <p style={{ textAlign: 'center', color: '#888', fontSize: '13px', marginTop: '8px' }}>
+              <p className="fmc-faq-search-count">
                 {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''} for &ldquo;{searchQuery}&rdquo;
               </p>
             )}
           </div>
 
           {/* Category Tags */}
-          <div className="fmc-fade-in" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '2.5rem' }}>
+          <div className="fmc-faq-categories fmc-fade-in">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  border: activeCategory === cat ? '1px solid #f26522' : '1px solid rgba(255,255,255,0.15)',
-                  background: activeCategory === cat ? 'rgba(242,101,34,0.15)' : 'rgba(0,0,0,0.2)',
-                  color: activeCategory === cat ? '#f26522' : '#aaa',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
+                className={`fmc-faq-category-btn ${activeCategory === cat ? 'fmc-faq-category-active' : ''}`}
               >
                 {cat}
               </button>
@@ -574,87 +550,35 @@ export default function FAQPageClient() {
           </div>
 
           {/* FAQ Items */}
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div className="fmc-faq-list">
             {filteredItems.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '60px 0' }}>
-                <p style={{ color: '#888', fontSize: '15px' }}>No matching questions found. Try a different search term.</p>
+              <div className="fmc-faq-empty">
+                <p>No matching questions found. Try a different search term.</p>
               </div>
             )}
             {filteredItems.map(item => (
-              <div
-                key={item.id}
-                style={{
-                  marginBottom: '12px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(0,0,0,0.15)',
-                  overflow: 'hidden',
-                }}
-              >
+              <div key={item.id} className={`fmc-faq-item ${expandedItem === item.id ? 'fmc-faq-item-open' : ''}`}>
                 <button
                   onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '18px 20px',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    gap: '12px',
-                  }}
+                  className="fmc-faq-item-header"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      background: 'rgba(242,101,34,0.1)',
-                      color: '#f26522',
-                      border: '1px solid rgba(242,101,34,0.2)',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                    }}>
-                      {item.category}
-                    </span>
-                    <span style={{ color: '#fff', fontSize: '15px', fontWeight: 500 }}>{item.question}</span>
+                  <div className="fmc-faq-item-left">
+                    <span className="fmc-faq-item-badge">{item.category}</span>
+                    <span className="fmc-faq-item-question">{item.question}</span>
                   </div>
-                  <svg
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      color: '#888',
-                      flexShrink: 0,
-                      transition: 'transform 0.2s',
-                      transform: expandedItem === item.id ? 'rotate(180deg)' : 'rotate(0deg)',
-                    }}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                  >
+                  <svg className={`fmc-faq-item-arrow ${expandedItem === item.id ? 'fmc-faq-item-arrow-open' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {expandedItem === item.id && (
-                  <div style={{ padding: '0 20px 18px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p style={{ color: '#ccc', fontSize: '14px', lineHeight: '1.7', marginTop: '14px' }}>
-                      {item.answer}
-                    </p>
-                    <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  <div className="fmc-faq-item-body">
+                    <p className="fmc-faq-item-answer">{item.answer}</p>
+                    <div className="fmc-faq-item-tags">
                       {item.tags.map(tag => (
                         <span
                           key={tag}
                           onClick={() => { setSearchQuery(tag); setActiveCategory('All'); }}
-                          style={{
-                            fontSize: '11px',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            background: 'rgba(255,255,255,0.05)',
-                            color: '#888',
-                            cursor: 'pointer',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                          }}
+                          className="fmc-faq-tag"
                         >
                           {tag}
                         </span>
