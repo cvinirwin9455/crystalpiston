@@ -22,6 +22,8 @@ export async function POST(request: Request) {
   try {
     // 1. SAVE TO DATABASE (feedback table) — this is the primary action
     // Uses service role to bypass RLS since user is unauthenticated
+    // Note: feedback table requires user_id NOT NULL, so we use the First Mile org admin ID
+    // and store the visitor's details in description for the super admin to see
     const { createClient } = await import('@supabase/supabase-js')
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,16 +31,30 @@ export async function POST(request: Request) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
+    // Find the super admin user to attribute the inquiry to (so it shows in feedback tab)
+    const { data: superAdmin } = await adminClient
+      .from('users')
+      .select('id')
+      .eq('email', 'curtisirwin@me.com')
+      .single()
+
+    if (!superAdmin) {
+      console.error('Could not find super admin user for inquiry attribution')
+      return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
+    }
+
+    const fullDescription = `[INQUIRY from FAQ Contact Form]\n\nFrom: ${name} <${email}>\n\nMessage:\n${message.trim()}`
+
     const { error: dbError } = await adminClient
       .from('feedback')
       .insert({
-        user_id: null,
+        user_id: superAdmin.id,
         user_email: email,
         user_name: name,
         platform,
-        user_role: 'visitor',
-        type: 'question',
-        description: message.trim(),
+        user_role: 'client',
+        type: 'feedback',
+        description: fullDescription,
         page_url: isFirstMile ? 'https://firstmilecoach.com/faq#contact' : 'https://crystalpistolperformance.com/contact',
         screenshot_url: null,
         priority: 'medium',
@@ -46,7 +62,7 @@ export async function POST(request: Request) {
       })
 
     if (dbError) {
-      console.error('Failed to save inquiry to DB:', dbError)
+      console.error('Failed to save inquiry to DB:', JSON.stringify(dbError))
       return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
     }
 
