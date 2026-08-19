@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 // POST /api/inquiry - Handle marketing page inquiry/contact form
+// Saves to feedback table (shows in super admin) + tries to send email notification
 export async function POST(request: Request) {
   const body = await request.json()
   const { name, email, message, source } = body
@@ -14,138 +15,86 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
   }
 
-  const apiKey = process.env.RESEND_API_KEY
-
-  if (!apiKey) {
-    return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
-  }
-
   // Determine branding based on source
   const isFirstMile = source === 'faq_page' || source === 'firstmile'
-  const senderEmail = isFirstMile
-    ? (process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com')
-    : (process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com')
-  const recipientEmail = isFirstMile
-    ? ['curtisirwin@me.com', 'cvin9455@gmail.com']
-    : ['crystal@pistolpc.com']
-  const brandName = isFirstMile ? 'First Mile Coach' : 'Pistol Performance Coaching'
-  const fromName = isFirstMile ? 'First Mile Coach' : 'Pistol Performance Coaching'
-  const accentColor = isFirstMile ? '#f26522' : '#d4a853'
-
-  const firstName = name.split(' ')[0]
+  const platform = isFirstMile ? 'first-mile' : 'crystal-pistol'
 
   try {
-    // 1. Send inquiry to Crystal (reply-to set to the person who inquired)
-    const crystalEmailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; background-color: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #1a1a2e; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #16213e; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
-          <tr>
-            <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #ffffff; letter-spacing: 1px;">New Inquiry</h1>
-              <p style="margin: 4px 0 0; font-size: 11px; color: ${accentColor}; text-transform: uppercase; letter-spacing: 2px;">${brandName}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 20px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">New message from ${isFirstMile ? 'the FAQ page' : 'your website'}:</p>
-              
-              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid ${accentColor}; border-radius: 4px;">
-                <p style="margin: 0 0 4px; color: ${accentColor}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Name</p>
-                <p style="margin: 0; color: #ffffff; font-size: 15px;">${name}</p>
-              </div>
-              
-              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid ${accentColor}; border-radius: 4px;">
-                <p style="margin: 0 0 4px; color: ${accentColor}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Email</p>
-                <p style="margin: 0; color: #ffffff; font-size: 15px;">${email}</p>
-              </div>
-              
-              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(233,69,96,0.1); border-left: 3px solid #f26522; border-radius: 4px;">
-                <p style="margin: 0 0 4px; color: #f26522; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Their Message</p>
-                <p style="margin: 0; color: #e0e0e0; font-size: 15px; line-height: 1.6;">${message.replace(/\n/g, '<br/>')}</p>
-              </div>
-              
-              <p style="margin: 20px 0 0; font-size: 14px; color: #b0b0b0; line-height: 1.6;">Just hit <strong style="color: #ffffff;">Reply</strong> to respond directly to ${firstName}.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
+    // 1. SAVE TO DATABASE (feedback table) — this is the primary action
+    // Uses service role to bypass RLS since user is unauthenticated
+    const { createClient } = await import('@supabase/supabase-js')
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
 
-    const crystalRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: `${fromName} <${senderEmail}>`,
-        to: recipientEmail,
-        reply_to: email,
-        subject: `New inquiry from ${name}${isFirstMile ? ' (FAQ page)' : ''}`,
-        html: crystalEmailHtml,
-      }),
-    })
+    const { error: dbError } = await adminClient
+      .from('feedback')
+      .insert({
+        user_id: null,
+        user_email: email,
+        user_name: name,
+        platform,
+        user_role: 'visitor',
+        type: 'question',
+        description: message.trim(),
+        page_url: isFirstMile ? 'https://firstmilecoach.com/faq#contact' : 'https://crystalpistolperformance.com/contact',
+        screenshot_url: null,
+        priority: 'medium',
+        status: 'new',
+      })
 
-    if (!crystalRes.ok) {
-      const err = await crystalRes.json().catch(() => ({}))
-      console.error('Failed to send inquiry notification:', JSON.stringify(err))
-      // Don't fail the whole request — the message was received, just email delivery failed
-      // Return success so the user knows their message got through
+    if (dbError) {
+      console.error('Failed to save inquiry to DB:', dbError)
+      return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
     }
 
-    // 2. Send confirmation to the person who inquired
-    const confirmationHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; background-color: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #1a1a2e; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #16213e; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
-          <tr>
-            <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #ffffff; letter-spacing: 1px;">${brandName}</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 32px;">
-              <h2 style="margin: 0 0 16px; font-size: 22px; color: #ffffff; font-weight: 700;">Hey ${firstName}!</h2>
-              <p style="margin: 0 0 16px; font-size: 16px; color: #e0e0e0; line-height: 1.7;">Your message landed safe and sound. We got it and will be in touch with you soon.</p>
-              <p style="margin: 0 0 24px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Thanks for reaching out — we respond to every message personally.</p>
-              <p style="margin: 0; font-size: 15px; color: ${accentColor}; font-weight: 600;">Talk soon!</p>
-              <p style="margin: 4px 0 0; font-size: 14px; color: #b0b0b0;">The ${brandName} Team</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
+    // 2. TRY TO SEND EMAIL NOTIFICATION (fire and forget — don't block on this)
+    const apiKey = process.env.RESEND_API_KEY
+    if (apiKey) {
+      const senderEmail = isFirstMile
+        ? (process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com')
+        : (process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com')
+      const recipientEmail = isFirstMile
+        ? ['curtisirwin@me.com', 'cvin9455@gmail.com']
+        : ['crystal@pistolpc.com']
+      const brandName = isFirstMile ? 'First Mile Coach' : 'Pistol Performance Coaching'
+      const accentColor = isFirstMile ? '#f26522' : '#d4a853'
+      const firstName = name.split(' ')[0]
 
-    // Fire and forget — don't fail the request if confirmation email fails
-    fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: `${fromName} <${senderEmail}>`,
-        to: [email],
-        reply_to: recipientEmail[0],
-        subject: `Got your message, ${firstName}!`,
-        html: confirmationHtml,
-      }),
-    }).catch(err => console.error('Failed to send confirmation email:', err))
+      const adminEmailHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" style="background:#1a1a2e;padding:40px 20px;"><tr><td align="center">
+<table width="100%" style="max-width:520px;background:#16213e;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;">
+<tr><td style="padding:24px 32px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">
+<h1 style="margin:0;font-size:20px;font-weight:800;text-transform:uppercase;color:#fff;letter-spacing:1px;">New Inquiry</h1>
+<p style="margin:4px 0 0;font-size:11px;color:${accentColor};text-transform:uppercase;letter-spacing:2px;">${brandName} — FAQ Contact Form</p>
+</td></tr>
+<tr><td style="padding:32px;">
+<p style="margin:0 0 16px;font-size:15px;color:#b0b0b0;">From: <strong style="color:#fff;">${name}</strong> &lt;${email}&gt;</p>
+<div style="margin:0 0 20px;padding:16px;background:rgba(242,101,34,0.1);border-left:3px solid #f26522;border-radius:4px;">
+<p style="margin:0 0 4px;color:#f26522;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:bold;">Message</p>
+<p style="margin:0;color:#e0e0e0;font-size:15px;line-height:1.6;">${message.replace(/\n/g, '<br/>')}</p>
+</div>
+<p style="margin:16px 0 0;font-size:13px;color:#888;">This is also saved in Super Admin → Feedback tab. Hit Reply to respond directly.</p>
+</td></tr></table>
+</td></tr></table></body></html>`
+
+      // Fire and forget — don't await, don't block
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          from: `${brandName} <${senderEmail}>`,
+          to: recipientEmail,
+          reply_to: email,
+          subject: `New inquiry from ${name} (${isFirstMile ? 'FAQ page' : 'website'})`,
+          html: adminEmailHtml,
+        }),
+      }).catch(err => console.error('Inquiry email notification failed (saved to DB):', err))
+    }
 
     return NextResponse.json({ success: true })
 
