@@ -581,7 +581,7 @@ export default function FAQPageClient() {
           <span className="fmc-features-hero-badge">FAQ</span>
           <h1>Frequently Asked<br />Questions</h1>
           <p className="fmc-features-hero-sub">
-            Everything you need to know about First Mile Coach. Can&apos;t find your answer? <a href="/#beta" className="fmc-faq-link">Get in touch</a>.
+            Everything you need to know about First Mile Coach. Can&apos;t find your answer? <a href="#contact" className="fmc-faq-link">Get in touch</a>.
           </p>
         </div>
       </section>
@@ -668,7 +668,7 @@ export default function FAQPageClient() {
       </section>
 
       {/* Contact Us Section */}
-      <section className="fmc-faq-contact-section">
+      <section className="fmc-faq-contact-section" id="contact">
         <div className="fmc-container">
           <div className="fmc-faq-contact-content fmc-fade-in">
             <h2>Have a question not listed here?</h2>
