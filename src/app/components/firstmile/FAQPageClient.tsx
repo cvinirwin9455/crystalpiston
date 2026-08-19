@@ -431,7 +431,7 @@ const faqItems: FAQItem[] = [
   {
     id: "contact-support",
     question: "How do I get help or contact support?",
-    answer: "Email us at hello@firstmilecoach.com — we read and respond to every message personally. You can also use the feedback button in the app (bottom corner of any page) or the 'Contact Us' form on this page. During beta, response times are typically within a few hours. We're a small team that genuinely cares about every coach's experience.",
+    answer: "Use the feedback button in the app (bottom corner of any page) or the 'Contact Us' form on this page to send us a message. You can also select 'Question' in the feedback popup to ask us anything directly. During beta, response times are typically within a few hours. We're a small team that genuinely cares about every coach's experience.",
     category: "Account & Support",
     tags: ["help", "support", "contact", "email", "assistance", "hello"],
   },
@@ -674,10 +674,6 @@ export default function FAQPageClient() {
             <h2>Have a question not listed here?</h2>
             <p>Get in touch — we respond to every message personally.</p>
             <div className="fmc-faq-contact-methods">
-              <a href="mailto:hello@firstmilecoach.com" className="fmc-faq-contact-email">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                hello@firstmilecoach.com
-              </a>
               <ContactForm />
             </div>
           </div>

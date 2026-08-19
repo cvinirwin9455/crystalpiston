@@ -9,7 +9,7 @@ type FeedbackItem = {
   user_name: string;
   platform: "crystal-pistol" | "first-mile";
   user_role: "coach" | "client";
-  type: "bug" | "feedback";
+  type: "bug" | "feedback" | "question";
   description: string;
   page_url: string | null;
   screenshot_url: string | null;
@@ -213,9 +213,9 @@ export default function SuperAdminFeedbackTab() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                  selectedItem.type === "bug" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                  selectedItem.type === "bug" ? "bg-red-100 text-red-700" : selectedItem.type === "question" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                 }`}>
-                  {selectedItem.type === "bug" ? "Bug Report" : "Feedback"}
+                  {selectedItem.type === "bug" ? "Bug Report" : selectedItem.type === "question" ? "Question" : "Feedback"}
                 </span>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                   selectedItem.status === "new" ? "bg-blue-100 text-blue-700" :
@@ -535,9 +535,9 @@ export default function SuperAdminFeedbackTab() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      item.type === "bug" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                      item.type === "bug" ? "bg-red-100 text-red-700" : item.type === "question" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                     }`}>
-                      {item.type === "bug" ? "Bug" : "Feedback"}
+                      {item.type === "bug" ? "Bug" : item.type === "question" ? "Question" : "Feedback"}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                       item.status === "new" ? "bg-blue-100 text-blue-700" :

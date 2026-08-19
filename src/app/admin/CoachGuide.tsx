@@ -855,8 +855,8 @@ export default function CoachGuide({ onBack }: { onBack: () => void }) {
 
       {/* Footer */}
       <div className="mt-8 pt-6 border-t border-white/10 text-center pb-8">
-        <p className="text-gray-400 text-sm mb-2">Need more help or have a feature request?</p>
-        <p className="text-gray-500 text-xs">Contact support or check the &quot;What&apos;s New&quot; section for the latest updates.</p>
+        <p className="text-gray-400 text-sm mb-2">Have a question that&apos;s not answered here?</p>
+        <p className="text-gray-500 text-xs">Click the <strong className="text-white">Feedback</strong> button (bottom-right corner) and select <strong className="text-accent">Question</strong> — we&apos;ll get back to you directly. You can also use it to report bugs or suggest new features.</p>
       </div>
     </div>
   );

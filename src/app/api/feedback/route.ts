@@ -23,8 +23,8 @@ export async function POST(request: Request) {
   const { type, description, priority, pageUrl, platform, userRole, screenshotUrl } = body
 
   // Validate required fields
-  if (!type || !['bug', 'feedback'].includes(type)) {
-    return NextResponse.json({ error: 'Type must be "bug" or "feedback"' }, { status: 400 })
+  if (!type || !['bug', 'feedback', 'question'].includes(type)) {
+    return NextResponse.json({ error: 'Type must be "bug", "feedback", or "question"' }, { status: 400 })
   }
   if (!description || !description.trim()) {
     return NextResponse.json({ error: 'Description is required' }, { status: 400 })
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
   // 1. Send notification email to super admin (curtisirwin@me.com)
   try {
-    const typeLabel = type === 'bug' ? 'Bug Report' : 'Feature Feedback'
+    const typeLabel = type === 'bug' ? 'Bug Report' : type === 'question' ? 'Question' : 'Feature Feedback'
     const priorityLabel = priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Medium'
     const platformLabel = platform === 'crystal-pistol' ? 'Crystal Pistol' : 'First Mile'
     const roleLabel = userRole === 'coach' ? 'Coach' : 'Client'
