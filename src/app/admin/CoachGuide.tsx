@@ -316,28 +316,6 @@ const guideSections: GuideSection[] = [
     ],
     content: `Templates save you time by letting you reuse common training structures. There are two types: **Week Templates** (full 7-day plans) and **Day Templates** (individual workouts). Save your best weeks/days as templates, then load them as starting points when creating new weeks. This is different from Program Templates, which auto-load based on race date — regular templates are loaded manually from the Create Week form.`,
   },
-  {
-    id: "ai-assistant",
-    title: "Using the AI Coach Assistant",
-    category: "Programming",
-    icon: "sparkles",
-    keywords: ["ai", "assistant", "suggest", "generate", "help", "auto", "smart"],
-    steps: [
-      "Open the AI panel from the Create Week tab (look for the AI/sparkle icon)",
-      "Choose a quick action or type a custom prompt",
-      "Select which client's data to include for context",
-      "Choose data depth: Light (minimal), Standard (recommended), or Deep (full history)",
-      "Review the AI suggestion — copy what you like into your week plan",
-      "The AI uses your client's history, goals, and recent performance to make suggestions",
-    ],
-    tips: [
-      "The AI is a tool to assist you, not replace your coaching judgment",
-      "Try: 'Suggest a recovery week' or 'Build intervals for someone training for a 4:00 marathon'",
-      "Deep data mode includes all workout logs and metrics — use for personalized suggestions",
-      "You have a limited number of AI credits per month (shown in the panel)",
-    ],
-    content: `The AI Coach Assistant helps you brainstorm and build training plans faster. It understands your client's goal, history, and recent training to offer contextual suggestions. Use it for inspiration, recovery week ideas, or when you're programming for many clients.`,
-  },
 
   // === CLIENT INTERACTION ===
   {
@@ -627,7 +605,7 @@ const guideSections: GuideSection[] = [
       "A 1–2 sentence Coach Message at the top of each week builds connection",
       "Clients respond well to being acknowledged — 'Great job last week!' goes a long way",
       "If completion rate is dropping, reduce volume rather than risking dropout",
-      "Use the AI assistant for fresh ideas when programming feels repetitive",
+      "Use templates for fresh starting points when programming feels repetitive",
     ],
     content: `Great programming is about more than just workouts — it's about the full client experience. Weekly messages, coach notes, appropriate challenge levels, and explicit rest days all contribute to client retention and results.`,
   },
