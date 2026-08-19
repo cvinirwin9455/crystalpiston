@@ -114,7 +114,7 @@ export default function RootLayout({
               (function() {
                 try {
                   var path = window.location.pathname;
-                  var isPlatform = path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/super-admin') || path.startsWith('/login') || path.startsWith('/set-password') || path.startsWith('/reset-password');
+                  var isPlatform = path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/super-admin') || path.startsWith('/login') || path.startsWith('/set-password') || path.startsWith('/reset-password') || path.startsWith('/help');
                   var theme = localStorage.getItem('theme');
                   if (isPlatform && theme === 'light') {
                     document.documentElement.classList.add('light');

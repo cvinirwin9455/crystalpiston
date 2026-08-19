@@ -35,7 +35,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const applyThemeClass = useCallback((t: Theme) => {
     const html = document.documentElement;
     const path = window.location.pathname;
-    const isPlatformPage = path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/super-admin') || path.startsWith('/login') || path.startsWith('/set-password') || path.startsWith('/reset-password');
+    const isPlatformPage = path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/super-admin') || path.startsWith('/login') || path.startsWith('/set-password') || path.startsWith('/reset-password') || path.startsWith('/help');
     
     if (isPlatformPage && t === "light") {
       html.classList.add("light");
