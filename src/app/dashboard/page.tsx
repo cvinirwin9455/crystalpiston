@@ -351,6 +351,11 @@ export default function DashboardPage() {
   }, []);
 
   const clientUpdates = [
+    { date: "August 19, 2026", items: [
+      "Improved: Help Center now supports dark and light mode — it follows your theme preference just like the rest of the app",
+      "NEW: Help Center updated with new articles on workout rescheduling, structured workouts, dark/light mode, profile photos, cycle tracking, and installing the app on your phone",
+      "Improved: Help Center language updated to work for all coaching organizations, not just one specific coach",
+    ]},
     { date: "August 14, 2026", items: [
       "Improved: Platform branding — colors and styling now match the First Mile Coach marketing page in both dark and light modes",
       "Fixed: Refreshing or pull-to-refresh no longer resets you back to the Training tab — your current view is preserved",
