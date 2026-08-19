@@ -1,6 +1,6 @@
 import { getBrand } from "@/lib/brand.server";
 import { redirect } from "next/navigation";
-import FAQPageClient from "../components/firstmile/FAQPageClient";
+import FAQPageWrapper from "../components/firstmile/FAQPageWrapper";
 
 export default async function FAQPage() {
   const brand = await getBrand();
@@ -10,5 +10,5 @@ export default async function FAQPage() {
     redirect('/');
   }
 
-  return <FAQPageClient />;
+  return <FAQPageWrapper />;
 }

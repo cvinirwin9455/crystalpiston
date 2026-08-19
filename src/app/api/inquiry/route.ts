@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 
-// POST /api/inquiry - Handle marketing page inquiry form
+// POST /api/inquiry - Handle marketing page inquiry/contact form
 export async function POST(request: Request) {
   const body = await request.json()
-  const { name, email, message } = body
+  const { name, email, message, source } = body
 
   if (!name || !email || !message) {
     return NextResponse.json({ error: 'Name, email, and message are required' }, { status: 400 })
@@ -15,12 +15,22 @@ export async function POST(request: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY
-  const senderEmail = process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com'
-  const crystalEmail = 'crystal@pistolpc.com'
 
   if (!apiKey) {
     return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
   }
+
+  // Determine branding based on source
+  const isFirstMile = source === 'faq_page' || source === 'firstmile'
+  const senderEmail = isFirstMile
+    ? (process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com')
+    : (process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com')
+  const recipientEmail = isFirstMile
+    ? ['curtisirwin@me.com', 'cvin9455@gmail.com']
+    : ['crystal@pistolpc.com']
+  const brandName = isFirstMile ? 'First Mile Coach' : 'Pistol Performance Coaching'
+  const fromName = isFirstMile ? 'First Mile Coach' : 'Pistol Performance Coaching'
+  const accentColor = isFirstMile ? '#f26522' : '#d4a853'
 
   const firstName = name.split(' ')[0]
 
@@ -37,21 +47,20 @@ export async function POST(request: Request) {
           <tr>
             <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
               <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #ffffff; letter-spacing: 1px;">New Inquiry</h1>
-              <p style="margin: 4px 0 0; font-size: 11px; color: #d4a853; text-transform: uppercase; letter-spacing: 2px;">From Your Website</p>
+              <p style="margin: 4px 0 0; font-size: 11px; color: ${accentColor}; text-transform: uppercase; letter-spacing: 2px;">${brandName}</p>
             </td>
           </tr>
           <tr>
             <td style="padding: 32px;">
-              <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Hey Crystal!</h2>
-              <p style="margin: 0 0 20px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Someone&rsquo;s interested in working with you. Here&rsquo;s what they shared:</p>
+              <p style="margin: 0 0 20px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">New message from ${isFirstMile ? 'the FAQ page' : 'your website'}:</p>
               
-              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
-                <p style="margin: 0 0 4px; color: #d4a853; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Name</p>
+              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid ${accentColor}; border-radius: 4px;">
+                <p style="margin: 0 0 4px; color: ${accentColor}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Name</p>
                 <p style="margin: 0; color: #ffffff; font-size: 15px;">${name}</p>
               </div>
               
-              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid #d4a853; border-radius: 4px;">
-                <p style="margin: 0 0 4px; color: #d4a853; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Email</p>
+              <div style="margin: 0 0 20px; padding: 16px; background-color: rgba(212,168,83,0.1); border-left: 3px solid ${accentColor}; border-radius: 4px;">
+                <p style="margin: 0 0 4px; color: ${accentColor}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Email</p>
                 <p style="margin: 0; color: #ffffff; font-size: 15px;">${email}</p>
               </div>
               
@@ -77,10 +86,10 @@ export async function POST(request: Request) {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: `Pistol Performance Coaching <${senderEmail}>`,
-        to: [crystalEmail],
+        from: `${fromName} <${senderEmail}>`,
+        to: recipientEmail,
         reply_to: email,
-        subject: `New inquiry from ${name}`,
+        subject: `New inquiry from ${name}${isFirstMile ? ' (FAQ page)' : ''}`,
         html: crystalEmailHtml,
       }),
     })
@@ -102,17 +111,16 @@ export async function POST(request: Request) {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #16213e; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
           <tr>
             <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #ffffff; letter-spacing: 1px;">Pistol Performance</h1>
-              <p style="margin: 4px 0 0; font-size: 11px; color: #d4a853; text-transform: uppercase; letter-spacing: 2px;">Coaching</p>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #ffffff; letter-spacing: 1px;">${brandName}</h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 32px;">
               <h2 style="margin: 0 0 16px; font-size: 22px; color: #ffffff; font-weight: 700;">Hey ${firstName}!</h2>
-              <p style="margin: 0 0 16px; font-size: 16px; color: #e0e0e0; line-height: 1.7;">Your message landed safe and sound. Crystal got it and she&rsquo;ll be in touch with you soon.</p>
-              <p style="margin: 0 0 24px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">In the meantime, just know that reaching out is the hardest part &mdash; and you already did it. Whatever your goals are, you&rsquo;re in good hands.</p>
-              <p style="margin: 0; font-size: 15px; color: #d4a853; font-weight: 600;">Talk soon!</p>
-              <p style="margin: 4px 0 0; font-size: 14px; color: #b0b0b0;">Crystal @ Pistol Performance Coaching</p>
+              <p style="margin: 0 0 16px; font-size: 16px; color: #e0e0e0; line-height: 1.7;">Your message landed safe and sound. We got it and will be in touch with you soon.</p>
+              <p style="margin: 0 0 24px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">Thanks for reaching out — we respond to every message personally.</p>
+              <p style="margin: 0; font-size: 15px; color: ${accentColor}; font-weight: 600;">Talk soon!</p>
+              <p style="margin: 4px 0 0; font-size: 14px; color: #b0b0b0;">The ${brandName} Team</p>
             </td>
           </tr>
         </table>
@@ -130,9 +138,9 @@ export async function POST(request: Request) {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: `Crystal @ Pistol Performance <${senderEmail}>`,
+        from: `${fromName} <${senderEmail}>`,
         to: [email],
-        reply_to: crystalEmail,
+        reply_to: recipientEmail[0],
         subject: `Got your message, ${firstName}!`,
         html: confirmationHtml,
       }),

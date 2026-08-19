@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import RegionToggle from './RegionToggle'
+import Price, { PricePerMonth, PriceRange } from './Price'
+import { usePrice } from './CurrencyContext'
 import FirstMileAnimations from './FirstMileAnimations'
 import './firstmile.css'
 
@@ -19,7 +21,7 @@ const faqItems: FAQItem[] = [
   {
     id: "what-is-fmc",
     question: "What is First Mile Coach?",
-    answer: "First Mile Coach is an affordable platform built specifically for new running coaches and personal trainers who need professional tools to manage their clients — without paying hundreds per month. It includes training plan builders, client dashboards, messaging, progress tracking, and more — all for just $1/month per 10 active clients.",
+    answer: "First Mile Coach is an affordable platform built specifically for new running coaches and personal trainers who need professional tools to manage their clients — without paying hundreds per month. It includes training plan builders, client dashboards, messaging, progress tracking, and more — all for just {PRICE_PER_MONTH} per 10 active clients.",
     category: "Getting Started",
     tags: ["overview", "what", "about", "platform"],
   },
@@ -56,7 +58,7 @@ const faqItems: FAQItem[] = [
   {
     id: "how-much-cost",
     question: "How much does it cost?",
-    answer: "Just $1/month per 10 active clients. That means: 1-10 clients = $1/month, 11-20 clients = $2/month, 21-30 clients = $3/month, and so on. If you have a quiet month and archive some clients, your bill goes down automatically. During beta (until June 30, 2027), it's completely free.",
+    answer: "Just {PRICE_PER_MONTH} per 10 active clients. That means: 1-10 clients = {PRICE_PER_MONTH}, 11-20 clients = {PRICE2_PER_MONTH}, 21-30 clients = {PRICE3_PER_MONTH}, and so on. If you have a quiet month and archive some clients, your bill goes down automatically. During beta (until June 30, 2027), it's completely free.",
     category: "Pricing & Billing",
     tags: ["cost", "price", "money", "billing", "payment", "how much"],
   },
@@ -311,7 +313,7 @@ const faqItems: FAQItem[] = [
   {
     id: "native-app",
     question: "Why isn't there a native app?",
-    answer: "By design. Native apps require paying Apple and Google a 30% tax on all revenue. That's a massive cost that platforms pass on to coaches as higher subscription fees. By being a web app (PWA), we avoid that tax entirely — which is the main reason we can charge $1/month instead of $50/month. The web app experience is nearly identical to a native app when added to your homescreen.",
+    answer: "By design. Native apps require paying Apple and Google a 30% tax on all revenue. That's a massive cost that platforms pass on to coaches as higher subscription fees. By being a web app (PWA), we avoid that tax entirely — which is the main reason we can charge {PRICE_PER_MONTH} instead of {PRICE50_PER_MONTH}. The web app experience is nearly identical to a native app when added to your homescreen.",
     category: "Technical",
     tags: ["native", "app", "ios", "android", "why", "web app"],
   },
@@ -341,21 +343,21 @@ const faqItems: FAQItem[] = [
   {
     id: "vs-other-platforms",
     question: "How does First Mile Coach compare to TrainHeroic, TrueCoach, etc.?",
-    answer: "Those are excellent platforms for established coaches with bigger operations and budgets ($50-200+/month). They have advanced analytics, automated programming, retention tools, and more. First Mile Coach is specifically for coaches who are just starting out and need professional basics at a fraction of the cost. Think of us as your starting platform — when you're ready for those advanced features and can afford them, we'll even help you export your data to migrate.",
+    answer: "Those are excellent platforms for established coaches with bigger operations and budgets ({PRICE50}–{PRICE200}+/month). They have advanced analytics, automated programming, retention tools, and more. First Mile Coach is specifically for coaches who are just starting out and need professional basics at a fraction of the cost. Think of us as your starting platform — when you're ready for those advanced features and can afford them, we'll even help you export your data to migrate.",
     category: "Comparison",
     tags: ["compare", "trainheroic", "truecoach", "competitor", "alternative", "vs"],
   },
   {
     id: "vs-spreadsheets",
     question: "Why not just use Google Sheets or a calendar?",
-    answer: "You absolutely can — many coaches do! But First Mile Coach gives you: a professional client-facing dashboard (not a shared spreadsheet), automatic notifications, built-in messaging, workout logging with effort tracking, Strava integration, structured workout builders, and progress stats. All for $1/month. It's the jump from 'managing in notebooks' to 'looking like a real coaching business' without the real coaching business price tag.",
+    answer: "You absolutely can — many coaches do! But First Mile Coach gives you: a professional client-facing dashboard (not a shared spreadsheet), automatic notifications, built-in messaging, workout logging with effort tracking, Strava integration, structured workout builders, and progress stats. All for {PRICE_PER_MONTH}. It's the jump from 'managing in notebooks' to 'looking like a real coaching business' without the real coaching business price tag.",
     category: "Comparison",
     tags: ["spreadsheet", "google sheets", "calendar", "manual", "alternative"],
   },
   {
     id: "vs-whatsapp",
     question: "Why not just use WhatsApp or text messages?",
-    answer: "WhatsApp/texting works, but: you lose context (what did I assign last week?), everything mixes with personal messages, you can't track what clients actually did, there's no structured plan view, and it looks unprofessional. First Mile Coach keeps coaching communication separate, with full history per client, tied to their actual training data. And at $1/month it costs less than the time you waste scrolling through WhatsApp groups.",
+    answer: "WhatsApp/texting works, but: you lose context (what did I assign last week?), everything mixes with personal messages, you can't track what clients actually did, there's no structured plan view, and it looks unprofessional. First Mile Coach keeps coaching communication separate, with full history per client, tied to their actual training data. And at {PRICE_PER_MONTH} it costs less than the time you waste scrolling through WhatsApp groups.",
     category: "Comparison",
     tags: ["whatsapp", "text", "messaging", "communication", "vs"],
   },
@@ -392,9 +394,16 @@ const faqItems: FAQItem[] = [
   {
     id: "after-beta",
     question: "What happens when beta ends?",
-    answer: "After June 30, 2027, billing starts at $1/month per 10 active clients. Your data stays exactly where it is. You'll get plenty of advance notice before billing begins, and you can choose to continue or export your data and leave. No surprises.",
+    answer: "After June 30, 2027, billing starts at {PRICE_PER_MONTH} per 10 active clients. Your data stays exactly where it is. You'll get plenty of advance notice before billing begins, and you can choose to continue or export your data and leave. No surprises.",
     category: "Beta",
     tags: ["after", "beta", "ends", "billing", "what happens"],
+  },
+  {
+    id: "join-without-beta",
+    question: "Can I join now without being part of the beta?",
+    answer: "Not at the moment. We're currently in beta-only mode while we build and refine the platform with our first coaches. There's no way to skip the beta and go straight to a paid plan — everyone who joins right now is part of the beta (which is free). Once beta ends and we're confident the platform is rock-solid, we'll open up general access. For now, apply for beta and you'll get the same full platform for free.",
+    category: "Beta",
+    tags: ["join", "without beta", "skip", "paid", "now", "general access"],
   },
   {
     id: "first-50-coaches",
@@ -422,9 +431,9 @@ const faqItems: FAQItem[] = [
   {
     id: "contact-support",
     question: "How do I get help or contact support?",
-    answer: "Use the feedback button in the app (bottom corner of any page) to send us a message. You can also email us directly. During beta, response times are typically within a few hours. We're a small team that genuinely cares about every coach's experience.",
+    answer: "Email us at hello@firstmilecoach.com — we read and respond to every message personally. You can also use the feedback button in the app (bottom corner of any page) or the 'Contact Us' form on this page. During beta, response times are typically within a few hours. We're a small team that genuinely cares about every coach's experience.",
     category: "Account & Support",
-    tags: ["help", "support", "contact", "email", "assistance"],
+    tags: ["help", "support", "contact", "email", "assistance", "hello"],
   },
   {
     id: "delete-account",
@@ -449,10 +458,75 @@ const categories = [
   "Account & Support",
 ];
 
+function ContactForm() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !message.trim()) return;
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), message: message.trim(), source: 'faq_page' }),
+      });
+      if (res.ok) {
+        setResult({ type: 'success', text: "Message sent! We'll get back to you soon." });
+        setName(''); setEmail(''); setMessage('');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setResult({ type: 'error', text: data.error || 'Something went wrong. Please try again or email us directly.' });
+      }
+    } catch {
+      setResult({ type: 'error', text: 'Network error. Please try emailing hello@firstmilecoach.com directly.' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="fmc-faq-contact-form">
+      <p className="fmc-faq-contact-form-label">Or send us a message:</p>
+      <div className="fmc-faq-contact-fields">
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name" required className="fmc-faq-contact-input" />
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" required className="fmc-faq-contact-input" />
+      </div>
+      <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your question or message..." required rows={3} className="fmc-faq-contact-textarea" />
+      <button type="submit" disabled={sending} className="fmc-faq-contact-submit">
+        {sending ? 'Sending...' : 'Send Message'}
+      </button>
+      {result && (
+        <p className={`fmc-faq-contact-result ${result.type === 'success' ? 'fmc-faq-contact-success' : 'fmc-faq-contact-error'}`}>
+          {result.text}
+        </p>
+      )}
+    </form>
+  );
+}
+
 export default function FAQPageClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const formatPrice = usePrice();
+
+  // Replace price tokens in FAQ answer strings with dynamic currency
+  const renderAnswer = (answer: string) => {
+    return answer
+      .replace(/\{PRICE_PER_MONTH\}/g, `${formatPrice(1)}/month`)
+      .replace(/\{PRICE2_PER_MONTH\}/g, `${formatPrice(2)}/month`)
+      .replace(/\{PRICE3_PER_MONTH\}/g, `${formatPrice(3)}/month`)
+      .replace(/\{PRICE10_PER_MONTH\}/g, `${formatPrice(10)}/month`)
+      .replace(/\{PRICE50_PER_MONTH\}/g, `${formatPrice(50)}/month`)
+      .replace(/\{PRICE50\}/g, formatPrice(50))
+      .replace(/\{PRICE200\}/g, formatPrice(200));
+  };
 
   const filteredItems = faqItems.filter(item => {
     const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
@@ -474,6 +548,7 @@ export default function FAQPageClient() {
         <div className="fmc-beta-banner-content">
           <span className="fmc-beta-banner-badge">BETA</span>
           <span className="fmc-beta-banner-text">Now accepting the first 50 coaches — free until June 30, 2027</span>
+          <Link href="/" className="fmc-features-nav-link">Home</Link>
           <Link href="/faq" className="fmc-features-nav-link fmc-features-nav-link-active">FAQ</Link>
           <a href="/#beta" className="fmc-beta-banner-link">Apply Now &rarr;</a>
           <div className="fmc-banner-divider" />
@@ -572,7 +647,7 @@ export default function FAQPageClient() {
                 </button>
                 {expandedItem === item.id && (
                   <div className="fmc-faq-item-body">
-                    <p className="fmc-faq-item-answer">{item.answer}</p>
+                    <p className="fmc-faq-item-answer">{renderAnswer(item.answer)}</p>
                     <div className="fmc-faq-item-tags">
                       {item.tags.map(tag => (
                         <span
@@ -588,6 +663,23 @@ export default function FAQPageClient() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Us Section */}
+      <section className="fmc-faq-contact-section">
+        <div className="fmc-container">
+          <div className="fmc-faq-contact-content fmc-fade-in">
+            <h2>Have a question not listed here?</h2>
+            <p>Get in touch — we respond to every message personally.</p>
+            <div className="fmc-faq-contact-methods">
+              <a href="mailto:hello@firstmilecoach.com" className="fmc-faq-contact-email">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                hello@firstmilecoach.com
+              </a>
+              <ContactForm />
+            </div>
           </div>
         </div>
       </section>
@@ -613,7 +705,7 @@ export default function FAQPageClient() {
       {/* Footer */}
       <footer className="fmc-footer">
         <p className="fmc-footer-brand-text">First Mile Coach</p>
-        <p className="fmc-footer-tagline">The $1/month platform for new coaches.</p>
+        <p className="fmc-footer-tagline">The {formatPrice(1)}/month platform for new coaches.</p>
         <p className="fmc-footer-copy">&copy; {new Date().getFullYear()} First Mile Coach. All rights reserved.</p>
       </footer>
     </div>
