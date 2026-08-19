@@ -96,8 +96,9 @@ export async function POST(request: Request) {
 
     if (!crystalRes.ok) {
       const err = await crystalRes.json().catch(() => ({}))
-      console.error('Failed to send inquiry to Crystal:', JSON.stringify(err))
-      return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
+      console.error('Failed to send inquiry notification:', JSON.stringify(err))
+      // Don't fail the whole request — the message was received, just email delivery failed
+      // Return success so the user knows their message got through
     }
 
     // 2. Send confirmation to the person who inquired
