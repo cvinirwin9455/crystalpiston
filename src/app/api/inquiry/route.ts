@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 // POST /api/inquiry - Handle marketing page inquiry/contact form
-// Saves to feedback table (shows in super admin) + tries to send email notification
+// Saves to inbound_emails table (shows in super admin Inbox tab) + sends email notification
 export async function POST(request: Request) {
   const body = await request.json()
   const { name, email, message, source } = body
@@ -17,13 +17,8 @@ export async function POST(request: Request) {
 
   // Determine branding based on source
   const isFirstMile = source === 'faq_page' || source === 'firstmile'
-  const platform = isFirstMile ? 'first-mile' : 'crystal-pistol'
 
   try {
-    // 1. SAVE TO DATABASE (feedback table) — this is the primary action
-    // Uses service role to bypass RLS since user is unauthenticated
-    // Note: feedback table requires user_id NOT NULL, so we use the First Mile org admin ID
-    // and store the visitor's details in description for the super admin to see
     const { createClient } = await import('@supabase/supabase-js')
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,42 +26,30 @@ export async function POST(request: Request) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Find the super admin user to attribute the inquiry to (so it shows in feedback tab)
-    const { data: superAdmin } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('email', 'curtisirwin@me.com')
-      .single()
-
-    if (!superAdmin) {
-      console.error('Could not find super admin user for inquiry attribution')
-      return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
-    }
-
-    const fullDescription = `[INQUIRY from FAQ Contact Form]\n\nFrom: ${name} <${email}>\n\nMessage:\n${message.trim()}`
+    // Insert into inbound_emails table so it shows in the Super Admin Inbox
+    const subject = isFirstMile
+      ? `Website inquiry from ${name}`
+      : `Website inquiry from ${name} (Crystal Pistol)`
 
     const { error: dbError } = await adminClient
-      .from('feedback')
+      .from('inbound_emails')
       .insert({
-        user_id: superAdmin.id,
-        user_email: email,
-        user_name: name,
-        platform,
-        user_role: 'client',
-        type: 'feedback',
-        description: fullDescription,
-        page_url: isFirstMile ? 'https://firstmilecoach.com/faq#contact' : 'https://crystalpistolperformance.com/contact',
-        screenshot_url: null,
-        priority: 'medium',
-        status: 'new',
+        direction: 'inbound',
+        from_email: email,
+        from_name: name,
+        to_email: 'hello@firstmilecoach.com',
+        subject,
+        body_text: message.trim(),
+        body_html: null,
+        read: false,
       })
 
     if (dbError) {
-      console.error('Failed to save inquiry to DB:', JSON.stringify(dbError))
+      console.error('Failed to save inquiry to inbound_emails:', JSON.stringify(dbError))
       return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
     }
 
-    // 2. TRY TO SEND EMAIL NOTIFICATION (fire and forget — don't block on this)
+    // Send email notification (fire and forget — don't block on this)
     const apiKey = process.env.RESEND_API_KEY
     if (apiKey) {
       const senderEmail = isFirstMile
@@ -77,7 +60,6 @@ export async function POST(request: Request) {
         : ['crystal@pistolpc.com']
       const brandName = isFirstMile ? 'First Mile Coach' : 'Pistol Performance Coaching'
       const accentColor = isFirstMile ? '#f26522' : '#d4a853'
-      const firstName = name.split(' ')[0]
 
       const adminEmailHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -86,7 +68,7 @@ export async function POST(request: Request) {
 <table width="100%" style="max-width:520px;background:#16213e;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;">
 <tr><td style="padding:24px 32px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">
 <h1 style="margin:0;font-size:20px;font-weight:800;text-transform:uppercase;color:#fff;letter-spacing:1px;">New Inquiry</h1>
-<p style="margin:4px 0 0;font-size:11px;color:${accentColor};text-transform:uppercase;letter-spacing:2px;">${brandName} — FAQ Contact Form</p>
+<p style="margin:4px 0 0;font-size:11px;color:${accentColor};text-transform:uppercase;letter-spacing:2px;">${brandName} — Contact Form</p>
 </td></tr>
 <tr><td style="padding:32px;">
 <p style="margin:0 0 16px;font-size:15px;color:#b0b0b0;">From: <strong style="color:#fff;">${name}</strong> &lt;${email}&gt;</p>
@@ -94,7 +76,7 @@ export async function POST(request: Request) {
 <p style="margin:0 0 4px;color:#f26522;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:bold;">Message</p>
 <p style="margin:0;color:#e0e0e0;font-size:15px;line-height:1.6;">${message.replace(/\n/g, '<br/>')}</p>
 </div>
-<p style="margin:16px 0 0;font-size:13px;color:#888;">This is also saved in Super Admin → Feedback tab. Hit Reply to respond directly.</p>
+<p style="margin:16px 0 0;font-size:13px;color:#888;">View and reply in Super Admin → Inbox tab.</p>
 </td></tr></table>
 </td></tr></table></body></html>`
 
@@ -106,7 +88,7 @@ export async function POST(request: Request) {
           from: `${brandName} <${senderEmail}>`,
           to: recipientEmail,
           reply_to: email,
-          subject: `New inquiry from ${name} (${isFirstMile ? 'FAQ page' : 'website'})`,
+          subject: `New inquiry from ${name} (${isFirstMile ? 'contact form' : 'website'})`,
           html: adminEmailHtml,
         }),
       }).catch(err => console.error('Inquiry email notification failed (saved to DB):', err))

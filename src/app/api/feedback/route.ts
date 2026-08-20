@@ -48,7 +48,66 @@ export async function POST(request: Request) {
   const userName = userProfile?.name || ''
   const userEmail = userProfile?.email || user.email || ''
 
-  // Insert feedback into database
+  // If type is "question", route to inbound_emails (Super Admin Inbox) instead of feedback table
+  if (type === 'question') {
+    const subject = `Question from ${userName || userEmail} (${userRole})`
+
+    const { error: inboxError } = await adminClient
+      .from('inbound_emails')
+      .insert({
+        direction: 'inbound',
+        from_email: userEmail,
+        from_name: userName || null,
+        to_email: 'hello@firstmilecoach.com',
+        subject,
+        body_text: description.trim(),
+        body_html: null,
+        read: false,
+      })
+
+    if (inboxError) {
+      console.error('Failed to save question to inbound_emails:', JSON.stringify(inboxError))
+      return NextResponse.json({ error: 'Failed to submit question' }, { status: 500 })
+    }
+
+    // Send notification email to super admin
+    try {
+      const platformLabel = platform === 'crystal-pistol' ? 'Crystal Pistol' : 'First Mile'
+      const roleLabel = userRole === 'coach' ? 'Coach' : 'Client'
+
+      const orgId = await getOrgIdForUser(adminClient, user.id)
+      const brand = getEmailBrandFromOrgId(orgId)
+
+      const adminEmailHtml = `
+        <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New Question</h2>
+        <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">
+          <strong style="color: #ffffff;">${userName || 'A user'}</strong> (${roleLabel}) asked a question on <strong style="color: #d4a853;">${platformLabel}</strong>.
+        </p>
+        <div style="margin: 0 0 16px; padding: 16px; background-color: rgba(59,130,246,0.1); border-left: 3px solid #3b82f6; border-radius: 4px;">
+          <p style="margin: 0 0 4px; color: #3b82f6; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Question</p>
+          <p style="margin: 0; color: #e0e0e0; font-size: 14px; line-height: 1.5;">${description.trim()}</p>
+        </div>
+        <p style="margin: 16px 0 0; font-size: 13px; color: #888;">View and reply in Super Admin → Inbox tab.</p>
+      `
+
+      sendEmail({
+        to: 'curtisirwin@me.com',
+        subject: `New question from ${userName || 'a user'} (${platformLabel})`,
+        html: adminEmailHtml,
+        brand,
+      }).catch(err => console.error('Failed to send admin notification:', err))
+    } catch (err) {
+      console.error('Admin notification error (question still saved):', err)
+    }
+
+    return NextResponse.json({
+      success: true,
+      feedbackId: null,
+      createdAt: new Date().toISOString(),
+    })
+  }
+
+  // Insert feedback/bug into feedback database table
   const { data: feedback, error } = await adminClient
     .from('feedback')
     .insert({

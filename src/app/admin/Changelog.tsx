@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-20T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-20T14:00:00Z";
 
 const updates = [
   {
     date: "August 20, 2026",
     items: [
+      { area: "Admin", text: "Improved: Contact form messages from the marketing page and 'Question' submissions from the in-app feedback button now go to the Super Admin Inbox instead of Feedback & Bugs. This means you can reply to them directly as email conversations. Bugs and feature feedback still go to Feedback & Bugs as before" },
       { area: "Marketing", text: "Fixed: The FAQ link in the sticky header and the 'Frequently Asked Questions' button below the features section were sending visitors to the login page instead of the FAQ page. Now they correctly go to the FAQ page without requiring a login" },
     ],
   },
