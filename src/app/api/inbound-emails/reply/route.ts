@@ -41,7 +41,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
   }
 
-  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || 'hello@firstmilecoach.com'
+  // Use same sender pattern as lib/email.ts sendEmail function
+  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
   const replySubject = subject?.startsWith('Re:') ? subject : `Re: ${subject || '(No subject)'}`
 
   // Fetch thread history to include in the reply
