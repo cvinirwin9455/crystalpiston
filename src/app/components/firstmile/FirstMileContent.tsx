@@ -485,6 +485,9 @@ export default function FirstMileContent() {
         <div className="fmc-container">
           <p className="fmc-footer-brand-text">First Mile Coach</p>
           <p className="fmc-footer-tagline">The cheapest, simplest way to start coaching. <PricePerMonth amount={1} /> per 10 active clients.</p>
+          <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9e9e9e' }}>
+            <a href="mailto:hello@firstmilecoach.com" style={{ color: '#9e9e9e', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
+          </p>
           <p className="fmc-footer-copy">&copy; 2026 First Mile Coach</p>
         </div>
       </footer>

@@ -595,7 +595,7 @@ export default function FAQPageClient() {
           <span className="fmc-features-hero-badge">FAQ</span>
           <h1>Frequently Asked<br />Questions</h1>
           <p className="fmc-features-hero-sub">
-            Everything you need to know about First Mile Coach. Can&apos;t find your answer? <a href="#contact" className="fmc-faq-link">Get in touch</a>.
+            Everything you need to know about First Mile Coach. Can&apos;t find your answer? <a href="#contact" className="fmc-faq-link">Get in touch</a> or email <a href="mailto:hello@firstmilecoach.com" className="fmc-faq-link">hello@firstmilecoach.com</a>.
           </p>
         </div>
       </section>
@@ -689,6 +689,9 @@ export default function FAQPageClient() {
             <p>Get in touch — we respond to every message personally.</p>
             <div className="fmc-faq-contact-methods">
               <ContactForm />
+              <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px', color: '#9e9e9e' }}>
+                or email us directly at <a href="mailto:hello@firstmilecoach.com" style={{ color: '#f26522', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
+              </p>
             </div>
           </div>
         </div>
@@ -698,6 +701,9 @@ export default function FAQPageClient() {
       <footer className="fmc-footer">
         <p className="fmc-footer-brand-text">First Mile Coach</p>
         <p className="fmc-footer-tagline">The {formatPrice(1)}/month platform for new coaches.</p>
+        <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9e9e9e' }}>
+          <a href="mailto:hello@firstmilecoach.com" style={{ color: '#9e9e9e', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
+        </p>
         <p className="fmc-footer-copy">&copy; {new Date().getFullYear()} First Mile Coach. All rights reserved.</p>
       </footer>
     </div>
