@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
   }
 
-  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || 'hello@firstmilecoach.com'
+  const senderEmail = process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com'
   const replySubject = subject?.startsWith('Re:') ? subject : `Re: ${subject || '(No subject)'}`
 
   // Fetch thread history to include in the reply
@@ -130,8 +130,8 @@ export async function POST(request: Request) {
 
   if (!res.ok) {
     const errText = await res.text()
-    console.error('Failed to send reply:', errText)
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    console.error('Failed to send reply via Resend:', errText, { from: senderEmail, to: to_email, subject: replySubject })
+    return NextResponse.json({ error: `Failed to send email: ${errText}` }, { status: 500 })
   }
 
   const resendData = await res.json()

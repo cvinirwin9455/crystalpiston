@@ -384,7 +384,7 @@ export default function InboxTab() {
           />
           <div className="flex items-center justify-between mt-3">
             <p className="text-xs text-gray-400">
-              Sending as hello@firstmilecoach.com
+              Sending as First Mile Coach
             </p>
             <button
               onClick={sendReply}
