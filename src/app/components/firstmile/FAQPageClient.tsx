@@ -394,7 +394,7 @@ const faqItems: FAQItem[] = [
   {
     id: "beta-feedback",
     question: "How do I give feedback during the beta?",
-    answer: "There's a feedback button in the app (bottom corner). Use it anytime to report bugs, suggest features, or tell us what's confusing. We read every single submission and respond directly. You can also message us through the platform or email. Beta coaches have a direct line to the development team.",
+    answer: "There's a Feedback button in the bottom corner of the app — both coaches and clients have it. Use it anytime to report bugs, suggest features, or ask questions. We read every single submission and respond directly. We may also occasionally send a short email asking for your thoughts on new features. Clients aren't required to give feedback, but they can use their Feedback button too, or share their thoughts with their coach to pass along to us.",
     category: "Beta",
     tags: ["feedback", "report", "bug", "suggest", "contact"],
   },
