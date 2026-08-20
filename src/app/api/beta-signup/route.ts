@@ -55,13 +55,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Insert returned no data', message: 'Insert returned no data' }, { status: 500 })
     }
 
-    // Send emails (fire and forget — don't fail the signup if email fails)
+    // Send emails — await to ensure they complete before function terminates
     const apiKey = process.env.RESEND_API_KEY
     if (apiKey) {
-      sendAdminNotification(apiKey, { full_name, email, coaching_type, expected_clients: String(expected_clients) })
-        .catch((err) => console.error('Admin notification failed:', err))
-      sendCoachConfirmation(apiKey, { full_name, email })
-        .catch((err) => console.error('Coach confirmation failed:', err))
+      await Promise.all([
+        sendAdminNotification(apiKey, { full_name, email, coaching_type, expected_clients: String(expected_clients) })
+          .catch((err) => console.error('Admin notification failed:', err)),
+        sendCoachConfirmation(apiKey, { full_name, email })
+          .catch((err) => console.error('Coach confirmation failed:', err)),
+      ])
     }
 
     return NextResponse.json({ success: true, message: "You're in! We'll be in touch with next steps soon." })
