@@ -75,9 +75,6 @@ export async function POST(request: Request) {
       const platformLabel = platform === 'crystal-pistol' ? 'Crystal Pistol' : 'First Mile'
       const roleLabel = userRole === 'coach' ? 'Coach' : 'Client'
 
-      const orgId = await getOrgIdForUser(adminClient, user.id)
-      const brand = getEmailBrandFromOrgId(orgId)
-
       const adminEmailHtml = `
         <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">New Question</h2>
         <p style="margin: 0 0 16px; font-size: 15px; color: #b0b0b0; line-height: 1.6;">
@@ -90,12 +87,12 @@ export async function POST(request: Request) {
         <p style="margin: 16px 0 0; font-size: 13px; color: #888;">View and reply in Super Admin → Inbox tab.</p>
       `
 
-      sendEmail({
+      await sendEmail({
         to: 'curtisirwin@me.com',
         subject: `New question from ${userName || 'a user'} (${platformLabel})`,
         html: adminEmailHtml,
-        brand,
-      }).catch(err => console.error('Failed to send admin notification:', err))
+        brand: 'first-mile',
+      })
     } catch (err) {
       console.error('Admin notification error (question still saved):', err)
     }

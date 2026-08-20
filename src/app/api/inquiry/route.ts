@@ -80,8 +80,8 @@ export async function POST(request: Request) {
 </td></tr></table>
 </td></tr></table></body></html>`
 
-      // Fire and forget — don't await, don't block
-      fetch('https://api.resend.com/emails', {
+      // Await notification email before returning (serverless functions terminate after response)
+      await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
