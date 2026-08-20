@@ -26,11 +26,25 @@ const faqItems: FAQItem[] = [
     tags: ["overview", "what", "about", "platform"],
   },
   {
+    id: "who-created-this",
+    question: "Who created this?",
+    answer: "First Mile Coach was built by Curtis Irwin (a learning & development leader at Amazon, based in London) for his sister Crystal Irwin (a running coach in Springfield, Missouri). Crystal needed a simple, affordable way to manage her growing client list without paying hundreds a month for tools designed for massive coaching operations. What started as a side project to make Crystal's life easier became a platform for every coach who's just starting out. Real people, real problem, real solution.",
+    category: "Getting Started",
+    tags: ["who", "created", "built", "founder", "team", "about us"],
+  },
+  {
     id: "who-is-it-for",
     question: "Who is First Mile Coach designed for?",
     answer: "It's designed for coaches who are just starting out or running a small operation: new running coaches with their first few clients, personal trainers working from a park or small gym, CrossFit coaches managing a handful of athletes, or any fitness professional who needs simple, affordable client management without the complexity of enterprise tools.",
     category: "Getting Started",
     tags: ["who", "target", "audience", "coaches", "trainers"],
+  },
+  {
+    id: "experienced-coach",
+    question: "I'm an experienced coach or PT — is this platform for me?",
+    answer: "It can be! First Mile Coach doesn't have client limits or feature restrictions based on experience level. If you want a simple, affordable platform without the bloat of enterprise tools, it works great regardless of how long you've been coaching. That said, if you need advanced analytics, automated periodisation, payment processing, or complex team management — platforms like TrainHeroic or TrueCoach might be a better fit. We're honest about that. But if you want clean, simple client management for {PRICE_PER_MONTH} per 10 clients, you're welcome here no matter your experience level.",
+    category: "Getting Started",
+    tags: ["experienced", "advanced", "professional", "established", "PT", "personal trainer"],
   },
   {
     id: "how-to-sign-up",
