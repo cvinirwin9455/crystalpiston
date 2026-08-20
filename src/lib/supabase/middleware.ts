@@ -41,7 +41,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Public routes that don't require auth
-  const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password', '/set-password', '/auth/callback', '/terms']
+  const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password', '/set-password', '/auth/callback', '/terms', '/faq', '/features']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/'))
 
   // API routes that must be publicly accessible (webhooks, internal processing, etc.)
