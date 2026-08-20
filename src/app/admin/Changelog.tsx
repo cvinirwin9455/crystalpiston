@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-19T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-20T12:00:00Z";
 
 const updates = [
+  {
+    date: "August 20, 2026",
+    items: [
+      { area: "Marketing", text: "Fixed: The FAQ link in the sticky header and the 'Frequently Asked Questions' button below the features section were sending visitors to the login page instead of the FAQ page. Now they correctly go to the FAQ page without requiring a login" },
+    ],
+  },
   {
     date: "August 19, 2026",
     items: [
