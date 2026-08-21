@@ -25,6 +25,7 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<ExerciseCategory | "all">("all");
   const [saving, setSaving] = useState(false);
 
   // Form state
@@ -151,9 +152,11 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
     }
   };
 
-  const filteredExercises = exercises.filter((ex) =>
-    ex.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredExercises = exercises.filter((ex) => {
+    const matchesSearch = ex.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || (ex.categories && ex.categories.includes(categoryFilter));
+    return matchesSearch && matchesCategory;
+  });
 
   const getVideoHostname = (url: string) => {
     try {
@@ -204,6 +207,28 @@ export default function ExerciseLibraryTab({ onBack, weightUnit = "kg" }: Props)
           className="w-full bg-primary/50 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50"
           placeholder="Search exercises..."
         />
+      </div>
+
+      {/* Category Filter Pills */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => setCategoryFilter("all")}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categoryFilter === "all" ? "bg-gold text-primary" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30"}`}
+        >
+          All ({exercises.length})
+        </button>
+        {ALL_CATEGORIES.map((cat) => {
+          const count = exercises.filter((ex) => ex.categories && ex.categories.includes(cat)).length;
+          return (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(categoryFilter === cat ? "all" : cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categoryFilter === cat ? "bg-gold text-primary" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30"}`}
+            >
+              {CATEGORY_LABELS[cat]} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Add Form (new exercises only — editing is inline) */}
