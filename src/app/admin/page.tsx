@@ -4321,7 +4321,7 @@ export default function AdminPage() {
             ) : showGuide ? (
               <CoachGuide onBack={() => setShowGuide(false)} />
             ) : showChangelog ? (
-              <Changelog />
+              <Changelog viewerRole="coach" />
             ) : showTemplatesView ? (
               <>
                 <div className="flex items-center justify-between">

@@ -439,7 +439,7 @@ const updates = [
   },
 ];
 
-export default function Changelog() {
+export default function Changelog({ viewerRole }: { viewerRole?: "super_admin" | "coach" } = {}) {
   const [expandedDate, setExpandedDate] = useState<string | null>(updates[0]?.date || null);
   const [dynamicEntries, setDynamicEntries] = useState<{ date: string; area: string; text: string; source: string }[]>([]);
 
@@ -485,11 +485,22 @@ export default function Changelog() {
 
     // Deduplicate dates (in case multiple dynamic entries created same date group)
     const seen = new Set<string>();
-    return merged.filter(u => {
+    const deduped = merged.filter(u => {
       if (seen.has(u.date)) return false;
       seen.add(u.date);
       return true;
     });
+
+    // Filter by viewer role
+    // Super admin sees everything, coaches see Admin + Client + All (no Marketing)
+    if (viewerRole === 'coach') {
+      const allowedAreas = ['Admin', 'Client', 'All'];
+      return deduped
+        .map(u => ({ ...u, items: u.items.filter(item => allowedAreas.includes(item.area)) }))
+        .filter(u => u.items.length > 0);
+    }
+
+    return deduped;
   })();
 
   const getAreaBadge = (area: string) => {
