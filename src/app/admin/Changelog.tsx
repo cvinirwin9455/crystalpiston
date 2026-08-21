@@ -16,7 +16,7 @@ const updates = [
   {
     date: "August 19, 2026",
     items: [
-      { area: "Admin", text: "NEW: Coach Guide — a comprehensive getting started guide is now available from the gear menu. Covers everything: adding clients, building training weeks, structured workouts, drafts, templates, AI assistant, messaging, stats, exercise library, payments, notifications, and best practices. Includes step-by-step instructions and pro tips" },
+      { area: "Admin", text: "NEW: Coach Guide — a comprehensive getting started guide is now available from the Coach Admin menu. Covers everything: adding clients, building training weeks, structured workouts, drafts, templates, AI assistant, messaging, stats, exercise library, payments, notifications, and best practices. Includes step-by-step instructions and pro tips" },
       { area: "Client", text: "Improved: Help Center now supports dark and light mode — it follows your theme preference just like the rest of the app" },
       { area: "Client", text: "Improved: Help Center updated with new articles covering workout rescheduling, structured workout breakdowns, dark/light mode toggle, profile photos, cycle tracking, and installing the app on your phone" },
       { area: "Client", text: "Improved: Help Center now uses 'your coach' instead of a specific name, so it works correctly for all coaching organizations" },

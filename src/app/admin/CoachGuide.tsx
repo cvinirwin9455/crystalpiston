@@ -25,7 +25,7 @@ const guideSections: GuideSection[] = [
       "Log in with your coach credentials at /login",
       "You'll land on the Admin Dashboard — this is your home base for everything",
       "The left sidebar shows your client list — click any client to manage them",
-      "The gear menu (top of sidebar on desktop, top-right on mobile) has all your settings",
+      "Click your name at the top of the sidebar (the 'Coach Admin' dropdown) to access all your settings",
     ],
     tips: [
       "Bookmark your admin page for quick access",
@@ -41,7 +41,7 @@ const guideSections: GuideSection[] = [
     icon: "checklist",
     keywords: ["setup", "first", "quick start", "checklist", "onboarding"],
     steps: [
-      "Upload your profile photo (gear menu → Account Preferences → Avatar)",
+      "Upload your profile photo (Coach Admin menu → Account Preferences → Avatar)",
       "Set your default distance unit (miles or kilometers)",
       "Configure your email notification preferences",
       "Add your first client using the '+ New Client' button",
@@ -49,7 +49,7 @@ const guideSections: GuideSection[] = [
     ],
     tips: [
       "Your profile photo shows in the client's dashboard header — it adds a personal touch",
-      "You can change all preferences anytime from the gear menu",
+      "You can change all preferences anytime from the Coach Admin menu",
     ],
     content: `Before you start programming for clients, take 2 minutes to personalize your setup. A profile photo, your preferred distance unit, and notification preferences will make everything smoother from day one.`,
   },
@@ -61,7 +61,7 @@ const guideSections: GuideSection[] = [
     keywords: ["navigate", "layout", "sidebar", "menu", "find", "where"],
     steps: [
       "Left Sidebar: Your full client list with search and status filters",
-      "Top Gear Menu: What's New, Templates, Exercise Library, Account Preferences, Manage Coaches",
+      "Coach Admin Menu (click your name at the top): What's New, Templates, Exercise Library, Account Preferences, Manage Coaches",
       "Per-Client Tabs: Training & Logs, Create Week, Drafts, Messages, Stats, Account",
       "Dashboard (no client selected): Shows drafts to publish, recent payments, quick stats",
     ],
@@ -147,7 +147,7 @@ const guideSections: GuideSection[] = [
     icon: "layers",
     keywords: ["program", "template", "multi-week", "structured", "auto-populate", "race date", "weeks out", "assign", "plan"],
     steps: [
-      "First, create a Program Template in the Templates view (gear menu → Templates → Program Templates → + Create)",
+      "First, create a Program Template in the Templates view (Coach Admin menu → Templates → Program Templates → + Create)",
       "Build out each week of the program (e.g. a 20-week marathon plan with workouts for each week)",
       "When creating a Client Plan (Account tab → + New Plan), select the program from the 'Training Program' dropdown",
       "Set the Race Date on the plan — this is critical for the system to know which week to auto-load",
@@ -173,7 +173,7 @@ const guideSections: GuideSection[] = [
     icon: "users",
     keywords: ["assign", "coach", "team", "multiple", "manage coaches", "delegate"],
     steps: [
-      "Go to gear menu → Manage Coaches",
+      "Go to Coach Admin menu → Manage Coaches",
       "Invite new coaches with their email address",
       "From a client's Account tab, assign one or more coaches",
       "Set which coach is the 'default' (primary) for that client",
@@ -303,7 +303,7 @@ const guideSections: GuideSection[] = [
       "Search by name or category — templates are grouped by category for easy browsing",
       "Click a template to fill the form with its workouts — then customize for the specific client/week",
       "DAY LOADING: Each day in the form has a 'Load Day Template' option to fill just that day",
-      "MANAGING: Open the Templates view from the gear menu to browse, edit, or delete all templates",
+      "MANAGING: Open the Templates view from the Coach Admin menu to browse, edit, or delete all templates",
     ],
     tips: [
       "Templates are org-wide — all coaches on your team can use them",
@@ -451,7 +451,7 @@ const guideSections: GuideSection[] = [
     icon: "library",
     keywords: ["exercise", "library", "video", "demo", "add", "muscle", "search"],
     steps: [
-      "Open from gear menu → Exercise Library",
+      "Open from Coach Admin menu → Exercise Library",
       "Browse or search existing exercises by name, muscle group, or type",
       "Add new exercises with: name, muscle groups, equipment, instructions, and video URL",
       "Link exercises to structured cross-training workouts for client reference",
@@ -493,7 +493,7 @@ const guideSections: GuideSection[] = [
     icon: "bell",
     keywords: ["notification", "email", "alert", "preferences", "settings"],
     steps: [
-      "Open gear menu → Account Preferences",
+      "Open Coach Admin menu → Account Preferences",
       "Configure which email notifications you receive",
       "Options include: client messages, workout completions, new Strava activities",
       "Choose between immediate notifications or daily summaries",
@@ -513,7 +513,7 @@ const guideSections: GuideSection[] = [
     icon: "toggle",
     keywords: ["features", "enable", "disable", "workout types", "organization", "customize"],
     steps: [
-      "Open gear menu → Account Preferences",
+      "Open Coach Admin menu → Account Preferences",
       "Scroll to 'Activity Types' / 'Org Features'",
       "Toggle which workout types are available: Run, Walk, Cycling, Cross Training, Stretching, Strength, HIIT, Swimming",
       "Disabled types won't appear as options when creating workouts or when clients add their own",
@@ -552,7 +552,7 @@ const guideSections: GuideSection[] = [
     icon: "camera",
     keywords: ["photo", "avatar", "profile", "picture", "image", "upload"],
     steps: [
-      "Open gear menu → Account Preferences",
+      "Open Coach Admin menu → Account Preferences",
       "Find the Avatar/Profile Photo section",
       "Upload a photo (headshot recommended)",
       "Your photo appears in the client's dashboard header and in message threads",
