@@ -538,7 +538,7 @@ export default function Changelog({ viewerRole }: { viewerRole?: "super_admin" |
               <div className="px-5 pb-4 space-y-2">
                 {update.items.map((item, i) => (
                   <div key={i} className="flex items-start gap-3 py-1.5">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${getAreaBadge(item.area)}`}>{item.area}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5 w-16 text-center ${getAreaBadge(item.area)}`}>{item.area}</span>
                     <p className="text-gray-300 text-sm flex-1">{item.text}</p>
                     {(item as any).source === 'feedback' && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex-shrink-0 mt-0.5">From Feedback</span>
