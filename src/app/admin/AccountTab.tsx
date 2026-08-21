@@ -182,13 +182,13 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           clientId: clientData.clientId,
           startDate: newPlanStart,
           endDate: newPlanEnd,
-          owed: newPlanOwed,
+          owed: (newPlanOwed && newPlanOwed !== "__expand__") ? newPlanOwed : "0",
           goal: newPlanGoal,
           targetDistance: newPlanTargetDistance || null,
           raceDate: newPlanRaceDate || null,
           goalPace: newPlanGoalPace || null,
           injuryNotes: newPlanInjuryNotes || null,
-          programTemplateId: newPlanProgramId || null,
+          programTemplateId: (newPlanProgramId && newPlanProgramId !== "__expand__") ? newPlanProgramId : null,
         }),
       });
       if (res.ok) {
@@ -418,59 +418,98 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         {showNewPlan && !plans.some(p => p.status === "active") && (
           <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-4">
             <p className="text-accent text-xs font-heading uppercase mb-3">Create New Plan</p>
-            <div className="grid md:grid-cols-3 gap-4 mb-3">
+
+            {/* Required Fields */}
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="text-gray-500 text-xs block mb-1">Goal</label>
-                <input type="text" value={newPlanGoal} onChange={(e) => setNewPlanGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. War Eagle 50K" />
+                <label className="text-gray-500 text-xs block mb-1">Goal <span className="text-accent">*</span></label>
+                <input type="text" value={newPlanGoal} onChange={(e) => setNewPlanGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Marathon training, General fitness" />
               </div>
               <div>
-                <label className="text-gray-500 text-xs block mb-1">Target Distance</label>
-                <select value={newPlanTargetDistance} onChange={(e) => setNewPlanTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select>
-              </div>
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">Race Date</label>
-                <input type="date" value={newPlanRaceDate} onChange={(e) => setNewPlanRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
-              </div>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4 mb-3">
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">Start Date</label>
+                <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
                 <input type="date" value={newPlanStart} onChange={(e) => setNewPlanStart(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
               </div>
               <div>
-                <label className="text-gray-500 text-xs block mb-1">End Date</label>
+                <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
                 <input type="date" value={newPlanEnd} onChange={(e) => setNewPlanEnd(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
               </div>
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
-                <input type="number" value={newPlanOwed} onChange={(e) => setNewPlanOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
-              </div>
             </div>
-            <div className="grid md:grid-cols-2 gap-4 mb-3">
+
+            {/* Training Program (expandable) */}
+            <div className="border border-white/5 rounded-lg mb-3 overflow-hidden">
+              <button type="button" onClick={() => setNewPlanProgramId(newPlanProgramId === "__expand__" ? "" : (newPlanProgramId || "__expand__"))} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <svg className={`w-3 h-3 text-gray-400 transition-transform ${newPlanProgramId && newPlanProgramId !== "__expand__" ? "rotate-90" : (newPlanProgramId === "__expand__" ? "rotate-90" : "")}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  <span className="text-gray-300 text-sm font-medium">Assign Training Program</span>
+                  {newPlanProgramId && newPlanProgramId !== "__expand__" && <span className="text-accent text-xs">✓ Set</span>}
+                </div>
+                <span className="text-gray-500 text-xs">Optional</span>
+              </button>
+              {(newPlanProgramId === "__expand__" || (newPlanProgramId && newPlanProgramId !== "__expand__" && programTemplates && programTemplates.length > 0)) && programTemplates && programTemplates.length > 0 && (
+                <div className="px-4 pb-3 space-y-3 border-t border-white/5 pt-3">
+                  <div>
+                    <label className="text-gray-500 text-xs block mb-1">Training Program</label>
+                    <select value={newPlanProgramId === "__expand__" ? "" : newPlanProgramId} onChange={(e) => setNewPlanProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                      <option value="">No Program</option>
+                      {programTemplates.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
+                      ))}
+                    </select>
+                  </div>
+                  {newPlanProgramId && newPlanProgramId !== "__expand__" && (
+                    <>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Target Distance</label>
+                          <select value={newPlanTargetDistance} onChange={(e) => setNewPlanTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select>
+                        </div>
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Race Date</label>
+                          <input type="date" value={newPlanRaceDate} onChange={(e) => setNewPlanRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                        </div>
+                      </div>
+                      <p className="text-gray-500 text-xs">Race Date is used to calculate which program week to auto-load when creating training weeks.</p>
+                    </>
+                  )}
+                  {newPlanProgramId === "__expand__" && (
+                    <p className="text-gray-500 text-xs">Select a program to auto-populate workouts when creating training weeks.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Plan Cost (expandable) */}
+            <div className="border border-white/5 rounded-lg mb-4 overflow-hidden">
+              <button type="button" onClick={() => setNewPlanOwed(newPlanOwed === "__expand__" ? "" : (newPlanOwed || "__expand__"))} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <svg className={`w-3 h-3 text-gray-400 transition-transform ${newPlanOwed && newPlanOwed !== "__expand__" && newPlanOwed !== "0" ? "rotate-90" : (newPlanOwed === "__expand__" ? "rotate-90" : "")}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  <span className="text-gray-300 text-sm font-medium">Set Plan Cost</span>
+                  {newPlanOwed && newPlanOwed !== "__expand__" && newPlanOwed !== "0" && <span className="text-accent text-xs">✓ ${newPlanOwed}</span>}
+                </div>
+                <span className="text-gray-500 text-xs">Optional</span>
+              </button>
+              {(newPlanOwed === "__expand__" || (newPlanOwed && newPlanOwed !== "__expand__" && newPlanOwed !== "0")) && (
+                <div className="px-4 pb-3 border-t border-white/5 pt-3">
+                  <div>
+                    <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
+                    <input type="number" value={newPlanOwed === "__expand__" ? "" : newPlanOwed} onChange={(e) => setNewPlanOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Optional secondary fields */}
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label>
+                <label className="text-gray-500 text-xs block mb-1">Goal Race Pace <span className="text-gray-600 text-xs">(optional)</span></label>
                 <input type="text" value={newPlanGoalPace} onChange={(e) => setNewPlanGoalPace(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" />
               </div>
               <div>
-                <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes</label>
+                <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes <span className="text-gray-600 text-xs">(optional)</span></label>
                 <input type="text" value={newPlanInjuryNotes} onChange={(e) => setNewPlanInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
               </div>
             </div>
-            {/* Program Assignment */}
-            {programTemplates && programTemplates.length > 0 && (
-              <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mb-3">
-                <div>
-                  <label className="text-accent text-xs block mb-1">Training Program (optional)</label>
-                  <select value={newPlanProgramId} onChange={(e) => setNewPlanProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
-                    <option value="">No Program</option>
-                    {programTemplates.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
-                    ))}
-                  </select>
-                  <p className="text-gray-500 text-xs mt-1">Assigns a structured week-by-week program that auto-populates when creating weeks. Uses the Race Date above to calculate which week to load.</p>
-                </div>
-              </div>
-            )}
+
             <div className="flex gap-3">
               <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {creatingPlan ? "Creating..." : "Create Plan"}
@@ -569,7 +608,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       const res = await fetch("/api/plans", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: editOwed, targetDistance: editTargetDistance || null, raceDate: editRaceDate || null, goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null, programTemplateId: editProgramId || null }),
+        body: JSON.stringify({ planId: plan.id, goal: editGoal, startDate: editStartDate, endDate: editEndDate, owed: (editOwed && editOwed !== "__expand__") ? editOwed : "0", targetDistance: editTargetDistance || null, raceDate: editRaceDate || null, goalPace: editGoalPace || null, injuryNotes: editInjuryNotes || null, programTemplateId: (editProgramId && editProgramId !== "__expand__") ? editProgramId : null }),
       });
       if (res.ok) {
         // Update local state via parent
@@ -694,63 +733,101 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       {editingPlan && plan.status === "active" && (
         <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-3">
           <p className="text-accent text-xs font-heading uppercase mb-3">Edit Plan</p>
-          <div className="grid md:grid-cols-3 gap-3 mb-3">
+
+          {/* Required Fields */}
+          <div className="grid md:grid-cols-3 gap-3 mb-4">
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Goal</label>
-              <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. War Eagle 50K" />
+              <label className="text-gray-500 text-xs block mb-1">Goal <span className="text-accent">*</span></label>
+              <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Marathon training" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Target Distance</label>
-              <select value={editTargetDistance} onChange={(e) => setEditTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select>
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Race Date</label>
-              <input type="date" value={editRaceDate} onChange={(e) => setEditRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
-            </div>
-          </div>
-          <div className="grid md:grid-cols-3 gap-3 mb-3">
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Start Date</label>
+              <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
               <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">End Date</label>
+              <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
               <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
             </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
-              <input type="number" value={editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-            </div>
           </div>
-          <div className="grid md:grid-cols-2 gap-3 mb-3">
+
+          {/* Training Program (expandable) */}
+          {programTemplates && programTemplates.length > 0 && (
+            <div className="border border-white/5 rounded-lg mb-3 overflow-hidden">
+              <button type="button" onClick={() => { if (!editProgramId) setEditProgramId("__expand__"); else if (editProgramId === "__expand__") setEditProgramId(""); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <svg className={`w-3 h-3 text-gray-400 transition-transform ${editProgramId ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  <span className="text-gray-300 text-sm font-medium">Training Program</span>
+                  {editProgramId && editProgramId !== "__expand__" && <span className="text-accent text-xs">✓ Set</span>}
+                </div>
+                <span className="text-gray-500 text-xs">Optional</span>
+              </button>
+              {editProgramId && (
+                <div className="px-4 pb-3 space-y-3 border-t border-white/5 pt-3">
+                  <div>
+                    <label className="text-gray-500 text-xs block mb-1">Training Program</label>
+                    <select value={editProgramId === "__expand__" ? "" : editProgramId} onChange={(e) => setEditProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                      <option value="">No Program</option>
+                      {programTemplates.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
+                      ))}
+                    </select>
+                  </div>
+                  {editProgramId && editProgramId !== "__expand__" && (
+                    <>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Target Distance</label>
+                          <select value={editTargetDistance} onChange={(e) => setEditTargetDistance(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"><option value="">Select...</option><option value="5K">5K</option><option value="10K">10K</option><option value="Half Marathon">Half Marathon</option><option value="Marathon">Marathon</option><option value="Ultra">Ultra</option><option value="No Race">No Race / General Fitness</option></select>
+                        </div>
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Race Date</label>
+                          <input type="date" value={editRaceDate} onChange={(e) => setEditRaceDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                        </div>
+                      </div>
+                      <p className="text-gray-500 text-xs">Race Date is used to calculate which program week to auto-load when creating training weeks.</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Plan Cost (expandable) */}
+          <div className="border border-white/5 rounded-lg mb-4 overflow-hidden">
+            <button type="button" onClick={() => { if (editOwed === "0" || !editOwed) setEditOwed("__expand__"); else if (editOwed === "__expand__") setEditOwed("0"); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+              <div className="flex items-center gap-2">
+                <svg className={`w-3 h-3 text-gray-400 transition-transform ${editOwed && editOwed !== "0" ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                <span className="text-gray-300 text-sm font-medium">Plan Cost</span>
+                {editOwed && editOwed !== "__expand__" && editOwed !== "0" && <span className="text-accent text-xs">✓ ${editOwed}</span>}
+              </div>
+              <span className="text-gray-500 text-xs">Optional</span>
+            </button>
+            {editOwed && editOwed !== "0" && (
+              <div className="px-4 pb-3 border-t border-white/5 pt-3">
+                <div>
+                  <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
+                  <input type="number" value={editOwed === "__expand__" ? "" : editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Optional secondary fields */}
+          <div className="grid md:grid-cols-2 gap-3 mb-4">
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Goal Race Pace</label>
+              <label className="text-gray-500 text-xs block mb-1">Goal Race Pace <span className="text-gray-600 text-xs">(optional)</span></label>
               <input type="text" value={editGoalPace} onChange={(e) => setEditGoalPace(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes</label>
+              <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes <span className="text-gray-600 text-xs">(optional)</span></label>
               <input type="text" value={editInjuryNotes} onChange={(e) => setEditInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints" />
             </div>
           </div>
+
           <div className="flex gap-3">
             <button onClick={handleSavePlanEdit} disabled={savingPlanEdit} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-xs disabled:opacity-50">{savingPlanEdit ? "Saving..." : "Save Changes"}</button>
             <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); setEditGoalPace(plan.goalPace || ""); setEditInjuryNotes(plan.injuryNotes || ""); setEditProgramId((plan as any).programTemplateId || ""); setEditRaceDateSameAsEnd((plan as any).raceDateSameAsEnd !== false); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
           </div>
-          {/* Program Assignment (Edit) */}
-          {programTemplates && programTemplates.length > 0 && (
-            <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mt-3">
-              <div>
-                <label className="text-accent text-xs block mb-1">Training Program (optional)</label>
-                <select value={editProgramId} onChange={(e) => setEditProgramId(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
-                  <option value="">No Program</option>
-                  {programTemplates.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}{p.category ? ` (${p.category})` : ''} — {p.data.totalWeeks} weeks</option>
-                  ))}
-                </select>
-                <p className="text-gray-500 text-xs mt-1">Uses the Race Date above to calculate which program week to auto-load when creating weeks.</p>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -810,17 +887,19 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           </p>
         </div>
       </div>
-      {/* Target Distance & Race Date — always show for active plans */}
+      {/* Target Distance & Race Date — only show if values are set */}
       {plan.status === "active" && (
         <div className="grid md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-white/5">
-          <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance || "—"}</p></div>
-          <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{plan.raceDate ? formatDate(plan.raceDate) : "—"}</p></div>
-          <div><p className="text-gray-500 text-xs">Goal Race Pace</p><p className="text-white text-sm">{plan.goalPace || "—"}</p></div>
-          <div><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes || "—"}</p></div>
+          {(plan as any).programTemplateId && programTemplates && <div><p className="text-gray-500 text-xs">Training Program</p><p className="text-accent text-sm font-medium">{programTemplates.find(p => p.id === (plan as any).programTemplateId)?.name || "Assigned"}</p></div>}
+          {plan.targetDistance && <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance}</p></div>}
+          {plan.raceDate && <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{formatDate(plan.raceDate)}</p></div>}
+          {plan.goalPace && <div><p className="text-gray-500 text-xs">Goal Race Pace</p><p className="text-white text-sm">{plan.goalPace}</p></div>}
+          {plan.injuryNotes && <div><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes}</p></div>}
         </div>
       )}
-      {plan.status !== "active" && (plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
+      {plan.status !== "active" && ((plan as any).programTemplateId || plan.targetDistance || plan.raceDate || plan.goalPace || plan.injuryNotes) && (
         <div className="grid md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-white/5">
+          {(plan as any).programTemplateId && programTemplates && <div><p className="text-gray-500 text-xs">Training Program</p><p className="text-accent text-sm">{programTemplates.find(p => p.id === (plan as any).programTemplateId)?.name || "Assigned"}</p></div>}
           {plan.targetDistance && <div><p className="text-gray-500 text-xs">Target Distance</p><p className="text-white text-sm">{plan.targetDistance}</p></div>}
           {plan.raceDate && <div><p className="text-gray-500 text-xs">Race Date</p><p className="text-white text-sm">{formatDate(plan.raceDate)}</p></div>}
           {plan.goalPace && <div><p className="text-gray-500 text-xs">Goal Race Pace</p><p className="text-white text-sm">{plan.goalPace}</p></div>}
