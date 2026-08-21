@@ -9,7 +9,7 @@ const updates = [
   {
     date: "August 20, 2026",
     items: [
-      { area: "Admin", text: "Improved: Contact form messages from the marketing page and 'Question' submissions from the in-app feedback button now go to the Super Admin Inbox instead of Feedback & Bugs. This means you can reply to them directly as email conversations. Bugs and feature feedback still go to Feedback & Bugs as before" },
+      { area: "Marketing", text: "Improved: Contact form messages from the marketing page and 'Question' submissions from the in-app feedback button now go to the Super Admin Inbox instead of Feedback & Bugs. This means you can reply to them directly as email conversations. Bugs and feature feedback still go to Feedback & Bugs as before" },
       { area: "Marketing", text: "Fixed: The FAQ link in the sticky header and the 'Frequently Asked Questions' button below the features section were sending visitors to the login page instead of the FAQ page. Now they correctly go to the FAQ page without requiring a login" },
     ],
   },
