@@ -753,7 +753,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           {/* Training Program (expandable) */}
           {programTemplates && programTemplates.length > 0 && (
             <div className="border border-white/5 rounded-lg mb-3 overflow-hidden">
-              <button type="button" onClick={() => { if (!editProgramId) setEditProgramId("__expand__"); else if (editProgramId === "__expand__") setEditProgramId(""); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+              <button type="button" onClick={() => { if (!editProgramId) setEditProgramId("__expand__"); else setEditProgramId(""); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-2">
                   <svg className={`w-3 h-3 text-gray-400 transition-transform ${editProgramId ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                   <span className="text-gray-300 text-sm font-medium">Training Program</span>
