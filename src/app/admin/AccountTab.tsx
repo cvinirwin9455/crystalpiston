@@ -1003,22 +1003,61 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         </div>
       )}
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <div>
-          <p className="text-gray-500 text-xs">Plan Cost</p>
-          <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+      {/* Financial summary — different display based on billing mode */}
+      {(!plan.billingMode || plan.billingMode === 'programming_only') && (
+        <>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-gray-500 text-xs">Plan Cost</p>
+              <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Total Paid</p>
+              <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Balance</p>
+              <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+      {plan.billingMode === 'per_session' && (
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1.5">
+            <span className="text-blue-400 text-xs font-medium">🏋️ Per Session</span>
+          </span>
+          <span className="text-gray-500 text-xs">Session billing — see package details below</span>
         </div>
-        <div>
-          <p className="text-gray-500 text-xs">Total Paid</p>
-          <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
-        </div>
-        <div>
-          <p className="text-gray-500 text-xs">Balance</p>
-          <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-            {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
-          </p>
-        </div>
-      </div>
+      )}
+      {plan.billingMode === 'hybrid' && (
+        <>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-gray-500 text-xs">Programming Cost</p>
+              <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Programming Paid</p>
+              <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Programming Balance</p>
+              <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-0.5">
+              <span className="text-blue-400 text-xs">+ In-Person Sessions</span>
+            </span>
+            <span className="text-gray-500 text-xs">See session packages below</span>
+          </div>
+        </>
+      )}
       {/* Target Distance & Race Date — only show if values are set */}
       {plan.status === "active" && (
         <div className="grid md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-white/5">
@@ -1038,12 +1077,15 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           {plan.injuryNotes && <div className="col-span-2"><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes}</p></div>}
         </div>
       )}
-      <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">
-        <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
-      </div>
+      {/* Progress bar — only for plans with programming cost */}
+      {(!plan.billingMode || plan.billingMode === 'programming_only' || (plan.billingMode === 'hybrid' && plan.owed > 0)) && (
+        <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">
+          <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
+        </div>
+      )}
 
       {/* Completion info (shown on completed plans) */}
-      {plan.status === "completed" && (plan.owed - plan.paid) > 0 && (
+      {plan.status === "completed" && plan.billingMode !== 'per_session' && (plan.owed - plan.paid) > 0 && (
         <div className="mt-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
           <div className="flex items-center justify-between mb-1">
             <p className="text-yellow-400 text-xs font-heading uppercase">Completed with Balance Due</p>
