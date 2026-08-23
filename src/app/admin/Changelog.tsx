@@ -9,6 +9,10 @@ const updates = [
   {
     date: "August 23, 2026",
     items: [
+      { area: "Client", text: "Fixed: Run distance (miles/km) was sometimes not showing on training cards — the programmed distance now displays reliably on the card, collapsed day summary, and weekly total" },
+      { area: "Admin", text: "Fixed: Same distance display fix on the admin Training & Logs view — workout miles now show correctly in all views including drafts and collapsed day headers" },
+      { area: "Admin", text: "Improved: Day totals now properly convert mixed units — if you program some runs in km and some in miles for the same client, the collapsed day summary correctly converts everything to the client's preferred unit" },
+      { area: "Admin", text: "Improved: Runs with time-based structures (e.g. '30 min easy') can now be saved without a distance value. The card will show the time structure clearly without a misleading '0 mi' display" },
       { area: "Admin", text: "Fixed: Coach Guide was showing a blank page on mobile in portrait mode. It now displays properly without needing to rotate your phone" },
       { area: "Admin", text: "NEW: Dashboard button on mobile — you can now tap 'Dashboard' from the client list screen to see your stats, drafts to publish, and payment overview without switching to landscape. Tap 'Back to Clients' to return" },
       { area: "Admin", text: "Fixed: Scrolling issue on mobile — when viewing a client's Training & Logs, Create Week, or other tabs, scrolling back up was triggering a page refresh instead of scrolling. This is now fixed so you can scroll freely in both directions" },
