@@ -734,6 +734,9 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [editRaceDateSameAsEnd, setEditRaceDateSameAsEnd] = useState((plan as any).raceDateSameAsEnd !== false);
   const [savingPlanEdit, setSavingPlanEdit] = useState(false);
 
+  // Session balance state (for per_session and hybrid plans)
+  const [sessionBalance, setSessionBalance] = useState<{ used: number; total: number } | null>(null);
+
   const handleSavePlanEdit = async () => {
     setSavingPlanEdit(true);
     try {
@@ -779,6 +782,25 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     };
     fetchPayments();
   }, [plan.id]);
+
+  // Fetch session balance for per_session and hybrid plans
+  useEffect(() => {
+    if (plan.billingMode !== 'per_session' && plan.billingMode !== 'hybrid') return;
+    const fetchSessionBalance = async () => {
+      try {
+        const res = await fetch(`/api/session-packages?client_id=${plan.clientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const totalPurchased = (data.packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0);
+          const remaining = data.sessionsRemaining ?? 0;
+          setSessionBalance({ used: totalPurchased - remaining, total: totalPurchased });
+        }
+      } catch (err) {
+        console.error("Failed to fetch session balance:", err);
+      }
+    };
+    fetchSessionBalance();
+  }, [plan.id, plan.clientId, plan.billingMode]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -1020,11 +1042,18 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         </>
       )}
       {plan.billingMode === 'per_session' && (
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1.5">
-            <span className="text-blue-400 text-xs font-medium">🏋️ Per Session</span>
-          </span>
-          <span className="text-gray-500 text-xs">Session billing — see packages below</span>
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+          <p className="text-blue-400 text-xs font-medium mb-1">🏋️ Per Session</p>
+          {sessionBalance ? (
+            <div className="flex items-center justify-between">
+              <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total} sessions used</span>
+              <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
+                {sessionBalance.total - sessionBalance.used} remaining
+              </span>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-xs">Loading session data...</p>
+          )}
         </div>
       )}
       {plan.billingMode === 'hybrid' && (
@@ -1040,10 +1069,19 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                 </span>
               </div>
             </div>
-            {/* Sessions part — balance shown via AddSessionPackage below */}
+            {/* Sessions part */}
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
               <p className="text-blue-400 text-xs font-medium mb-1">🏋️ In-Person Sessions</p>
-              <p className="text-gray-400 text-xs">See session packages below</p>
+              {sessionBalance ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total}</span>
+                  <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
+                    {sessionBalance.total - sessionBalance.used} remaining
+                  </span>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-xs">Loading...</p>
+              )}
             </div>
           </div>
         </div>
