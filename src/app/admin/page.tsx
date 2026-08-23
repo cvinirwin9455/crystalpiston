@@ -11,6 +11,7 @@ import AvatarUpload from "@/components/AvatarUpload";
 import ClientStatsTab from "./ClientStatsTab";
 import ExerciseLibraryTab from "./ExerciseLibraryTab";
 import CoachGuide from "./CoachGuide";
+import SessionsTab from "./SessionsTab";
 import type { CrossTrainingStructure, ExerciseLibraryItem } from "./StructuredCrossTrainingBuilder";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -31,13 +32,13 @@ export default function AdminPage() {
     const params = new URLSearchParams(window.location.search);
     return {
       client: params.get('client') || null,
-      tab: (params.get('tab') || 'plan') as "plan" | "create" | "messages" | "drafts" | "account" | "stats",
+      tab: (params.get('tab') || 'plan') as "plan" | "create" | "messages" | "drafts" | "account" | "stats" | "sessions",
     };
   };
   const initialParams = getInitialParams();
 
   const [selectedClient, setSelectedClient] = useState<string | null>(initialParams.client);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">(initialParams.tab);
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats" | "sessions">(initialParams.tab);
   const [editingWeek, setEditingWeek] = useState(false);
 
   // Persist navigation state in URL (survives refresh)
@@ -3158,7 +3159,7 @@ export default function AdminPage() {
 
               {/* Tabs (always in sticky area) */}
               <div className="px-6 pb-2 flex gap-1 flex-wrap">
-                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "sessions", label: "Sessions" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
                   <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                     {tab.label}
                     {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
@@ -3173,8 +3174,8 @@ export default function AdminPage() {
             {/* SCROLLABLE CONTENT */}
             <div ref={mainContentRef} className={`flex-1 overflow-y-auto p-6 overscroll-y-contain ${clientTab === 'messages' ? 'pb-6 flex flex-col' : 'pb-20 space-y-6'}`}>
 
-            {/* Stats Card (hidden on Messages/Account tabs) */}
-            {clientTab !== "messages" && clientTab !== "account" && (
+            {/* Stats Card (hidden on Messages/Account/Sessions tabs) */}
+            {clientTab !== "messages" && clientTab !== "account" && clientTab !== "sessions" && (
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
@@ -4052,6 +4053,14 @@ export default function AdminPage() {
             {/* STATS */}
             {clientTab === "stats" && (
               <ClientStatsTab clientId={selectedClientData.clientId} distanceUnit={adminDistanceUnit} />
+            )}
+
+            {/* SESSIONS */}
+            {clientTab === "sessions" && (
+              <SessionsTab
+                clientId={selectedClientData.clientId || selectedClientData.id}
+                clientName={selectedClientData.name}
+              />
             )}
 
             {/* ACCOUNT */}
