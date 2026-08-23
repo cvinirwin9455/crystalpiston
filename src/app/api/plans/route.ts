@@ -73,10 +73,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, billingMode, sessionCount, sessionCost, programmingCost } = body
+  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, billingMode, sessionCount, sessionCost, perSessionCost, programmingCost } = body
 
-  if (!clientId || !startDate || !endDate) {
-    return NextResponse.json({ error: 'clientId, startDate, and endDate are required' }, { status: 400 })
+  // Dates are required for programming_only and hybrid, but not per_session
+  if (!clientId) {
+    return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
+  }
+  if (billingMode !== 'per_session' && (!startDate || !endDate)) {
+    return NextResponse.json({ error: 'startDate and endDate are required for this billing mode' }, { status: 400 })
   }
 
   const adminClient = await getAdminClient()
@@ -91,13 +95,17 @@ export async function POST(request: Request) {
     planOwed = programmingCost ? parseFloat(programmingCost) : (owed ? parseFloat(owed) : 0)
   }
 
+  // For per_session mode without explicit dates, use today as start
+  const effectiveStartDate = startDate || new Date().toISOString().split('T')[0]
+  const effectiveEndDate = endDate || null
+
   // Try inserting with billing_mode column
   const { data: plan, error } = await adminClient
     .from('plans')
     .insert({
       client_id: clientId,
-      start_date: startDate,
-      end_date: endDate,
+      start_date: effectiveStartDate,
+      end_date: effectiveEndDate || effectiveStartDate,
       goal: goal || null,
       owed: planOwed,
       paid: 0,
@@ -118,8 +126,8 @@ export async function POST(request: Request) {
       .from('plans')
       .insert({
         client_id: clientId,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: effectiveStartDate,
+        end_date: effectiveEndDate || effectiveStartDate,
         goal: goal || null,
         owed: planOwed,
         paid: 0,
@@ -139,8 +147,8 @@ export async function POST(request: Request) {
         .from('plans')
         .insert({
           client_id: clientId,
-          start_date: startDate,
-          end_date: endDate,
+          start_date: effectiveStartDate,
+          end_date: effectiveEndDate || effectiveStartDate,
           goal: goal || null,
           owed: planOwed,
           paid: 0,

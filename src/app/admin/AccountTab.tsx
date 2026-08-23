@@ -63,7 +63,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
   // Billing mode state
   const [newPlanBillingMode, setNewPlanBillingMode] = useState<'programming_only' | 'per_session' | 'hybrid'>('programming_only');
   const [newPlanSessionCount, setNewPlanSessionCount] = useState("");
-  const [newPlanSessionCost, setNewPlanSessionCost] = useState("");
+  const [newPlanPerSessionCost, setNewPlanPerSessionCost] = useState("");
   const [newPlanProgrammingCost, setNewPlanProgrammingCost] = useState("");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -180,16 +180,24 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
   };
 
   const handleCreatePlan = async () => {
-    if (!newPlanStart || !newPlanEnd || !clientData.clientId) return;
+    // Validation based on billing mode
+    if (!newPlanGoal || !clientData.clientId) return;
+    if ((newPlanBillingMode === 'programming_only' || newPlanBillingMode === 'hybrid') && (!newPlanStart || !newPlanEnd)) return;
+    if ((newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') && (!newPlanSessionCount || parseInt(newPlanSessionCount) <= 0 || !newPlanPerSessionCost)) return;
+    
     setCreatingPlan(true);
+    
+    // Calculate session total cost (count × per-session cost)
+    const sessionTotalCost = (parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0);
+    
     try {
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId: clientData.clientId,
-          startDate: newPlanStart,
-          endDate: newPlanEnd,
+          startDate: newPlanStart || null,
+          endDate: newPlanEnd || null,
           owed: newPlanBillingMode === 'per_session' ? "0" : (newPlanProgrammingCost || "0"),
           goal: newPlanGoal,
           targetDistance: newPlanTargetDistance || null,
@@ -199,7 +207,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           programTemplateId: (newPlanProgramId && newPlanProgramId !== "__expand__") ? newPlanProgramId : null,
           billingMode: newPlanBillingMode,
           sessionCount: (newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') ? parseInt(newPlanSessionCount) || 0 : 0,
-          sessionCost: (newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') ? newPlanSessionCost || "0" : "0",
+          sessionCost: (newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') ? sessionTotalCost.toString() : "0",
+          perSessionCost: (newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') ? newPlanPerSessionCost || "0" : "0",
           programmingCost: (newPlanBillingMode === 'programming_only' || newPlanBillingMode === 'hybrid') ? newPlanProgrammingCost || "0" : "0",
         }),
       });
@@ -238,7 +247,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         setNewPlanRaceDateSameAsEnd(true);
         setNewPlanBillingMode('programming_only');
         setNewPlanSessionCount("");
-        setNewPlanSessionCost("");
+        setNewPlanPerSessionCost("");
         setNewPlanProgrammingCost("");
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -437,18 +446,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             <p className="text-accent text-xs font-heading uppercase mb-3">Create New Plan</p>
 
             {/* Required Fields */}
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div className="mb-4">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Goal <span className="text-accent">*</span></label>
-                <input type="text" value={newPlanGoal} onChange={(e) => setNewPlanGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Marathon training, General fitness" />
-              </div>
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
-                <input type="date" value={newPlanStart} onChange={(e) => setNewPlanStart(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
-              </div>
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
-                <input type="date" value={newPlanEnd} onChange={(e) => setNewPlanEnd(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                <input type="text" value={newPlanGoal} onChange={(e) => setNewPlanGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Marathon prep, Strength building, Rehab" />
               </div>
             </div>
 
@@ -495,7 +496,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
               )}
             </div>
 
-            {/* Billing Mode (replaces old Plan Cost) */}
+            {/* Billing Mode */}
             <div className="border border-white/5 rounded-lg mb-4 overflow-hidden">
               <div className="px-4 py-3">
                 <div className="flex items-center gap-2 mb-3">
@@ -519,39 +520,111 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
                   </button>
                 </div>
 
-                {/* Mode description */}
-                <p className="text-gray-500 text-xs mb-3">
-                  {newPlanBillingMode === 'programming_only' && "Client pays a flat fee for training programming (plans, workouts, adjustments)."}
-                  {newPlanBillingMode === 'per_session' && "Client buys session packages and pays per in-person session only."}
-                  {newPlanBillingMode === 'hybrid' && "Client pays for both programming AND in-person sessions separately."}
-                </p>
-
-                {/* Programming Cost — shown for programming_only and hybrid */}
-                {(newPlanBillingMode === 'programming_only' || newPlanBillingMode === 'hybrid') && (
-                  <div className="mb-3">
-                    <label className="text-gray-500 text-xs block mb-1">
-                      {newPlanBillingMode === 'hybrid' ? 'Programming Cost ($)' : 'Plan Cost ($)'}
-                      <span className="text-gray-600 ml-1">(optional)</span>
-                    </label>
-                    <input type="number" value={newPlanProgrammingCost} onChange={(e) => setNewPlanProgrammingCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+                {/* ============ PROGRAMMING ONLY ============ */}
+                {newPlanBillingMode === 'programming_only' && (
+                  <div className="space-y-3">
+                    <p className="text-gray-500 text-xs">Client pays a flat fee for training programming (plans, workouts, adjustments).</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
+                        <input type="date" value={newPlanStart} onChange={(e) => setNewPlanStart(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
+                        <input type="date" value={newPlanEnd} onChange={(e) => setNewPlanEnd(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-500 text-xs block mb-1">Plan Cost ($) <span className="text-gray-600">(optional)</span></label>
+                      <input type="number" value={newPlanProgrammingCost} onChange={(e) => setNewPlanProgrammingCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+                    </div>
                   </div>
                 )}
 
-                {/* Session Package — shown for per_session and hybrid */}
-                {(newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') && (
-                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-                    <p className="text-blue-400 text-xs font-medium mb-2">Initial Session Package</p>
+                {/* ============ PER SESSION ============ */}
+                {newPlanBillingMode === 'per_session' && (
+                  <div className="space-y-3">
+                    <p className="text-gray-500 text-xs">Client pays per in-person session. Enter the number of sessions and cost per session.</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-gray-500 text-xs block mb-1">Sessions</label>
+                        <label className="text-gray-500 text-xs block mb-1">Total Sessions <span className="text-accent">*</span></label>
                         <input type="number" value={newPlanSessionCount} onChange={(e) => setNewPlanSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
                       </div>
                       <div>
-                        <label className="text-gray-500 text-xs block mb-1">Amount Paid ($)</label>
-                        <input type="number" value={newPlanSessionCost} onChange={(e) => setNewPlanSessionCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="500" />
+                        <label className="text-gray-500 text-xs block mb-1">Per Session Cost ($) <span className="text-accent">*</span></label>
+                        <input type="number" value={newPlanPerSessionCost} onChange={(e) => setNewPlanPerSessionCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="75" />
                       </div>
                     </div>
-                    <p className="text-gray-500 text-xs mt-2">You can add more session packages later as the client tops up.</p>
+                    {/* Calculated total */}
+                    {newPlanSessionCount && newPlanPerSessionCost && (
+                      <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 flex items-center justify-between">
+                        <span className="text-gray-400 text-xs">Total ({newPlanSessionCount} × ${newPlanPerSessionCost})</span>
+                        <span className="text-accent text-sm font-bold">${(parseInt(newPlanSessionCount) * parseFloat(newPlanPerSessionCost)).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ============ HYBRID ============ */}
+                {newPlanBillingMode === 'hybrid' && (
+                  <div className="space-y-4">
+                    <p className="text-gray-500 text-xs">Client pays for both programming AND in-person sessions separately.</p>
+                    
+                    {/* Programming section */}
+                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 space-y-3">
+                      <p className="text-purple-400 text-xs font-medium">Programming</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
+                          <input type="date" value={newPlanStart} onChange={(e) => setNewPlanStart(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                        </div>
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
+                          <input type="date" value={newPlanEnd} onChange={(e) => setNewPlanEnd(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs block mb-1">Programming Cost ($)</label>
+                        <input type="number" value={newPlanProgrammingCost} onChange={(e) => setNewPlanProgrammingCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+                      </div>
+                    </div>
+
+                    {/* Sessions section */}
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-3">
+                      <p className="text-blue-400 text-xs font-medium">In-Person Sessions</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Total Sessions <span className="text-accent">*</span></label>
+                          <input type="number" value={newPlanSessionCount} onChange={(e) => setNewPlanSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
+                        </div>
+                        <div>
+                          <label className="text-gray-500 text-xs block mb-1">Per Session Cost ($) <span className="text-accent">*</span></label>
+                          <input type="number" value={newPlanPerSessionCost} onChange={(e) => setNewPlanPerSessionCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="75" />
+                        </div>
+                      </div>
+                      {/* Session total */}
+                      {newPlanSessionCount && newPlanPerSessionCost && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">Sessions Total ({newPlanSessionCount} × ${newPlanPerSessionCost})</span>
+                          <span className="text-blue-400 font-bold">${(parseInt(newPlanSessionCount) * parseFloat(newPlanPerSessionCost)).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Grand total */}
+                    {(newPlanProgrammingCost || (newPlanSessionCount && newPlanPerSessionCost)) && (
+                      <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-300 text-xs font-medium">Total Cost</span>
+                          <span className="text-accent text-sm font-bold">
+                            ${((parseFloat(newPlanProgrammingCost) || 0) + ((parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0))).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-gray-500 text-xs">Programming: ${parseFloat(newPlanProgrammingCost) || 0} + Sessions: ${((parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0)).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -570,7 +643,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             </div>
 
             <div className="flex gap-3">
-              <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd || ((newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') && (!newPlanSessionCount || parseInt(newPlanSessionCount) <= 0))} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
+              <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanGoal || (newPlanBillingMode === 'programming_only' && (!newPlanStart || !newPlanEnd)) || (newPlanBillingMode === 'per_session' && (!newPlanSessionCount || parseInt(newPlanSessionCount) <= 0 || !newPlanPerSessionCost)) || (newPlanBillingMode === 'hybrid' && (!newPlanStart || !newPlanEnd || !newPlanSessionCount || parseInt(newPlanSessionCount) <= 0 || !newPlanPerSessionCost))} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {creatingPlan ? "Creating..." : "Create Plan"}
               </button>
               <button onClick={() => setShowNewPlan(false)} className="text-gray-400 text-sm">Cancel</button>
