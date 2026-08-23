@@ -19,6 +19,7 @@ type Plan = {
   injuryNotes: string;
   programTemplateId?: string;
   raceDateSameAsEnd?: boolean;
+  billingMode?: 'programming_only' | 'per_session' | 'hybrid';
 };
 
 type ClientData = {
@@ -58,6 +59,12 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
   const [newPlanProgramId, setNewPlanProgramId] = useState("");
   const [newPlanRaceDateSameAsEnd, setNewPlanRaceDateSameAsEnd] = useState(true);
   const [creatingPlan, setCreatingPlan] = useState(false);
+  
+  // Billing mode state
+  const [newPlanBillingMode, setNewPlanBillingMode] = useState<'programming_only' | 'per_session' | 'hybrid'>('programming_only');
+  const [newPlanSessionCount, setNewPlanSessionCount] = useState("");
+  const [newPlanSessionCost, setNewPlanSessionCost] = useState("");
+  const [newPlanProgrammingCost, setNewPlanProgrammingCost] = useState("");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -135,6 +142,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             injuryNotes: p.injury_notes || '',
             programTemplateId: p.program_template_id || '',
             raceDateSameAsEnd: p.race_date_same_as_end !== false,
+            billingMode: p.billing_mode || 'programming_only',
           })));
         }
       } catch (err) {
@@ -182,13 +190,17 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           clientId: clientData.clientId,
           startDate: newPlanStart,
           endDate: newPlanEnd,
-          owed: (newPlanOwed && newPlanOwed !== "__expand__") ? newPlanOwed : "0",
+          owed: newPlanBillingMode === 'per_session' ? "0" : (newPlanProgrammingCost || "0"),
           goal: newPlanGoal,
           targetDistance: newPlanTargetDistance || null,
           raceDate: newPlanRaceDate || null,
           goalPace: newPlanGoalPace || null,
           injuryNotes: newPlanInjuryNotes || null,
           programTemplateId: (newPlanProgramId && newPlanProgramId !== "__expand__") ? newPlanProgramId : null,
+          billingMode: newPlanBillingMode,
+          sessionCount: (newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') ? parseInt(newPlanSessionCount) || 0 : 0,
+          sessionCost: (newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') ? newPlanSessionCost || "0" : "0",
+          programmingCost: (newPlanBillingMode === 'programming_only' || newPlanBillingMode === 'hybrid') ? newPlanProgrammingCost || "0" : "0",
         }),
       });
       if (res.ok) {
@@ -209,6 +221,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             raceDate: data.plan.race_date || '',
             goalPace: data.plan.goal_pace || '',
             injuryNotes: data.plan.injury_notes || '',
+            billingMode: data.plan.billing_mode || newPlanBillingMode,
           },
           ...prev,
         ]);
@@ -223,6 +236,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         setNewPlanInjuryNotes("");
         setNewPlanProgramId("");
         setNewPlanRaceDateSameAsEnd(true);
+        setNewPlanBillingMode('programming_only');
+        setNewPlanSessionCount("");
+        setNewPlanSessionCost("");
+        setNewPlanProgrammingCost("");
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Failed to create plan. Please try again.');
@@ -478,24 +495,66 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
               )}
             </div>
 
-            {/* Plan Cost (expandable) */}
+            {/* Billing Mode (replaces old Plan Cost) */}
             <div className="border border-white/5 rounded-lg mb-4 overflow-hidden">
-              <button type="button" onClick={() => setNewPlanOwed(newPlanOwed === "__expand__" ? "" : (newPlanOwed || "__expand__"))} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
-                <div className="flex items-center gap-2">
-                  <svg className={`w-3 h-3 text-gray-400 transition-transform ${newPlanOwed && newPlanOwed !== "__expand__" && newPlanOwed !== "0" ? "rotate-90" : (newPlanOwed === "__expand__" ? "rotate-90" : "")}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                  <span className="text-gray-300 text-sm font-medium">Set Plan Cost</span>
-                  {newPlanOwed && newPlanOwed !== "__expand__" && newPlanOwed !== "0" && <span className="text-accent text-xs">✓ ${newPlanOwed}</span>}
+              <div className="px-4 py-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <span className="text-gray-300 text-sm font-medium">Set Billing</span>
                 </div>
-                <span className="text-gray-500 text-xs">Optional</span>
-              </button>
-              {(newPlanOwed === "__expand__" || (newPlanOwed && newPlanOwed !== "__expand__" && newPlanOwed !== "0")) && (
-                <div className="px-4 pb-3 border-t border-white/5 pt-3">
-                  <div>
-                    <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
-                    <input type="number" value={newPlanOwed === "__expand__" ? "" : newPlanOwed} onChange={(e) => setNewPlanOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+                
+                {/* Billing Mode Selector */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <button type="button" onClick={() => setNewPlanBillingMode('programming_only')} className={`text-center py-2 px-3 rounded-lg border text-xs font-medium transition-colors ${newPlanBillingMode === 'programming_only' ? 'border-accent bg-accent/10 text-accent' : 'border-white/10 text-gray-400 hover:border-white/20'}`}>
+                    <span className="block text-sm mb-0.5">📋</span>
+                    Programming Only
+                  </button>
+                  <button type="button" onClick={() => setNewPlanBillingMode('per_session')} className={`text-center py-2 px-3 rounded-lg border text-xs font-medium transition-colors ${newPlanBillingMode === 'per_session' ? 'border-accent bg-accent/10 text-accent' : 'border-white/10 text-gray-400 hover:border-white/20'}`}>
+                    <span className="block text-sm mb-0.5">🏋️</span>
+                    Per Session
+                  </button>
+                  <button type="button" onClick={() => setNewPlanBillingMode('hybrid')} className={`text-center py-2 px-3 rounded-lg border text-xs font-medium transition-colors ${newPlanBillingMode === 'hybrid' ? 'border-accent bg-accent/10 text-accent' : 'border-white/10 text-gray-400 hover:border-white/20'}`}>
+                    <span className="block text-sm mb-0.5">📋+🏋️</span>
+                    Hybrid
+                  </button>
+                </div>
+
+                {/* Mode description */}
+                <p className="text-gray-500 text-xs mb-3">
+                  {newPlanBillingMode === 'programming_only' && "Client pays a flat fee for training programming (plans, workouts, adjustments)."}
+                  {newPlanBillingMode === 'per_session' && "Client buys session packages and pays per in-person session only."}
+                  {newPlanBillingMode === 'hybrid' && "Client pays for both programming AND in-person sessions separately."}
+                </p>
+
+                {/* Programming Cost — shown for programming_only and hybrid */}
+                {(newPlanBillingMode === 'programming_only' || newPlanBillingMode === 'hybrid') && (
+                  <div className="mb-3">
+                    <label className="text-gray-500 text-xs block mb-1">
+                      {newPlanBillingMode === 'hybrid' ? 'Programming Cost ($)' : 'Plan Cost ($)'}
+                      <span className="text-gray-600 ml-1">(optional)</span>
+                    </label>
+                    <input type="number" value={newPlanProgrammingCost} onChange={(e) => setNewPlanProgrammingCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Session Package — shown for per_session and hybrid */}
+                {(newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') && (
+                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-blue-400 text-xs font-medium mb-2">Initial Session Package</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-gray-500 text-xs block mb-1">Sessions</label>
+                        <input type="number" value={newPlanSessionCount} onChange={(e) => setNewPlanSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs block mb-1">Amount Paid ($)</label>
+                        <input type="number" value={newPlanSessionCost} onChange={(e) => setNewPlanSessionCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="500" />
+                      </div>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-2">You can add more session packages later as the client tops up.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Optional secondary fields */}
@@ -511,7 +570,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
             </div>
 
             <div className="flex gap-3">
-              <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
+              <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanStart || !newPlanEnd || ((newPlanBillingMode === 'per_session' || newPlanBillingMode === 'hybrid') && (!newPlanSessionCount || parseInt(newPlanSessionCount) <= 0))} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">
                 {creatingPlan ? "Creating..." : "Create Plan"}
               </button>
               <button onClick={() => setShowNewPlan(false)} className="text-gray-400 text-sm">Cancel</button>
@@ -971,6 +1030,133 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             </div>
           )}
         </div>
+      )}
+
+      {/* Add Session Package — for active plans with per_session or hybrid billing */}
+      {plan.status === "active" && (plan.billingMode === 'per_session' || plan.billingMode === 'hybrid') && (
+        <AddSessionPackage clientId={plan.clientId} planId={plan.id} />
+      )}
+    </div>
+  );
+}
+
+// Sub-component for adding session packages (top-ups)
+function AddSessionPackage({ clientId, planId }: { clientId: string; planId: string }) {
+  const [showForm, setShowForm] = useState(false);
+  const [sessionCount, setSessionCount] = useState("");
+  const [amountPaid, setAmountPaid] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [packages, setPackages] = useState<{ id: string; sessions_purchased: number; amount_paid: number; purchased_at: string; notes?: string }[]>([]);
+  const [loadingPackages, setLoadingPackages] = useState(true);
+  const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
+
+  // Fetch existing packages and balance
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const res = await fetch(`/api/session-packages?client_id=${clientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPackages(data.packages || []);
+          setSessionsRemaining(data.sessionsRemaining ?? null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch session packages:", err);
+      } finally {
+        setLoadingPackages(false);
+      }
+    };
+    fetchPackages();
+  }, [clientId]);
+
+  const handleAddPackage = async () => {
+    if (!sessionCount || parseInt(sessionCount) <= 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/session-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          sessionsPurchased: parseInt(sessionCount),
+          amountPaid: amountPaid || "0",
+          notes: notes || null,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPackages(prev => [data.package, ...prev]);
+        setSessionsRemaining(prev => (prev ?? 0) + parseInt(sessionCount));
+        setSessionCount("");
+        setAmountPaid("");
+        setNotes("");
+        setShowForm(false);
+      }
+    } catch (err) {
+      console.error("Failed to add session package:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 border-t border-white/5 pt-3">
+      {/* Session balance badge */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500 text-xs">Sessions Remaining:</span>
+          {loadingPackages ? (
+            <span className="text-gray-500 text-xs">...</span>
+          ) : (
+            <span className={`text-sm font-bold ${(sessionsRemaining ?? 0) <= 3 ? 'text-red-400' : 'text-green-400'}`}>
+              {sessionsRemaining ?? 0}
+            </span>
+          )}
+        </div>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)} className="text-blue-400 text-xs hover:underline">+ Add Package</button>
+        )}
+      </div>
+
+      {/* Add package form */}
+      {showForm && (
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-2">
+          <p className="text-blue-400 text-xs font-medium mb-2">Add Session Package</p>
+          <div className="grid grid-cols-2 gap-3 mb-2">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Sessions <span className="text-accent">*</span></label>
+              <input type="number" value={sessionCount} onChange={(e) => setSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Amount Paid ($)</label>
+              <input type="number" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="500" />
+            </div>
+          </div>
+          <div className="mb-2">
+            <label className="text-gray-500 text-xs block mb-1">Notes <span className="text-gray-600">(optional)</span></label>
+            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Monthly package renewal" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleAddPackage} disabled={!sessionCount || parseInt(sessionCount) <= 0 || saving} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded text-xs disabled:opacity-50">{saving ? "Adding..." : "Add Package"}</button>
+            <button onClick={() => { setShowForm(false); setSessionCount(""); setAmountPaid(""); setNotes(""); }} className="text-gray-400 text-xs">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Package history */}
+      {!loadingPackages && packages.length > 0 && (
+        <details className="mt-2">
+          <summary className="text-gray-500 text-xs cursor-pointer hover:text-white">Package history ({packages.length})</summary>
+          <div className="mt-2 space-y-1">
+            {packages.map((pkg) => (
+              <div key={pkg.id} className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">{new Date(pkg.purchased_at).toLocaleDateString()}{pkg.notes ? ` — ${pkg.notes}` : ''}</span>
+                <span className="text-blue-400 font-medium">{pkg.sessions_purchased} sessions {pkg.amount_paid > 0 ? `($${pkg.amount_paid})` : ''}</span>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

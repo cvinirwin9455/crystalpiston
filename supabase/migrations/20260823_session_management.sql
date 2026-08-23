@@ -9,6 +9,13 @@ ALTER TABLE public.clients
   CHECK (billing_mode IN ('programming_only', 'per_session', 'hybrid'));
 
 -- ============================================================
+-- 1b. Add billing_mode to plans table
+-- ============================================================
+ALTER TABLE public.plans
+  ADD COLUMN IF NOT EXISTS billing_mode TEXT NOT NULL DEFAULT 'programming_only'
+  CHECK (billing_mode IN ('programming_only', 'per_session', 'hybrid'));
+
+-- ============================================================
 -- 2. Session Packages table
 -- Tracks pre-paid session bundles per client
 -- ============================================================

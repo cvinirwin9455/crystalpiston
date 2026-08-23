@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const fullResult = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId } = body
+  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, billingMode, sessionCount, sessionCost, programmingCost } = body
 
   if (!clientId || !startDate || !endDate) {
     return NextResponse.json({ error: 'clientId, startDate, and endDate are required' }, { status: 400 })
@@ -81,6 +81,17 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
+  // Determine the plan cost (owed) based on billing mode
+  let planOwed = owed ? parseFloat(owed) : 0
+  if (billingMode === 'per_session') {
+    planOwed = 0 // per_session clients don't have a programming cost
+  } else if (billingMode === 'hybrid') {
+    planOwed = programmingCost ? parseFloat(programmingCost) : 0
+  } else if (billingMode === 'programming_only') {
+    planOwed = programmingCost ? parseFloat(programmingCost) : (owed ? parseFloat(owed) : 0)
+  }
+
+  // Try inserting with billing_mode column
   const { data: plan, error } = await adminClient
     .from('plans')
     .insert({
@@ -88,7 +99,7 @@ export async function POST(request: Request) {
       start_date: startDate,
       end_date: endDate,
       goal: goal || null,
-      owed: owed ? parseFloat(owed) : 0,
+      owed: planOwed,
       paid: 0,
       status: 'active',
       target_distance: targetDistance || null,
@@ -96,11 +107,12 @@ export async function POST(request: Request) {
       goal_pace: goalPace || null,
       injury_notes: injuryNotes || null,
       program_template_id: programTemplateId || null,
+      billing_mode: billingMode || 'programming_only',
     })
     .select()
     .single()
 
-  // If insert failed (columns may not exist), retry with base columns only
+  // If insert failed (billing_mode column may not exist yet), retry without it
   if (error) {
     const fallback = await adminClient
       .from('plans')
@@ -109,20 +121,92 @@ export async function POST(request: Request) {
         start_date: startDate,
         end_date: endDate,
         goal: goal || null,
-        owed: owed ? parseFloat(owed) : 0,
+        owed: planOwed,
         paid: 0,
         status: 'active',
+        target_distance: targetDistance || null,
+        race_date: raceDate || null,
+        goal_pace: goalPace || null,
+        injury_notes: injuryNotes || null,
+        program_template_id: programTemplateId || null,
       })
       .select()
       .single()
 
     if (fallback.error) {
-      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+      // Last resort: base columns only
+      const baseFallback = await adminClient
+        .from('plans')
+        .insert({
+          client_id: clientId,
+          start_date: startDate,
+          end_date: endDate,
+          goal: goal || null,
+          owed: planOwed,
+          paid: 0,
+          status: 'active',
+        })
+        .select()
+        .single()
+
+      if (baseFallback.error) {
+        return NextResponse.json({ error: baseFallback.error.message }, { status: 500 })
+      }
+      return NextResponse.json({ success: true, plan: baseFallback.data })
     }
-    return NextResponse.json({ success: true, plan: fallback.data })
+
+    // Plan created without billing_mode column — still create session package if needed
+    const createdPlan = fallback.data
+    await createSessionPackageIfNeeded(adminClient, user.id, clientId, billingMode, sessionCount, sessionCost)
+    await updateClientBillingMode(adminClient, clientId, billingMode)
+    return NextResponse.json({ success: true, plan: createdPlan })
   }
 
+  // Plan created successfully with billing_mode — create session package if needed
+  await createSessionPackageIfNeeded(adminClient, user.id, clientId, billingMode, sessionCount, sessionCost)
+  await updateClientBillingMode(adminClient, clientId, billingMode)
+
   return NextResponse.json({ success: true, plan })
+}
+
+// Helper: create initial session package when billing mode includes sessions
+async function createSessionPackageIfNeeded(adminClient: any, coachId: string, clientId: string, billingMode: string, sessionCount: number, sessionCost: string) {
+  if ((billingMode === 'per_session' || billingMode === 'hybrid') && sessionCount > 0) {
+    // Get the client's organization_id
+    const { data: client } = await adminClient
+      .from('clients')
+      .select('organization_id')
+      .eq('id', clientId)
+      .single()
+
+    const orgId = client?.organization_id || coachId // fallback to coach id if no org
+
+    await adminClient
+      .from('session_packages')
+      .insert({
+        client_id: clientId,
+        organization_id: orgId,
+        coach_id: coachId,
+        sessions_purchased: sessionCount,
+        amount_paid: sessionCost ? parseFloat(sessionCost) : 0,
+        notes: 'Initial package from plan creation',
+      })
+  }
+}
+
+// Helper: update client's billing_mode field
+async function updateClientBillingMode(adminClient: any, clientId: string, billingMode: string) {
+  if (billingMode && billingMode !== 'programming_only') {
+    // Only update if it's not the default, to avoid errors if column doesn't exist
+    try {
+      await adminClient
+        .from('clients')
+        .update({ billing_mode: billingMode })
+        .eq('id', clientId)
+    } catch {
+      // Silently ignore — column may not exist yet
+    }
+  }
 }
 
 // PATCH /api/plans - Update a plan (payment, status, dates)
