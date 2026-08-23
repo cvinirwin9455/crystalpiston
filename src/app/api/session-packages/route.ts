@@ -37,18 +37,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ packages: [], sessionsRemaining: 0 })
   }
 
-  // Calculate sessions remaining from the view, or manually
+  // Calculate sessions remaining
   let sessionsRemaining = 0
-  try {
-    const { data: balance } = await adminClient
-      .from('client_session_balances')
-      .select('sessions_remaining')
-      .eq('client_id', clientId)
-      .single()
-    sessionsRemaining = balance?.sessions_remaining ?? 0
-  } catch {
-    // View may not exist — calculate manually
-    const totalPurchased = (packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
+  const totalPurchased = (packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
+
+  // Try the view first
+  const { data: balance, error: balanceError } = await adminClient
+    .from('client_session_balances')
+    .select('sessions_remaining')
+    .eq('client_id', clientId)
+    .single()
+
+  if (!balanceError && balance) {
+    sessionsRemaining = balance.sessions_remaining ?? 0
+  } else {
+    // View doesn't exist or no row — calculate manually
     const { count: usedCount } = await adminClient
       .from('sessions')
       .select('id', { count: 'exact', head: true })

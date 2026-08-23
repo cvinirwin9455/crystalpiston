@@ -29,6 +29,7 @@ export async function GET(request: Request) {
   let plans: any[] | null = null
   let error: any = null
 
+  // Try full query with billing_mode
   const fullResult = await adminClient
     .from('plans')
     .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, created_at')
@@ -36,14 +37,26 @@ export async function GET(request: Request) {
     .order('start_date', { ascending: false })
 
   if (fullResult.error) {
-    // Columns may not exist yet — fall back to base columns
-    const fallbackResult = await adminClient
+    // billing_mode column may not exist — try without it
+    const midResult = await adminClient
       .from('plans')
-      .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, created_at')
+      .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, created_at')
       .eq('client_id', clientId)
       .order('start_date', { ascending: false })
-    plans = fallbackResult.data
-    error = fallbackResult.error
+
+    if (midResult.error) {
+      // Fall back to base columns only
+      const fallbackResult = await adminClient
+        .from('plans')
+        .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, created_at')
+        .eq('client_id', clientId)
+        .order('start_date', { ascending: false })
+      plans = fallbackResult.data
+      error = fallbackResult.error
+    } else {
+      plans = midResult.data
+      error = midResult.error
+    }
   } else {
     plans = fullResult.data
     error = fullResult.error
