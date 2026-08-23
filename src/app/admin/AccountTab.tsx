@@ -1020,44 +1020,59 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         </div>
       )}
 
-      {/* Financial summary — different display based on billing mode */}
-      {(!plan.billingMode || plan.billingMode === 'programming_only') && plan.owed > 0 && (
+      {/* Billing mode tag + Financial summary */}
+      {/* Programming Only (or legacy plans without billingMode) */}
+      {(!plan.billingMode || plan.billingMode === 'programming_only') && (
         <>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-gray-500 text-xs">Plan Cost</p>
-              <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-500/20 rounded-full px-2 py-0.5 text-xs text-purple-400">📋 Programming</span>
+          </div>
+          {plan.owed > 0 && (
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-gray-500 text-xs">Plan Cost</p>
+                <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Total Paid</p>
+                <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Balance</p>
+                <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                  {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs">Total Paid</p>
-              <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">Balance</p>
-              <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-                {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
-              </p>
-            </div>
+          )}
+        </>
+      )}
+      {/* Per Session */}
+      {plan.billingMode === 'per_session' && (
+        <>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-0.5 text-xs text-blue-400">🏋️ Per Session</span>
+          </div>
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+            {sessionBalance ? (
+              <div className="flex items-center justify-between">
+                <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total} sessions used</span>
+                <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
+                  {sessionBalance.total - sessionBalance.used} remaining
+                </span>
+              </div>
+            ) : (
+              <p className="text-gray-400 text-xs">Loading session data...</p>
+            )}
           </div>
         </>
       )}
-      {plan.billingMode === 'per_session' && (
-        <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-          <p className="text-blue-400 text-xs font-medium mb-1">🏋️ Per Session</p>
-          {sessionBalance ? (
-            <div className="flex items-center justify-between">
-              <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total} sessions used</span>
-              <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
-                {sessionBalance.total - sessionBalance.used} remaining
-              </span>
-            </div>
-          ) : (
-            <p className="text-gray-400 text-xs">Loading session data...</p>
-          )}
-        </div>
-      )}
+      {/* Hybrid */}
       {plan.billingMode === 'hybrid' && (
-        <div className="space-y-2">
+        <>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1 bg-accent/10 border border-accent/20 rounded-full px-2 py-0.5 text-xs text-accent">📋+🏋️ Hybrid</span>
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             {/* Programming part */}
             <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
@@ -1084,7 +1099,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
       {/* Target Distance & Race Date — only show if values are set */}
       {plan.status === "active" && (
@@ -1175,16 +1190,16 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         </div>
       )}
 
-      {/* Add Session Package — for active plans with per_session or hybrid billing */}
-      {plan.status === "active" && (plan.billingMode === 'per_session' || plan.billingMode === 'hybrid') && (
-        <AddSessionPackage clientId={plan.clientId} planId={plan.id} />
+      {/* Add Session Package — for plans with per_session or hybrid billing */}
+      {(plan.billingMode === 'per_session' || plan.billingMode === 'hybrid') && (
+        <AddSessionPackage clientId={plan.clientId} planId={plan.id} readOnly={plan.status !== 'active'} />
       )}
     </div>
   );
 }
 
 // Sub-component for adding session packages (top-ups)
-function AddSessionPackage({ clientId, planId }: { clientId: string; planId: string }) {
+function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; planId: string; readOnly?: boolean }) {
   const [showForm, setShowForm] = useState(false);
   const [sessionCount, setSessionCount] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
@@ -1257,13 +1272,13 @@ function AddSessionPackage({ clientId, planId }: { clientId: string; planId: str
             </span>
           )}
         </div>
-        {!showForm && (
+        {!readOnly && !showForm && (
           <button onClick={() => setShowForm(true)} className="text-blue-400 text-xs hover:underline">+ Add Package</button>
         )}
       </div>
 
       {/* Add package form */}
-      {showForm && (
+      {!readOnly && showForm && (
         <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-2">
           <p className="text-blue-400 text-xs font-medium mb-2">Add Session Package</p>
           <div className="grid grid-cols-2 gap-3 mb-2">
