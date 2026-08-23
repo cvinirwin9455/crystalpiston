@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const fullResult = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
@@ -73,13 +73,21 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId } = body
+  const { clientId, startDate, endDate, owed, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, billingMode, sessionCount, sessionCost, programmingCost } = body
 
   if (!clientId || !startDate || !endDate) {
     return NextResponse.json({ error: 'clientId, startDate, and endDate are required' }, { status: 400 })
   }
 
   const adminClient = await getAdminClient()
+
+  // Determine the organization_id for this coach (needed for session packages)
+  const { data: coachProfile } = await adminClient
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  const orgId = coachProfile?.organization_id
 
   const { data: plan, error } = await adminClient
     .from('plans')
@@ -96,6 +104,7 @@ export async function POST(request: Request) {
       goal_pace: goalPace || null,
       injury_notes: injuryNotes || null,
       program_template_id: programTemplateId || null,
+      billing_mode: billingMode || 'time_period',
     })
     .select()
     .single()
@@ -120,6 +129,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: fallback.error.message }, { status: 500 })
     }
     return NextResponse.json({ success: true, plan: fallback.data })
+  }
+
+  // If billing mode includes sessions, auto-create a session package
+  if ((billingMode === 'per_session' || billingMode === 'hybrid') && sessionCount && parseInt(sessionCount) > 0) {
+    try {
+      await adminClient
+        .from('session_packages')
+        .insert({
+          client_id: clientId,
+          organization_id: orgId,
+          coach_id: user.id,
+          sessions_purchased: parseInt(sessionCount),
+          amount_paid: parseFloat(sessionCost) || 0,
+          notes: `Auto-created with plan: ${goal || 'New plan'}`,
+        })
+    } catch (err) {
+      console.error('Failed to auto-create session package:', err)
+    }
+  }
+
+  // Update the client's billing_mode
+  if (billingMode) {
+    try {
+      await adminClient
+        .from('clients')
+        .update({ billing_mode: billingMode })
+        .eq('id', clientId)
+    } catch (err) {
+      console.error('Failed to update client billing_mode:', err)
+    }
   }
 
   return NextResponse.json({ success: true, plan })

@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
   const { data: clientRecords } = await adminClient
     .from('clients')
-    .select('id, user_id, goal, start_date, plan_end, owed, paid')
+    .select('id, user_id, goal, start_date, plan_end, owed, paid, billing_mode')
 
   // Try to fetch training profile fields (columns may not exist yet)
   let trainingProfiles: any[] = []
@@ -245,6 +245,7 @@ export async function GET(request: Request) {
       createdAt: u.created_at,
       birthday: trainingProfileMap.get(clientRecord?.id)?.birthday || null,
       cycleTrackingConsented: trainingProfileMap.get(clientRecord?.id)?.cycle_tracking_consented ?? null,
+      billingMode: clientRecord?.billing_mode || 'programming_only',
       coaches,
     })
   }

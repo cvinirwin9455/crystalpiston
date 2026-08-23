@@ -54,19 +54,11 @@ export default function SessionsTab({ clientId, clientName, onBack }: Props) {
   const [createNotes, setCreateNotes] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Add package form
-  const [showPackageForm, setShowPackageForm] = useState(false);
-  const [pkgSessions, setPkgSessions] = useState("");
-  const [pkgAmount, setPkgAmount] = useState("");
-  const [pkgNotes, setPkgNotes] = useState("");
-  const [addingPackage, setAddingPackage] = useState(false);
-
   // Status update
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Show/hide history
   const [showHistory, setShowHistory] = useState(false);
-  const [showPackages, setShowPackages] = useState(false);
 
   // Fetch sessions and packages
   const fetchData = async () => {
@@ -138,42 +130,6 @@ export default function SessionsTab({ clientId, clientName, onBack }: Props) {
       setError("Failed to create session");
     } finally {
       setCreating(false);
-    }
-  };
-
-  // Add a package
-  const handleAddPackage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pkgSessions || parseInt(pkgSessions) < 1) return;
-    setAddingPackage(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/session-packages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: clientId,
-          sessions_purchased: parseInt(pkgSessions),
-          amount_paid: parseFloat(pkgAmount) || 0,
-          notes: pkgNotes || null,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to add package");
-      } else {
-        setShowPackageForm(false);
-        setPkgSessions("");
-        setPkgAmount("");
-        setPkgNotes("");
-        await fetchData();
-      }
-    } catch {
-      setError("Failed to add package");
-    } finally {
-      setAddingPackage(false);
     }
   };
 
@@ -269,15 +225,7 @@ export default function SessionsTab({ clientId, clientName, onBack }: Props) {
 
       {/* ====== BALANCE CARD ====== */}
       <div className="bg-secondary/50 border border-white/10 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-heading text-sm uppercase text-gray-400">Session Balance</h3>
-          <button
-            onClick={() => setShowPackageForm(!showPackageForm)}
-            className="bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 text-xs px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {showPackageForm ? "Cancel" : "+ Add Package"}
-          </button>
-        </div>
+        <h3 className="font-heading text-sm uppercase text-gray-400 mb-4">Session Balance</h3>
 
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
@@ -300,79 +248,23 @@ export default function SessionsTab({ clientId, clientName, onBack }: Props) {
           </p>
         )}
 
-        {/* Add Package Form */}
-        {showPackageForm && (
-          <form onSubmit={handleAddPackage} className="mt-4 pt-4 border-t border-white/10 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">Sessions <span className="text-accent">*</span></label>
-                <input
-                  type="number"
-                  min="1"
-                  value={pkgSessions}
-                  onChange={(e) => setPkgSessions(e.target.value)}
-                  className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  placeholder="10"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">Amount Paid ($)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={pkgAmount}
-                  onChange={(e) => setPkgAmount(e.target.value)}
-                  className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  placeholder="500.00"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs block mb-1">Notes</label>
-              <input
-                type="text"
-                value={pkgNotes}
-                onChange={(e) => setPkgNotes(e.target.value)}
-                className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                placeholder="e.g., Monthly package - August"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={addingPackage || !pkgSessions}
-              className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50 transition-colors"
-            >
-              {addingPackage ? "Adding..." : "Add Package"}
-            </button>
-          </form>
-        )}
-
-        {/* Package History Toggle */}
+        {/* Package History (read-only) */}
         {packages.length > 0 && (
           <div className="mt-4 pt-3 border-t border-white/5">
-            <button
-              onClick={() => setShowPackages(!showPackages)}
-              className="text-gray-500 text-xs hover:text-gray-300 transition-colors flex items-center gap-1"
-            >
-              <svg className={`w-3 h-3 transition-transform ${showPackages ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              Package History ({packages.length})
-            </button>
-            {showPackages && (
-              <div className="mt-2 space-y-1.5">
-                {packages.map((pkg) => (
-                  <div key={pkg.id} className="flex items-center justify-between bg-primary/30 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-white text-sm font-medium">{pkg.sessions_purchased} sessions</span>
-                      {pkg.amount_paid > 0 && <span className="text-green-400 text-xs">${pkg.amount_paid.toFixed(2)}</span>}
-                      {pkg.notes && <span className="text-gray-500 text-xs">— {pkg.notes}</span>}
-                    </div>
-                    <span className="text-gray-500 text-xs">{formatDate(pkg.purchased_at)}</span>
+            <p className="text-gray-500 text-xs mb-2">Package History ({packages.length})</p>
+            <div className="space-y-1.5">
+              {packages.map((pkg) => (
+                <div key={pkg.id} className="flex items-center justify-between bg-primary/30 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-white text-sm font-medium">{pkg.sessions_purchased} sessions</span>
+                    {pkg.amount_paid > 0 && <span className="text-green-400 text-xs">${pkg.amount_paid.toFixed(2)}</span>}
+                    {pkg.notes && <span className="text-gray-500 text-xs">— {pkg.notes}</span>}
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className="text-gray-500 text-xs">{formatDate(pkg.purchased_at)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-gray-600 text-xs mt-2">To add more sessions, go to Account → plan → Add Session Package</p>
           </div>
         )}
       </div>
