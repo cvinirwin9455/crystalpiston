@@ -12,7 +12,9 @@ export async function middleware(request: NextRequest) {
 
   // If on Crystal Pistol domain and accessing platform routes (login, admin, dashboard, etc.),
   // redirect to First Mile Coach. Marketing pages (/, #about, etc.) stay on Crystal Pistol domain.
-  if (host.includes('crystalpistol') || host.includes('crystalpiston.vercel.app')) {
+  // Skip this redirect for Vercel preview deployments (they contain the branch name in the URL)
+  const isPreviewDeploy = host.includes('-git-') || host.includes('-cvinirwin') || host.includes('-curtis-irwin')
+  if (!isPreviewDeploy && (host.includes('crystalpistol') || host.includes('crystalpiston.vercel.app'))) {
     const platformRoutes = ['/login', '/admin', '/dashboard', '/set-password', '/reset-password', '/forgot-password', '/auth']
     const isPlatformRoute = platformRoutes.some(route => pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?'))
     if (isPlatformRoute) {
