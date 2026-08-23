@@ -2365,7 +2365,7 @@ export default function AdminPage() {
       };
       unitEdits[w.id] = w.distanceUnit || 'mi';
       // Extract cross-training structure from the workout's structure field
-      if (w.type === 'cross' && (w as any).structure?.exercises) {
+      if ((w.type === 'cross' || w.type === 'strength' || w.type === 'hiit' || w.type === 'stretching') && (w as any).structure?.exercises) {
         crossStructEdits[w.id] = (w as any).structure;
       }
       // Extract run structure from the workout's structure field
@@ -2428,7 +2428,7 @@ export default function AdminPage() {
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
             distanceUnit: editDistanceUnits[w.id] || 'mi',
-            structure: edited.type === 'cross' && crossStruct ? crossStruct : edited.type === 'run' && runStruct ? runStruct : undefined,
+            structure: (edited.type === 'cross' || edited.type === 'strength' || edited.type === 'hiit' || edited.type === 'stretching') && crossStruct ? crossStruct : edited.type === 'run' && runStruct ? runStruct : undefined,
           }),
         });
       });
