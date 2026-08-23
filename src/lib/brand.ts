@@ -63,12 +63,13 @@ const BRANDS: Record<string, BrandConfig> = {
 export function getBrandFromHost(host: string): BrandConfig {
   const hostname = host.split(':')[0].toLowerCase()
 
-  if (hostname.includes('firstmilecoach')) {
-    return BRANDS['first-mile']
+  // Crystal Pistol only on its specific domain
+  if (hostname.includes('crystalpistolperformance')) {
+    return BRANDS['crystal-pistol']
   }
 
-  // Default to Crystal Pistol (covers crystalpistolperformance.com, localhost, preview URLs)
-  return BRANDS['crystal-pistol']
+  // Default to First Mile Coach (covers firstmilecoach.com, preview URLs, localhost, etc.)
+  return BRANDS['first-mile']
 }
 
 /**
