@@ -3,9 +3,17 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-20T20:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-23T15:00:00Z";
 
 const updates = [
+  {
+    date: "August 23, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Coach Guide was showing a blank page on mobile in portrait mode. It now displays properly without needing to rotate your phone" },
+      { area: "Admin", text: "NEW: Dashboard button on mobile — you can now tap 'Dashboard' from the client list screen to see your stats, drafts to publish, and payment overview without switching to landscape. Tap 'Back to Clients' to return" },
+      { area: "Admin", text: "Fixed: Scrolling issue on mobile — when viewing a client's Training & Logs, Create Week, or other tabs, scrolling back up was triggering a page refresh instead of scrolling. This is now fixed so you can scroll freely in both directions" },
+    ],
+  },
   {
     date: "August 20, 2026",
     items: [
