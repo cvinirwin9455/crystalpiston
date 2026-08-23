@@ -11,6 +11,7 @@ const updates = [
     items: [
       { area: "Client", text: "Fixed: Run distance (miles/km) was sometimes not showing on training cards — the programmed distance now displays reliably on the card, collapsed day summary, and weekly total" },
       { area: "Admin", text: "Fixed: Same distance display fix on the admin Training & Logs view — workout miles now show correctly in all views including drafts and collapsed day headers" },
+      { area: "Admin", text: "Fixed: Editing Strength, HIIT, or Stretching workouts in Training & Logs now saves properly — exercise details, demo video links, and structure changes were not being saved when you clicked 'Save Changes'. This also means demo videos you add to exercises now persist and show on the client side" },
       { area: "Admin", text: "Improved: Day totals now properly convert mixed units — if you program some runs in km and some in miles for the same client, the collapsed day summary correctly converts everything to the client's preferred unit" },
       { area: "Admin", text: "Improved: Runs with time-based structures (e.g. '30 min easy') can now be saved without a distance value. The card will show the time structure clearly without a misleading '0 mi' display" },
       { area: "Admin", text: "Fixed: Coach Guide was showing a blank page on mobile in portrait mode. It now displays properly without needing to rotate your phone" },
