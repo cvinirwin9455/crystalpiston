@@ -866,21 +866,36 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         <div className="bg-secondary/50 border border-accent/20 rounded-lg p-4 mb-3">
           <p className="text-accent text-xs font-heading uppercase mb-3">Edit Plan</p>
 
-          {/* Required Fields */}
-          <div className="grid md:grid-cols-3 gap-3 mb-4">
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Goal <span className="text-accent">*</span></label>
-              <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Marathon training" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
-              <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
-              <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
-            </div>
+          {/* Goal — always shown */}
+          <div className="mb-4">
+            <label className="text-gray-500 text-xs block mb-1">Goal <span className="text-accent">*</span></label>
+            <input type="text" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Marathon prep, Strength building, Rehab" />
           </div>
+
+          {/* Dates + Cost — only for programming_only and hybrid */}
+          {(!plan.billingMode || plan.billingMode === 'programming_only' || plan.billingMode === 'hybrid') && (
+            <div className="grid md:grid-cols-3 gap-3 mb-4">
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Start Date <span className="text-accent">*</span></label>
+                <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">End Date <span className="text-accent">*</span></label>
+                <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">{plan.billingMode === 'hybrid' ? 'Programming Cost ($)' : 'Plan Cost ($)'} <span className="text-gray-600">(optional)</span></label>
+                <input type="number" value={editOwed === "__expand__" ? "" : editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
+              </div>
+            </div>
+          )}
+
+          {/* Billing mode indicator for per_session */}
+          {plan.billingMode === 'per_session' && (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
+              <p className="text-blue-400 text-xs font-medium">🏋️ Per Session billing — manage session packages from the plan card below.</p>
+            </div>
+          )}
 
           {/* Training Program (expandable) */}
           {programTemplates && programTemplates.length > 0 && (
@@ -923,26 +938,6 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
               )}
             </div>
           )}
-
-          {/* Plan Cost (expandable) */}
-          <div className="border border-white/5 rounded-lg mb-4 overflow-hidden">
-            <button type="button" onClick={() => { if (editOwed === "0" || !editOwed) setEditOwed("__expand__"); else if (editOwed === "__expand__") setEditOwed("0"); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
-              <div className="flex items-center gap-2">
-                <svg className={`w-3 h-3 text-gray-400 transition-transform ${editOwed && editOwed !== "0" ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                <span className="text-gray-300 text-sm font-medium">Plan Cost</span>
-                {editOwed && editOwed !== "__expand__" && editOwed !== "0" && <span className="text-accent text-xs">✓ ${editOwed}</span>}
-              </div>
-              <span className="text-gray-500 text-xs">Optional</span>
-            </button>
-            {editOwed && editOwed !== "0" && (
-              <div className="px-4 pb-3 border-t border-white/5 pt-3">
-                <div>
-                  <label className="text-gray-500 text-xs block mb-1">Plan Cost ($)</label>
-                  <input type="number" value={editOwed === "__expand__" ? "" : editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Optional secondary fields */}
           <div className="grid md:grid-cols-2 gap-3 mb-4">
@@ -1004,7 +999,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       )}
 
       {/* Financial summary — different display based on billing mode */}
-      {(!plan.billingMode || plan.billingMode === 'programming_only') && (
+      {(!plan.billingMode || plan.billingMode === 'programming_only') && plan.owed > 0 && (
         <>
           <div className="grid md:grid-cols-3 gap-4">
             <div>
@@ -1029,34 +1024,29 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           <span className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1.5">
             <span className="text-blue-400 text-xs font-medium">🏋️ Per Session</span>
           </span>
-          <span className="text-gray-500 text-xs">Session billing — see package details below</span>
+          <span className="text-gray-500 text-xs">Session billing — see packages below</span>
         </div>
       )}
       {plan.billingMode === 'hybrid' && (
-        <>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-gray-500 text-xs">Programming Cost</p>
-              <p className="text-white font-medium">${plan.owed.toFixed(2)}</p>
+        <div className="space-y-2">
+          <div className="grid md:grid-cols-2 gap-3">
+            {/* Programming part */}
+            <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+              <p className="text-purple-400 text-xs font-medium mb-1">📋 Programming</p>
+              <div className="flex items-center justify-between">
+                <span className="text-white text-sm font-bold">${plan.owed.toFixed(2)}</span>
+                <span className={`text-xs font-medium ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                  {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid ✓"}
+                </span>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs">Programming Paid</p>
-              <p className="text-white font-medium">${plan.paid.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">Programming Balance</p>
-              <p className={`font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-                {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
-              </p>
+            {/* Sessions part — balance shown via AddSessionPackage below */}
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+              <p className="text-blue-400 text-xs font-medium mb-1">🏋️ In-Person Sessions</p>
+              <p className="text-gray-400 text-xs">See session packages below</p>
             </div>
           </div>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-0.5">
-              <span className="text-blue-400 text-xs">+ In-Person Sessions</span>
-            </span>
-            <span className="text-gray-500 text-xs">See session packages below</span>
-          </div>
-        </>
+        </div>
       )}
       {/* Target Distance & Race Date — only show if values are set */}
       {plan.status === "active" && (
@@ -1077,8 +1067,8 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           {plan.injuryNotes && <div className="col-span-2"><p className="text-gray-500 text-xs">Injuries / Notes</p><p className="text-white text-sm">{plan.injuryNotes}</p></div>}
         </div>
       )}
-      {/* Progress bar — only for plans with programming cost */}
-      {(!plan.billingMode || plan.billingMode === 'programming_only' || (plan.billingMode === 'hybrid' && plan.owed > 0)) && (
+      {/* Progress bar — only for plans with a cost set */}
+      {plan.owed > 0 && (!plan.billingMode || plan.billingMode === 'programming_only' || plan.billingMode === 'hybrid') && (
         <div className="w-full bg-primary/50 rounded-full h-1.5 mt-3">
           <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${plan.owed > 0 ? Math.min(100, (plan.paid / plan.owed) * 100) : 100}%` }} />
         </div>
