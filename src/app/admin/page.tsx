@@ -77,6 +77,7 @@ export default function AdminPage() {
   const [showGuide, setShowGuide] = useState(false);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
+  const [showMobileDashboard, setShowMobileDashboard] = useState(false);
 
   // AI Coach Assistant state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -1590,6 +1591,7 @@ export default function AdminPage() {
     setShowChangelog(false);
     setShowExerciseLibrary(false);
     setShowGuide(false);
+    setShowMobileDashboard(false);
     setAdminStatsFilter("currentWeek");
     // Mark workout comments as viewed for this client (clears purple dot)
     if (clientsWithComments.has(clientId)) {
@@ -2666,7 +2668,7 @@ export default function AdminPage() {
         </div>
       )}
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary || showGuide ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20 ${isSuperAdminViewing ? "md:pt-10" : ""}`}>
+      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary || showGuide || showMobileDashboard ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20 ${isSuperAdminViewing ? "md:pt-10" : ""}`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3 relative">
             {/* Mobile: coach photo */}
@@ -2810,6 +2812,11 @@ export default function AdminPage() {
             ))}
           </div>
           <button onClick={() => setShowCreateClient(!showCreateClient)} className="w-full bg-accent hover:bg-orange-700 text-white text-xs font-bold py-2 rounded-lg transition-colors">+ New Client</button>
+          {/* Mobile Dashboard button */}
+          <button onClick={() => setShowMobileDashboard(true)} className="w-full mt-2 bg-secondary border border-white/10 hover:border-accent/30 text-gray-300 hover:text-white text-xs font-bold py-2 rounded-lg transition-colors md:hidden flex items-center justify-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+            Dashboard
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {/* Primary clients (this coach is the default) */}
@@ -2985,7 +2992,7 @@ export default function AdminPage() {
       </button>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto pb-20'}`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto pb-20'}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -2994,8 +3001,8 @@ export default function AdminPage() {
           </button>
         )}
         {/* Mobile back button for settings views */}
-        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches) && (
-          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); }} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
+        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showMobileDashboard) && (
+          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowMobileDashboard(false); }} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors md:hidden">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             <span className="text-sm">Back to Clients</span>
           </button>
@@ -3164,7 +3171,7 @@ export default function AdminPage() {
             {/* END STICKY HEADER */}
 
             {/* SCROLLABLE CONTENT */}
-            <div ref={mainContentRef} className={`flex-1 overflow-y-auto p-6 ${clientTab === 'messages' ? 'pb-6 flex flex-col' : 'pb-20 space-y-6'}`}>
+            <div ref={mainContentRef} className={`flex-1 overflow-y-auto p-6 overscroll-y-contain ${clientTab === 'messages' ? 'pb-6 flex flex-col' : 'pb-20 space-y-6'}`}>
 
             {/* Stats Card (hidden on Messages/Account tabs) */}
             {clientTab !== "messages" && clientTab !== "account" && (

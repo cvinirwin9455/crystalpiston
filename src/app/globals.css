@@ -47,6 +47,7 @@
 
   body {
     @apply bg-primary text-white;
+    overscroll-behavior-y: contain;
   }
 }
 
@@ -59,6 +60,11 @@
   }
   .btn-secondary {
     @apply inline-block border-2 border-gold text-gold hover:bg-gold hover:text-primary font-bold py-3 px-8 rounded-full transition-all duration-300;
+  }
+  /* Prevent pull-to-refresh from interfering with scroll on PWA/mobile */
+  .overscroll-contain {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
