@@ -12,6 +12,7 @@ const updates = [
       { area: "Admin", text: "Fixed: Coach Guide was showing a blank page on mobile in portrait mode. It now displays properly without needing to rotate your phone" },
       { area: "Admin", text: "NEW: Dashboard button on mobile — you can now tap 'Dashboard' from the client list screen to see your stats, drafts to publish, and payment overview without switching to landscape. Tap 'Back to Clients' to return" },
       { area: "Admin", text: "Fixed: Scrolling issue on mobile — when viewing a client's Training & Logs, Create Week, or other tabs, scrolling back up was triggering a page refresh instead of scrolling. This is now fixed so you can scroll freely in both directions" },
+      { area: "Admin", text: "Behind the scenes: Session Management foundation is now in place — database tables and API routes for tracking in-person sessions, session packages, and recurring schedules. The coach-facing UI is coming next!" },
     ],
   },
   {
