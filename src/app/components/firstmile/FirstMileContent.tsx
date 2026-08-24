@@ -3,9 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import BetaSignupForm from './BetaSignupForm'
-import RegionToggle from './RegionToggle'
 import FirstMileAnimations from './FirstMileAnimations'
-import Price, { PricePerMonth, PriceRange } from './Price'
 import './firstmile.css'
 
 export default function FirstMileContent() {
@@ -17,11 +15,9 @@ export default function FirstMileContent() {
       <div className="fmc-beta-banner">
         <div className="fmc-beta-banner-content">
           <span className="fmc-beta-banner-badge">BETA</span>
-          <span className="fmc-beta-banner-text">Now accepting the first 50 coaches — free until June 30, 2027</span>
+          <span className="fmc-beta-banner-text">Now accepting beta coaches — completely free</span>
           <Link href="/faq" className="fmc-features-nav-link">FAQ</Link>
-          <a href="#beta" className="fmc-beta-banner-link">Apply Now &rarr;</a>
-          <div className="fmc-banner-divider" />
-          <RegionToggle />
+          <a href="#beta" className="fmc-beta-banner-link">Sign Up for Beta &rarr;</a>
           <div className="fmc-banner-divider" />
           <a href="/login?role=coach" className="fmc-banner-login">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -57,7 +53,7 @@ export default function FirstMileContent() {
           />
           <h1>Your first clients<br />shouldn&apos;t cost a fortune<br />to manage.</h1>
           <p className="fmc-hero-subhead">
-            The simplest platform for new running coaches and personal trainers to manage clients — for just <strong><PricePerMonth amount={1} /> per 10 active clients</strong>. No complex features you don&apos;t need. No lock-in. Just the tools to get you started.
+            A simple, free platform for new coaches and personal trainers who are just getting started — or coaching on the side. No complex features you don&apos;t need. No lock-in. Just the tools to get you going.
           </p>
         </div>
         <div className="fmc-scroll-indicator">
@@ -70,18 +66,18 @@ export default function FirstMileContent() {
         <div className="fmc-container">
           <h2 className="fmc-fade-in">Starting out as a coach is expensive enough.</h2>
           <p className="fmc-fork-sub fmc-fade-in">
-            Other platforms charge <PriceRange low={50} high={200} suffix="/month" /> before you&apos;ve even landed your first client. You shouldn&apos;t have to choose between professional tools and paying your bills. We built First Mile Coach so you can have both from day one.
+            Platforms like TrueCoach, TrainHeroic, and My PT Hub are great — but they charge $50–$200+/month. That&apos;s a lot when you&apos;ve only got a handful of clients and you&apos;re doing this on top of a full-time job. You shouldn&apos;t have to choose between professional tools and paying your bills.
           </p>
           <div className="fmc-fork-grid fmc-fade-in">
             <div className="fmc-fork-card fmc-fork-guide">
               <span className="fmc-fork-emoji">🏃</span>
               <h3>Running Coaches</h3>
-              <p>You&apos;ve got your qualification or you&apos;re coaching friends and local club runners. You need a simple way to send plans, track progress, and communicate — without the overhead.</p>
+              <p>You&apos;ve got your qualification or you&apos;re coaching friends and local club runners. You need a simple way to send plans, track progress, and communicate — without the overhead of platforms built for full-time operations.</p>
             </div>
             <div className="fmc-fork-card fmc-fork-runner">
               <span className="fmc-fork-emoji">💪</span>
               <h3>Personal Trainers</h3>
-              <p>You&apos;re starting out, maybe working from a park or a small gym. You need client management that doesn&apos;t eat into the little revenue you&apos;re building.</p>
+              <p>You&apos;re starting out, maybe working from a park or a small gym. You&apos;ve got a few clients and you&apos;re not ready to spend money on software that&apos;s designed for coaches with 50+ athletes.</p>
             </div>
           </div>
         </div>
@@ -102,10 +98,10 @@ export default function FirstMileContent() {
               />
             </div>
             <p className="fmc-reality-caption">
-              Handwritten calendars. Scribbled plans. Crossed-out sessions. This is how most new coaches manage their clients — because the &ldquo;proper&rdquo; tools cost more than they&apos;re earning.
+              Handwritten calendars. Scribbled plans. Crossed-out sessions. This is how most new coaches manage their clients — because the &ldquo;proper&rdquo; tools are built and priced for bigger operations.
             </p>
             <p className="fmc-reality-pitch">
-              It doesn&apos;t have to be like this. For <PricePerMonth amount={1} /> you can look professional from day one — with digital plans, client dashboards, and everything in one place. No more flipping through notebooks to remember what you assigned last week.
+              It doesn&apos;t have to be like this. First Mile Coach gives you a professional setup from day one — digital plans, client dashboards, and everything in one place. And right now, it&apos;s completely free.
             </p>
           </div>
         </div>
@@ -157,7 +153,7 @@ export default function FirstMileContent() {
           <div className="fmc-path-details fmc-fade-in">
             <h3>What&apos;s included:</h3>
             <ul className="fmc-check-list">
-              <li><strong>Up to 10 clients</strong> — more than enough to get started and build momentum</li>
+              <li><strong>Unlimited clients</strong> — no caps, no tiers, no paywalls</li>
               <li><strong>Training plan builder</strong> — create and assign weekly/monthly plans</li>
               <li><strong>Client dashboard</strong> — your clients see their plans, log sessions, leave feedback</li>
               <li><strong>In-app messaging</strong> — keep all communication in one place</li>
@@ -168,9 +164,9 @@ export default function FirstMileContent() {
           </div>
 
           <div className="fmc-no-app-section fmc-fade-in">
-            <h3>No app. That&apos;s on purpose.</h3>
+            <h3>No app store download needed.</h3>
             <p className="fmc-no-app-explain">
-              No native app means no 30% app store tax — that&apos;s a big reason we can keep this so cheap. First Mile Coach works in your browser on any device, and both you and your clients can add it to your homescreen so it looks and feels like an app.
+              First Mile Coach works in your browser on any device. Both you and your clients can add it to your homescreen so it looks and feels like an app — no download required.
             </p>
           </div>
         </div>
@@ -234,89 +230,37 @@ export default function FirstMileContent() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="fmc-pricing-section" id="pricing">
-        <div className="fmc-container">
-          <div className="fmc-pricing-content fmc-fade-in">
-            <h2>Pricing that grows with you.<br />Not ahead of you.</h2>
-            <div className="fmc-price-card">
-              <div className="fmc-price-amount">
-                <span className="fmc-price-currency"><Price amount={1} /></span>
-                <span className="fmc-price-period">/month per 10 active clients</span>
-              </div>
-              <p className="fmc-price-desc">All features included. Cancel anytime. No surprises.</p>
-            </div>
-
-            <div className="fmc-pricing-examples fmc-fade-in">
-              <h3>Simple maths:</h3>
-              <div className="fmc-pricing-table">
-                <div className="fmc-pricing-row">
-                  <span className="fmc-pricing-clients">1–10 active clients</span>
-                  <span className="fmc-pricing-cost"><PricePerMonth amount={1} /></span>
-                </div>
-                <div className="fmc-pricing-row">
-                  <span className="fmc-pricing-clients">11–20 active clients</span>
-                  <span className="fmc-pricing-cost"><PricePerMonth amount={2} /></span>
-                </div>
-                <div className="fmc-pricing-row">
-                  <span className="fmc-pricing-clients">21–30 active clients</span>
-                  <span className="fmc-pricing-cost"><PricePerMonth amount={3} /></span>
-                </div>
-                <div className="fmc-pricing-row fmc-pricing-row-highlight">
-                  <span className="fmc-pricing-clients">100 active clients</span>
-                  <span className="fmc-pricing-cost"><PricePerMonth amount={10} /></span>
-                </div>
-              </div>
-            </div>
-
-            <div className="fmc-pricing-mau fmc-fade-in">
-              <h3>Based on monthly active clients</h3>
-              <p>
-                You only pay for clients who are <strong>active that month</strong>. Had 15 clients last month but only 8 this month? Your bill drops from <Price amount={2} /> to <Price amount={1} />. Just archive clients who aren&apos;t currently training with you — they won&apos;t count towards your active total. Unarchive them anytime they come back.
-              </p>
-            </div>
-
-            <p className="fmc-pricing-note">
-              That&apos;s not a typo. We&apos;re not trying to make money off coaches who are just starting out. We charge <Price amount={1} /> per 10 clients to keep the lights on and the spammers out.
-            </p>
-            <p className="fmc-pricing-note">
-              How? No native app means no 30% app store tax. No bloated feature set means low running costs. We pass those savings directly to you.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* Philosophy */}
       <section className="fmc-path-section fmc-runner-path" id="philosophy">
         <div className="fmc-container">
           <div className="fmc-path-header fmc-fade-in">
             <span className="fmc-path-label fmc-runner-label">Our Philosophy</span>
-            <h2>We want to help you take off.<br />Not hold you back.</h2>
-            <p>Here&apos;s the honest truth: other platforms might have more features for bigger operations. But if you want to stay with us as you grow, you can — and it&apos;ll only ever cost <Price amount={1} /> per 10 active clients. We&apos;re your first mile, but we&apos;re happy to be your hundredth too.</p>
+            <h2>We&apos;re not trying to compete<br />with the big platforms.</h2>
+            <p>Platforms like TrueCoach and TrainHeroic are excellent. They have advanced analytics, automated programming, retention tools, marketplace features, and more. If you&apos;re a full-time coach with a big client roster and the revenue to match — those platforms are worth every penny.</p>
           </div>
 
           <div className="fmc-path-how fmc-fade-in">
-            <h3>Here&apos;s how we think about it:</h3>
+            <h3>Here&apos;s how we see it:</h3>
             <div className="fmc-path-steps">
               <div className="fmc-path-step">
                 <div className="fmc-path-step-num fmc-runner-num">✓</div>
                 <div>
-                  <strong>Other platforms have incredible analytics and features — and we get it</strong>
-                  <p>TrainHeroic, TrueCoach, My PT Hub — they offer detailed performance analytics, automated programming, client retention tools, and more. Those features are genuinely valuable. We totally understand when you&apos;re ready and able to pay for them — that means your business is working.</p>
+                  <strong>We&apos;re the introduction — not the destination</strong>
+                  <p>First Mile Coach is built for coaches who are just starting out, coaching on the side, or have a handful of clients. We don&apos;t have all the features those premium platforms have — and that&apos;s by design. We give you what you need right now, without the complexity or cost you can&apos;t justify yet.</p>
+                </div>
+              </div>
+              <div className="fmc-path-step">
+                <div className="fmc-path-step-num fmc-runner-num">✓</div>
+                <div>
+                  <strong>When you outgrow us, we&apos;ll be happy for you</strong>
+                  <p>If you grow to the point where you need advanced analytics, payment processing, and enterprise features — amazing. That means your coaching business is working. We&apos;ll help you export your data and move on to whichever platform fits your new needs. No hard feelings. That&apos;s literally what we&apos;re here for.</p>
                 </div>
               </div>
               <div className="fmc-path-step">
                 <div className="fmc-path-step-num fmc-runner-num">✓</div>
                 <div>
                   <strong>Your data is yours. Always.</strong>
-                  <p>We&apos;ll never hold your data hostage. Export your clients, plans, and notes anytime as a spreadsheet. No lock-in, no hostage situation — if you want to leave, take everything with you.</p>
-                </div>
-              </div>
-              <div className="fmc-path-step">
-                <div className="fmc-path-step-num fmc-runner-num">✓</div>
-                <div>
-                  <strong>If you find our platform enough, that&apos;s cool</strong>
-                  <p>Stay with us as long as you want. It&apos;s just <Price amount={1} /> per 10 active clients per month — so even at 100 clients you&apos;re paying <PricePerMonth amount={10} />. No obligation to leave, ever. And if you have a quiet month, your bill goes down automatically.</p>
+                  <p>We&apos;ll never hold your data hostage. Export your clients, plans, and notes anytime. No lock-in, no hostage situation — if you want to leave, take everything with you.</p>
                 </div>
               </div>
             </div>
@@ -324,7 +268,7 @@ export default function FirstMileContent() {
 
           <div className="fmc-path-quote fmc-fade-in">
             <blockquote>
-              <p>&ldquo;We&apos;re not building a platform to compete with the big guys. We&apos;re building the platform that gets you to them — or lets you stay and grow with us for pennies.&rdquo;</p>
+              <p>&ldquo;We&apos;re not building a platform to compete with the big guys. We&apos;re building the platform that gets you to them — or stays with you for as long as you need.&rdquo;</p>
             </blockquote>
           </div>
         </div>
@@ -335,7 +279,7 @@ export default function FirstMileContent() {
         <div className="fmc-container">
           <div className="fmc-why-content fmc-fade-in">
             <h2>Why we&apos;re building this</h2>
-            <p>We&apos;ve seen too many new coaches stuck in a catch-22: you need clients to afford tools, but you need tools to manage clients professionally. The big platforms price you out before you&apos;ve earned a penny.</p>
+            <p>We&apos;ve seen too many new coaches stuck in a catch-22: you need clients to afford tools, but you need tools to manage clients professionally. The big platforms are priced for established businesses — not for someone with 3 clients and a dream.</p>
             <p>First Mile Coach exists because every coach deserves a professional setup from day one — even if they only have 2 clients and zero revenue. Especially then.</p>
             <p className="fmc-why-bold">Your first mile matters most.</p>
           </div>
@@ -375,7 +319,7 @@ export default function FirstMileContent() {
                 Crystal is a running coach with a diverse athletic background spanning CrossFit (L1 certified), boxing, kickboxing coaching, and running roads and trails — from 5K to ultramarathons. She coaches runners of all levels on top of her full-time job because she genuinely loves helping people set goals and crush them.
               </p>
               <p className="fmc-about-bio">
-                Crystal is the reason First Mile Coach exists. She needed a simple, affordable way to manage her growing client list without paying hundreds a month for tools designed for massive coaching operations.
+                Crystal is the reason First Mile Coach exists. She needed a simple way to manage her growing client list without paying for platforms designed for massive coaching operations.
               </p>
               <a href="https://www.crystalpistolperformance.com" target="_blank" rel="noopener noreferrer" className="fmc-about-link">
                 Visit Crystal&apos;s coaching site &rarr;
@@ -417,7 +361,7 @@ export default function FirstMileContent() {
               Crystal lives in Missouri. Curtis lives in London. They&apos;re brother and sister separated by 4,000 miles — but connected by a shared frustration.
             </p>
             <p>
-              Crystal had been coaching runners for years, managing everything through handwritten plans and scattered messages. The &ldquo;professional&rdquo; platforms charged $50–$200/month — way more than made sense when you&apos;re coaching a handful of people on top of a full-time job. Curtis saw the problem and thought: <em>&ldquo;I can build something better than a notebook for way less than $50 a month.&rdquo;</em>
+              Crystal had been coaching runners for years, managing everything through handwritten plans and scattered messages. The &ldquo;professional&rdquo; platforms cost $50–$200/month — way more than made sense when you&apos;re coaching a handful of people on top of a full-time job. Curtis saw the problem and thought: <em>&ldquo;I can build something better than a notebook for way less than $50 a month.&rdquo;</em>
             </p>
             <p>
               So he did. And once Crystal started using it, they realised this wasn&apos;t just her problem — it was every new coach&apos;s problem. That&apos;s how First Mile Coach was born.
@@ -434,12 +378,12 @@ export default function FirstMileContent() {
         <div className="fmc-container">
           <div className="fmc-stats-grid fmc-fade-in">
             <div className="fmc-stat">
-              <div className="fmc-stat-number"><Price amount={1} /></div>
-              <div className="fmc-stat-label">Per 10 active clients/month</div>
+              <div className="fmc-stat-number">Free</div>
+              <div className="fmc-stat-label">During the beta period</div>
             </div>
             <div className="fmc-stat">
-              <div className="fmc-stat-number"><Price amount={10} /></div>
-              <div className="fmc-stat-label">For 100 clients. Seriously.</div>
+              <div className="fmc-stat-number">∞</div>
+              <div className="fmc-stat-label">Unlimited clients. No caps.</div>
             </div>
             <div className="fmc-stat">
               <div className="fmc-stat-number">0</div>
@@ -454,25 +398,30 @@ export default function FirstMileContent() {
         <div className="fmc-container">
           <div className="fmc-beta-header fmc-fade-in">
             <span className="fmc-beta-badge">Beta Program</span>
-            <h2>Join the Beta — Free Until June 30, 2027</h2>
+            <h2>Sign Up for Beta — It&apos;s Free</h2>
             <p className="fmc-beta-intro">
-              We&apos;re opening First Mile Coach to the <strong>first 50 coaches</strong> who sign up. Get full access to the platform — completely free, unlimited clients — and help shape what it becomes.
+              We&apos;re looking for coaches to help us build this platform. Sign up, use it with your real clients, and tell us what works and what doesn&apos;t. Your feedback directly shapes what gets built next.
+            </p>
+          </div>
+
+          <div className="fmc-beta-what-is fmc-fade-in">
+            <h3>What&apos;s a &ldquo;beta user&rdquo;?</h3>
+            <p>
+              It just means you&apos;re getting early access to the platform while we&apos;re still building it. The app is fully functional — you can use it with real clients right now — but we&apos;re still adding features and improving things based on your feedback. In return for helping us test and improve, you get full access for free. Think of it as: you help us build the best tool possible, and you get to use it at no cost while we figure things out together.
             </p>
           </div>
 
           <div className="fmc-beta-terms fmc-fade-in">
             <h3>What you&apos;re signing up for:</h3>
             <ul className="fmc-beta-terms-list">
-              <li><strong>Limited to the first 50 coaches.</strong> Once 50 spots are filled, signups close. If you&apos;re in, you&apos;re in for the full beta period.</li>
-              <li><strong>Free until June 30, 2027 — unlimited clients.</strong> The beta has a fixed end date. No matter when you join, beta access ends June 30, 2027. You pay nothing during this time.</li>
-              <li><strong>After beta: earn 10 free clients/month for life.</strong> To qualify, you must: sign up at least 10 clients, remain active for at least 3 months, and provide at least 3 feedback responses on how to improve the platform.</li>
-              <li><strong>Don&apos;t qualify? Standard pricing applies.</strong> If you don&apos;t meet the criteria above, you&apos;ll move to our standard pricing (<PricePerMonth amount={1} /> per 10 active clients) when the beta ends. We&apos;ll email you before the transition.</li>
-              <li><strong>This is beta software.</strong> Nothing is guaranteed in terms of data persistence or usability. Features may change, be removed, or break. There are no uptime or SLA guarantees.</li>
-              <li><strong>You must provide feedback.</strong> We&apos;ll ask for your input regularly. Your honest feedback directly shapes what gets built.</li>
-              <li><strong>Submit any client feedback you receive.</strong> Your clients are not required to give feedback, but if they share thoughts on their experience with you, you agree to pass that along to us.</li>
-              <li><strong>Features may change without notice.</strong> We&apos;re iterating fast. Things will move, look different, or work differently week to week.</li>
-              <li><strong>No public reviews during beta.</strong> Please don&apos;t publicly review or rate the platform until official launch.</li>
-              <li><strong>Either party can leave at any time.</strong> No lock-in. If it&apos;s not working for you, you can walk away. We reserve the same right.</li>
+              <li><strong>Completely free.</strong> No credit card. No hidden fees. No surprise charges. Ever during beta.</li>
+              <li><strong>Unlimited clients.</strong> Add as many clients as you want — no artificial limits.</li>
+              <li><strong>This is beta software.</strong> The platform works and is safe to use with real clients, but features may change, move around, or occasionally have rough edges. That&apos;s normal — we&apos;re building in the open.</li>
+              <li><strong>Your feedback matters.</strong> We&apos;ll ask for your input regularly. What&apos;s working? What&apos;s confusing? What&apos;s missing? Your honest answers directly shape what we build next.</li>
+              <li><strong>Pass along client feedback too.</strong> If your clients share thoughts on their experience, pass that along to us. Their perspective is just as valuable.</li>
+              <li><strong>Your data is safe.</strong> Everything you build — clients, plans, messages — carries forward. There&apos;s no wipe when beta ends.</li>
+              <li><strong>No lock-in.</strong> If it&apos;s not working for you, leave anytime. Export your data and take everything with you.</li>
+              <li><strong>No public reviews during beta.</strong> We&apos;d appreciate if you held off on public reviews until we&apos;re officially launched — we want the first impression to be the finished product.</li>
             </ul>
           </div>
 
@@ -484,7 +433,7 @@ export default function FirstMileContent() {
       <footer className="fmc-footer">
         <div className="fmc-container">
           <p className="fmc-footer-brand-text">First Mile Coach</p>
-          <p className="fmc-footer-tagline">The cheapest, simplest way to start coaching. <PricePerMonth amount={1} /> per 10 active clients.</p>
+          <p className="fmc-footer-tagline">The free platform for coaches who are just getting started.</p>
           <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9e9e9e' }}>
             <a href="mailto:hello@firstmilecoach.com" style={{ color: '#9e9e9e', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
           </p>
