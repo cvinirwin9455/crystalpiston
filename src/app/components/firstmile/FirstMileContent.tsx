@@ -51,7 +51,7 @@ export default function FirstMileContent() {
             className="fmc-hero-logo"
             priority
           />
-          <h1>Your first clients<br />shouldn&apos;t cost a fortune<br />to manage.</h1>
+          <h1>A few clients<br />shouldn&apos;t cost a fortune<br />to manage.</h1>
           <p className="fmc-hero-subhead">
             A simple platform for new coaches and personal trainers who are just getting started — or coaching on the side. Free during beta, and designed to stay low-cost when we launch. No complex features you don&apos;t need. No lock-in. Just the tools to get you going.
           </p>
