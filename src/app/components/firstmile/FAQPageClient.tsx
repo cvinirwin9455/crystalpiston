@@ -18,7 +18,7 @@ const faqItems: FAQItem[] = [
   {
     id: "what-is-fmc",
     question: "What is First Mile Coach?",
-    answer: "First Mile Coach is a free platform built specifically for new coaches and personal trainers who need professional tools to manage their clients — without paying for expensive software designed for bigger operations. It includes training plan builders, client dashboards, messaging, progress tracking, and more. We're currently in beta and completely free to use.",
+    answer: "First Mile Coach is a platform built specifically for new coaches and personal trainers who need professional tools to manage their clients — without paying for expensive software designed for bigger operations. It includes training plan builders, client dashboards, messaging, progress tracking, and more. We're currently in beta (completely free), and when we launch it will be low-cost — our goal is to always be the most affordable option for coaches who are just starting out.",
     category: "Getting Started",
     tags: ["overview", "what", "about", "platform"],
   },
@@ -368,14 +368,14 @@ const faqItems: FAQItem[] = [
   {
     id: "after-beta",
     question: "What happens when beta ends?",
-    answer: "We're still working that out. Our goal is to always be the most affordable option for coaches who are just getting started. We'll give you plenty of notice before anything changes, and we'll never surprise you with charges. Your data stays exactly where it is regardless.",
+    answer: "We're still working out the exact pricing, but our whole mission is to be the most affordable option for coaches who are just starting out. There will be a small cost after beta — but it will be significantly less than what the big platforms charge. We'll give you plenty of advance notice before billing begins, and you can choose to continue or export your data and leave. No surprises.",
     category: "Beta",
     tags: ["after", "beta", "ends", "what happens", "future"],
   },
   {
     id: "beta-free-how-long",
     question: "How long is it free for?",
-    answer: "For the entire beta period. We haven't set a hard end date — we'll keep it free until we're confident the platform is polished and ready. You'll get plenty of advance notice before anything changes. Right now, just focus on using it and giving us feedback.",
+    answer: "For the entire beta period — we haven't set a hard end date yet. When beta ends, there will be a small cost (we're working out the exact pricing, but our mission is to stay affordable). You'll get plenty of advance notice before anything changes.",
     category: "Beta",
     tags: ["free", "how long", "duration", "beta", "time"],
   },
@@ -514,7 +514,7 @@ export default function FAQPageClient() {
       <div className="fmc-beta-banner">
         <div className="fmc-beta-banner-content">
           <span className="fmc-beta-banner-badge">BETA</span>
-          <span className="fmc-beta-banner-text">Now accepting beta coaches — completely free</span>
+          <span className="fmc-beta-banner-text">Now accepting beta coaches — free during beta</span>
           <Link href="/" className="fmc-features-nav-link">Home</Link>
           <Link href="/faq" className="fmc-features-nav-link fmc-features-nav-link-active">FAQ</Link>
           <a href="/#beta" className="fmc-beta-banner-link">Sign Up for Beta &rarr;</a>
@@ -651,7 +651,7 @@ export default function FAQPageClient() {
       {/* Footer */}
       <footer className="fmc-footer">
         <p className="fmc-footer-brand-text">First Mile Coach</p>
-        <p className="fmc-footer-tagline">The free platform for coaches who are just getting started.</p>
+        <p className="fmc-footer-tagline">Free during beta. Low-cost forever after. Built for coaches just getting started.</p>
         <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9e9e9e' }}>
           <a href="mailto:hello@firstmilecoach.com" style={{ color: '#9e9e9e', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
         </p>

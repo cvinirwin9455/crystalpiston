@@ -15,7 +15,7 @@ export default function FirstMileContent() {
       <div className="fmc-beta-banner">
         <div className="fmc-beta-banner-content">
           <span className="fmc-beta-banner-badge">BETA</span>
-          <span className="fmc-beta-banner-text">Now accepting beta coaches — completely free</span>
+          <span className="fmc-beta-banner-text">Now accepting beta coaches — free during beta</span>
           <Link href="/faq" className="fmc-features-nav-link">FAQ</Link>
           <a href="#beta" className="fmc-beta-banner-link">Sign Up for Beta &rarr;</a>
           <div className="fmc-banner-divider" />
@@ -53,7 +53,7 @@ export default function FirstMileContent() {
           />
           <h1>Your first clients<br />shouldn&apos;t cost a fortune<br />to manage.</h1>
           <p className="fmc-hero-subhead">
-            A simple, free platform for new coaches and personal trainers who are just getting started — or coaching on the side. No complex features you don&apos;t need. No lock-in. Just the tools to get you going.
+            A simple platform for new coaches and personal trainers who are just getting started — or coaching on the side. Free during beta, and designed to stay low-cost when we launch. No complex features you don&apos;t need. No lock-in. Just the tools to get you going.
           </p>
         </div>
         <div className="fmc-scroll-indicator">
@@ -101,7 +101,7 @@ export default function FirstMileContent() {
               Handwritten calendars. Scribbled plans. Crossed-out sessions. This is how most new coaches manage their clients — because the &ldquo;proper&rdquo; tools are built and priced for bigger operations.
             </p>
             <p className="fmc-reality-pitch">
-              It doesn&apos;t have to be like this. First Mile Coach gives you a professional setup from day one — digital plans, client dashboards, and everything in one place. And right now, it&apos;s completely free.
+              It doesn&apos;t have to be like this. First Mile Coach gives you a professional setup from day one — digital plans, client dashboards, and everything in one place. Free during beta, then low-cost when we launch.
             </p>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function FirstMileContent() {
           <div className="fmc-path-details fmc-fade-in">
             <h3>What&apos;s included:</h3>
             <ul className="fmc-check-list">
-              <li><strong>Unlimited clients</strong> — no caps, no tiers, no paywalls</li>
+              <li><strong>Unlimited clients</strong> — no caps, no tiers during beta</li>
               <li><strong>Training plan builder</strong> — create and assign weekly/monthly plans</li>
               <li><strong>Client dashboard</strong> — your clients see their plans, log sessions, leave feedback</li>
               <li><strong>In-app messaging</strong> — keep all communication in one place</li>
@@ -379,7 +379,7 @@ export default function FirstMileContent() {
           <div className="fmc-stats-grid fmc-fade-in">
             <div className="fmc-stat">
               <div className="fmc-stat-number">Free</div>
-              <div className="fmc-stat-label">During the beta period</div>
+              <div className="fmc-stat-label">During beta. Low-cost after.</div>
             </div>
             <div className="fmc-stat">
               <div className="fmc-stat-number">∞</div>
@@ -414,7 +414,8 @@ export default function FirstMileContent() {
           <div className="fmc-beta-terms fmc-fade-in">
             <h3>What you&apos;re signing up for:</h3>
             <ul className="fmc-beta-terms-list">
-              <li><strong>Completely free.</strong> No credit card. No hidden fees. No surprise charges. Ever during beta.</li>
+              <li><strong>Completely free during beta.</strong> No credit card. No hidden fees. No surprise charges while we&apos;re in beta.</li>
+              <li><strong>Low-cost after beta.</strong> When beta ends, there will be a small cost — but our whole mission is to be the most affordable option out there for coaches who are just starting. We&apos;ll give you plenty of notice before anything changes.</li>
               <li><strong>Unlimited clients.</strong> Add as many clients as you want — no artificial limits.</li>
               <li><strong>This is beta software.</strong> The platform works and is safe to use with real clients, but features may change, move around, or occasionally have rough edges. That&apos;s normal — we&apos;re building in the open.</li>
               <li><strong>Your feedback matters.</strong> We&apos;ll ask for your input regularly. What&apos;s working? What&apos;s confusing? What&apos;s missing? Your honest answers directly shape what we build next.</li>
@@ -433,7 +434,7 @@ export default function FirstMileContent() {
       <footer className="fmc-footer">
         <div className="fmc-container">
           <p className="fmc-footer-brand-text">First Mile Coach</p>
-          <p className="fmc-footer-tagline">The free platform for coaches who are just getting started.</p>
+          <p className="fmc-footer-tagline">Free during beta. Low-cost forever after. Built for coaches just getting started.</p>
           <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9e9e9e' }}>
             <a href="mailto:hello@firstmilecoach.com" style={{ color: '#9e9e9e', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
           </p>
