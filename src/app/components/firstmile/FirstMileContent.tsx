@@ -66,7 +66,7 @@ export default function FirstMileContent() {
         <div className="fmc-container">
           <h2 className="fmc-fade-in">Starting out as a coach is expensive enough.</h2>
           <p className="fmc-fork-sub fmc-fade-in">
-            Platforms like TrueCoach, TrainHeroic, and My PT Hub are great — but they charge $50–$200+/month. That&apos;s a lot when you&apos;ve only got a handful of clients and you&apos;re doing this on top of a full-time job. You shouldn&apos;t have to choose between professional tools and paying your bills.
+            Platforms like TrueCoach, TrainHeroic, and My PT Hub are great — but they&apos;re expensive. That&apos;s a lot when you&apos;ve only got a handful of clients and you&apos;re doing this on top of a full-time job. You shouldn&apos;t have to choose between professional tools and paying your bills.
           </p>
           <div className="fmc-fork-grid fmc-fade-in">
             <div className="fmc-fork-card fmc-fork-guide">
@@ -361,7 +361,7 @@ export default function FirstMileContent() {
               Crystal lives in Missouri. Curtis lives in London. They&apos;re brother and sister separated by 4,000 miles — but connected by a shared frustration.
             </p>
             <p>
-              Crystal had been coaching runners for years, managing everything through handwritten plans and scattered messages. The &ldquo;professional&rdquo; platforms cost $50–$200/month — way more than made sense when you&apos;re coaching a handful of people on top of a full-time job. Curtis saw the problem and thought: <em>&ldquo;I can build something better than a notebook for way less than $50 a month.&rdquo;</em>
+              Crystal had been coaching runners for years, managing everything through handwritten plans and scattered messages. The &ldquo;professional&rdquo; platforms were expensive — way more than made sense when you&apos;re coaching a handful of people on top of a full-time job. Curtis saw the problem and thought: <em>&ldquo;I can build something better than a notebook for way less.&rdquo;</em>
             </p>
             <p>
               So he did. And once Crystal started using it, they realised this wasn&apos;t just her problem — it was every new coach&apos;s problem. That&apos;s how First Mile Coach was born.

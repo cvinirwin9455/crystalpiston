@@ -25,7 +25,7 @@ const faqItems: FAQItem[] = [
   {
     id: "who-created-this",
     question: "Who created this?",
-    answer: "First Mile Coach was built by Curtis Irwin (a learning & development leader at Amazon, based in London) for his sister Crystal Irwin (a running coach in Springfield, Missouri). Crystal needed a simple way to manage her growing client list without paying hundreds a month for tools designed for massive coaching operations. What started as a side project to make Crystal's life easier became a platform for every coach who's just starting out. Real people, real problem, real solution.",
+    answer: "First Mile Coach was built by Curtis Irwin (a learning & development leader at Amazon, based in London) for his sister Crystal Irwin (a running coach in Springfield, Missouri). Crystal needed a simple way to manage her growing client list without paying for expensive tools designed for massive coaching operations. What started as a side project to make Crystal's life easier became a platform for every coach who's just starting out. Real people, real problem, real solution.",
     category: "Getting Started",
     tags: ["who", "created", "built", "founder", "team", "about us"],
   },
@@ -310,7 +310,7 @@ const faqItems: FAQItem[] = [
   {
     id: "vs-other-platforms",
     question: "How does First Mile Coach compare to TrainHeroic, TrueCoach, etc.?",
-    answer: "Those are excellent platforms for established coaches with bigger operations and budgets ($50–$200+/month). They have advanced analytics, automated programming, retention tools, marketplace features, and more. We don't have all those features — and we're not trying to. First Mile Coach is specifically for coaches who are just starting out, coaching on the side, or have a few clients and can't justify those costs yet. Think of us as the introduction: we give you what you need to get going professionally, and when you're ready for those premium features and have the revenue to support them, we'll help you move on.",
+    answer: "Those are excellent platforms for established coaches with bigger operations and budgets. They have advanced analytics, automated programming, retention tools, marketplace features, and more. We don't have all those features — and we're not trying to. First Mile Coach is specifically for coaches who are just starting out, coaching on the side, or have a few clients and can't justify those costs yet. Think of us as the introduction: we give you what you need to get going professionally, and when you're ready for those premium features and have the revenue to support them, we'll help you move on.",
     category: "Comparison",
     tags: ["compare", "trainheroic", "truecoach", "competitor", "alternative", "vs"],
   },
