@@ -2,9 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import RegionToggle from './RegionToggle'
-import Price, { PricePerMonth, PriceRange } from './Price'
-import { usePrice } from './CurrencyContext'
 import FirstMileAnimations from './FirstMileAnimations'
 import './firstmile.css'
 
@@ -21,35 +18,35 @@ const faqItems: FAQItem[] = [
   {
     id: "what-is-fmc",
     question: "What is First Mile Coach?",
-    answer: "First Mile Coach is an affordable platform built specifically for new running coaches and personal trainers who need professional tools to manage their clients — without paying hundreds per month. It includes training plan builders, client dashboards, messaging, progress tracking, and more — all for just {PRICE_PER_MONTH} per 10 active clients.",
+    answer: "First Mile Coach is a platform built specifically for new coaches and personal trainers who need professional tools to manage their clients — without paying for expensive software designed for bigger operations. It includes training plan builders, client dashboards, messaging, progress tracking, and more. We're currently in beta (completely free), and when we launch it will be low-cost — our goal is to always be the most affordable option for coaches who are just starting out.",
     category: "Getting Started",
     tags: ["overview", "what", "about", "platform"],
   },
   {
     id: "who-created-this",
     question: "Who created this?",
-    answer: "First Mile Coach was built by Curtis Irwin (a learning & development leader at Amazon, based in London) for his sister Crystal Irwin (a running coach in Springfield, Missouri). Crystal needed a simple, affordable way to manage her growing client list without paying hundreds a month for tools designed for massive coaching operations. What started as a side project to make Crystal's life easier became a platform for every coach who's just starting out. Real people, real problem, real solution.",
+    answer: "First Mile Coach was built by Curtis Irwin (a learning & development leader at Amazon, based in London) for his sister Crystal Irwin (a running coach in Springfield, Missouri). Crystal needed a simple way to manage her growing client list without paying for expensive tools designed for massive coaching operations. What started as a side project to make Crystal's life easier became a platform for every coach who's just starting out. Real people, real problem, real solution.",
     category: "Getting Started",
     tags: ["who", "created", "built", "founder", "team", "about us"],
   },
   {
     id: "who-is-it-for",
     question: "Who is First Mile Coach designed for?",
-    answer: "It's designed for coaches who are just starting out or running a small operation: new running coaches with their first few clients, personal trainers working from a park or small gym, CrossFit coaches managing a handful of athletes, or any fitness professional who needs simple, affordable client management without the complexity of enterprise tools.",
+    answer: "It's designed for coaches who are just starting out, coaching on the side, or running a small operation: new running coaches with their first few clients, personal trainers working from a park or small gym, CrossFit coaches managing a handful of athletes, or any fitness professional who needs simple client management without the complexity and cost of enterprise platforms like TrueCoach or TrainHeroic.",
     category: "Getting Started",
     tags: ["who", "target", "audience", "coaches", "trainers"],
   },
   {
     id: "experienced-coach",
     question: "I'm an experienced coach or PT — is this platform for me?",
-    answer: "It can be! First Mile Coach doesn't have client limits or feature restrictions based on experience level. If you want a simple, affordable platform without the bloat of enterprise tools, it works great regardless of how long you've been coaching. That said, if you need advanced analytics, automated periodisation, payment processing, or complex team management — platforms like TrainHeroic or TrueCoach might be a better fit. We're honest about that. But if you want clean, simple client management for {PRICE_PER_MONTH} per 10 clients, you're welcome here no matter your experience level.",
+    answer: "It depends on what you need. If you want a simple, clean platform without the bloat of enterprise tools, it works great regardless of your experience level. But we're honest: if you need advanced analytics, automated periodisation, payment processing, or complex team management — platforms like TrainHeroic or TrueCoach are probably a better fit. Those are great tools for established coaches with bigger budgets. We're specifically built for coaches who are just getting started or doing this on the side and can't justify those costs yet.",
     category: "Getting Started",
     tags: ["experienced", "advanced", "professional", "established", "PT", "personal trainer"],
   },
   {
     id: "how-to-sign-up",
     question: "How do I sign up?",
-    answer: "We're currently in beta. Scroll to the 'Apply for Beta Access' section on our home page and fill in your details: name, email, coaching type, and expected number of clients. We'll review your application and get back to you with access details. Beta access is completely free until June 30, 2027.",
+    answer: "We're currently in beta. Scroll to the 'Sign Up for Beta' section on our home page and fill in your details: name, email, coaching type, and expected number of clients. We'll review your application and get back to you with access details. It's completely free.",
     category: "Getting Started",
     tags: ["sign up", "register", "join", "apply", "beta", "start"],
   },
@@ -68,55 +65,11 @@ const faqItems: FAQItem[] = [
     tags: ["technical", "skills", "easy", "simple", "beginner"],
   },
 
-  // === PRICING & BILLING ===
-  {
-    id: "how-much-cost",
-    question: "How much does it cost?",
-    answer: "Just {PRICE_PER_MONTH} per 10 active clients. That means: 1-10 clients = {PRICE_PER_MONTH}, 11-20 clients = {PRICE2_PER_MONTH}, 21-30 clients = {PRICE3_PER_MONTH}, and so on. If you have a quiet month and archive some clients, your bill goes down automatically. During beta (until June 30, 2027), it's completely free.",
-    category: "Pricing & Billing",
-    tags: ["cost", "price", "money", "billing", "payment", "how much"],
-  },
-  {
-    id: "why-so-cheap",
-    question: "Why is it so cheap? What's the catch?",
-    answer: "No catch. We keep costs low by: 1) Not having a native app (no 30% app store tax), 2) Keeping the feature set focused (no bloated enterprise features), 3) Running lean infrastructure. We pass those savings directly to coaches. We're not trying to make money off people who are just getting started — we're trying to help them take off.",
-    category: "Pricing & Billing",
-    tags: ["cheap", "affordable", "catch", "why", "business model"],
-  },
-  {
-    id: "free-during-beta",
-    question: "Is it really free during the beta?",
-    answer: "Yes, 100% free until June 30, 2027. No credit card required. No hidden fees. We want early coaches to help us build the best product possible — your feedback is payment enough during this phase.",
-    category: "Pricing & Billing",
-    tags: ["free", "beta", "cost", "trial", "credit card"],
-  },
-  {
-    id: "what-counts-active",
-    question: "What counts as an 'active client'?",
-    answer: "An active client is anyone who isn't archived. If a client takes a break, you can archive them — they won't count towards your bill, and their data is preserved. When they come back, unarchive them and everything is right where they left it.",
-    category: "Pricing & Billing",
-    tags: ["active", "client", "count", "billing", "archive"],
-  },
-  {
-    id: "payment-methods",
-    question: "How do I pay? What payment methods do you accept?",
-    answer: "During beta, there's nothing to pay. After beta ends, we'll support standard payment methods (credit/debit card). Billing will be monthly and automatic based on your active client count. You'll always be able to see exactly what you'll be charged before it happens.",
-    category: "Pricing & Billing",
-    tags: ["payment", "card", "method", "billing", "how to pay"],
-  },
-  {
-    id: "cancel-anytime",
-    question: "Can I cancel anytime?",
-    answer: "Yes. No contracts, no lock-in, no cancellation fees. If you decide to leave, you can export all your data (clients, plans, logs) as a spreadsheet and take everything with you. We'll never hold your data hostage.",
-    category: "Pricing & Billing",
-    tags: ["cancel", "leave", "contract", "lock-in", "quit"],
-  },
-
   // === PLATFORM FEATURES ===
   {
     id: "what-features",
     question: "What features are included?",
-    answer: "Everything you need to manage clients professionally: Weekly training plan builder (runs, strength, cross-training, rest days), Client dashboards (mobile-friendly, add-to-homescreen), Structured workout builders (intervals, tempo, circuits, sets/reps), In-app messaging with email notifications, Exercise library with video demos, Client progress tracking & stats, Draft & publish workflow, Multi-coach support, Strava integration, and more.",
+    answer: "Everything you need to manage clients professionally: Weekly training plan builder (runs, strength, cross-training, rest days), Client dashboards (mobile-friendly, add-to-homescreen), Structured workout builders (intervals, tempo, circuits, sets/reps), In-app messaging with email notifications, Exercise library with video demos, Client progress tracking & stats, Draft & publish workflow, Multi-coach support, Strava integration, and more. All features are included — no tiers, no paywalls.",
     category: "Platform Features",
     tags: ["features", "included", "what", "tools", "capabilities"],
   },
@@ -237,7 +190,7 @@ const faqItems: FAQItem[] = [
   {
     id: "pwa-homescreen",
     question: "Do clients need to download an app?",
-    answer: "No app download needed! First Mile Coach is a Progressive Web App (PWA). Clients can add it to their homescreen on any phone (iPhone or Android) and it opens full-screen like a native app. This also means no app store fees — which is why we can keep pricing so low.",
+    answer: "No app download needed! First Mile Coach is a Progressive Web App (PWA). Clients can add it to their homescreen on any phone (iPhone or Android) and it opens full-screen like a native app — no app store required.",
     category: "Client Experience",
     tags: ["app", "download", "pwa", "homescreen", "install", "phone"],
   },
@@ -274,14 +227,14 @@ const faqItems: FAQItem[] = [
   {
     id: "manage-many-clients",
     question: "How do I manage lots of clients efficiently?",
-    answer: "The sidebar shows your full client list with search and status filters (Active/Archived/All). Unread message badges show who needs attention. The dashboard gives you an overview of drafts to publish and outstanding payments. Use templates and program templates to speed up programming. Batch your weekly programming in one session rather than doing it daily.",
+    answer: "The sidebar shows your full client list with search and status filters (Active/Archived/All). Unread message badges show who needs attention. The dashboard gives you an overview of drafts to publish. Use templates and program templates to speed up programming. Batch your weekly programming in one session rather than doing it daily.",
     category: "Coach Workflow",
     tags: ["manage", "many", "clients", "efficient", "organize"],
   },
   {
     id: "archive-clients",
     question: "What happens when I archive a client?",
-    answer: "Archiving a client: blocks them from logging in (they can't access their dashboard), disconnects their Strava connection, moves them to the Archived filter in your client list, and does NOT delete any data. You can unarchive them anytime to restore full access. Archived clients don't count toward your billing.",
+    answer: "Archiving a client: blocks them from logging in (they can't access their dashboard), disconnects their Strava connection, moves them to the Archived filter in your client list, and does NOT delete any data. You can unarchive them anytime to restore full access.",
     category: "Coach Workflow",
     tags: ["archive", "inactive", "remove", "pause", "client"],
   },
@@ -290,14 +243,14 @@ const faqItems: FAQItem[] = [
   {
     id: "data-ownership",
     question: "Who owns the data?",
-    answer: "You do. Your client data, training plans, workout logs, and messages are yours. We'll never sell your data, use it for advertising, or share it with third parties. If you ever decide to leave, you can export everything as a spreadsheet. No lock-in, no hostage situation.",
+    answer: "You do. Your client data, training plans, workout logs, and messages are yours. We'll never sell your data, use it for advertising, or share it with third parties. If you ever decide to leave, you can export everything. No lock-in, no hostage situation.",
     category: "Data & Privacy",
     tags: ["data", "ownership", "privacy", "export", "mine"],
   },
   {
     id: "data-export",
     question: "Can I export my data?",
-    answer: "Yes. You can export your clients, plans, and notes anytime. We believe your data should never be held hostage — if you want to move to another platform, take everything with you. No export fees, no restrictions.",
+    answer: "Yes. You can export your clients, plans, and notes anytime. We believe your data should never be held hostage — if you want to move to another platform (or if you outgrow us and move to TrueCoach, TrainHeroic, etc.), take everything with you. No export fees, no restrictions.",
     category: "Data & Privacy",
     tags: ["export", "download", "data", "leave", "migrate"],
   },
@@ -327,7 +280,7 @@ const faqItems: FAQItem[] = [
   {
     id: "native-app",
     question: "Why isn't there a native app?",
-    answer: "By design. Native apps require paying Apple and Google a 30% tax on all revenue. That's a massive cost that platforms pass on to coaches as higher subscription fees. By being a web app (PWA), we avoid that tax entirely — which is the main reason we can charge {PRICE_PER_MONTH} instead of {PRICE50_PER_MONTH}. The web app experience is nearly identical to a native app when added to your homescreen.",
+    answer: "By design. Native apps require paying Apple and Google a 30% tax on all revenue. That's a massive cost that gets passed on to users. By being a web app (PWA), we avoid that overhead entirely — which helps keep the platform free. The web app experience is nearly identical to a native app when added to your homescreen.",
     category: "Technical",
     tags: ["native", "app", "ios", "android", "why", "web app"],
   },
@@ -357,32 +310,39 @@ const faqItems: FAQItem[] = [
   {
     id: "vs-other-platforms",
     question: "How does First Mile Coach compare to TrainHeroic, TrueCoach, etc.?",
-    answer: "Those are excellent platforms for established coaches with bigger operations and budgets ({PRICE50}–{PRICE200}+/month). They have advanced analytics, automated programming, retention tools, and more. First Mile Coach is specifically for coaches who are just starting out and need professional basics at a fraction of the cost. Think of us as your starting platform — when you're ready for those advanced features and can afford them, we'll even help you export your data to migrate.",
+    answer: "Those are excellent platforms for established coaches with bigger operations and budgets. They have advanced analytics, automated programming, retention tools, marketplace features, and more. We don't have all those features — and we're not trying to. First Mile Coach is specifically for coaches who are just starting out, coaching on the side, or have a few clients and can't justify those costs yet. Think of us as the introduction: we give you what you need to get going professionally, and when you're ready for those premium features and have the revenue to support them, we'll help you move on.",
     category: "Comparison",
     tags: ["compare", "trainheroic", "truecoach", "competitor", "alternative", "vs"],
   },
   {
     id: "vs-spreadsheets",
     question: "Why not just use Google Sheets or a calendar?",
-    answer: "You absolutely can — many coaches do! But First Mile Coach gives you: a professional client-facing dashboard (not a shared spreadsheet), automatic notifications, built-in messaging, workout logging with effort tracking, Strava integration, structured workout builders, and progress stats. All for {PRICE_PER_MONTH}. It's the jump from 'managing in notebooks' to 'looking like a real coaching business' without the real coaching business price tag.",
+    answer: "You absolutely can — many coaches do! But First Mile Coach gives you: a professional client-facing dashboard (not a shared spreadsheet), automatic notifications, built-in messaging, workout logging with effort tracking, Strava integration, structured workout builders, and progress stats. It's the jump from 'managing in notebooks' to 'looking like a real coaching business' — and it's free during beta.",
     category: "Comparison",
     tags: ["spreadsheet", "google sheets", "calendar", "manual", "alternative"],
   },
   {
     id: "vs-whatsapp",
     question: "Why not just use WhatsApp or text messages?",
-    answer: "WhatsApp/texting works, but: you lose context (what did I assign last week?), everything mixes with personal messages, you can't track what clients actually did, there's no structured plan view, and it looks unprofessional. First Mile Coach keeps coaching communication separate, with full history per client, tied to their actual training data. And at {PRICE_PER_MONTH} it costs less than the time you waste scrolling through WhatsApp groups.",
+    answer: "WhatsApp/texting works, but: you lose context (what did I assign last week?), everything mixes with personal messages, you can't track what clients actually did, there's no structured plan view, and it looks unprofessional. First Mile Coach keeps coaching communication separate, with full history per client, tied to their actual training data.",
     category: "Comparison",
     tags: ["whatsapp", "text", "messaging", "communication", "vs"],
   },
 
-  // === BETA SPECIFIC ===
+  // === BETA ===
   {
     id: "what-is-beta",
     question: "What does 'beta' mean?",
-    answer: "Beta means we're in the early access phase. The platform is fully functional and safe to use with real clients, but we're still actively adding features and polishing based on feedback from our first coaches. You might encounter the occasional rough edge — and we want to hear about it. In exchange, you get free access until June 30, 2027.",
+    answer: "It just means you're getting early access to the platform while we're still building it. The app is fully functional — you can use it with real clients right now — but we're still actively adding features and improving things based on your feedback. In return for helping us test and shape the product, you get full access for free. Think of it as: you help us build the best tool possible, and you get to use it at no cost while we figure things out together.",
     category: "Beta",
     tags: ["beta", "early", "access", "what", "mean"],
+  },
+  {
+    id: "beta-is-it-safe",
+    question: "Is it safe to use with real clients?",
+    answer: "Yes. The platform is fully functional and we use it with real coaching clients every day. 'Beta' doesn't mean broken — it means we're still adding features and improving based on feedback. Your data is stored on production-grade infrastructure (Supabase + Vercel) and is safe. You might encounter the occasional rough edge, but nothing that would affect your clients' experience in a meaningful way.",
+    category: "Beta",
+    tags: ["safe", "real", "clients", "beta", "production"],
   },
   {
     id: "beta-limits",
@@ -394,37 +354,37 @@ const faqItems: FAQItem[] = [
   {
     id: "beta-feedback",
     question: "How do I give feedback during the beta?",
-    answer: "There's a Feedback button in the bottom corner of the app — both coaches and clients have it. Use it anytime to report bugs, suggest features, or ask questions. We read every single submission and respond directly. We may also occasionally send a short email asking for your thoughts on new features. Clients aren't required to give feedback, but they can use their Feedback button too, or share their thoughts with their coach to pass along to us.",
+    answer: "There's a Feedback button in the bottom corner of the app — both coaches and clients have it. Use it anytime to report bugs, suggest features, or ask questions. We read every single submission and respond directly. We may also occasionally send a short email asking for your thoughts on new features.",
     category: "Beta",
     tags: ["feedback", "report", "bug", "suggest", "contact"],
   },
   {
     id: "beta-data-safe",
-    question: "Is my data safe during the beta? Will it be deleted?",
-    answer: "Your data is safe and will NOT be deleted. We're using the same production infrastructure that will run after beta ends. Everything you build now — clients, plans, messages, workout logs — carries forward. There is no 'wipe' when beta ends.",
+    question: "Will my data be deleted when beta ends?",
+    answer: "No. Your data is safe and will NOT be deleted. We're using the same production infrastructure that will run after beta ends. Everything you build now — clients, plans, messages, workout logs — carries forward. There is no 'wipe' when beta ends.",
     category: "Beta",
     tags: ["data", "safe", "delete", "keep", "beta", "permanent"],
   },
   {
     id: "after-beta",
     question: "What happens when beta ends?",
-    answer: "After June 30, 2027, billing starts at {PRICE_PER_MONTH} per 10 active clients. Your data stays exactly where it is. You'll get plenty of advance notice before billing begins, and you can choose to continue or export your data and leave. No surprises.",
+    answer: "We're still working out the exact pricing, but our whole mission is to be the most affordable option for coaches who are just starting out. There will be a small cost after beta — but it will be significantly less than what the big platforms charge. We'll give you plenty of advance notice before billing begins, and you can choose to continue or export your data and leave. No surprises.",
     category: "Beta",
-    tags: ["after", "beta", "ends", "billing", "what happens"],
+    tags: ["after", "beta", "ends", "what happens", "future"],
+  },
+  {
+    id: "beta-free-how-long",
+    question: "How long is it free for?",
+    answer: "For the entire beta period — we haven't set a hard end date yet. When beta ends, there will be a small cost (we're working out the exact pricing, but our mission is to stay affordable). You'll get plenty of advance notice before anything changes.",
+    category: "Beta",
+    tags: ["free", "how long", "duration", "beta", "time"],
   },
   {
     id: "join-without-beta",
     question: "Can I join now without being part of the beta?",
-    answer: "Not at the moment. We're currently in beta-only mode while we build and refine the platform with our first coaches. There's no way to skip the beta and go straight to a paid plan — everyone who joins right now is part of the beta (which is free). Once beta ends and we're confident the platform is rock-solid, we'll open up general access. For now, apply for beta and you'll get the same full platform for free.",
+    answer: "Not at the moment. We're currently in beta-only mode while we build and refine the platform with our first coaches. Everyone who joins right now is part of the beta (which is free). Once beta ends and we're confident the platform is solid, we'll open up general access.",
     category: "Beta",
     tags: ["join", "without beta", "skip", "paid", "now", "general access"],
-  },
-  {
-    id: "first-50-coaches",
-    question: "What does 'first 50 coaches' mean?",
-    answer: "We're accepting the first 50 coaches into our beta program. This keeps the community small enough that we can give personal attention to each coach, respond to feedback quickly, and build features that real coaches actually need. Once we hit 50, we may pause new sign-ups temporarily while we catch up on feedback.",
-    category: "Beta",
-    tags: ["50", "coaches", "limit", "first", "spots"],
   },
 
   // === ACCOUNT & SUPPORT ===
@@ -456,12 +416,18 @@ const faqItems: FAQItem[] = [
     category: "Account & Support",
     tags: ["delete", "account", "remove", "permanent"],
   },
+  {
+    id: "can-i-leave",
+    question: "Can I leave anytime?",
+    answer: "Yes. No contracts, no lock-in, no cancellation fees. If you decide to leave, you can export all your data (clients, plans, logs) and take everything with you. We'll never hold your data hostage. And if you're leaving because you've outgrown us and are moving to a bigger platform — that's exactly what we're here for. Congrats!",
+    category: "Account & Support",
+    tags: ["cancel", "leave", "contract", "lock-in", "quit"],
+  },
 ];
 
 const categories = [
   "All",
   "Getting Started",
-  "Pricing & Billing",
   "Platform Features",
   "Client Experience",
   "Coach Workflow",
@@ -528,19 +494,6 @@ export default function FAQPageClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const formatPrice = usePrice();
-
-  // Replace price tokens in FAQ answer strings with dynamic currency
-  const renderAnswer = (answer: string) => {
-    return answer
-      .replace(/\{PRICE_PER_MONTH\}/g, `${formatPrice(1)}/month`)
-      .replace(/\{PRICE2_PER_MONTH\}/g, `${formatPrice(2)}/month`)
-      .replace(/\{PRICE3_PER_MONTH\}/g, `${formatPrice(3)}/month`)
-      .replace(/\{PRICE10_PER_MONTH\}/g, `${formatPrice(10)}/month`)
-      .replace(/\{PRICE50_PER_MONTH\}/g, `${formatPrice(50)}/month`)
-      .replace(/\{PRICE50\}/g, formatPrice(50))
-      .replace(/\{PRICE200\}/g, formatPrice(200));
-  };
 
   const filteredItems = faqItems.filter(item => {
     const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
@@ -561,12 +514,10 @@ export default function FAQPageClient() {
       <div className="fmc-beta-banner">
         <div className="fmc-beta-banner-content">
           <span className="fmc-beta-banner-badge">BETA</span>
-          <span className="fmc-beta-banner-text">Now accepting the first 50 coaches — free until June 30, 2027</span>
+          <span className="fmc-beta-banner-text">Now accepting beta coaches — free during beta</span>
           <Link href="/" className="fmc-features-nav-link">Home</Link>
           <Link href="/faq" className="fmc-features-nav-link fmc-features-nav-link-active">FAQ</Link>
-          <a href="/#beta" className="fmc-beta-banner-link">Apply Now &rarr;</a>
-          <div className="fmc-banner-divider" />
-          <RegionToggle />
+          <a href="/#beta" className="fmc-beta-banner-link">Sign Up for Beta &rarr;</a>
           <div className="fmc-banner-divider" />
           <a href="/login?role=coach" className="fmc-banner-login">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -611,7 +562,7 @@ export default function FAQPageClient() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search FAQs... (e.g. 'pricing', 'strava', 'client')"
+                placeholder="Search FAQs... (e.g. 'strava', 'client', 'beta')"
                 className="fmc-faq-search-input"
               />
               {searchQuery && (
@@ -661,7 +612,7 @@ export default function FAQPageClient() {
                 </button>
                 {expandedItem === item.id && (
                   <div className="fmc-faq-item-body">
-                    <p className="fmc-faq-item-answer">{renderAnswer(item.answer)}</p>
+                    <p className="fmc-faq-item-answer">{item.answer}</p>
                     <div className="fmc-faq-item-tags">
                       {item.tags.map(tag => (
                         <span
@@ -700,7 +651,7 @@ export default function FAQPageClient() {
       {/* Footer */}
       <footer className="fmc-footer">
         <p className="fmc-footer-brand-text">First Mile Coach</p>
-        <p className="fmc-footer-tagline">The {formatPrice(1)}/month platform for new coaches.</p>
+        <p className="fmc-footer-tagline">Free during beta. Low-cost forever after. Built for coaches just getting started.</p>
         <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9e9e9e' }}>
           <a href="mailto:hello@firstmilecoach.com" style={{ color: '#9e9e9e', textDecoration: 'none' }}>hello@firstmilecoach.com</a>
         </p>
