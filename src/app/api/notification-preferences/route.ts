@@ -33,6 +33,10 @@ export async function GET() {
       weightUnit: prefs?.weight_unit || 'kg',
       defaultExpanded: prefs?.default_expanded ?? true,
       dateFormat: prefs?.date_format || 'MM/DD/YYYY',
+      defaultSessionDuration: prefs?.default_session_duration ?? 60,
+      defaultSessionTime: prefs?.default_session_time || '09:00',
+      defaultSessionLocation: prefs?.default_session_location || '',
+      lowBalanceThreshold: prefs?.low_balance_threshold ?? 3,
     })
   }
 
@@ -87,6 +91,13 @@ export async function PUT(request: Request) {
   if (weightUnit !== undefined) updates.weight_unit = weightUnit
   if (defaultExpanded !== undefined) updates.default_expanded = defaultExpanded
   if (dateFormat !== undefined) updates.date_format = dateFormat
+
+  // Session management fields (admin)
+  const { defaultSessionDuration, defaultSessionTime, defaultSessionLocation, lowBalanceThreshold } = body
+  if (defaultSessionDuration !== undefined) updates.default_session_duration = parseInt(defaultSessionDuration)
+  if (defaultSessionTime !== undefined) updates.default_session_time = defaultSessionTime
+  if (defaultSessionLocation !== undefined) updates.default_session_location = defaultSessionLocation || null
+  if (lowBalanceThreshold !== undefined) updates.low_balance_threshold = parseInt(lowBalanceThreshold)
 
   // Upsert: update if exists, insert if not
   const { error } = await supabase

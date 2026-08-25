@@ -1,6 +1,97 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
+function parseDateRange(dateRange: string): Date | null {
+  if (!dateRange) return null
+  const startStr = dateRange.split(' - ')[0] // e.g. "Aug 25"
+  if (!startStr) return null
+  // Try parsing with current year, fallback to next year if it's way in the past
+  const now = new Date()
+  const year = now.getFullYear()
+  const parsed = new Date(`${startStr}, ${year}`)
+  if (isNaN(parsed.getTime())) return null
+  // If parsed date is more than 6 months in the past, assume next year
+  if (parsed.getTime() < now.getTime() - 180 * 24 * 60 * 60 * 1000) {
+    return new Date(`${startStr}, ${year + 1}`)
+  }
+  return parsed
+}
+
+// Helper: get actual date for a day of the week given the Monday start date
+function getDateForDay(mondayDate: Date, dayName: string): Date {
+  const dayMap: Record<string, number> = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 }
+  const offset = dayMap[dayName] ?? 0
+  const date = new Date(mondayDate)
+  date.setDate(date.getDate() + offset)
+  return date
+}
+
+// Helper: auto-create session records for in-person workouts when a week is published
+async function autoCreateSessionsForWeek(
+  adminClient: any,
+  coachId: string,
+  clientId: string,
+  dateRange: string,
+  workouts: any[]
+) {
+  // Filter to in-person workouts only (skip rest days and remote)
+  const inPersonWorkouts = workouts.filter((w: any) => w.sessionType === 'in_person' && w.type && w.type !== 'rest')
+  if (inPersonWorkouts.length === 0) return
+
+  const mondayDate = parseDateRange(dateRange)
+  if (!mondayDate) return
+
+  // Get coach's default session settings
+  const { data: coachPrefs } = await adminClient
+    .from('notification_preferences')
+    .select('default_session_time, default_session_duration, default_session_location')
+    .eq('user_id', coachId)
+    .single()
+
+  const defaultTime = coachPrefs?.default_session_time || '09:00'
+  const defaultDuration = coachPrefs?.default_session_duration || 60
+  const defaultLocation = coachPrefs?.default_session_location || null
+
+  // Get client's organization_id
+  const { data: clientData } = await adminClient
+    .from('clients')
+    .select('organization_id')
+    .eq('id', clientId)
+    .single()
+
+  const orgId = clientData?.organization_id || coachId
+
+  // Group by day — only create one session per in-person day (not per workout)
+  const inPersonDays = [...new Set(inPersonWorkouts.map((w: any) => w.day))]
+
+  const sessionRows = inPersonDays.map((dayName: string) => {
+    const sessionDate = getDateForDay(mondayDate, dayName)
+    // Combine date + default time into a timestamp
+    const [hours, minutes] = defaultTime.split(':').map(Number)
+    sessionDate.setHours(hours, minutes, 0, 0)
+
+    return {
+      client_id: clientId,
+      coach_id: coachId,
+      organization_id: orgId,
+      scheduled_at: sessionDate.toISOString(),
+      duration_minutes: defaultDuration,
+      location: defaultLocation,
+      session_type: inPersonWorkouts.find((w: any) => w.day === dayName)?.type || null,
+      notes: inPersonWorkouts.find((w: any) => w.day === dayName)?.title || null,
+      status: 'scheduled',
+    }
+  })
+
+  if (sessionRows.length > 0) {
+    const { error } = await adminClient.from('sessions').insert(sessionRows)
+    if (error) {
+      console.error('Failed to insert auto-created sessions:', error.message)
+    }
+  }
+}
+
 // GET /api/weeks?client_id=xxx - Get all weeks for a client
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -394,6 +485,7 @@ export async function POST(request: Request) {
       sort_order: index,
       distance_unit: w.distanceUnit || 'mi',
       structure: w.structure || null,
+      session_type: w.sessionType || 'remote',
     }))
 
     const { error: workoutsError } = await adminClient
@@ -402,6 +494,15 @@ export async function POST(request: Request) {
 
     if (workoutsError) {
       return NextResponse.json({ error: workoutsError.message }, { status: 500 })
+    }
+  }
+
+  // If week is published immediately, auto-create session records for in-person workouts
+  if (status === 'published' && workouts && workouts.length > 0) {
+    try {
+      await autoCreateSessionsForWeek(adminClient, user.id, clientId, dateRange, workouts)
+    } catch (sessErr) {
+      console.error('Failed to auto-create sessions:', sessErr)
     }
   }
 

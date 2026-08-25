@@ -136,15 +136,24 @@ ALTER TABLE public.notification_preferences
   ADD COLUMN IF NOT EXISTS low_balance_threshold INTEGER NOT NULL DEFAULT 3;
 
 -- ============================================================
--- 6. Coach settings: default session duration and location
+-- 6. Coach settings: default session duration, location, and time
 -- Add to notification_preferences (used as general coach settings)
 -- ============================================================
 ALTER TABLE public.notification_preferences
   ADD COLUMN IF NOT EXISTS default_session_duration INTEGER NOT NULL DEFAULT 60,
-  ADD COLUMN IF NOT EXISTS default_session_location TEXT;
+  ADD COLUMN IF NOT EXISTS default_session_location TEXT,
+  ADD COLUMN IF NOT EXISTS default_session_time TIME NOT NULL DEFAULT '09:00';
 
 -- ============================================================
--- 7. Auto-update trigger for sessions
+-- 7. Add session_type to workouts table
+-- Tracks whether a workout is remote (client does alone) or in-person (coached session)
+-- ============================================================
+ALTER TABLE public.workouts
+  ADD COLUMN IF NOT EXISTS session_type TEXT NOT NULL DEFAULT 'remote'
+  CHECK (session_type IN ('remote', 'in_person'));
+
+-- ============================================================
+-- 8. Auto-update trigger for sessions
 -- ============================================================
 CREATE OR REPLACE TRIGGER update_sessions_updated_at
   BEFORE UPDATE ON public.sessions

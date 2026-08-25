@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import AccountTab from "./AccountTab";
+import SessionsTab from "./SessionsTab";
 import BiometricSetup from "@/components/BiometricSetup";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay, getPaceRangeFromStructure } from "./StructuredRunBuilder";
@@ -37,7 +38,7 @@ export default function AdminPage() {
   const initialParams = getInitialParams();
 
   const [selectedClient, setSelectedClient] = useState<string | null>(initialParams.client);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">(initialParams.tab);
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats" | "sessions">(initialParams.tab);
   const [editingWeek, setEditingWeek] = useState(false);
 
   // Persist navigation state in URL (survives refresh)
@@ -160,6 +161,12 @@ export default function AdminPage() {
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
+  // Session management settings
+  const [adminDefaultSessionDuration, setAdminDefaultSessionDuration] = useState(60);
+  const [adminDefaultSessionTime, setAdminDefaultSessionTime] = useState("09:00");
+  const [adminDefaultSessionLocation, setAdminDefaultSessionLocation] = useState("");
+  const [adminLowBalanceThreshold, setAdminLowBalanceThreshold] = useState(3);
+
   // Organization feature toggles
   const [orgFeatures, setOrgFeatures] = useState<{ run: boolean; walk: boolean; cycling: boolean; crossTraining: boolean; stretching: boolean; strength: boolean; hiit: boolean; swimming: boolean }>({ run: true, walk: true, cycling: true, crossTraining: true, stretching: true, strength: true, hiit: true, swimming: true });
   const [orgFeaturesLoaded, setOrgFeaturesLoaded] = useState(false);
@@ -234,6 +241,10 @@ export default function AdminPage() {
           if (data.weightUnit) setAdminWeightUnit(data.weightUnit);
           if (data.dateFormat) setAdminDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setAdminDefaultExpanded(data.defaultExpanded);
+          if (data.defaultSessionDuration !== undefined) setAdminDefaultSessionDuration(data.defaultSessionDuration);
+          if (data.defaultSessionTime) setAdminDefaultSessionTime(data.defaultSessionTime);
+          if (data.defaultSessionLocation) setAdminDefaultSessionLocation(data.defaultSessionLocation);
+          if (data.lowBalanceThreshold !== undefined) setAdminLowBalanceThreshold(data.lowBalanceThreshold);
         }
       } catch (err) {
         console.error('Failed to fetch admin notification prefs:', err);
@@ -289,6 +300,19 @@ export default function AdminPage() {
     setNotifications(updated);
     saveAdminNotifPrefs(updated);
   };
+
+  // Save session management settings
+  const saveSessionSettings = async (settings: { defaultSessionDuration?: number; defaultSessionTime?: string; defaultSessionLocation?: string; lowBalanceThreshold?: number }) => {
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+    } catch (err) {
+      console.error('Failed to save session settings:', err);
+    }
+  };
   const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -302,13 +326,13 @@ export default function AdminPage() {
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
     days: [
-      { day: "Monday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Tuesday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Wednesday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Thursday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Friday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Saturday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Sunday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
     ],
   });
   const updateDayPlan = (dayIndex: number, workoutIndex: number, field: string, value: string) => {
@@ -1997,7 +2021,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Active plan for the selected client
-  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null } | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
 
   // Load weeks and active plan once when a client is first selected
@@ -2025,6 +2049,7 @@ export default function AdminPage() {
               status: active.status,
               programTemplateId: active.program_template_id || null,
               raceDate: active.race_date || null,
+              billingMode: active.billing_mode || 'programming_only',
             });
           } else {
             setActivePlan(null);
@@ -2244,6 +2269,7 @@ export default function AdminPage() {
         coachNotes: w.coachNotes || null,
         distanceUnit: w.distanceUnit || 'mi',
         structure: (w as any).crossTrainingStructure || (w as any).structure || null,
+        sessionType: activePlan?.billingMode === 'per_session' ? 'in_person' : (activePlan?.billingMode === 'hybrid' ? day.sessionType : 'remote'),
       }))
     );
 
@@ -2270,13 +2296,13 @@ export default function AdminPage() {
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
           days: [
-            { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
           ],
         });
         setSelectedWeekStart(null);
@@ -3158,8 +3184,8 @@ export default function AdminPage() {
 
               {/* Tabs (always in sticky area) */}
               <div className="px-6 pb-2 flex gap-1 flex-wrap">
-                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
-                  <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, ...(activePlan?.billingMode === 'per_session' || activePlan?.billingMode === 'hybrid' ? [{ key: "sessions", label: "Sessions" }] : []), { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
+                  <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                     {tab.label}
                     {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
                       <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[selectedClient]}</span>
@@ -3628,8 +3654,21 @@ export default function AdminPage() {
                       <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
                       <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
                     </div>
-                    <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                    <div className="flex items-center gap-2">
+                      {activePlan.billingMode && activePlan.billingMode !== 'programming_only' && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${activePlan.billingMode === 'per_session' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
+                          {activePlan.billingMode === 'per_session' ? '🏋️ In-Person Only' : '📱+🏋️ Hybrid'}
+                        </span>
+                      )}
+                      <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                    </div>
                   </div>
+                  {activePlan.billingMode === 'hybrid' && (
+                    <p className="text-purple-300/70 text-xs mt-1.5 border-t border-white/5 pt-1.5">💡 Tag each day as Remote or In-Person below. In-person days will auto-create session records when published.</p>
+                  )}
+                  {activePlan.billingMode === 'per_session' && (
+                    <p className="text-blue-300/70 text-xs mt-1.5 border-t border-white/5 pt-1.5">💡 All workouts for this client are in-person sessions. Sessions will be auto-created when published.</p>
+                  )}
                 </div>
                 <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
@@ -3769,10 +3808,29 @@ export default function AdminPage() {
                 {/* Mon-Sun */}
                 <div className="space-y-3">
                   {weekPlan.days.map((day, i) => (
-                    <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-white font-heading text-sm uppercase">{day.day}</span>
-                        <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
+                    <div key={day.day} className={`bg-primary/30 border rounded-xl p-4 ${day.sessionType === 'in_person' ? 'border-blue-500/30' : 'border-white/5'} ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-heading text-sm uppercase">{day.day}</span>
+                          <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
+                          {/* Per-session clients: always show in-person badge */}
+                          {activePlan?.billingMode === 'per_session' && day.workouts[0]?.type && day.workouts[0]?.type !== 'rest' && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">🏋️ In-Person</span>
+                          )}
+                        </div>
+                        {/* Hybrid: show toggle */}
+                        {activePlan?.billingMode === 'hybrid' && day.workouts[0]?.type && day.workouts[0]?.type !== 'rest' && (
+                          <button
+                            onClick={() => {
+                              const updated = [...weekPlan.days];
+                              updated[i] = { ...updated[i], sessionType: day.sessionType === 'in_person' ? 'remote' : 'in_person' };
+                              setWeekPlan({ ...weekPlan, days: updated });
+                            }}
+                            className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${day.sessionType === 'in_person' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:border-white/30'}`}
+                          >
+                            {day.sessionType === 'in_person' ? '🏋️ In-Person' : '📱 Remote'}
+                          </button>
+                        )}
                       </div>
                       {/* Workouts for this day */}
                       {day.workouts.map((wo, wi) => (
@@ -4054,6 +4112,11 @@ export default function AdminPage() {
               <ClientStatsTab clientId={selectedClientData.clientId} distanceUnit={adminDistanceUnit} />
             )}
 
+            {/* SESSIONS */}
+            {clientTab === "sessions" && (
+              <SessionsTab clientId={selectedClientData.clientId || selectedClientData.id} clientName={selectedClientData.name} />
+            )}
+
             {/* ACCOUNT */}
             {clientTab === "account" && (
               <AccountTab 
@@ -4180,6 +4243,67 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDefaultExpanded(true); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, true); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
                     <button onClick={() => { setAdminDefaultExpanded(false); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, false); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
+                  </div>
+                </div>
+
+                {/* Session Management Settings */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-5">
+                  <div>
+                    <h3 className="font-heading text-sm uppercase text-gray-400 mb-1">In-Person Session Defaults</h3>
+                    <p className="text-gray-300 text-xs">These defaults are used when sessions are auto-created from the week builder. You can override per-session.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Default Session Time</label>
+                      <input
+                        type="time"
+                        value={adminDefaultSessionTime}
+                        onChange={(e) => { setAdminDefaultSessionTime(e.target.value); saveSessionSettings({ defaultSessionTime: e.target.value }); }}
+                        className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Default Duration</label>
+                      <select
+                        value={adminDefaultSessionDuration}
+                        onChange={(e) => { const v = parseInt(e.target.value); setAdminDefaultSessionDuration(v); saveSessionSettings({ defaultSessionDuration: v }); }}
+                        className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                      >
+                        <option value={30}>30 minutes</option>
+                        <option value={45}>45 minutes</option>
+                        <option value={60}>60 minutes</option>
+                        <option value={75}>75 minutes</option>
+                        <option value={90}>90 minutes</option>
+                        <option value={120}>120 minutes</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Default Location</label>
+                    <input
+                      type="text"
+                      value={adminDefaultSessionLocation}
+                      onChange={(e) => setAdminDefaultSessionLocation(e.target.value)}
+                      onBlur={() => saveSessionSettings({ defaultSessionLocation: adminDefaultSessionLocation })}
+                      className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                      placeholder="e.g. Main Street Gym, Studio B"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Low Balance Alert Threshold</label>
+                    <p className="text-gray-500 text-xs mb-2">Send client a &quot;low balance&quot; email when they have this many sessions or fewer remaining.</p>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={adminLowBalanceThreshold}
+                      onChange={(e) => { const v = parseInt(e.target.value) || 3; setAdminLowBalanceThreshold(v); saveSessionSettings({ lowBalanceThreshold: v }); }}
+                      className="w-24 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                    />
+                    <span className="text-gray-400 text-xs ml-2">sessions remaining</span>
                   </div>
                 </div>
 
