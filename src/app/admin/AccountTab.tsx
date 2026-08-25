@@ -926,6 +926,13 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             </div>
           )}
 
+          {/* Billing mode indicator for hybrid */}
+          {plan.billingMode === 'hybrid' && (
+            <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 mb-4">
+              <p className="text-purple-400 text-xs font-medium">📋+🏋️ Hybrid billing — programming cost is editable above. Session packages are managed from the plan card below.</p>
+            </div>
+          )}
+
           {/* Training Program (expandable) */}
           {programTemplates && programTemplates.length > 0 && (
             <div className="border border-white/5 rounded-lg mb-3 overflow-hidden">
