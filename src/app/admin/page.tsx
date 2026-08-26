@@ -564,22 +564,47 @@ export default function AdminPage() {
     setSelectedWeekStart(monday);
     const dateRange = `${formatDate(monday)} - ${formatDate(sunday)}`;
     
-    // Auto-set session types based on recurring schedule for hybrid/per_session clients
-    const dayNameToIndex: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
+    // Build a set of dates in this week that have actual scheduled sessions
+    const weekDates: Record<string, string> = {}; // dayName → YYYY-MM-DD
+    const daysInOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      weekDates[daysInOrder[i]] = dateStr;
+    }
+
+    // Check which days in this week have actual sessions scheduled
+    const daysWithSessions = new Set<string>();
+    for (const [dayName, dateStr] of Object.entries(weekDates)) {
+      if (clientSessionDates.includes(dateStr)) {
+        daysWithSessions.add(dayName);
+      }
+    }
+
+    // If no session dates found for this week, fall back to recurring pattern
+    const useSessionDates = daysWithSessions.size > 0;
+    
     const billingMode = activePlan?.billingMode;
+    const dayNameToIndex: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
+
     const updatedDays = weekPlan.days.map(day => {
-      const dayNum = dayNameToIndex[day.day];
-      const isInPersonDay = clientRecurringDays.includes(dayNum);
+      let isInPersonDay: boolean;
+      
+      if (useSessionDates) {
+        // Use actual scheduled sessions for this specific week
+        isInPersonDay = daysWithSessions.has(day.day);
+      } else {
+        // Fallback to recurring pattern
+        isInPersonDay = clientRecurringDays.includes(dayNameToIndex[day.day]);
+      }
       
       if (billingMode === 'hybrid') {
-        // Hybrid: auto-set in-person days, rest stays remote
         return { ...day, sessionType: isInPersonDay ? 'in_person' as const : 'remote' as const };
       } else if (billingMode === 'per_session') {
-        // Per-session: recurring days are in-person, non-recurring days default to rest
         if (isInPersonDay) {
           return { ...day, sessionType: 'in_person' as const };
         } else {
-          // Non-schedule days default to rest for per_session clients
           return { ...day, sessionType: 'remote' as const, workouts: [{ ...day.workouts[0], type: 'rest' }] };
         }
       }
@@ -2047,6 +2072,7 @@ export default function AdminPage() {
   const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
+  const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
 
   // Load weeks and active plan once when a client is first selected
   const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
@@ -2094,6 +2120,22 @@ export default function AdminPage() {
           }
         })
         .catch(() => setClientRecurringDays([]));
+
+      // Fetch actual scheduled sessions for this client (dates)
+      fetch(`/api/sessions?client_id=${client.clientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((sessions: any[]) => {
+          // Extract dates of scheduled (upcoming) sessions
+          const dates = sessions
+            .filter((s: any) => s.status === 'scheduled')
+            .map((s: any) => {
+              const match = s.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean);
+          setClientSessionDates(dates);
+        })
+        .catch(() => setClientSessionDates([]));
     }
   }, [selectedClient, clients.length]);
 
