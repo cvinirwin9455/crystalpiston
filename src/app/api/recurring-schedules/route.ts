@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, daysOfWeek, timeOfDay, daySchedules, durationMinutes, location, sessionType } = body
+  const { clientId, daysOfWeek, timeOfDay, daySchedules, startDate, durationMinutes, location, sessionType } = body
 
   // Support both old format (daysOfWeek + timeOfDay) and new format (daySchedules with per-day times)
   const resolvedDays: number[] = daySchedules ? daySchedules.map((ds: any) => ds.day) : daysOfWeek
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const generatedCount = await generateSessionsForSchedule(adminClient, schedule, clientId, user.id, orgId, dayTimeMap)
+  const generatedCount = await generateSessionsForSchedule(adminClient, schedule, clientId, user.id, orgId, dayTimeMap, startDate)
 
   return NextResponse.json({ success: true, schedule, generatedSessions: generatedCount })
 }
@@ -259,7 +259,8 @@ async function generateSessionsForSchedule(
   clientId: string,
   coachId: string,
   orgId: string,
-  dayTimeMap?: Record<number, string>
+  dayTimeMap?: Record<number, string>,
+  startDate?: string
 ): Promise<number> {
   // Get remaining session balance — try the view first, fallback to manual calc
   let sessionsRemaining = 0
@@ -320,18 +321,23 @@ async function generateSessionsForSchedule(
   // Default time from schedule (format: "HH:MM:SS" or "HH:MM")
   const defaultTime = schedule.time_of_day ? schedule.time_of_day.slice(0, 5) : '09:00'
 
-  // Generate sessions starting from tomorrow
+  // Generate sessions starting from startDate (or tomorrow if not provided)
   const sessionRows: any[] = []
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  tomorrow.setHours(12, 0, 0, 0) // Use noon to avoid timezone date-shift issues
+  let generationStart: Date
+  if (startDate) {
+    generationStart = new Date(startDate + 'T12:00:00') // Use noon to avoid timezone shift
+  } else {
+    generationStart = new Date()
+    generationStart.setDate(generationStart.getDate() + 1)
+    generationStart.setHours(12, 0, 0, 0)
+  }
 
   let generated = 0
   const maxLookahead = 365
 
   for (let dayOffset = 0; dayOffset < maxLookahead && generated < sessionsToGenerate; dayOffset++) {
-    const currentDate = new Date(tomorrow)
-    currentDate.setDate(tomorrow.getDate() + dayOffset)
+    const currentDate = new Date(generationStart)
+    currentDate.setDate(generationStart.getDate() + dayOffset)
     
     const dayOfWeek = currentDate.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
     

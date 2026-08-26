@@ -71,6 +71,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   // Add recurring schedule form state
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [scheduleDayTimes, setScheduleDayTimes] = useState<Record<number, string>>({});
+  const [scheduleStartDate, setScheduleStartDate] = useState("");
   const [scheduleDuration, setScheduleDuration] = useState("60");
   const [scheduleLocation, setScheduleLocation] = useState("");
   const [scheduleType, setScheduleType] = useState("");
@@ -264,7 +265,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   // ============ RECURRING SCHEDULE ACTIONS ============
 
   const handleCreateSchedule = async () => {
-    if (scheduleDays.length === 0) return;
+    if (scheduleDays.length === 0 || !scheduleStartDate) return;
     setSaving(true);
     try {
       const daySchedules = scheduleDays.map(day => ({
@@ -277,6 +278,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         body: JSON.stringify({
           clientId,
           daySchedules,
+          startDate: scheduleStartDate,
           durationMinutes: parseInt(scheduleDuration) || 60,
           location: scheduleLocation || null,
           sessionType: scheduleType || null,
@@ -287,6 +289,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         setShowAddSchedule(false);
         setScheduleDays([]);
         setScheduleDayTimes({});
+        setScheduleStartDate("");
         setScheduleDuration("60");
         setScheduleLocation("");
         setScheduleType("");
@@ -595,7 +598,11 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
               <label className="text-gray-400 text-xs block mb-2">Days & Times *</label>
               <DayPicker days={scheduleDays} setDays={setScheduleDays} dayTimes={scheduleDayTimes} setDayTimes={setScheduleDayTimes} />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">Start Date *</label>
+                <input type="date" value={scheduleStartDate} onChange={(e) => setScheduleStartDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Duration</label>
                 <select value={scheduleDuration} onChange={(e) => setScheduleDuration(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
@@ -616,12 +623,12 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
                 <input type="text" value={scheduleType} onChange={(e) => setScheduleType(e.target.value)} placeholder="e.g. Strength" className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
               </div>
             </div>
-            <p className="text-gray-500 text-xs">Sessions will be auto-generated to fill your remaining session balance ({sessionsRemaining ?? 0} sessions).</p>
+            <p className="text-gray-500 text-xs">Sessions will be auto-generated starting from the start date to fill your remaining session balance ({sessionsRemaining ?? 0} sessions).</p>
             <div className="flex gap-2 pt-1">
-              <button onClick={handleCreateSchedule} disabled={scheduleDays.length === 0 || saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
+              <button onClick={handleCreateSchedule} disabled={scheduleDays.length === 0 || !scheduleStartDate || saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
                 {saving ? "Creating..." : "Create Schedule"}
               </button>
-              <button onClick={() => { setShowAddSchedule(false); setScheduleDays([]); setScheduleDayTimes({}); }} className="text-gray-400 hover:text-white text-sm px-4 py-2">Cancel</button>
+              <button onClick={() => { setShowAddSchedule(false); setScheduleDays([]); setScheduleDayTimes({}); setScheduleStartDate(""); }} className="text-gray-400 hover:text-white text-sm px-4 py-2">Cancel</button>
             </div>
           </div>
         )}
