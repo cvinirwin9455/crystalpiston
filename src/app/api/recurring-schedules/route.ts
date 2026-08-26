@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getOrgIdForUser } from '@/lib/org'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -11,63 +10,39 @@ async function getAdminClient() {
   )
 }
 
-// GET /api/recurring-schedules - List recurring schedules (optionally filtered by client_id)
+// GET /api/recurring-schedules?client_id=xxx - Get all recurring schedules for a client
 export async function GET(request: Request) {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const { searchParams } = new URL(request.url)
+  const clientId = searchParams.get('client_id')
 
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!clientId) {
+    return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
   }
 
   const adminClient = await getAdminClient()
-  const orgId = await getOrgIdForUser(adminClient, user.id)
-  const { searchParams } = new URL(request.url)
-  const clientId = searchParams.get('client_id')
-  const activeOnly = searchParams.get('active') !== 'false' // default: active only
 
-  let query = adminClient
+  const { data: schedules, error } = await adminClient
     .from('recurring_schedules')
     .select('*')
+    .eq('client_id', clientId)
     .order('created_at', { ascending: false })
-
-  if (orgId) {
-    query = query.eq('organization_id', orgId)
-  }
-  if (clientId) {
-    query = query.eq('client_id', clientId)
-  }
-  if (activeOnly) {
-    query = query.eq('active', true)
-  }
-
-  const { data: schedules, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ schedules: schedules || [] })
+  return NextResponse.json(schedules || [])
 }
 
-// POST /api/recurring-schedules - Create a new recurring schedule and optionally generate sessions
+// POST /api/recurring-schedules - Create a new recurring schedule and auto-generate sessions
 export async function POST(request: Request) {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase
     .from('users')
@@ -79,58 +54,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const adminClient = await getAdminClient()
-  const orgId = await getOrgIdForUser(adminClient, user.id)
-
   const body = await request.json()
-  const {
-    client_id,
-    days_of_week,
-    time_of_day,
-    duration_minutes = 60,
-    location,
-    session_type,
-    generate_weeks = 4, // How many weeks ahead to auto-generate sessions
-  } = body
+  const { clientId, daysOfWeek, timeOfDay, durationMinutes, location, sessionType } = body
 
-  // Validate required fields
-  if (!client_id || !days_of_week || !Array.isArray(days_of_week) || days_of_week.length === 0 || !time_of_day) {
-    return NextResponse.json({ error: 'client_id, days_of_week (array of 0-6), and time_of_day are required' }, { status: 400 })
+  if (!clientId || !daysOfWeek || daysOfWeek.length === 0 || !timeOfDay) {
+    return NextResponse.json({ error: 'clientId, daysOfWeek (array), and timeOfDay are required' }, { status: 400 })
   }
 
-  // Validate days_of_week values (0=Sunday, 1=Monday, ..., 6=Saturday)
-  if (!days_of_week.every((d: number) => Number.isInteger(d) && d >= 0 && d <= 6)) {
-    return NextResponse.json({ error: 'days_of_week must contain integers 0-6 (0=Sunday, 6=Saturday)' }, { status: 400 })
-  }
+  const adminClient = await getAdminClient()
 
-  // Validate time format (HH:MM or HH:MM:SS)
-  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time_of_day)) {
-    return NextResponse.json({ error: 'time_of_day must be in HH:MM or HH:MM:SS format' }, { status: 400 })
-  }
-
-  // Verify client exists
+  // Get client's organization_id
   const { data: client } = await adminClient
     .from('clients')
-    .select('id')
-    .eq('id', client_id)
+    .select('organization_id')
+    .eq('id', clientId)
     .single()
 
-  if (!client) {
-    return NextResponse.json({ error: 'Client not found' }, { status: 404 })
-  }
+  const orgId = client?.organization_id || user.id
 
   // Create the recurring schedule
   const { data: schedule, error } = await adminClient
     .from('recurring_schedules')
     .insert({
-      client_id,
+      client_id: clientId,
       coach_id: user.id,
       organization_id: orgId,
-      days_of_week,
-      time_of_day,
-      duration_minutes,
+      days_of_week: daysOfWeek, // array of integers: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+      time_of_day: timeOfDay, // "HH:MM" format
+      duration_minutes: durationMinutes || 60,
       location: location || null,
-      session_type: session_type || null,
+      session_type: sessionType || null,
       active: true,
     })
     .select()
@@ -140,77 +93,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Auto-generate sessions for the next N weeks
-  const generatedSessions: any[] = []
-  if (generate_weeks > 0) {
-    const now = new Date()
-    const endDate = new Date(now)
-    endDate.setDate(endDate.getDate() + (generate_weeks * 7))
+  // Auto-generate sessions based on remaining session balance
+  const generatedCount = await generateSessionsForSchedule(adminClient, schedule, clientId, user.id, orgId)
 
-    const sessionsToCreate: any[] = []
-    const current = new Date(now)
-    current.setHours(0, 0, 0, 0)
-
-    while (current <= endDate) {
-      const dayOfWeek = current.getDay() // 0=Sunday, 6=Saturday
-      if (days_of_week.includes(dayOfWeek)) {
-        // Build the scheduled_at timestamp
-        const [hours, minutes] = time_of_day.split(':').map(Number)
-        const scheduledAt = new Date(current)
-        scheduledAt.setHours(hours, minutes, 0, 0)
-
-        // Only generate future sessions
-        if (scheduledAt > now) {
-          sessionsToCreate.push({
-            client_id,
-            coach_id: user.id,
-            organization_id: orgId,
-            scheduled_at: scheduledAt.toISOString(),
-            duration_minutes,
-            location: location || null,
-            session_type: session_type || null,
-            status: 'scheduled',
-            recurring_schedule_id: schedule.id,
-          })
-        }
-      }
-      current.setDate(current.getDate() + 1)
-    }
-
-    if (sessionsToCreate.length > 0) {
-      const { data: created, error: sessError } = await adminClient
-        .from('sessions')
-        .insert(sessionsToCreate)
-        .select()
-
-      if (sessError) {
-        // Schedule was created but sessions failed — return partial success
-        return NextResponse.json({
-          schedule,
-          sessions: [],
-          warning: `Schedule created but session generation failed: ${sessError.message}`,
-        }, { status: 201 })
-      }
-
-      generatedSessions.push(...(created || []))
-    }
-  }
-
-  return NextResponse.json({
-    schedule,
-    sessions: generatedSessions,
-    sessions_generated: generatedSessions.length,
-  }, { status: 201 })
+  return NextResponse.json({ success: true, schedule, generatedSessions: generatedCount })
 }
 
-// PATCH /api/recurring-schedules - Update an existing schedule (pass id in body)
+// PATCH /api/recurring-schedules - Update a schedule (pause, edit, etc.)
 export async function PATCH(request: Request) {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase
     .from('users')
@@ -222,76 +115,69 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const adminClient = await getAdminClient()
-  const orgId = await getOrgIdForUser(adminClient, user.id)
-
   const body = await request.json()
-  const { id, ...updateFields } = body
+  const { scheduleId, active, daysOfWeek, timeOfDay, durationMinutes, location, sessionType, clearFutureSessions } = body
 
-  if (!id) {
-    return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  if (!scheduleId) {
+    return NextResponse.json({ error: 'scheduleId is required' }, { status: 400 })
   }
 
-  // Verify schedule exists and belongs to org
-  const { data: existing } = await adminClient
-    .from('recurring_schedules')
-    .select('id, organization_id')
-    .eq('id', id)
-    .single()
+  const adminClient = await getAdminClient()
 
-  if (!existing) {
-    return NextResponse.json({ error: 'Schedule not found' }, { status: 404 })
-  }
-
-  if (orgId && existing.organization_id !== orgId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  // Only allow updating specific fields
-  const allowedFields = ['days_of_week', 'time_of_day', 'duration_minutes', 'location', 'session_type', 'active']
   const updates: Record<string, any> = {}
-  for (const field of allowedFields) {
-    if (updateFields[field] !== undefined) {
-      updates[field] = updateFields[field]
-    }
-  }
+  if (active !== undefined) updates.active = active
+  if (daysOfWeek !== undefined) updates.days_of_week = daysOfWeek
+  if (timeOfDay !== undefined) updates.time_of_day = timeOfDay
+  if (durationMinutes !== undefined) updates.duration_minutes = durationMinutes
+  if (location !== undefined) updates.location = location || null
+  if (sessionType !== undefined) updates.session_type = sessionType || null
 
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
-  }
-
-  // Validate days_of_week if provided
-  if (updates.days_of_week) {
-    if (!Array.isArray(updates.days_of_week) || updates.days_of_week.length === 0) {
-      return NextResponse.json({ error: 'days_of_week must be a non-empty array' }, { status: 400 })
-    }
-    if (!updates.days_of_week.every((d: number) => Number.isInteger(d) && d >= 0 && d <= 6)) {
-      return NextResponse.json({ error: 'days_of_week must contain integers 0-6' }, { status: 400 })
-    }
-  }
-
-  const { data: schedule, error } = await adminClient
+  const { error } = await adminClient
     .from('recurring_schedules')
     .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
+    .eq('id', scheduleId)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ schedule })
+  // If deactivating or changing pattern, optionally clear future scheduled sessions
+  if (clearFutureSessions) {
+    await adminClient
+      .from('sessions')
+      .delete()
+      .eq('recurring_schedule_id', scheduleId)
+      .eq('status', 'scheduled')
+      .gte('scheduled_at', new Date().toISOString())
+  }
+
+  // If reactivating or changing pattern, regenerate sessions
+  if (active === true || (daysOfWeek && active !== false)) {
+    const { data: schedule } = await adminClient
+      .from('recurring_schedules')
+      .select('*')
+      .eq('id', scheduleId)
+      .single()
+
+    if (schedule && schedule.active) {
+      const { data: client } = await adminClient
+        .from('clients')
+        .select('organization_id')
+        .eq('id', schedule.client_id)
+        .single()
+      const orgId = client?.organization_id || user.id
+      await generateSessionsForSchedule(adminClient, schedule, schedule.client_id, user.id, orgId)
+    }
+  }
+
+  return NextResponse.json({ success: true })
 }
 
-// DELETE /api/recurring-schedules - Deactivate (soft delete) or hard delete a schedule
+// DELETE /api/recurring-schedules?id=xxx - Delete a schedule and optionally clear future sessions
 export async function DELETE(request: Request) {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase
     .from('users')
@@ -303,71 +189,133 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const adminClient = await getAdminClient()
-  const orgId = await getOrgIdForUser(adminClient, user.id)
-
   const { searchParams } = new URL(request.url)
-  const id = searchParams.get('id')
-  const hard = searchParams.get('hard') === 'true'
-  const cancelFuture = searchParams.get('cancel_future') !== 'false' // default: cancel future sessions
+  const scheduleId = searchParams.get('id')
+  const clearFuture = searchParams.get('clear_future') === 'true'
 
-  if (!id) {
-    return NextResponse.json({ error: 'id query param is required' }, { status: 400 })
+  if (!scheduleId) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 })
   }
 
-  // Verify schedule exists and belongs to org
-  const { data: existing } = await adminClient
+  const adminClient = await getAdminClient()
+
+  // Optionally delete future scheduled sessions tied to this recurring schedule
+  if (clearFuture) {
+    await adminClient
+      .from('sessions')
+      .delete()
+      .eq('recurring_schedule_id', scheduleId)
+      .eq('status', 'scheduled')
+      .gte('scheduled_at', new Date().toISOString())
+  }
+
+  // Delete the schedule itself
+  const { error } = await adminClient
     .from('recurring_schedules')
-    .select('id, organization_id')
-    .eq('id', id)
+    .delete()
+    .eq('id', scheduleId)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
+// ============================================================
+// Helper: Generate sessions for a recurring schedule
+// Generates enough sessions to use up remaining session balance
+// Skips dates that already have a session (avoid duplicates)
+// ============================================================
+async function generateSessionsForSchedule(
+  adminClient: any,
+  schedule: any,
+  clientId: string,
+  coachId: string,
+  orgId: string
+): Promise<number> {
+  // Get remaining session balance
+  const { data: balance } = await adminClient
+    .from('client_session_balances')
+    .select('sessions_remaining')
+    .eq('client_id', clientId)
     .single()
 
-  if (!existing) {
-    return NextResponse.json({ error: 'Schedule not found' }, { status: 404 })
-  }
+  let sessionsRemaining = balance?.sessions_remaining ?? 0
+  if (sessionsRemaining <= 0) return 0
 
-  if (orgId && existing.organization_id !== orgId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  // Get existing future scheduled sessions count for this client (to subtract from what we should generate)
+  const { count: existingFutureCount } = await adminClient
+    .from('sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', clientId)
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', new Date().toISOString())
 
-  // Optionally cancel all future scheduled sessions from this recurring schedule
-  let cancelledCount = 0
-  if (cancelFuture) {
-    const { data: cancelled } = await adminClient
-      .from('sessions')
-      .update({ status: 'cancelled_no_charge' })
-      .eq('recurring_schedule_id', id)
-      .eq('status', 'scheduled')
-      .gt('scheduled_at', new Date().toISOString())
-      .select('id')
+  // We only need to generate enough to fill the remaining balance minus already-scheduled sessions
+  const sessionsToGenerate = sessionsRemaining - (existingFutureCount || 0)
+  if (sessionsToGenerate <= 0) return 0
 
-    cancelledCount = cancelled?.length || 0
-  }
+  // Get existing session dates to avoid duplicates
+  const { data: existingSessions } = await adminClient
+    .from('sessions')
+    .select('scheduled_at')
+    .eq('client_id', clientId)
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', new Date().toISOString())
 
-  if (hard) {
-    // Hard delete the schedule entirely
-    const { error } = await adminClient
-      .from('recurring_schedules')
-      .delete()
-      .eq('id', id)
+  const existingDates = new Set(
+    (existingSessions || []).map((s: any) => {
+      const d = new Date(s.scheduled_at)
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    })
+  )
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+  // Generate sessions starting from tomorrow
+  const [hours, minutes] = schedule.time_of_day.split(':').map(Number)
+  const sessionRows: any[] = []
+  const startDate = new Date()
+  startDate.setDate(startDate.getDate() + 1) // Start from tomorrow
+  startDate.setHours(0, 0, 0, 0)
+
+  let currentDate = new Date(startDate)
+  let generated = 0
+  const maxLookahead = 365 // Don't look more than a year ahead
+
+  for (let dayOffset = 0; dayOffset < maxLookahead && generated < sessionsToGenerate; dayOffset++) {
+    const dayOfWeek = currentDate.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+    
+    if (schedule.days_of_week.includes(dayOfWeek)) {
+      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`
+      
+      if (!existingDates.has(dateKey)) {
+        const sessionDate = new Date(currentDate)
+        sessionDate.setHours(hours, minutes, 0, 0)
+
+        sessionRows.push({
+          client_id: clientId,
+          coach_id: coachId,
+          organization_id: orgId,
+          scheduled_at: sessionDate.toISOString(),
+          duration_minutes: schedule.duration_minutes || 60,
+          location: schedule.location || null,
+          session_type: schedule.session_type || null,
+          status: 'scheduled',
+          recurring_schedule_id: schedule.id,
+        })
+        existingDates.add(dateKey) // Prevent duplicates within this generation run
+        generated++
+      }
     }
-  } else {
-    // Soft delete: mark as inactive
-    const { error } = await adminClient
-      .from('recurring_schedules')
-      .update({ active: false })
-      .eq('id', id)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    currentDate.setDate(currentDate.getDate() + 1)
   }
 
-  return NextResponse.json({
-    success: true,
-    cancelled_future_sessions: cancelledCount,
-  })
+  // Insert in batches of 50
+  for (let i = 0; i < sessionRows.length; i += 50) {
+    const batch = sessionRows.slice(i, i + 50)
+    await adminClient.from('sessions').insert(batch)
+  }
+
+  return generated
 }

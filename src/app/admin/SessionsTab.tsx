@@ -13,6 +13,19 @@ interface Session {
   notes: string | null;
   status: string;
   marked_at: string | null;
+  recurring_schedule_id: string | null;
+  created_at: string;
+}
+
+interface RecurringSchedule {
+  id: string;
+  client_id: string;
+  days_of_week: number[];
+  time_of_day: string;
+  duration_minutes: number;
+  location: string | null;
+  session_type: string | null;
+  active: boolean;
   created_at: string;
 }
 
@@ -21,12 +34,19 @@ interface SessionsTabProps {
   clientName: string;
 }
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export default function SessionsTab({ clientId, clientName }: SessionsTabProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
   const [showAddSession, setShowAddSession] = useState(false);
+  const [showAddSchedule, setShowAddSchedule] = useState(false);
   const [editingSession, setEditingSession] = useState<string | null>(null);
+  const [reschedulingSession, setReschedulingSession] = useState<string | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<string | null>(null);
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
 
   // Add session form state
@@ -44,9 +64,28 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   const [editLocation, setEditLocation] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
+  // Reschedule state
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+
+  // Add recurring schedule form state
+  const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+  const [scheduleTime, setScheduleTime] = useState("06:00");
+  const [scheduleDuration, setScheduleDuration] = useState("60");
+  const [scheduleLocation, setScheduleLocation] = useState("");
+  const [scheduleType, setScheduleType] = useState("");
+
+  // Edit schedule state
+  const [editScheduleDays, setEditScheduleDays] = useState<number[]>([]);
+  const [editScheduleTime, setEditScheduleTime] = useState("");
+  const [editScheduleDuration, setEditScheduleDuration] = useState("");
+  const [editScheduleLocation, setEditScheduleLocation] = useState("");
+  const [editScheduleType, setEditScheduleType] = useState("");
+
   useEffect(() => {
     fetchSessions();
     fetchBalance();
+    fetchSchedules();
   }, [clientId]);
 
   const fetchSessions = async () => {
@@ -72,6 +111,20 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
       }
     } catch {}
   };
+
+  const fetchSchedules = async () => {
+    try {
+      const res = await fetch(`/api/recurring-schedules?client_id=${clientId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSchedules(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch schedules:", err);
+    }
+  };
+
+  // ============ SESSION ACTIONS ============
 
   const handleAddSession = async () => {
     if (!newDate) return;
@@ -99,6 +152,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         setNewType("");
         setNewNotes("");
         fetchSessions();
+        fetchBalance();
       }
     } catch (err) {
       console.error("Failed to create session:", err);
@@ -128,7 +182,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     try {
       const session = sessions.find((s) => s.id === sessionId);
       if (!session) return;
-      const dateStr = session.scheduled_at.split("T")[0];
+      const dateStr = new Date(session.scheduled_at).toISOString().split("T")[0];
       const scheduledAt = editTime ? new Date(`${dateStr}T${editTime}:00`).toISOString() : undefined;
 
       const res = await fetch("/api/sessions", {
@@ -153,6 +207,29 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     }
   };
 
+  const handleReschedule = async (sessionId: string) => {
+    if (!rescheduleDate || !rescheduleTime) return;
+    setSaving(true);
+    try {
+      const scheduledAt = new Date(`${rescheduleDate}T${rescheduleTime}:00`).toISOString();
+      const res = await fetch("/api/sessions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, scheduledAt }),
+      });
+      if (res.ok) {
+        setReschedulingSession(null);
+        setRescheduleDate("");
+        setRescheduleTime("");
+        fetchSessions();
+      }
+    } catch (err) {
+      console.error("Failed to reschedule session:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteSession = async (sessionId: string) => {
     if (!confirm("Delete this session? This cannot be undone.")) return;
     try {
@@ -167,15 +244,148 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   };
 
   const startEditing = (session: Session) => {
-    const time = new Date(session.scheduled_at).toTimeString().slice(0, 5);
-    setEditTime(time);
+    const d = new Date(session.scheduled_at);
+    setEditTime(d.toTimeString().slice(0, 5));
     setEditDuration(session.duration_minutes.toString());
     setEditLocation(session.location || "");
     setEditNotes(session.notes || "");
     setEditingSession(session.id);
+    setReschedulingSession(null);
   };
 
-  // Filter sessions
+  const startRescheduling = (session: Session) => {
+    const d = new Date(session.scheduled_at);
+    setRescheduleDate(d.toISOString().split("T")[0]);
+    setRescheduleTime(d.toTimeString().slice(0, 5));
+    setReschedulingSession(session.id);
+    setEditingSession(null);
+  };
+
+  // ============ RECURRING SCHEDULE ACTIONS ============
+
+  const handleCreateSchedule = async () => {
+    if (scheduleDays.length === 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/recurring-schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          daysOfWeek: scheduleDays,
+          timeOfDay: scheduleTime,
+          durationMinutes: parseInt(scheduleDuration) || 60,
+          location: scheduleLocation || null,
+          sessionType: scheduleType || null,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShowAddSchedule(false);
+        setScheduleDays([]);
+        setScheduleTime("06:00");
+        setScheduleDuration("60");
+        setScheduleLocation("");
+        setScheduleType("");
+        fetchSchedules();
+        fetchSessions();
+        fetchBalance();
+        if (data.generatedSessions > 0) {
+          alert(`Schedule created! ${data.generatedSessions} session${data.generatedSessions > 1 ? 's' : ''} auto-generated.`);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to create schedule:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleSchedule = async (scheduleId: string, currentActive: boolean) => {
+    const clearFuture = !currentActive ? false : confirm("Pause this schedule?\n\nDo you also want to DELETE all future scheduled sessions from this pattern?\n\nClick OK to delete future sessions, Cancel to keep them.");
+    try {
+      const res = await fetch("/api/recurring-schedules", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduleId,
+          active: !currentActive,
+          clearFutureSessions: clearFuture,
+        }),
+      });
+      if (res.ok) {
+        fetchSchedules();
+        fetchSessions();
+        fetchBalance();
+      }
+    } catch (err) {
+      console.error("Failed to toggle schedule:", err);
+    }
+  };
+
+  const handleEditSchedule = async (scheduleId: string) => {
+    setSaving(true);
+    const clearFuture = confirm("You're changing this schedule pattern.\n\nDelete existing future sessions from the OLD pattern and generate new ones?\n\nClick OK to regenerate, Cancel to just update the pattern.");
+    try {
+      const res = await fetch("/api/recurring-schedules", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduleId,
+          daysOfWeek: editScheduleDays,
+          timeOfDay: editScheduleTime,
+          durationMinutes: parseInt(editScheduleDuration) || 60,
+          location: editScheduleLocation || null,
+          sessionType: editScheduleType || null,
+          clearFutureSessions: clearFuture,
+        }),
+      });
+      if (res.ok) {
+        setEditingSchedule(null);
+        fetchSchedules();
+        fetchSessions();
+        fetchBalance();
+      }
+    } catch (err) {
+      console.error("Failed to edit schedule:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    const clearFuture = confirm("Delete this recurring schedule?\n\nAlso delete all future scheduled sessions from this pattern?\n\nClick OK to delete future sessions too, Cancel to keep them (only removes the pattern).");
+    try {
+      const res = await fetch(`/api/recurring-schedules?id=${scheduleId}&clear_future=${clearFuture}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchSchedules();
+        fetchSessions();
+        fetchBalance();
+      }
+    } catch (err) {
+      console.error("Failed to delete schedule:", err);
+    }
+  };
+
+  const startEditingSchedule = (schedule: RecurringSchedule) => {
+    setEditScheduleDays([...schedule.days_of_week]);
+    setEditScheduleTime(schedule.time_of_day.slice(0, 5));
+    setEditScheduleDuration(schedule.duration_minutes.toString());
+    setEditScheduleLocation(schedule.location || "");
+    setEditScheduleType(schedule.session_type || "");
+    setEditingSchedule(schedule.id);
+  };
+
+  const toggleDay = (day: number, days: number[], setDays: (d: number[]) => void) => {
+    if (days.includes(day)) {
+      setDays(days.filter((d) => d !== day));
+    } else {
+      setDays([...days, day].sort());
+    }
+  };
+
+  // ============ DISPLAY HELPERS ============
+
   const now = new Date();
   const filteredSessions = sessions.filter((s) => {
     if (filter === "upcoming") return new Date(s.scheduled_at) >= now && s.status === "scheduled";
@@ -186,6 +396,13 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " at " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  };
+
+  const formatTime12h = (time24: string) => {
+    const [h, m] = time24.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const hour = h % 12 || 12;
+    return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
   };
 
   const statusColors: Record<string, string> = {
@@ -210,8 +427,24 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     return <div className="text-center py-8"><p className="text-gray-400">Loading sessions...</p></div>;
   }
 
+  // ============ DAY PICKER COMPONENT ============
+  const DayPicker = ({ days, setDays }: { days: number[]; setDays: (d: number[]) => void }) => (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+        <button
+          key={day}
+          type="button"
+          onClick={() => toggleDay(day, days, setDays)}
+          className={`w-9 h-9 rounded-lg text-xs font-bold transition-colors ${days.includes(day) ? "bg-accent text-white" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30"}`}
+        >
+          {DAY_NAMES[day]}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header with balance */}
       <div className="flex items-center justify-between">
         <div>
@@ -230,10 +463,146 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         </div>
       </div>
 
-      {/* Add Session Form */}
+      {/* ============ RECURRING SCHEDULES SECTION ============ */}
+      <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <h4 className="font-heading text-sm uppercase text-white">Recurring Schedule</h4>
+          </div>
+          {!showAddSchedule && (
+            <button onClick={() => setShowAddSchedule(true)} className="text-blue-400 text-xs hover:underline">+ Add Pattern</button>
+          )}
+        </div>
+
+        {/* Existing schedules */}
+        {schedules.length === 0 && !showAddSchedule && (
+          <p className="text-gray-500 text-xs">No recurring schedule set. Add a pattern to auto-generate sessions based on session balance.</p>
+        )}
+
+        {schedules.map((schedule) => (
+          <div key={schedule.id} className={`border rounded-lg p-3 mb-2 ${schedule.active ? "border-blue-500/20 bg-blue-500/5" : "border-white/5 bg-white/2 opacity-60"}`}>
+            {editingSchedule === schedule.id ? (
+              /* Edit schedule */
+              <div className="space-y-3">
+                <DayPicker days={editScheduleDays} setDays={setEditScheduleDays} />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Time</label>
+                    <input type="time" value={editScheduleTime} onChange={(e) => setEditScheduleTime(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Duration</label>
+                    <select value={editScheduleDuration} onChange={(e) => setEditScheduleDuration(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">60 min</option>
+                      <option value="75">75 min</option>
+                      <option value="90">90 min</option>
+                      <option value="120">120 min</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Location</label>
+                    <input type="text" value={editScheduleLocation} onChange={(e) => setEditScheduleLocation(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Type</label>
+                    <input type="text" value={editScheduleType} onChange={(e) => setEditScheduleType(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleEditSchedule(schedule.id)} disabled={editScheduleDays.length === 0 || saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs disabled:opacity-50">
+                    {saving ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button onClick={() => setEditingSchedule(null)} className="text-gray-400 hover:text-white text-xs px-3 py-1.5">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              /* View schedule */
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm font-medium">
+                      {schedule.days_of_week.map((d) => DAY_NAMES[d]).join(", ")}
+                    </span>
+                    <span className="text-gray-400 text-sm">@ {formatTime12h(schedule.time_of_day.slice(0, 5))}</span>
+                    {!schedule.active && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30">Paused</span>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-gray-500 text-xs">{schedule.duration_minutes} min</span>
+                    {schedule.location && <span className="text-gray-500 text-xs">📍 {schedule.location}</span>}
+                    {schedule.session_type && <span className="text-gray-500 text-xs">{schedule.session_type}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => handleToggleSchedule(schedule.id, schedule.active)} title={schedule.active ? "Pause" : "Resume"} className={`p-1.5 rounded-lg transition-colors ${schedule.active ? "bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20" : "bg-green-500/10 text-green-400 hover:bg-green-500/20"}`}>
+                    {schedule.active ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    )}
+                  </button>
+                  <button onClick={() => startEditingSchedule(schedule)} title="Edit" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                  <button onClick={() => handleDeleteSchedule(schedule.id)} title="Delete" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Add schedule form */}
+        {showAddSchedule && (
+          <div className="border border-blue-500/20 bg-blue-500/5 rounded-lg p-4 space-y-3">
+            <h5 className="text-white text-sm font-medium">New Recurring Pattern</h5>
+            <div>
+              <label className="text-gray-400 text-xs block mb-2">Days *</label>
+              <DayPicker days={scheduleDays} setDays={setScheduleDays} />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">Time *</label>
+                <input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">Duration</label>
+                <select value={scheduleDuration} onChange={(e) => setScheduleDuration(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">60 min</option>
+                  <option value="75">75 min</option>
+                  <option value="90">90 min</option>
+                  <option value="120">120 min</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">Location</label>
+                <input type="text" value={scheduleLocation} onChange={(e) => setScheduleLocation(e.target.value)} placeholder="e.g. Main Gym" className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">Session Type</label>
+                <input type="text" value={scheduleType} onChange={(e) => setScheduleType(e.target.value)} placeholder="e.g. Strength" className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs">Sessions will be auto-generated to fill your remaining session balance ({sessionsRemaining ?? 0} sessions).</p>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleCreateSchedule} disabled={scheduleDays.length === 0 || saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
+                {saving ? "Creating..." : "Create Schedule"}
+              </button>
+              <button onClick={() => { setShowAddSchedule(false); setScheduleDays([]); }} className="text-gray-400 hover:text-white text-sm px-4 py-2">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ============ ADD SESSION FORM ============ */}
       {showAddSession && (
         <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 space-y-3">
-          <h4 className="text-white text-sm font-medium">New Session</h4>
+          <h4 className="text-white text-sm font-medium">New One-Off Session</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-gray-400 text-xs block mb-1">Date *</label>
@@ -276,32 +645,33 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         </div>
       )}
 
-      {/* Filters */}
+      {/* ============ FILTERS ============ */}
       <div className="flex gap-1">
         {(["upcoming", "past", "all"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white bg-white/5"}`}>
-            {f === "upcoming" ? "Upcoming" : f === "past" ? "History" : "All"}
+            {f === "upcoming" ? `Upcoming (${sessions.filter(s => new Date(s.scheduled_at) >= now && s.status === "scheduled").length})` : f === "past" ? "History" : "All"}
           </button>
         ))}
       </div>
 
-      {/* Sessions List */}
+      {/* ============ SESSIONS LIST ============ */}
       {filteredSessions.length === 0 ? (
         <div className="text-center py-8 bg-primary/20 border border-white/5 rounded-xl">
           <p className="text-gray-400 text-sm">
             {filter === "upcoming" ? "No upcoming sessions." : filter === "past" ? "No session history." : "No sessions found."}
           </p>
           {filter === "upcoming" && (
-            <p className="text-gray-500 text-xs mt-1">Sessions are auto-created when you publish a week with in-person days, or you can add one manually above.</p>
+            <p className="text-gray-500 text-xs mt-1">Set up a recurring schedule above, publish a week with in-person days, or add a session manually.</p>
           )}
         </div>
       ) : (
         <div className="space-y-2">
           {filteredSessions.map((session) => (
-            <div key={session.id} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${editingSession === session.id ? "ring-1 ring-accent/50" : ""}`}>
+            <div key={session.id} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${editingSession === session.id || reschedulingSession === session.id ? "ring-1 ring-accent/50" : ""}`}>
               {editingSession === session.id ? (
                 /* Edit mode */
                 <div className="space-y-3">
+                  <p className="text-gray-400 text-xs">Editing: {formatDateTime(session.scheduled_at)}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div>
                       <label className="text-gray-400 text-xs block mb-1">Time</label>
@@ -334,12 +704,37 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
                     <button onClick={() => setEditingSession(null)} className="text-gray-400 hover:text-white text-xs px-3 py-1.5">Cancel</button>
                   </div>
                 </div>
+              ) : reschedulingSession === session.id ? (
+                /* Reschedule mode */
+                <div className="space-y-3">
+                  <p className="text-gray-400 text-xs">Rescheduling: {formatDateTime(session.scheduled_at)} → new date/time:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">New Date *</label>
+                      <input type="date" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">New Time *</label>
+                      <input type="time" value={rescheduleTime} onChange={(e) => setRescheduleTime(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
+                    </div>
+                  </div>
+                  <p className="text-gray-500 text-xs">This only moves this one session. The recurring pattern is not affected.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleReschedule(session.id)} disabled={!rescheduleDate || !rescheduleTime || saving} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs disabled:opacity-50">
+                      {saving ? "Moving..." : "Reschedule"}
+                    </button>
+                    <button onClick={() => setReschedulingSession(null)} className="text-gray-400 hover:text-white text-xs px-3 py-1.5">Cancel</button>
+                  </div>
+                </div>
               ) : (
                 /* View mode */
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div>
-                      <p className="text-white text-sm font-medium">{formatDateTime(session.scheduled_at)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white text-sm font-medium">{formatDateTime(session.scheduled_at)}</p>
+                        {session.recurring_schedule_id && <span className="text-xs text-blue-400/60">🔄</span>}
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {session.session_type && <span className="text-gray-400 text-xs">{session.session_type}</span>}
                         {session.location && <span className="text-gray-500 text-xs">📍 {session.location}</span>}
@@ -366,7 +761,10 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
                         <button onClick={() => handleUpdateStatus(session.id, "cancelled_no_charge")} title="Cancel (no charge)" className="p-1.5 rounded-lg bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </button>
-                        <button onClick={() => startEditing(session)} title="Edit" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                        <button onClick={() => startRescheduling(session)} title="Reschedule" className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </button>
+                        <button onClick={() => startEditing(session)} title="Edit details" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         </button>
                         <button onClick={() => handleDeleteSession(session.id)} title="Delete" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors">
@@ -387,7 +785,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         </div>
       )}
 
-      {/* Summary */}
+      {/* ============ SESSION SUMMARY ============ */}
       {sessions.length > 0 && (
         <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
           <h4 className="text-gray-400 text-xs font-heading uppercase mb-2">Session Summary</h4>
