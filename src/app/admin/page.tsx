@@ -3199,8 +3199,8 @@ export default function AdminPage() {
             {/* SCROLLABLE CONTENT */}
             <div ref={mainContentRef} className={`flex-1 overflow-y-auto p-6 overscroll-y-contain ${clientTab === 'messages' ? 'pb-6 flex flex-col' : 'pb-20 space-y-6'}`}>
 
-            {/* Stats Card (hidden on Messages/Account tabs) */}
-            {clientTab !== "messages" && clientTab !== "account" && (
+            {/* Stats Card (hidden on Messages/Account/Sessions tabs) */}
+            {clientTab !== "messages" && clientTab !== "account" && clientTab !== "sessions" && (
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>

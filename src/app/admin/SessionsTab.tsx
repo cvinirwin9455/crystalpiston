@@ -405,6 +405,27 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   });
 
   const formatDateTime = (iso: string) => {
+    // Parse without timezone conversion — display the time as stored
+    // Handle both "2026-08-31T06:00:00" and "2026-08-31T06:00:00Z" or "2026-08-31T06:00:00+00:00"
+    const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (match) {
+      const [, yearStr, monthStr, dayStr, hourStr, minStr] = match;
+      const year = parseInt(yearStr);
+      const month = parseInt(monthStr) - 1;
+      const day = parseInt(dayStr);
+      const hour = parseInt(hourStr);
+      const min = parseInt(minStr);
+      // Build display date using local-context Date just for day-of-week/month formatting
+      const displayDate = new Date(year, month, day);
+      const weekday = displayDate.toLocaleDateString("en-US", { weekday: "short" });
+      const monthName = displayDate.toLocaleDateString("en-US", { month: "short" });
+      // Format time as 12h
+      const ampm = hour >= 12 ? "PM" : "AM";
+      const hour12 = hour % 12 || 12;
+      const timeStr = `${hour12}:${minStr} ${ampm}`;
+      return `${weekday}, ${monthName} ${day} at ${timeStr}`;
+    }
+    // Fallback
     const d = new Date(iso);
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " at " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   };
@@ -836,9 +857,14 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
                       </div>
                     )}
                     {session.status !== "scheduled" && (
-                      <button onClick={() => handleDeleteSession(session.id)} title="Delete" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleUpdateStatus(session.id, "scheduled")} title="Revert to Scheduled" className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                        </button>
+                        <button onClick={() => handleDeleteSession(session.id)} title="Delete" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
