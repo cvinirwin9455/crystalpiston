@@ -131,7 +131,8 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     if (!newDate) return;
     setSaving(true);
     try {
-      const scheduledAt = new Date(`${newDate}T${newTime}:00`).toISOString();
+      // Build as plain date-time string (no timezone conversion)
+      const scheduledAt = `${newDate}T${newTime}:00`;
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,8 +184,11 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     try {
       const session = sessions.find((s) => s.id === sessionId);
       if (!session) return;
-      const dateStr = new Date(session.scheduled_at).toISOString().split("T")[0];
-      const scheduledAt = editTime ? new Date(`${dateStr}T${editTime}:00`).toISOString() : undefined;
+      // Extract date from stored ISO string directly (no timezone conversion)
+      const dateMatch = session.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
+      const dateStr = dateMatch ? dateMatch[1] : session.scheduled_at.split("T")[0];
+      // Build scheduledAt as plain date-time string (no timezone)
+      const scheduledAt = editTime ? `${dateStr}T${editTime}:00` : undefined;
 
       const res = await fetch("/api/sessions", {
         method: "PATCH",
@@ -212,7 +216,8 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     if (!rescheduleDate || !rescheduleTime) return;
     setSaving(true);
     try {
-      const scheduledAt = new Date(`${rescheduleDate}T${rescheduleTime}:00`).toISOString();
+      // Build as plain date-time string (no timezone conversion)
+      const scheduledAt = `${rescheduleDate}T${rescheduleTime}:00`;
       const res = await fetch("/api/sessions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -245,8 +250,10 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   };
 
   const startEditing = (session: Session) => {
-    const d = new Date(session.scheduled_at);
-    setEditTime(d.toTimeString().slice(0, 5));
+    // Parse time directly from the ISO string to avoid timezone conversion
+    const match = session.scheduled_at.match(/T(\d{2}):(\d{2})/);
+    const time = match ? `${match[1]}:${match[2]}` : "09:00";
+    setEditTime(time);
     setEditDuration(session.duration_minutes.toString());
     setEditLocation(session.location || "");
     setEditNotes(session.notes || "");
@@ -255,9 +262,11 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   };
 
   const startRescheduling = (session: Session) => {
-    const d = new Date(session.scheduled_at);
-    setRescheduleDate(d.toISOString().split("T")[0]);
-    setRescheduleTime(d.toTimeString().slice(0, 5));
+    // Parse date and time directly from the ISO string to avoid timezone conversion
+    const dateMatch = session.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
+    const timeMatch = session.scheduled_at.match(/T(\d{2}:\d{2})/);
+    setRescheduleDate(dateMatch ? dateMatch[1] : "");
+    setRescheduleTime(timeMatch ? timeMatch[1] : "09:00");
     setReschedulingSession(session.id);
     setEditingSession(null);
   };
