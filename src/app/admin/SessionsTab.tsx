@@ -389,21 +389,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     setEditingSchedule(schedule.id);
   };
 
-  const toggleDay = (day: number, days: number[], setDays: (d: number[]) => void, dayTimes?: Record<number, string>, setDayTimes?: (t: Record<number, string>) => void) => {
-    if (days.includes(day)) {
-      setDays(days.filter((d) => d !== day));
-      if (dayTimes && setDayTimes) {
-        const updated = { ...dayTimes };
-        delete updated[day];
-        setDayTimes(updated);
-      }
-    } else {
-      setDays([...days, day].sort());
-      if (dayTimes !== undefined && setDayTimes) {
-        setDayTimes({ ...dayTimes, [day]: "09:00" });
-      }
-    }
-  };
+  // (toggleDay is now inlined in renderDayPicker)
 
   // ============ DISPLAY HELPERS ============
 
@@ -448,25 +434,34 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     return <div className="text-center py-8"><p className="text-gray-400">Loading sessions...</p></div>;
   }
 
-  // ============ DAY PICKER COMPONENT ============
-  const DayPicker = ({ days, setDays, dayTimes, setDayTimes }: { days: number[]; setDays: (d: number[]) => void; dayTimes?: Record<number, string>; setDayTimes?: (t: Record<number, string>) => void }) => (
+  // ============ DAY PICKER INLINE HELPERS ============
+  const renderDayPicker = (days: number[], setDays: (d: number[]) => void, dayTimes: Record<number, string>, setDayTimes: (t: Record<number, string>) => void) => (
     <div>
       <div className="flex gap-1 mb-2">
         {[1, 2, 3, 4, 5, 6, 0].map((day) => (
           <button
             key={day}
             type="button"
-            onClick={() => toggleDay(day, days, setDays, dayTimes, setDayTimes)}
+            onClick={() => {
+              if (days.includes(day)) {
+                setDays(days.filter((d) => d !== day));
+                const updated = { ...dayTimes };
+                delete updated[day];
+                setDayTimes(updated);
+              } else {
+                setDays([...days, day].sort());
+                setDayTimes({ ...dayTimes, [day]: "09:00" });
+              }
+            }}
             className={`w-9 h-9 rounded-lg text-xs font-bold transition-colors ${days.includes(day) ? "bg-accent text-white" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30"}`}
           >
             {DAY_NAMES[day]}
           </button>
         ))}
       </div>
-      {/* Per-day time pickers */}
-      {dayTimes && setDayTimes && days.length > 0 && (
+      {days.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
-          {days.sort().map((day) => (
+          {[...days].sort().map((day) => (
             <div key={day} className="flex items-center gap-1.5 bg-primary/50 border border-white/10 rounded-lg px-2 py-1.5">
               <span className="text-gray-300 text-xs font-medium w-7">{DAY_NAMES[day]}</span>
               <input
@@ -524,7 +519,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
             {editingSchedule === schedule.id ? (
               /* Edit schedule */
               <div className="space-y-3">
-                <DayPicker days={editScheduleDays} setDays={setEditScheduleDays} dayTimes={editScheduleDayTimes} setDayTimes={setEditScheduleDayTimes} />
+                {renderDayPicker(editScheduleDays, setEditScheduleDays, editScheduleDayTimes, setEditScheduleDayTimes)}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-gray-400 text-xs block mb-1">Duration</label>
@@ -596,7 +591,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
             <h5 className="text-white text-sm font-medium">New Recurring Pattern</h5>
             <div>
               <label className="text-gray-400 text-xs block mb-2">Days & Times *</label>
-              <DayPicker days={scheduleDays} setDays={setScheduleDays} dayTimes={scheduleDayTimes} setDayTimes={setScheduleDayTimes} />
+              {renderDayPicker(scheduleDays, setScheduleDays, scheduleDayTimes, setScheduleDayTimes)}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
