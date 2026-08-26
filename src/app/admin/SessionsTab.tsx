@@ -398,6 +398,10 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     if (filter === "upcoming") return new Date(s.scheduled_at) >= now && s.status === "scheduled";
     if (filter === "past") return new Date(s.scheduled_at) < now || s.status !== "scheduled";
     return true;
+  }).sort((a, b) => {
+    // Upcoming: soonest first (ascending). Past/All: most recent first (descending).
+    if (filter === "upcoming") return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+    return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
   });
 
   const formatDateTime = (iso: string) => {
@@ -675,6 +679,35 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         </div>
       )}
 
+      {/* ============ SESSION SUMMARY ============ */}
+      {sessions.length > 0 && (
+        <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
+          <h4 className="text-gray-400 text-xs font-heading uppercase mb-2">Session Summary</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+            <div>
+              <p className="text-white font-heading text-lg">{sessions.filter((s) => s.status === "scheduled").length}</p>
+              <p className="text-gray-400 text-xs">Scheduled</p>
+            </div>
+            <div>
+              <p className="text-green-400 font-heading text-lg">{sessions.filter((s) => s.status === "completed").length}</p>
+              <p className="text-gray-400 text-xs">Completed</p>
+            </div>
+            <div>
+              <p className="text-yellow-400 font-heading text-lg">{sessions.filter((s) => s.status === "no_show").length}</p>
+              <p className="text-gray-400 text-xs">No-Shows</p>
+            </div>
+            <div>
+              <p className="text-red-400 font-heading text-lg">{sessions.filter((s) => s.status === "cancelled_charged").length}</p>
+              <p className="text-gray-400 text-xs">Cancelled (charged)</p>
+            </div>
+            <div>
+              <p className="text-gray-300 font-heading text-lg">{sessions.filter((s) => s.status === "cancelled_no_charge").length}</p>
+              <p className="text-gray-400 text-xs">Cancelled (free)</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ============ FILTERS ============ */}
       <div className="flex gap-1">
         {(["upcoming", "past", "all"] as const).map((f) => (
@@ -815,34 +848,6 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         </div>
       )}
 
-      {/* ============ SESSION SUMMARY ============ */}
-      {sessions.length > 0 && (
-        <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
-          <h4 className="text-gray-400 text-xs font-heading uppercase mb-2">Session Summary</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-            <div>
-              <p className="text-white font-heading text-lg">{sessions.filter((s) => s.status === "scheduled").length}</p>
-              <p className="text-gray-400 text-xs">Scheduled</p>
-            </div>
-            <div>
-              <p className="text-green-400 font-heading text-lg">{sessions.filter((s) => s.status === "completed").length}</p>
-              <p className="text-gray-400 text-xs">Completed</p>
-            </div>
-            <div>
-              <p className="text-yellow-400 font-heading text-lg">{sessions.filter((s) => s.status === "no_show").length}</p>
-              <p className="text-gray-400 text-xs">No-Shows</p>
-            </div>
-            <div>
-              <p className="text-red-400 font-heading text-lg">{sessions.filter((s) => s.status === "cancelled_charged").length}</p>
-              <p className="text-gray-400 text-xs">Cancelled (charged)</p>
-            </div>
-            <div>
-              <p className="text-gray-300 font-heading text-lg">{sessions.filter((s) => s.status === "cancelled_no_charge").length}</p>
-              <p className="text-gray-400 text-xs">Cancelled (free)</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
