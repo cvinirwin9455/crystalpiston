@@ -563,7 +563,28 @@ export default function AdminPage() {
     sunday.setDate(sunday.getDate() + 6);
     setSelectedWeekStart(monday);
     const dateRange = `${formatDate(monday)} - ${formatDate(sunday)}`;
-    setWeekPlan({ ...weekPlan, dateRange });
+    
+    // Auto-set session types based on recurring schedule for hybrid/per_session clients
+    const dayNameToIndex: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
+    const billingMode = activePlan?.billingMode;
+    const updatedDays = weekPlan.days.map(day => {
+      const dayNum = dayNameToIndex[day.day];
+      const isInPersonDay = clientRecurringDays.includes(dayNum);
+      
+      if (billingMode === 'hybrid') {
+        // Hybrid: auto-set in-person days, rest stays remote
+        return { ...day, sessionType: isInPersonDay ? 'in_person' as const : 'remote' as const };
+      } else if (billingMode === 'per_session') {
+        // Per-session: in-person days keep type, non-in-person days default to rest
+        if (!isInPersonDay && (!day.workouts[0]?.type || day.workouts[0]?.type === '')) {
+          return { ...day, sessionType: 'in_person' as const, workouts: [{ ...day.workouts[0], type: 'rest' }] };
+        }
+        return { ...day, sessionType: 'in_person' as const };
+      }
+      return day;
+    });
+    
+    setWeekPlan({ ...weekPlan, dateRange, days: updatedDays });
     setShowWeekPicker(false);
 
     // Check if a week already exists for this date range (published or draft)
@@ -2023,6 +2044,7 @@ export default function AdminPage() {
   // Active plan for the selected client
   const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
+  const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
 
   // Load weeks and active plan once when a client is first selected
   const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
@@ -2057,6 +2079,19 @@ export default function AdminPage() {
         })
         .catch(() => setActivePlan(null))
         .finally(() => setLoadingPlan(false));
+
+      // Fetch recurring schedules for this client (for auto-filling in-person days)
+      fetch(`/api/recurring-schedules?client_id=${client.clientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((schedules: any[]) => {
+          const activeSchedule = schedules.find((s: any) => s.active);
+          if (activeSchedule) {
+            setClientRecurringDays(activeSchedule.days_of_week || []);
+          } else {
+            setClientRecurringDays([]);
+          }
+        })
+        .catch(() => setClientRecurringDays([]));
     }
   }, [selectedClient, clients.length]);
 

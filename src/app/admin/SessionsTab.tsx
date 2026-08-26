@@ -25,6 +25,7 @@ interface RecurringSchedule {
   duration_minutes: number;
   location: string | null;
   session_type: string | null;
+  day_times: Record<string, string> | null;
   active: boolean;
   created_at: string;
 }
@@ -387,10 +388,14 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
 
   const startEditingSchedule = (schedule: RecurringSchedule) => {
     setEditScheduleDays([...schedule.days_of_week]);
-    // Set the same time for all days (from the schedule's default time)
+    // Load per-day times from day_times field, or fallback to single time
     const defaultTime = schedule.time_of_day.slice(0, 5);
     const dayTimes: Record<number, string> = {};
-    schedule.days_of_week.forEach(d => { dayTimes[d] = defaultTime; });
+    if (schedule.day_times) {
+      schedule.days_of_week.forEach(d => { dayTimes[d] = schedule.day_times![String(d)] || defaultTime; });
+    } else {
+      schedule.days_of_week.forEach(d => { dayTimes[d] = defaultTime; });
+    }
     setEditScheduleDayTimes(dayTimes);
     setEditScheduleDuration(schedule.duration_minutes.toString());
     setEditScheduleLocation(schedule.location || "");
@@ -586,11 +591,21 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
               /* View schedule */
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white text-sm font-medium">
-                      {schedule.days_of_week.map((d) => DAY_NAMES[d]).join(", ")}
-                    </span>
-                    <span className="text-gray-400 text-sm">@ {formatTime12h(schedule.time_of_day.slice(0, 5))}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {schedule.day_times ? (
+                      // Per-day times display
+                      <span className="text-white text-sm font-medium">
+                        {schedule.days_of_week.map((d) => `${DAY_NAMES[d]} @ ${formatTime12h(schedule.day_times![String(d)] || schedule.time_of_day.slice(0, 5))}`).join(", ")}
+                      </span>
+                    ) : (
+                      // Single time display (legacy)
+                      <>
+                        <span className="text-white text-sm font-medium">
+                          {schedule.days_of_week.map((d) => DAY_NAMES[d]).join(", ")}
+                        </span>
+                        <span className="text-gray-400 text-sm">@ {formatTime12h(schedule.time_of_day.slice(0, 5))}</span>
+                      </>
+                    )}
                     {!schedule.active && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30">Paused</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">

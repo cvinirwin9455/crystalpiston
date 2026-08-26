@@ -78,7 +78,14 @@ export async function POST(request: Request) {
   const orgId = client?.organization_id || user.id
 
   // Create the recurring schedule
-  // Store daySchedules as JSON in session_type field for per-day time support
+  // Store daySchedules as JSON in day_times for per-day time support
+  const dayTimesJson: Record<string, string> = {}
+  if (daySchedules) {
+    for (const ds of daySchedules) {
+      dayTimesJson[String(ds.day)] = ds.time
+    }
+  }
+
   const { data: schedule, error } = await adminClient
     .from('recurring_schedules')
     .insert({
@@ -91,6 +98,7 @@ export async function POST(request: Request) {
       location: location || null,
       session_type: sessionType || null,
       active: true,
+      day_times: Object.keys(dayTimesJson).length > 0 ? dayTimesJson : null,
     })
     .select()
     .single()
@@ -141,7 +149,14 @@ export async function PATCH(request: Request) {
   const updates: Record<string, any> = {}
   if (active !== undefined) updates.active = active
   if (daysOfWeek !== undefined) updates.days_of_week = daysOfWeek
-  if (daySchedules) updates.days_of_week = daySchedules.map((ds: any) => ds.day)
+  if (daySchedules) {
+    updates.days_of_week = daySchedules.map((ds: any) => ds.day)
+    const dayTimesJson: Record<string, string> = {}
+    for (const ds of daySchedules) {
+      dayTimesJson[String(ds.day)] = ds.time
+    }
+    updates.day_times = dayTimesJson
+  }
   if (timeOfDay !== undefined) updates.time_of_day = timeOfDay
   if (daySchedules && daySchedules.length > 0) updates.time_of_day = daySchedules[0].time
   if (durationMinutes !== undefined) updates.duration_minutes = durationMinutes

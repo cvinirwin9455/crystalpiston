@@ -189,3 +189,12 @@ LEFT JOIN (
   WHERE status IN ('completed', 'cancelled_charged', 'no_show')
   GROUP BY client_id
 ) used ON used.client_id = c.id;
+
+
+
+-- ============================================================
+-- 10. Add day_times JSONB to recurring_schedules for per-day time support
+-- Stores: {"1": "06:00", "4": "10:30"} (day number → time)
+-- ============================================================
+ALTER TABLE public.recurring_schedules
+  ADD COLUMN IF NOT EXISTS day_times JSONB;
