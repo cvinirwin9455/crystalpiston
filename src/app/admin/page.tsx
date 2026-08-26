@@ -575,11 +575,13 @@ export default function AdminPage() {
         // Hybrid: auto-set in-person days, rest stays remote
         return { ...day, sessionType: isInPersonDay ? 'in_person' as const : 'remote' as const };
       } else if (billingMode === 'per_session') {
-        // Per-session: in-person days keep type, non-in-person days default to rest
-        if (!isInPersonDay && (!day.workouts[0]?.type || day.workouts[0]?.type === '')) {
-          return { ...day, sessionType: 'in_person' as const, workouts: [{ ...day.workouts[0], type: 'rest' }] };
+        // Per-session: recurring days are in-person, non-recurring days default to rest
+        if (isInPersonDay) {
+          return { ...day, sessionType: 'in_person' as const };
+        } else {
+          // Non-schedule days default to rest for per_session clients
+          return { ...day, sessionType: 'remote' as const, workouts: [{ ...day.workouts[0], type: 'rest' }] };
         }
-        return { ...day, sessionType: 'in_person' as const };
       }
       return day;
     });
@@ -2304,7 +2306,7 @@ export default function AdminPage() {
         coachNotes: w.coachNotes || null,
         distanceUnit: w.distanceUnit || 'mi',
         structure: (w as any).crossTrainingStructure || (w as any).structure || null,
-        sessionType: activePlan?.billingMode === 'per_session' ? 'in_person' : (activePlan?.billingMode === 'hybrid' ? day.sessionType : 'remote'),
+        sessionType: activePlan?.billingMode === 'per_session' ? ((() => { const dMap: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 }; return clientRecurringDays.includes(dMap[day.day]) ? 'in_person' : 'remote'; })()) : (activePlan?.billingMode === 'hybrid' ? day.sessionType : 'remote'),
       }))
     );
 
@@ -3848,8 +3850,11 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-white font-heading text-sm uppercase">{day.day}</span>
                           <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
-                          {/* Per-session clients: always show in-person badge */}
-                          {activePlan?.billingMode === 'per_session' && day.workouts[0]?.type && day.workouts[0]?.type !== 'rest' && (
+                          {/* Per-session clients: show in-person badge only on recurring schedule days */}
+                          {activePlan?.billingMode === 'per_session' && day.workouts[0]?.type && day.workouts[0]?.type !== 'rest' && (() => {
+                            const dayNameToNum: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
+                            return clientRecurringDays.includes(dayNameToNum[day.day]);
+                          })() && (
                             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">🏋️ In-Person</span>
                           )}
                         </div>
