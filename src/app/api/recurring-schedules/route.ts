@@ -39,6 +39,7 @@ export async function GET(request: Request) {
 }
 
 // POST /api/recurring-schedules - Create a new recurring schedule and auto-generate sessions
+// Now supports per-day times: daySchedules = [{ day: 1, time: "06:00" }, { day: 4, time: "08:00" }]
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -55,10 +56,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, daysOfWeek, timeOfDay, durationMinutes, location, sessionType } = body
+  const { clientId, daysOfWeek, timeOfDay, daySchedules, durationMinutes, location, sessionType } = body
 
-  if (!clientId || !daysOfWeek || daysOfWeek.length === 0 || !timeOfDay) {
-    return NextResponse.json({ error: 'clientId, daysOfWeek (array), and timeOfDay are required' }, { status: 400 })
+  // Support both old format (daysOfWeek + timeOfDay) and new format (daySchedules with per-day times)
+  const resolvedDays: number[] = daySchedules ? daySchedules.map((ds: any) => ds.day) : daysOfWeek
+  const resolvedDefaultTime: string = timeOfDay || (daySchedules?.[0]?.time) || '09:00'
+
+  if (!clientId || (!resolvedDays || resolvedDays.length === 0)) {
+    return NextResponse.json({ error: 'clientId and days are required' }, { status: 400 })
   }
 
   const adminClient = await getAdminClient()
@@ -73,14 +78,15 @@ export async function POST(request: Request) {
   const orgId = client?.organization_id || user.id
 
   // Create the recurring schedule
+  // Store daySchedules as JSON in session_type field for per-day time support
   const { data: schedule, error } = await adminClient
     .from('recurring_schedules')
     .insert({
       client_id: clientId,
       coach_id: user.id,
       organization_id: orgId,
-      days_of_week: daysOfWeek, // array of integers: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-      time_of_day: timeOfDay, // "HH:MM" format
+      days_of_week: resolvedDays,
+      time_of_day: resolvedDefaultTime,
       duration_minutes: durationMinutes || 60,
       location: location || null,
       session_type: sessionType || null,
@@ -94,7 +100,15 @@ export async function POST(request: Request) {
   }
 
   // Auto-generate sessions based on remaining session balance
-  const generatedCount = await generateSessionsForSchedule(adminClient, schedule, clientId, user.id, orgId)
+  // Build per-day time map
+  const dayTimeMap: Record<number, string> = {}
+  if (daySchedules) {
+    for (const ds of daySchedules) {
+      dayTimeMap[ds.day] = ds.time
+    }
+  }
+
+  const generatedCount = await generateSessionsForSchedule(adminClient, schedule, clientId, user.id, orgId, dayTimeMap)
 
   return NextResponse.json({ success: true, schedule, generatedSessions: generatedCount })
 }
@@ -116,7 +130,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { scheduleId, active, daysOfWeek, timeOfDay, durationMinutes, location, sessionType, clearFutureSessions } = body
+  const { scheduleId, active, daysOfWeek, daySchedules, timeOfDay, durationMinutes, location, sessionType, clearFutureSessions } = body
 
   if (!scheduleId) {
     return NextResponse.json({ error: 'scheduleId is required' }, { status: 400 })
@@ -127,7 +141,9 @@ export async function PATCH(request: Request) {
   const updates: Record<string, any> = {}
   if (active !== undefined) updates.active = active
   if (daysOfWeek !== undefined) updates.days_of_week = daysOfWeek
+  if (daySchedules) updates.days_of_week = daySchedules.map((ds: any) => ds.day)
   if (timeOfDay !== undefined) updates.time_of_day = timeOfDay
+  if (daySchedules && daySchedules.length > 0) updates.time_of_day = daySchedules[0].time
   if (durationMinutes !== undefined) updates.duration_minutes = durationMinutes
   if (location !== undefined) updates.location = location || null
   if (sessionType !== undefined) updates.session_type = sessionType || null
@@ -152,7 +168,7 @@ export async function PATCH(request: Request) {
   }
 
   // If reactivating or changing pattern, regenerate sessions
-  if (active === true || (daysOfWeek && active !== false)) {
+  if (active === true || (daySchedules && active !== false) || (daysOfWeek && active !== false)) {
     const { data: schedule } = await adminClient
       .from('recurring_schedules')
       .select('*')
@@ -160,13 +176,22 @@ export async function PATCH(request: Request) {
       .single()
 
     if (schedule && schedule.active) {
-      const { data: client } = await adminClient
+      const { data: clientRow } = await adminClient
         .from('clients')
         .select('organization_id')
         .eq('id', schedule.client_id)
         .single()
-      const orgId = client?.organization_id || user.id
-      await generateSessionsForSchedule(adminClient, schedule, schedule.client_id, user.id, orgId)
+      const orgId = clientRow?.organization_id || user.id
+
+      // Build per-day time map from daySchedules
+      const dayTimeMap: Record<number, string> = {}
+      if (daySchedules) {
+        for (const ds of daySchedules) {
+          dayTimeMap[ds.day] = ds.time
+        }
+      }
+
+      await generateSessionsForSchedule(adminClient, schedule, schedule.client_id, user.id, orgId, dayTimeMap)
     }
   }
 
@@ -226,25 +251,46 @@ export async function DELETE(request: Request) {
 // Helper: Generate sessions for a recurring schedule
 // Generates enough sessions to use up remaining session balance
 // Skips dates that already have a session (avoid duplicates)
+// Supports per-day times via dayTimeMap
 // ============================================================
 async function generateSessionsForSchedule(
   adminClient: any,
   schedule: any,
   clientId: string,
   coachId: string,
-  orgId: string
+  orgId: string,
+  dayTimeMap?: Record<number, string>
 ): Promise<number> {
-  // Get remaining session balance
-  const { data: balance } = await adminClient
+  // Get remaining session balance — try the view first, fallback to manual calc
+  let sessionsRemaining = 0
+  const { data: balance, error: balanceErr } = await adminClient
     .from('client_session_balances')
     .select('sessions_remaining')
     .eq('client_id', clientId)
     .single()
 
-  let sessionsRemaining = balance?.sessions_remaining ?? 0
+  if (!balanceErr && balance) {
+    sessionsRemaining = balance.sessions_remaining ?? 0
+  } else {
+    // Fallback: calculate manually
+    const { data: packages } = await adminClient
+      .from('session_packages')
+      .select('sessions_purchased')
+      .eq('client_id', clientId)
+    const totalPurchased = (packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
+    
+    const { count: usedCount } = await adminClient
+      .from('sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .in('status', ['completed', 'cancelled_charged', 'no_show'])
+    
+    sessionsRemaining = totalPurchased - (usedCount || 0)
+  }
+
   if (sessionsRemaining <= 0) return 0
 
-  // Get existing future scheduled sessions count for this client (to subtract from what we should generate)
+  // Get existing future scheduled sessions count for this client
   const { count: existingFutureCount } = await adminClient
     .from('sessions')
     .select('id', { count: 'exact', head: true })
@@ -252,7 +298,7 @@ async function generateSessionsForSchedule(
     .eq('status', 'scheduled')
     .gte('scheduled_at', new Date().toISOString())
 
-  // We only need to generate enough to fill the remaining balance minus already-scheduled sessions
+  // Only generate enough to fill remaining balance minus already-scheduled
   const sessionsToGenerate = sessionsRemaining - (existingFutureCount || 0)
   if (sessionsToGenerate <= 0) return 0
 
@@ -267,48 +313,59 @@ async function generateSessionsForSchedule(
   const existingDates = new Set(
     (existingSessions || []).map((s: any) => {
       const d = new Date(s.scheduled_at)
-      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     })
   )
 
-  // Generate sessions starting from tomorrow
-  const [hours, minutes] = schedule.time_of_day.split(':').map(Number)
-  const sessionRows: any[] = []
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() + 1) // Start from tomorrow
-  startDate.setHours(0, 0, 0, 0)
+  // Default time from schedule (format: "HH:MM:SS" or "HH:MM")
+  const defaultTime = schedule.time_of_day ? schedule.time_of_day.slice(0, 5) : '09:00'
 
-  let currentDate = new Date(startDate)
+  // Generate sessions starting from tomorrow
+  const sessionRows: any[] = []
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(12, 0, 0, 0) // Use noon to avoid timezone date-shift issues
+
   let generated = 0
-  const maxLookahead = 365 // Don't look more than a year ahead
+  const maxLookahead = 365
 
   for (let dayOffset = 0; dayOffset < maxLookahead && generated < sessionsToGenerate; dayOffset++) {
+    const currentDate = new Date(tomorrow)
+    currentDate.setDate(tomorrow.getDate() + dayOffset)
+    
     const dayOfWeek = currentDate.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
     
     if (schedule.days_of_week.includes(dayOfWeek)) {
-      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`
+      const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
       
       if (!existingDates.has(dateKey)) {
-        const sessionDate = new Date(currentDate)
-        sessionDate.setHours(hours, minutes, 0, 0)
+        // Get time for this specific day (per-day override or default)
+        const timeForDay = dayTimeMap?.[dayOfWeek] || defaultTime
+        const [hours, minutes] = timeForDay.split(':').map(Number)
+        
+        // Build the scheduled_at as a proper date-time string
+        const year = currentDate.getFullYear()
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0')
+        const day = String(currentDate.getDate()).padStart(2, '0')
+        const h = String(hours).padStart(2, '0')
+        const m = String(minutes).padStart(2, '0')
+        const scheduledAt = `${year}-${month}-${day}T${h}:${m}:00`
 
         sessionRows.push({
           client_id: clientId,
           coach_id: coachId,
           organization_id: orgId,
-          scheduled_at: sessionDate.toISOString(),
+          scheduled_at: scheduledAt,
           duration_minutes: schedule.duration_minutes || 60,
           location: schedule.location || null,
           session_type: schedule.session_type || null,
           status: 'scheduled',
           recurring_schedule_id: schedule.id,
         })
-        existingDates.add(dateKey) // Prevent duplicates within this generation run
+        existingDates.add(dateKey)
         generated++
       }
     }
-
-    currentDate.setDate(currentDate.getDate() + 1)
   }
 
   // Insert in batches of 50

@@ -70,14 +70,14 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
 
   // Add recurring schedule form state
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
-  const [scheduleTime, setScheduleTime] = useState("06:00");
+  const [scheduleDayTimes, setScheduleDayTimes] = useState<Record<number, string>>({});
   const [scheduleDuration, setScheduleDuration] = useState("60");
   const [scheduleLocation, setScheduleLocation] = useState("");
   const [scheduleType, setScheduleType] = useState("");
 
   // Edit schedule state
   const [editScheduleDays, setEditScheduleDays] = useState<number[]>([]);
-  const [editScheduleTime, setEditScheduleTime] = useState("");
+  const [editScheduleDayTimes, setEditScheduleDayTimes] = useState<Record<number, string>>({});
   const [editScheduleDuration, setEditScheduleDuration] = useState("");
   const [editScheduleLocation, setEditScheduleLocation] = useState("");
   const [editScheduleType, setEditScheduleType] = useState("");
@@ -267,13 +267,16 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     if (scheduleDays.length === 0) return;
     setSaving(true);
     try {
+      const daySchedules = scheduleDays.map(day => ({
+        day,
+        time: scheduleDayTimes[day] || "09:00",
+      }));
       const res = await fetch("/api/recurring-schedules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId,
-          daysOfWeek: scheduleDays,
-          timeOfDay: scheduleTime,
+          daySchedules,
           durationMinutes: parseInt(scheduleDuration) || 60,
           location: scheduleLocation || null,
           sessionType: scheduleType || null,
@@ -283,7 +286,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
         const data = await res.json();
         setShowAddSchedule(false);
         setScheduleDays([]);
-        setScheduleTime("06:00");
+        setScheduleDayTimes({});
         setScheduleDuration("60");
         setScheduleLocation("");
         setScheduleType("");
@@ -327,13 +330,16 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     setSaving(true);
     const clearFuture = confirm("You're changing this schedule pattern.\n\nDelete existing future sessions from the OLD pattern and generate new ones?\n\nClick OK to regenerate, Cancel to just update the pattern.");
     try {
+      const daySchedules = editScheduleDays.map(day => ({
+        day,
+        time: editScheduleDayTimes[day] || "09:00",
+      }));
       const res = await fetch("/api/recurring-schedules", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scheduleId,
-          daysOfWeek: editScheduleDays,
-          timeOfDay: editScheduleTime,
+          daySchedules,
           durationMinutes: parseInt(editScheduleDuration) || 60,
           location: editScheduleLocation || null,
           sessionType: editScheduleType || null,
@@ -369,18 +375,30 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
 
   const startEditingSchedule = (schedule: RecurringSchedule) => {
     setEditScheduleDays([...schedule.days_of_week]);
-    setEditScheduleTime(schedule.time_of_day.slice(0, 5));
+    // Set the same time for all days (from the schedule's default time)
+    const defaultTime = schedule.time_of_day.slice(0, 5);
+    const dayTimes: Record<number, string> = {};
+    schedule.days_of_week.forEach(d => { dayTimes[d] = defaultTime; });
+    setEditScheduleDayTimes(dayTimes);
     setEditScheduleDuration(schedule.duration_minutes.toString());
     setEditScheduleLocation(schedule.location || "");
     setEditScheduleType(schedule.session_type || "");
     setEditingSchedule(schedule.id);
   };
 
-  const toggleDay = (day: number, days: number[], setDays: (d: number[]) => void) => {
+  const toggleDay = (day: number, days: number[], setDays: (d: number[]) => void, dayTimes?: Record<number, string>, setDayTimes?: (t: Record<number, string>) => void) => {
     if (days.includes(day)) {
       setDays(days.filter((d) => d !== day));
+      if (dayTimes && setDayTimes) {
+        const updated = { ...dayTimes };
+        delete updated[day];
+        setDayTimes(updated);
+      }
     } else {
       setDays([...days, day].sort());
+      if (dayTimes !== undefined && setDayTimes) {
+        setDayTimes({ ...dayTimes, [day]: "09:00" });
+      }
     }
   };
 
@@ -428,18 +446,36 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
   }
 
   // ============ DAY PICKER COMPONENT ============
-  const DayPicker = ({ days, setDays }: { days: number[]; setDays: (d: number[]) => void }) => (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5, 6, 0].map((day) => (
-        <button
-          key={day}
-          type="button"
-          onClick={() => toggleDay(day, days, setDays)}
-          className={`w-9 h-9 rounded-lg text-xs font-bold transition-colors ${days.includes(day) ? "bg-accent text-white" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30"}`}
-        >
-          {DAY_NAMES[day]}
-        </button>
-      ))}
+  const DayPicker = ({ days, setDays, dayTimes, setDayTimes }: { days: number[]; setDays: (d: number[]) => void; dayTimes?: Record<number, string>; setDayTimes?: (t: Record<number, string>) => void }) => (
+    <div>
+      <div className="flex gap-1 mb-2">
+        {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+          <button
+            key={day}
+            type="button"
+            onClick={() => toggleDay(day, days, setDays, dayTimes, setDayTimes)}
+            className={`w-9 h-9 rounded-lg text-xs font-bold transition-colors ${days.includes(day) ? "bg-accent text-white" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white hover:border-white/30"}`}
+          >
+            {DAY_NAMES[day]}
+          </button>
+        ))}
+      </div>
+      {/* Per-day time pickers */}
+      {dayTimes && setDayTimes && days.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {days.sort().map((day) => (
+            <div key={day} className="flex items-center gap-1.5 bg-primary/50 border border-white/10 rounded-lg px-2 py-1.5">
+              <span className="text-gray-300 text-xs font-medium w-7">{DAY_NAMES[day]}</span>
+              <input
+                type="time"
+                value={dayTimes[day] || "09:00"}
+                onChange={(e) => setDayTimes({ ...dayTimes, [day]: e.target.value })}
+                className="bg-transparent border-none text-white text-xs focus:outline-none w-20"
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -485,12 +521,8 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
             {editingSchedule === schedule.id ? (
               /* Edit schedule */
               <div className="space-y-3">
-                <DayPicker days={editScheduleDays} setDays={setEditScheduleDays} />
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-gray-400 text-xs block mb-1">Time</label>
-                    <input type="time" value={editScheduleTime} onChange={(e) => setEditScheduleTime(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-                  </div>
+                <DayPicker days={editScheduleDays} setDays={setEditScheduleDays} dayTimes={editScheduleDayTimes} setDayTimes={setEditScheduleDayTimes} />
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-gray-400 text-xs block mb-1">Duration</label>
                     <select value={editScheduleDuration} onChange={(e) => setEditScheduleDuration(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
@@ -560,14 +592,10 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
           <div className="border border-blue-500/20 bg-blue-500/5 rounded-lg p-4 space-y-3">
             <h5 className="text-white text-sm font-medium">New Recurring Pattern</h5>
             <div>
-              <label className="text-gray-400 text-xs block mb-2">Days *</label>
-              <DayPicker days={scheduleDays} setDays={setScheduleDays} />
+              <label className="text-gray-400 text-xs block mb-2">Days & Times *</label>
+              <DayPicker days={scheduleDays} setDays={setScheduleDays} dayTimes={scheduleDayTimes} setDayTimes={setScheduleDayTimes} />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">Time *</label>
-                <input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
-              </div>
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Duration</label>
                 <select value={scheduleDuration} onChange={(e) => setScheduleDuration(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent">
@@ -593,7 +621,7 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
               <button onClick={handleCreateSchedule} disabled={scheduleDays.length === 0 || saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
                 {saving ? "Creating..." : "Create Schedule"}
               </button>
-              <button onClick={() => { setShowAddSchedule(false); setScheduleDays([]); }} className="text-gray-400 hover:text-white text-sm px-4 py-2">Cancel</button>
+              <button onClick={() => { setShowAddSchedule(false); setScheduleDays([]); setScheduleDayTimes({}); }} className="text-gray-400 hover:text-white text-sm px-4 py-2">Cancel</button>
             </div>
           </div>
         )}
