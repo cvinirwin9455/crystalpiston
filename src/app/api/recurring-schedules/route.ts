@@ -323,26 +323,36 @@ async function generateSessionsForSchedule(
 
   // Generate sessions starting from startDate (or tomorrow if not provided)
   const sessionRows: any[] = []
-  let generationStart: Date
+  
+  // Parse start date carefully - use date parts to avoid timezone issues
+  let startYear: number, startMonth: number, startDay: number
   if (startDate) {
-    generationStart = new Date(startDate + 'T12:00:00') // Use noon to avoid timezone shift
+    const parts = startDate.split('-')
+    startYear = parseInt(parts[0])
+    startMonth = parseInt(parts[1]) - 1 // 0-indexed
+    startDay = parseInt(parts[2])
   } else {
-    generationStart = new Date()
-    generationStart.setDate(generationStart.getDate() + 1)
-    generationStart.setHours(12, 0, 0, 0)
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    startYear = tomorrow.getFullYear()
+    startMonth = tomorrow.getMonth()
+    startDay = tomorrow.getDate()
   }
 
   let generated = 0
   const maxLookahead = 365
 
   for (let dayOffset = 0; dayOffset < maxLookahead && generated < sessionsToGenerate; dayOffset++) {
-    const currentDate = new Date(generationStart)
-    currentDate.setDate(generationStart.getDate() + dayOffset)
+    // Create date from year/month/day + offset to avoid timezone issues
+    const currentDate = new Date(startYear, startMonth, startDay + dayOffset, 12, 0, 0)
     
     const dayOfWeek = currentDate.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
     
     if (schedule.days_of_week.includes(dayOfWeek)) {
-      const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+      const year = currentDate.getFullYear()
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0')
+      const day = String(currentDate.getDate()).padStart(2, '0')
+      const dateKey = `${year}-${month}-${day}`
       
       if (!existingDates.has(dateKey)) {
         // Get time for this specific day (per-day override or default)
@@ -350,9 +360,6 @@ async function generateSessionsForSchedule(
         const [hours, minutes] = timeForDay.split(':').map(Number)
         
         // Build the scheduled_at as a proper date-time string
-        const year = currentDate.getFullYear()
-        const month = String(currentDate.getMonth() + 1).padStart(2, '0')
-        const day = String(currentDate.getDate()).padStart(2, '0')
         const h = String(hours).padStart(2, '0')
         const m = String(minutes).padStart(2, '0')
         const scheduledAt = `${year}-${month}-${day}T${h}:${m}:00`
