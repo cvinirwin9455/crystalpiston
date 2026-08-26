@@ -735,7 +735,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [savingPlanEdit, setSavingPlanEdit] = useState(false);
 
   // Session balance state (for per_session and hybrid plans)
-  const [sessionBalance, setSessionBalance] = useState<{ used: number; total: number } | null>(null);
+  const [sessionBalance, setSessionBalance] = useState<{ used: number; total: number; totalPaid: number } | null>(null);
   const [sessionBalanceLoaded, setSessionBalanceLoaded] = useState(false);
 
   const handleSavePlanEdit = async () => {
@@ -793,15 +793,15 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         if (res.ok) {
           const data = await res.json();
           const totalPurchased = (data.packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0);
+          const totalPaid = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_paid) || 0), 0);
           const remaining = data.sessionsRemaining ?? 0;
-          setSessionBalance({ used: totalPurchased - remaining, total: totalPurchased });
+          setSessionBalance({ used: totalPurchased - remaining, total: totalPurchased, totalPaid });
         } else {
-          // API returned error - set zero balance so UI doesn't stay on "Loading"
-          setSessionBalance({ used: 0, total: 0 });
+          setSessionBalance({ used: 0, total: 0, totalPaid: 0 });
         }
       } catch (err) {
         console.error("Failed to fetch session balance:", err);
-        setSessionBalance({ used: 0, total: 0 });
+        setSessionBalance({ used: 0, total: 0, totalPaid: 0 });
       } finally {
         setSessionBalanceLoaded(true);
       }
@@ -1069,11 +1069,17 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           </div>
           <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
             {sessionBalance && sessionBalance.total > 0 ? (
-              <div className="flex items-center justify-between">
-                <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total} sessions used</span>
-                <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
-                  {sessionBalance.total - sessionBalance.used} remaining
-                </span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total} sessions used</span>
+                  <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
+                    {sessionBalance.total - sessionBalance.used} remaining
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 text-xs">Total paid: ${sessionBalance.totalPaid.toFixed(2)}</span>
+                  <span className="text-gray-500 text-xs">(${(sessionBalance.totalPaid / sessionBalance.total).toFixed(2)}/session)</span>
+                </div>
               </div>
             ) : sessionBalanceLoaded ? (
               <p className="text-gray-400 text-xs">No session packages yet</p>
@@ -1104,11 +1110,17 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
               <p className="text-blue-400 text-xs font-medium mb-1">🏋️ In-Person Sessions</p>
               {sessionBalance && sessionBalance.total > 0 ? (
-                <div className="flex items-center justify-between">
-                  <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total}</span>
-                  <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
-                    {sessionBalance.total - sessionBalance.used} remaining
-                  </span>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white text-sm font-bold">{sessionBalance.used} / {sessionBalance.total} sessions</span>
+                    <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>
+                      {sessionBalance.total - sessionBalance.used} remaining
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400 text-xs">Total paid: ${sessionBalance.totalPaid.toFixed(2)}</span>
+                    <span className="text-gray-500 text-xs">(${(sessionBalance.totalPaid / sessionBalance.total).toFixed(2)}/session)</span>
+                  </div>
                 </div>
               ) : sessionBalanceLoaded ? (
                 <p className="text-gray-400 text-xs">No session packages yet</p>
