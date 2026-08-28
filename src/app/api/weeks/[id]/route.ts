@@ -78,7 +78,9 @@ export async function PATCH(
         .single()
 
       if (week) {
-        // Auto-create session records for in-person workouts
+        // Link programmed workouts to EXISTING scheduled sessions (schedule-first model).
+        // Sessions are created in the Sessions tab, NOT here. We just annotate the
+        // existing session with what's programmed (if it doesn't already have details).
         try {
           const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
           const sessionAdminClient = createSupabaseClient(
@@ -86,7 +88,6 @@ export async function PATCH(
             process.env.SUPABASE_SERVICE_ROLE_KEY!,
             { auth: { autoRefreshToken: false, persistSession: false } }
           )
-          // Fetch this week's workouts that are in-person
           const { data: inPersonWorkouts } = await sessionAdminClient
             .from('workouts')
             .select('id, day, type, title, session_type')
@@ -97,52 +98,35 @@ export async function PATCH(
           if (inPersonWorkouts && inPersonWorkouts.length > 0) {
             const mondayDate = parseDateRange(week.date_range)
             if (mondayDate) {
-              // Get coach session defaults
-              const { data: coachPrefs } = await sessionAdminClient
-                .from('notification_preferences')
-                .select('default_session_time, default_session_duration, default_session_location')
-                .eq('user_id', user.id)
-                .single()
-
-              const defaultTime = coachPrefs?.default_session_time || '09:00'
-              const defaultDuration = coachPrefs?.default_session_duration || 60
-              const defaultLocation = coachPrefs?.default_session_location || null
-
-              // Get client org
-              const { data: clientRow } = await sessionAdminClient
-                .from('clients')
-                .select('organization_id')
-                .eq('id', week.client_id)
-                .single()
-              const orgId = clientRow?.organization_id || user.id
-
-              // One session per in-person day
               const inPersonDays = [...new Set(inPersonWorkouts.map((w: any) => w.day))]
-              const sessionRows = inPersonDays.map((dayName: string) => {
-                const sessionDate = getDateForDay(mondayDate, dayName)
-                const [hours, minutes] = defaultTime.split(':').map(Number)
-                sessionDate.setHours(hours, minutes, 0, 0)
-                const workout = inPersonWorkouts.find((w: any) => w.day === dayName)
-                return {
-                  client_id: week.client_id,
-                  coach_id: user.id,
-                  organization_id: orgId,
-                  scheduled_at: sessionDate.toISOString(),
-                  duration_minutes: defaultDuration,
-                  location: defaultLocation,
-                  session_type: workout?.type || null,
-                  notes: workout?.title || null,
-                  status: 'scheduled',
+              for (const dayName of inPersonDays) {
+                const sessionDate = getDateForDay(mondayDate, dayName as string)
+                const y = sessionDate.getFullYear()
+                const mo = String(sessionDate.getMonth() + 1).padStart(2, '0')
+                const dd = String(sessionDate.getDate()).padStart(2, '0')
+                const { data: existing } = await sessionAdminClient
+                  .from('sessions')
+                  .select('id, notes, session_type')
+                  .eq('client_id', week.client_id)
+                  .eq('status', 'scheduled')
+                  .gte('scheduled_at', `${y}-${mo}-${dd}T00:00:00`)
+                  .lte('scheduled_at', `${y}-${mo}-${dd}T23:59:59`)
+                  .limit(1)
+                const sess = (existing || [])[0]
+                if (sess) {
+                  const workout = inPersonWorkouts.find((w: any) => w.day === dayName)
+                  const updates: any = {}
+                  if (!sess.session_type && workout?.type) updates.session_type = workout.type
+                  if (!sess.notes && workout?.title) updates.notes = workout.title
+                  if (Object.keys(updates).length > 0) {
+                    await sessionAdminClient.from('sessions').update(updates).eq('id', sess.id)
+                  }
                 }
-              })
-
-              if (sessionRows.length > 0) {
-                await sessionAdminClient.from('sessions').insert(sessionRows)
               }
             }
           }
         } catch (sessErr) {
-          console.error('Failed to auto-create sessions on publish:', sessErr)
+          console.error('Failed to link workouts to sessions on publish:', sessErr)
         }
 
         // Get the client's user_id
