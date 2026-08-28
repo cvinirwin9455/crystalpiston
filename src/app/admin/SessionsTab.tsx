@@ -33,12 +33,13 @@ interface RecurringSchedule {
 interface SessionsTabProps {
   clientId: string;
   clientName: string;
+  onSessionsChange?: () => void;
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-export default function SessionsTab({ clientId, clientName }: SessionsTabProps) {
+export default function SessionsTab({ clientId, clientName, onSessionsChange }: SessionsTabProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +99,8 @@ export default function SessionsTab({ clientId, clientName }: SessionsTabProps) 
     } finally {
       setLoading(false);
     }
+    // Notify parent so Create Week / Active Plan banner refresh with latest sessions
+    onSessionsChange?.();
   };
 
   const fetchBalance = async () => {
