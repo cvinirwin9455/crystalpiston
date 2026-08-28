@@ -622,8 +622,11 @@ export default function AdminPage() {
       return;
     }
 
-    // Validate against active plan dates
-    if (activePlan && activePlan.startDate && activePlan.endDate) {
+    // Validate against active plan dates — but SKIP for per_session clients,
+    // who don't have a fixed program period (their plan has no real date range).
+    if (activePlan?.billingMode === 'per_session') {
+      setWeekDateWarning("");
+    } else if (activePlan && activePlan.startDate && activePlan.endDate) {
       const planStart = new Date(activePlan.startDate);
       const planEnd = new Date(activePlan.endDate);
       planStart.setHours(0, 0, 0, 0);
@@ -2316,8 +2319,9 @@ export default function AdminPage() {
       return;
     }
 
-    // Validate week date range falls within plan dates
-    if (weekPlan.dateRange && activePlan.startDate && activePlan.endDate) {
+    // Validate week date range falls within plan dates — SKIP for per_session
+    // clients (no fixed program period; they can create weeks for any dates).
+    if (activePlan.billingMode !== 'per_session' && weekPlan.dateRange && activePlan.startDate && activePlan.endDate) {
       const weekStartStr = weekPlan.dateRange.split(' - ')[0];
       const weekEndStr = weekPlan.dateRange.split(' - ')[1];
       const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());

@@ -635,11 +635,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             </div>
 
             {/* Optional secondary fields */}
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="text-gray-500 text-xs block mb-1">Goal Race Pace <span className="text-gray-600 text-xs">(optional)</span></label>
-                <input type="text" value={newPlanGoalPace} onChange={(e) => setNewPlanGoalPace(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" />
-              </div>
+            <div className="mb-4">
               <div>
                 <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes <span className="text-gray-600 text-xs">(optional)</span></label>
                 <input type="text" value={newPlanInjuryNotes} onChange={(e) => setNewPlanInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
@@ -1052,11 +1048,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           )}
 
           {/* Optional secondary fields */}
-          <div className="grid md:grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Goal Race Pace <span className="text-gray-600 text-xs">(optional)</span></label>
-              <input type="text" value={editGoalPace} onChange={(e) => setEditGoalPace(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="8:45/mi" />
-            </div>
+          <div className="mb-4">
             <div>
               <label className="text-gray-500 text-xs block mb-1">Injuries / Important Notes <span className="text-gray-600 text-xs">(optional)</span></label>
               <input type="text" value={editInjuryNotes} onChange={(e) => setEditInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints" />
