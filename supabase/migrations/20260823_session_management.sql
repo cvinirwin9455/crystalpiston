@@ -214,3 +214,28 @@ ALTER TABLE public.session_packages
 UPDATE public.session_packages
   SET amount_owed = amount_paid
   WHERE amount_owed = 0 AND amount_paid > 0;
+
+
+
+-- ============================================================
+-- 12. Extend payments table to support session payments
+-- Allows programming AND session payments in one unified history
+-- ============================================================
+ALTER TABLE public.payments
+  ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'programming'
+    CHECK (payment_type IN ('programming', 'session')),
+  ADD COLUMN IF NOT EXISTS session_package_id UUID REFERENCES public.session_packages(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE;
+
+-- Make plan_id nullable since session payments aren't tied to a plan
+ALTER TABLE public.payments
+  ALTER COLUMN plan_id DROP NOT NULL;
+
+-- Backfill client_id for existing programming payments (from their plan)
+UPDATE public.payments p
+  SET client_id = pl.client_id
+  FROM public.plans pl
+  WHERE p.plan_id = pl.id AND p.client_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_payments_client_id ON public.payments(client_id);
+CREATE INDEX IF NOT EXISTS idx_payments_session_package_id ON public.payments(session_package_id);

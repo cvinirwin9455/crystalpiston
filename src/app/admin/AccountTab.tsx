@@ -715,7 +715,8 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string}[]>([]);
+  const [paymentType, setPaymentType] = useState<'programming' | 'session'>('programming');
+  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string; type?: string}[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loggingPayment, setLoggingPayment] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -737,6 +738,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   // Session balance state (for per_session and hybrid plans)
   const [sessionBalance, setSessionBalance] = useState<{ used: number; total: number; totalPaid: number; totalOwed: number } | null>(null);
   const [sessionBalanceLoaded, setSessionBalanceLoaded] = useState(false);
+  const [sessionBalanceRefresh, setSessionBalanceRefresh] = useState(0);
 
   const handleSavePlanEdit = async () => {
     setSavingPlanEdit(true);
@@ -766,13 +768,20 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        const res = await fetch(`/api/payments?plan_id=${plan.id}`);
+        // For session/hybrid plans, fetch ALL payments (programming + session) by client.
+        // For programming-only, fetch by plan.
+        const hasSessions = plan.billingMode === 'per_session' || plan.billingMode === 'hybrid';
+        const url = hasSessions
+          ? `/api/payments?client_id=${plan.clientId}`
+          : `/api/payments?plan_id=${plan.id}`;
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setPaymentHistory(data.map((p: any) => ({
             id: p.id,
             amount: parseFloat(p.amount),
             date: p.payment_date,
+            type: p.payment_type || 'programming',
           })));
         }
       } catch (err) {
@@ -782,7 +791,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       }
     };
     fetchPayments();
-  }, [plan.id]);
+  }, [plan.id, plan.clientId, plan.billingMode]);
 
   // Fetch session balance for per_session and hybrid plans
   useEffect(() => {
@@ -808,7 +817,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       }
     };
     fetchSessionBalance();
-  }, [plan.id, plan.clientId, plan.billingMode]);
+  }, [plan.id, plan.clientId, plan.billingMode, sessionBalanceRefresh]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -825,11 +834,14 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     if (!paymentAmount) return;
     setLoggingPayment(true);
     try {
+      const isSession = paymentType === 'session';
       const res = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planId: plan.id,
+          paymentType,
+          planId: isSession ? null : plan.id,
+          clientId: plan.clientId,
           amount: paymentAmount,
           paymentDate: paymentDate,
         }),
@@ -837,8 +849,13 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       if (res.ok) {
         const data = await res.json();
         const amount = parseFloat(paymentAmount);
-        setPaymentHistory(prev => [{ id: data.payment.id, amount, date: paymentDate }, ...prev]);
-        onUpdate(plan.id, { paid: data.newPaidTotal.toString() });
+        setPaymentHistory(prev => [{ id: data.payment.id, amount, date: paymentDate, type: paymentType }, ...prev]);
+        if (isSession) {
+          // Refresh session balance
+          setSessionBalanceRefresh(x => x + 1);
+        } else {
+          onUpdate(plan.id, { paid: data.newPaidTotal.toString() });
+        }
         setPaymentAmount("");
         setShowPaymentForm(false);
       }
@@ -1186,7 +1203,14 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           <div className="space-y-1">
             {paymentHistory.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">{formatDate(p.date)}</span>
+                <span className="text-gray-400 flex items-center gap-1.5">
+                  {formatDate(p.date)}
+                  {(plan.billingMode === 'per_session' || plan.billingMode === 'hybrid') && (
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${p.type === 'session' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                      {p.type === 'session' ? '🏋️ Session' : '📋 Programming'}
+                    </span>
+                  )}
+                </span>
                 <span className="text-green-400 font-medium">+${p.amount.toFixed(2)}</span>
               </div>
             ))}
@@ -1200,12 +1224,24 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       )}
 
       {/* Log Payment button */}
-      {plan.status === "active" && (plan.owed - plan.paid) > 0 && (
+      {plan.status === "active" && (
         <div className="mt-3">
           {!showPaymentForm ? (
-            <button onClick={() => setShowPaymentForm(true)} className="text-accent text-xs hover:underline">+ Log Payment</button>
+            <button onClick={() => { setShowPaymentForm(true); setPaymentType((plan.billingMode === 'per_session') ? 'session' : 'programming'); }} className="text-accent text-xs hover:underline">+ Log Payment</button>
           ) : (
             <div className="bg-secondary/50 border border-white/10 rounded-lg p-3 mt-2">
+              {/* Payment type selector — only for plans with sessions */}
+              {(plan.billingMode === 'per_session' || plan.billingMode === 'hybrid') && (
+                <div className="mb-3">
+                  <label className="text-gray-500 text-xs block mb-1">Payment For</label>
+                  <div className="flex gap-2">
+                    {plan.billingMode === 'hybrid' && (
+                      <button onClick={() => setPaymentType('programming')} className={`flex-1 py-1.5 px-3 rounded text-xs font-medium transition-colors ${paymentType === 'programming' ? 'bg-purple-500/20 border border-purple-500/40 text-purple-400' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}>📋 Programming</button>
+                    )}
+                    <button onClick={() => setPaymentType('session')} className={`flex-1 py-1.5 px-3 rounded text-xs font-medium transition-colors ${paymentType === 'session' ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}>🏋️ In-Person Sessions</button>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="text-gray-500 text-xs block mb-1">Amount ($)</label>
@@ -1244,9 +1280,6 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
   const [packages, setPackages] = useState<{ id: string; sessions_purchased: number; amount_paid: number; amount_owed?: number; purchased_at: string; notes?: string }[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
-  // Per-package payment logging
-  const [payingPackageId, setPayingPackageId] = useState<string | null>(null);
-  const [logPaymentAmount, setLogPaymentAmount] = useState("");
 
   // Fetch existing packages and balance
   const fetchPackages = async () => {
@@ -1295,27 +1328,6 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
       }
     } catch (err) {
       console.error("Failed to add session package:", err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLogPackagePayment = async (packageId: string) => {
-    if (!logPaymentAmount || parseFloat(logPaymentAmount) <= 0) return;
-    setSaving(true);
-    try {
-      const res = await fetch('/api/session-packages', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId, paymentAmount: logPaymentAmount }),
-      });
-      if (res.ok) {
-        setPayingPackageId(null);
-        setLogPaymentAmount("");
-        fetchPackages();
-      }
-    } catch (err) {
-      console.error("Failed to log package payment:", err);
     } finally {
       setSaving(false);
     }
@@ -1386,7 +1398,7 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
         </div>
       )}
 
-      {/* Package history */}
+      {/* Package history (payments are logged in the main Log Payment area above) */}
       {!loadingPackages && packages.length > 0 && (
         <details className="mt-2">
           <summary className="text-gray-500 text-xs cursor-pointer hover:text-white">Package history ({packages.length})</summary>
@@ -1404,24 +1416,11 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
                   <div className="flex items-center justify-between text-xs mt-1">
                     <span className="text-gray-500">${paid.toFixed(2)} / ${owed.toFixed(2)} paid</span>
                     {due > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-red-400">${due.toFixed(2)} due</span>
-                        {!readOnly && payingPackageId !== pkg.id && (
-                          <button onClick={() => { setPayingPackageId(pkg.id); setLogPaymentAmount(due.toFixed(2)); }} className="text-blue-400 hover:underline">Log Payment</button>
-                        )}
-                      </div>
+                      <span className="text-red-400">${due.toFixed(2)} due</span>
                     ) : (
                       <span className="text-green-400">Paid ✓</span>
                     )}
                   </div>
-                  {/* Log payment inline form */}
-                  {payingPackageId === pkg.id && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <input type="number" value={logPaymentAmount} onChange={(e) => setLogPaymentAmount(e.target.value)} className="w-24 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Amount" />
-                      <button onClick={() => handleLogPackagePayment(pkg.id)} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs disabled:opacity-50">{saving ? "..." : "Save"}</button>
-                      <button onClick={() => { setPayingPackageId(null); setLogPaymentAmount(""); }} className="text-gray-400 text-xs">Cancel</button>
-                    </div>
-                  )}
                 </div>
               );
             })}
