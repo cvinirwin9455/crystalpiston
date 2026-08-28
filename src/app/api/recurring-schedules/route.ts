@@ -86,22 +86,39 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: schedule, error } = await adminClient
+  const baseInsert: any = {
+    client_id: clientId,
+    coach_id: user.id,
+    organization_id: orgId,
+    days_of_week: resolvedDays,
+    time_of_day: resolvedDefaultTime,
+    duration_minutes: durationMinutes || 60,
+    location: location || null,
+    session_type: sessionType || null,
+    active: true,
+  }
+
+  // Try with day_times column, fall back if it doesn't exist yet
+  let schedule: any = null
+  let error: any = null
+  const fullInsert = await adminClient
     .from('recurring_schedules')
-    .insert({
-      client_id: clientId,
-      coach_id: user.id,
-      organization_id: orgId,
-      days_of_week: resolvedDays,
-      time_of_day: resolvedDefaultTime,
-      duration_minutes: durationMinutes || 60,
-      location: location || null,
-      session_type: sessionType || null,
-      active: true,
-      day_times: Object.keys(dayTimesJson).length > 0 ? dayTimesJson : null,
-    })
+    .insert({ ...baseInsert, day_times: Object.keys(dayTimesJson).length > 0 ? dayTimesJson : null })
     .select()
     .single()
+
+  if (fullInsert.error) {
+    const fallbackInsert = await adminClient
+      .from('recurring_schedules')
+      .insert(baseInsert)
+      .select()
+      .single()
+    schedule = fallbackInsert.data
+    error = fallbackInsert.error
+  } else {
+    schedule = fullInsert.data
+    error = fullInsert.error
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -163,10 +180,20 @@ export async function PATCH(request: Request) {
   if (location !== undefined) updates.location = location || null
   if (sessionType !== undefined) updates.session_type = sessionType || null
 
-  const { error } = await adminClient
+  let { error } = await adminClient
     .from('recurring_schedules')
     .update(updates)
     .eq('id', scheduleId)
+
+  // If day_times column doesn't exist, retry without it
+  if (error && updates.day_times !== undefined) {
+    const { day_times, ...updatesNoDayTimes } = updates
+    const retry = await adminClient
+      .from('recurring_schedules')
+      .update(updatesNoDayTimes)
+      .eq('id', scheduleId)
+    error = retry.error
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
