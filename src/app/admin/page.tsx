@@ -3926,6 +3926,29 @@ export default function AdminPage() {
                     <p className="text-red-400 text-xs">{weekDateWarning}</p>
                   </div>
                 )}
+                {/* Nudge: per-session/hybrid client with a selected week but no scheduled sessions in it */}
+                {selectedWeekStart && (activePlan?.billingMode === 'per_session' || activePlan?.billingMode === 'hybrid') && (() => {
+                  // Build this week's dates (Mon–Sun) and check if any have a scheduled session
+                  const weekHasSession = (() => {
+                    for (let i = 0; i < 7; i++) {
+                      const d = new Date(selectedWeekStart);
+                      d.setDate(selectedWeekStart.getDate() + i);
+                      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                      if (clientSessionDates.includes(dateStr)) return true;
+                    }
+                    return false;
+                  })();
+                  if (weekHasSession) return null;
+                  return (
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-start gap-3">
+                      <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <div>
+                        <p className="text-blue-400 text-xs font-medium">No in-person sessions scheduled this week</p>
+                        <p className="text-gray-400 text-xs mt-0.5">This client has no sessions booked for {weekPlan.dateRange}. Set up their sessions in the <button onClick={() => setClientTab('sessions')} className="text-blue-400 underline hover:text-blue-300">Sessions tab</button> first, and their in-person days will auto-appear here. You can still program this week if you want.</p>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div><label className="text-gold text-xs font-heading uppercase block mb-1">Weekly Message to Client</label><textarea value={weekPlan.coachMessage} onChange={(e) => setWeekPlan({ ...weekPlan, coachMessage: e.target.value })} className="w-full bg-primary/50 border border-gold/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold resize-none" rows={2} placeholder="Shown at top of client's plan when published..." /></div>
 
                 {/* Mon-Sun */}
