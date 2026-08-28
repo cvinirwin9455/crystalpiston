@@ -2076,7 +2076,7 @@ export default function AdminPage() {
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
-  const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string } | null>(null);
+  const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string; totalPaid: number; totalOwed: number } | null>(null);
 
   // Reusable: refresh active plan + session data for a client
   const refreshActivePlanAndSessions = useCallback((clientDbId: string) => {
@@ -2119,7 +2119,7 @@ export default function AdminPage() {
             } else {
               scheduleText = `${(activeSchedule.days_of_week || []).map((d: number) => DAY_ABBR[d]).join(', ')} @ ${fmtTime12(activeSchedule.time_of_day)}`;
             }
-            setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText }));
+            setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText, totalPaid: prev?.totalPaid ?? 0, totalOwed: prev?.totalOwed ?? 0 }));
           } else {
             setClientRecurringDays([]);
             setClientSessionSummary(prev => prev ? { ...prev, scheduleText: '' } : null);
@@ -2139,7 +2139,7 @@ export default function AdminPage() {
             })
             .filter(Boolean);
           setClientSessionDates(dates);
-          setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: upcomingSessions.length, scheduleText: prev?.scheduleText ?? '' }));
+          setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: upcomingSessions.length, scheduleText: prev?.scheduleText ?? '', totalPaid: prev?.totalPaid ?? 0, totalOwed: prev?.totalOwed ?? 0 }));
         })
         .catch(() => setClientSessionDates([]));
 
@@ -2147,7 +2147,9 @@ export default function AdminPage() {
         .then(res => res.ok ? res.json() : null)
         .then((data: any) => {
           if (data) {
-            setClientSessionSummary(prev => ({ remaining: data.sessionsRemaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText: prev?.scheduleText ?? '' }));
+            const totalPaid = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_paid) || 0), 0);
+            const totalOwed = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_owed ?? p.amount_paid) || 0), 0);
+            setClientSessionSummary(prev => ({ remaining: data.sessionsRemaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText: prev?.scheduleText ?? '', totalPaid, totalOwed }));
           }
         })
         .catch(() => {});
@@ -3766,7 +3768,14 @@ export default function AdminPage() {
                           {activePlan.billingMode === 'per_session' ? '🏋️ In-Person Only' : '📱+🏋️ Hybrid'}
                         </span>
                       )}
-                      <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                      {/* Payment status: per_session shows session totals; others show plan totals */}
+                      {activePlan.billingMode === 'per_session' ? (
+                        clientSessionSummary && (
+                          <p className="text-gray-400 text-xs">${clientSessionSummary.totalPaid.toFixed(0)}/${clientSessionSummary.totalOwed.toFixed(0)} paid</p>
+                        )
+                      ) : (
+                        <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                      )}
                     </div>
                   </div>
                   {/* In-person session summary */}
