@@ -2073,6 +2073,7 @@ export default function AdminPage() {
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
+  const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string } | null>(null);
 
   // Load weeks and active plan once when a client is first selected
   const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
@@ -2109,14 +2110,25 @@ export default function AdminPage() {
         .finally(() => setLoadingPlan(false));
 
       // Fetch recurring schedules for this client (for auto-filling in-person days)
+      const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const fmtTime12 = (t: string) => { const [h, m] = t.slice(0, 5).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12; return `${h12}:${String(m).padStart(2, '0')} ${ap}`; };
       fetch(`/api/recurring-schedules?client_id=${client.clientId}`)
         .then(res => res.ok ? res.json() : [])
         .then((schedules: any[]) => {
           const activeSchedule = schedules.find((s: any) => s.active);
           if (activeSchedule) {
             setClientRecurringDays(activeSchedule.days_of_week || []);
+            // Build schedule text for the banner
+            let scheduleText = '';
+            if (activeSchedule.day_times) {
+              scheduleText = (activeSchedule.days_of_week || []).map((d: number) => `${DAY_ABBR[d]} ${fmtTime12(activeSchedule.day_times[String(d)] || activeSchedule.time_of_day)}`).join(', ');
+            } else {
+              scheduleText = `${(activeSchedule.days_of_week || []).map((d: number) => DAY_ABBR[d]).join(', ')} @ ${fmtTime12(activeSchedule.time_of_day)}`;
+            }
+            setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText }));
           } else {
             setClientRecurringDays([]);
+            setClientSessionSummary(prev => prev ? { ...prev, scheduleText: '' } : null);
           }
         })
         .catch(() => setClientRecurringDays([]));
@@ -2125,17 +2137,28 @@ export default function AdminPage() {
       fetch(`/api/sessions?client_id=${client.clientId}`)
         .then(res => res.ok ? res.json() : [])
         .then((sessions: any[]) => {
-          // Extract dates of scheduled (upcoming) sessions
-          const dates = sessions
-            .filter((s: any) => s.status === 'scheduled')
+          const now = new Date();
+          const upcomingSessions = sessions.filter((s: any) => s.status === 'scheduled' && new Date(s.scheduled_at) >= now);
+          const dates = upcomingSessions
             .map((s: any) => {
               const match = s.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
               return match ? match[1] : null;
             })
             .filter(Boolean);
           setClientSessionDates(dates);
+          setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: upcomingSessions.length, scheduleText: prev?.scheduleText ?? '' }));
         })
         .catch(() => setClientSessionDates([]));
+
+      // Fetch session balance for the banner
+      fetch(`/api/session-packages?client_id=${client.clientId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then((data: any) => {
+          if (data) {
+            setClientSessionSummary(prev => ({ remaining: data.sessionsRemaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText: prev?.scheduleText ?? '' }));
+          }
+        })
+        .catch(() => {});
     }
   }, [selectedClient, clients.length]);
 
@@ -3742,11 +3765,19 @@ export default function AdminPage() {
                       <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
                     </div>
                   </div>
+                  {/* In-person session summary */}
+                  {(activePlan.billingMode === 'hybrid' || activePlan.billingMode === 'per_session') && clientSessionSummary && (
+                    <div className="flex items-center gap-4 mt-1.5 border-t border-white/5 pt-1.5 flex-wrap">
+                      <span className="text-xs text-gray-300">🏋️ <span className={`font-bold ${clientSessionSummary.remaining <= 3 ? 'text-red-400' : 'text-green-400'}`}>{clientSessionSummary.remaining}</span> sessions remaining</span>
+                      <span className="text-xs text-gray-400">{clientSessionSummary.upcoming} upcoming scheduled</span>
+                      {clientSessionSummary.scheduleText && <span className="text-xs text-blue-300/80">📅 {clientSessionSummary.scheduleText}</span>}
+                    </div>
+                  )}
                   {activePlan.billingMode === 'hybrid' && (
-                    <p className="text-purple-300/70 text-xs mt-1.5 border-t border-white/5 pt-1.5">💡 Tag each day as Remote or In-Person below. In-person days will auto-create session records when published.</p>
+                    <p className="text-purple-300/70 text-xs mt-1.5">💡 In-person days below are auto-tagged from the schedule. Adjust any day's Remote/In-Person toggle as needed.</p>
                   )}
                   {activePlan.billingMode === 'per_session' && (
-                    <p className="text-blue-300/70 text-xs mt-1.5 border-t border-white/5 pt-1.5">💡 All workouts for this client are in-person sessions. Sessions will be auto-created when published.</p>
+                    <p className="text-blue-300/70 text-xs mt-1.5">💡 In-person days are auto-set from the schedule. Other days default to rest — the client can still log their own activity.</p>
                   )}
                 </div>
                 <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
@@ -3892,16 +3923,19 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-white font-heading text-sm uppercase">{day.day}</span>
                           <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
-                          {/* Per-session clients: show in-person badge only on recurring schedule days */}
-                          {activePlan?.billingMode === 'per_session' && day.workouts[0]?.type && day.workouts[0]?.type !== 'rest' && (() => {
-                            const dayNameToNum: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
-                            return clientRecurringDays.includes(dayNameToNum[day.day]);
-                          })() && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">🏋️ In-Person</span>
+                          {/* Per-session: show in-person badge on scheduled days (shows BEFORE programming) */}
+                          {activePlan?.billingMode === 'per_session' && day.sessionType === 'in_person' && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">🏋️ In-Person Session</span>
+                          )}
+                          {/* Hybrid: show current status badge next to day name */}
+                          {activePlan?.billingMode === 'hybrid' && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded border ${day.sessionType === 'in_person' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/5 text-gray-400 border-white/10'}`}>
+                              {day.sessionType === 'in_person' ? '🏋️ In-Person' : '📱 Remote'}
+                            </span>
                           )}
                         </div>
-                        {/* Hybrid: show toggle */}
-                        {activePlan?.billingMode === 'hybrid' && day.workouts[0]?.type && day.workouts[0]?.type !== 'rest' && (
+                        {/* Hybrid: show toggle button (works even before a workout type is selected) */}
+                        {activePlan?.billingMode === 'hybrid' && (
                           <button
                             onClick={() => {
                               const updated = [...weekPlan.days];
@@ -3910,7 +3944,7 @@ export default function AdminPage() {
                             }}
                             className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${day.sessionType === 'in_person' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:border-white/30'}`}
                           >
-                            {day.sessionType === 'in_person' ? '🏋️ In-Person' : '📱 Remote'}
+                            {day.sessionType === 'in_person' ? 'Switch to Remote' : 'Switch to In-Person'}
                           </button>
                         )}
                       </div>
