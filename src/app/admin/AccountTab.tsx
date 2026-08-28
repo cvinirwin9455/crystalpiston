@@ -735,7 +735,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [savingPlanEdit, setSavingPlanEdit] = useState(false);
 
   // Session balance state (for per_session and hybrid plans)
-  const [sessionBalance, setSessionBalance] = useState<{ used: number; total: number; totalPaid: number } | null>(null);
+  const [sessionBalance, setSessionBalance] = useState<{ used: number; total: number; totalPaid: number; totalOwed: number } | null>(null);
   const [sessionBalanceLoaded, setSessionBalanceLoaded] = useState(false);
 
   const handleSavePlanEdit = async () => {
@@ -794,14 +794,15 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           const data = await res.json();
           const totalPurchased = (data.packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0);
           const totalPaid = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_paid) || 0), 0);
+          const totalOwed = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_owed ?? p.amount_paid) || 0), 0);
           const remaining = data.sessionsRemaining ?? 0;
-          setSessionBalance({ used: totalPurchased - remaining, total: totalPurchased, totalPaid });
+          setSessionBalance({ used: totalPurchased - remaining, total: totalPurchased, totalPaid, totalOwed });
         } else {
-          setSessionBalance({ used: 0, total: 0, totalPaid: 0 });
+          setSessionBalance({ used: 0, total: 0, totalPaid: 0, totalOwed: 0 });
         }
       } catch (err) {
         console.error("Failed to fetch session balance:", err);
-        setSessionBalance({ used: 0, total: 0, totalPaid: 0 });
+        setSessionBalance({ used: 0, total: 0, totalPaid: 0, totalOwed: 0 });
       } finally {
         setSessionBalanceLoaded(true);
       }
@@ -1077,8 +1078,10 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-xs">Total paid: ${sessionBalance.totalPaid.toFixed(2)}</span>
-                  <span className="text-gray-500 text-xs">(${(sessionBalance.totalPaid / sessionBalance.total).toFixed(2)}/session)</span>
+                  <span className="text-gray-400 text-xs">${sessionBalance.totalPaid.toFixed(2)} / ${sessionBalance.totalOwed.toFixed(2)} paid</span>
+                  <span className={`text-xs font-medium ${(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                    {(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? `$${(sessionBalance.totalOwed - sessionBalance.totalPaid).toFixed(2)} due` : "Paid ✓"}
+                  </span>
                 </div>
               </div>
             ) : sessionBalanceLoaded ? (
@@ -1118,8 +1121,10 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-xs">Total paid: ${sessionBalance.totalPaid.toFixed(2)}</span>
-                    <span className="text-gray-500 text-xs">(${(sessionBalance.totalPaid / sessionBalance.total).toFixed(2)}/session)</span>
+                    <span className="text-gray-400 text-xs">${sessionBalance.totalPaid.toFixed(2)} / ${sessionBalance.totalOwed.toFixed(2)} paid</span>
+                    <span className={`text-xs font-medium ${(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? "text-red-400" : "text-green-400"}`}>
+                      {(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? `$${(sessionBalance.totalOwed - sessionBalance.totalPaid).toFixed(2)} due` : "Paid ✓"}
+                    </span>
                   </div>
                 </div>
               ) : sessionBalanceLoaded ? (
@@ -1232,29 +1237,34 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
 function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; planId: string; readOnly?: boolean }) {
   const [showForm, setShowForm] = useState(false);
   const [sessionCount, setSessionCount] = useState("");
+  const [amountOwed, setAmountOwed] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [packages, setPackages] = useState<{ id: string; sessions_purchased: number; amount_paid: number; purchased_at: string; notes?: string }[]>([]);
+  const [packages, setPackages] = useState<{ id: string; sessions_purchased: number; amount_paid: number; amount_owed?: number; purchased_at: string; notes?: string }[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
+  // Per-package payment logging
+  const [payingPackageId, setPayingPackageId] = useState<string | null>(null);
+  const [logPaymentAmount, setLogPaymentAmount] = useState("");
 
   // Fetch existing packages and balance
-  useEffect(() => {
-    const fetchPackages = async () => {
-      try {
-        const res = await fetch(`/api/session-packages?client_id=${clientId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setPackages(data.packages || []);
-          setSessionsRemaining(data.sessionsRemaining ?? null);
-        }
-      } catch (err) {
-        console.error("Failed to fetch session packages:", err);
-      } finally {
-        setLoadingPackages(false);
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch(`/api/session-packages?client_id=${clientId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPackages(data.packages || []);
+        setSessionsRemaining(data.sessionsRemaining ?? null);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch session packages:", err);
+    } finally {
+      setLoadingPackages(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPackages();
   }, [clientId]);
 
@@ -1268,6 +1278,7 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
         body: JSON.stringify({
           clientId,
           sessionsPurchased: parseInt(sessionCount),
+          amountOwed: amountOwed || "0",
           amountPaid: amountPaid || "0",
           notes: notes || null,
         }),
@@ -1277,6 +1288,7 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
         setPackages(prev => [data.package, ...prev]);
         setSessionsRemaining(prev => (prev ?? 0) + parseInt(sessionCount));
         setSessionCount("");
+        setAmountOwed("");
         setAmountPaid("");
         setNotes("");
         setShowForm(false);
@@ -1288,9 +1300,35 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
     }
   };
 
+  const handleLogPackagePayment = async (packageId: string) => {
+    if (!logPaymentAmount || parseFloat(logPaymentAmount) <= 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/session-packages', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageId, paymentAmount: logPaymentAmount }),
+      });
+      if (res.ok) {
+        setPayingPackageId(null);
+        setLogPaymentAmount("");
+        fetchPackages();
+      }
+    } catch (err) {
+      console.error("Failed to log package payment:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Calculate totals
+  const totalOwed = packages.reduce((sum, p) => sum + (p.amount_owed ?? p.amount_paid ?? 0), 0);
+  const totalPaid = packages.reduce((sum, p) => sum + (p.amount_paid ?? 0), 0);
+  const totalDue = totalOwed - totalPaid;
+
   return (
     <div className="mt-3 border-t border-white/5 pt-3">
-      {/* Session balance badge */}
+      {/* Session balance + payment summary */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-gray-500 text-xs">Sessions Remaining:</span>
@@ -1307,27 +1345,43 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
         )}
       </div>
 
+      {/* Payment summary */}
+      {!loadingPackages && totalOwed > 0 && (
+        <div className="flex items-center gap-4 mb-2 text-xs">
+          <span className="text-gray-400">Owed: <span className="text-white font-medium">${totalOwed.toFixed(2)}</span></span>
+          <span className="text-gray-400">Paid: <span className="text-white font-medium">${totalPaid.toFixed(2)}</span></span>
+          <span className={`font-medium ${totalDue > 0 ? 'text-red-400' : 'text-green-400'}`}>
+            {totalDue > 0 ? `$${totalDue.toFixed(2)} due` : 'Paid in full ✓'}
+          </span>
+        </div>
+      )}
+
       {/* Add package form */}
       {!readOnly && showForm && (
         <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-2">
           <p className="text-blue-400 text-xs font-medium mb-2">Add Session Package</p>
-          <div className="grid grid-cols-2 gap-3 mb-2">
+          <div className="grid grid-cols-3 gap-3 mb-2">
             <div>
               <label className="text-gray-500 text-xs block mb-1">Sessions <span className="text-accent">*</span></label>
               <input type="number" value={sessionCount} onChange={(e) => setSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Amount Paid ($)</label>
-              <input type="number" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="500" />
+              <label className="text-gray-500 text-xs block mb-1">Total Cost ($)</label>
+              <input type="number" value={amountOwed} onChange={(e) => setAmountOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="750" />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Paid Now ($)</label>
+              <input type="number" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
             </div>
           </div>
+          <p className="text-gray-500 text-xs mb-2">Enter the total cost owed and how much has been paid so far. You can log more payments later.</p>
           <div className="mb-2">
             <label className="text-gray-500 text-xs block mb-1">Notes <span className="text-gray-600">(optional)</span></label>
             <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. Monthly package renewal" />
           </div>
           <div className="flex gap-2">
             <button onClick={handleAddPackage} disabled={!sessionCount || parseInt(sessionCount) <= 0 || saving} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded text-xs disabled:opacity-50">{saving ? "Adding..." : "Add Package"}</button>
-            <button onClick={() => { setShowForm(false); setSessionCount(""); setAmountPaid(""); setNotes(""); }} className="text-gray-400 text-xs">Cancel</button>
+            <button onClick={() => { setShowForm(false); setSessionCount(""); setAmountOwed(""); setAmountPaid(""); setNotes(""); }} className="text-gray-400 text-xs">Cancel</button>
           </div>
         </div>
       )}
@@ -1336,13 +1390,41 @@ function AddSessionPackage({ clientId, planId, readOnly }: { clientId: string; p
       {!loadingPackages && packages.length > 0 && (
         <details className="mt-2">
           <summary className="text-gray-500 text-xs cursor-pointer hover:text-white">Package history ({packages.length})</summary>
-          <div className="mt-2 space-y-1">
-            {packages.map((pkg) => (
-              <div key={pkg.id} className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">{new Date(pkg.purchased_at).toLocaleDateString()}{pkg.notes ? ` — ${pkg.notes}` : ''}</span>
-                <span className="text-blue-400 font-medium">{pkg.sessions_purchased} sessions {pkg.amount_paid > 0 ? `($${pkg.amount_paid})` : ''}</span>
-              </div>
-            ))}
+          <div className="mt-2 space-y-2">
+            {packages.map((pkg) => {
+              const owed = pkg.amount_owed ?? pkg.amount_paid ?? 0;
+              const paid = pkg.amount_paid ?? 0;
+              const due = owed - paid;
+              return (
+                <div key={pkg.id} className="bg-primary/20 border border-white/5 rounded-lg p-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400">{new Date(pkg.purchased_at).toLocaleDateString()}{pkg.notes ? ` — ${pkg.notes}` : ''}</span>
+                    <span className="text-blue-400 font-medium">{pkg.sessions_purchased} sessions</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-gray-500">${paid.toFixed(2)} / ${owed.toFixed(2)} paid</span>
+                    {due > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-400">${due.toFixed(2)} due</span>
+                        {!readOnly && payingPackageId !== pkg.id && (
+                          <button onClick={() => { setPayingPackageId(pkg.id); setLogPaymentAmount(due.toFixed(2)); }} className="text-blue-400 hover:underline">Log Payment</button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-green-400">Paid ✓</span>
+                    )}
+                  </div>
+                  {/* Log payment inline form */}
+                  {payingPackageId === pkg.id && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input type="number" value={logPaymentAmount} onChange={(e) => setLogPaymentAmount(e.target.value)} className="w-24 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-accent" placeholder="Amount" />
+                      <button onClick={() => handleLogPackagePayment(pkg.id)} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs disabled:opacity-50">{saving ? "..." : "Save"}</button>
+                      <button onClick={() => { setPayingPackageId(null); setLogPaymentAmount(""); }} className="text-gray-400 text-xs">Cancel</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </details>
       )}

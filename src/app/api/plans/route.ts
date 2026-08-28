@@ -202,16 +202,25 @@ async function createSessionPackageIfNeeded(adminClient: any, coachId: string, c
 
     const orgId = client?.organization_id || coachId // fallback to coach id if no org
 
-    await adminClient
+    const owedValue = sessionCost ? parseFloat(sessionCost) : 0
+    // Try with amount_owed column, fall back if it doesn't exist
+    const insertData: any = {
+      client_id: clientId,
+      organization_id: orgId,
+      coach_id: coachId,
+      sessions_purchased: sessionCount,
+      amount_paid: 0, // client pays via Log Payment after plan creation
+      notes: 'Initial package from plan creation',
+    }
+    const full = await adminClient
       .from('session_packages')
-      .insert({
-        client_id: clientId,
-        organization_id: orgId,
-        coach_id: coachId,
-        sessions_purchased: sessionCount,
-        amount_paid: sessionCost ? parseFloat(sessionCost) : 0,
-        notes: 'Initial package from plan creation',
-      })
+      .insert({ ...insertData, amount_owed: owedValue })
+    if (full.error) {
+      // amount_owed column may not exist — retry with amount_paid = owed (legacy behavior)
+      await adminClient
+        .from('session_packages')
+        .insert({ ...insertData, amount_paid: owedValue })
+    }
   }
 }
 

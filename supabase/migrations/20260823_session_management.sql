@@ -174,12 +174,14 @@ SELECT
   COALESCE(pkg.total_purchased, 0) AS total_purchased,
   COALESCE(used.total_used, 0) AS total_used,
   COALESCE(pkg.total_purchased, 0) - COALESCE(used.total_used, 0) AS sessions_remaining,
-  COALESCE(pkg.total_paid, 0) AS total_paid
+  COALESCE(pkg.total_paid, 0) AS total_paid,
+  COALESCE(pkg.total_owed, 0) AS total_owed
 FROM public.clients c
 LEFT JOIN (
   SELECT client_id, 
     SUM(sessions_purchased) AS total_purchased,
-    SUM(amount_paid) AS total_paid
+    SUM(amount_paid) AS total_paid,
+    SUM(amount_owed) AS total_owed
   FROM public.session_packages
   GROUP BY client_id
 ) pkg ON pkg.client_id = c.id
@@ -198,3 +200,17 @@ LEFT JOIN (
 -- ============================================================
 ALTER TABLE public.recurring_schedules
   ADD COLUMN IF NOT EXISTS day_times JSONB;
+
+
+
+-- ============================================================
+-- 11. Add amount_owed to session_packages for owed vs paid tracking
+-- Coach can set total cost owed and log payments against it
+-- ============================================================
+ALTER TABLE public.session_packages
+  ADD COLUMN IF NOT EXISTS amount_owed NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
+-- Backfill: for existing packages, set amount_owed = amount_paid (assume they were paid in full)
+UPDATE public.session_packages
+  SET amount_owed = amount_paid
+  WHERE amount_owed = 0 AND amount_paid > 0;

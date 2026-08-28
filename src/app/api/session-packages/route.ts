@@ -26,11 +26,27 @@ export async function GET(request: Request) {
   const adminClient = await getAdminClient()
 
   // Fetch all packages for the client
-  const { data: packages, error: pkgError } = await adminClient
+  // Try with amount_owed column, fall back if it doesn't exist yet
+  let packages: any[] | null = null
+  let pkgError: any = null
+  const fullPkg = await adminClient
     .from('session_packages')
-    .select('id, sessions_purchased, amount_paid, notes, purchased_at')
+    .select('id, sessions_purchased, amount_paid, amount_owed, notes, purchased_at')
     .eq('client_id', clientId)
     .order('purchased_at', { ascending: false })
+
+  if (fullPkg.error) {
+    const fallbackPkg = await adminClient
+      .from('session_packages')
+      .select('id, sessions_purchased, amount_paid, notes, purchased_at')
+      .eq('client_id', clientId)
+      .order('purchased_at', { ascending: false })
+    packages = fallbackPkg.data
+    pkgError = fallbackPkg.error
+  } else {
+    packages = fullPkg.data
+    pkgError = fullPkg.error
+  }
 
   if (pkgError) {
     // Table may not exist yet
@@ -83,7 +99,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { clientId, sessionsPurchased, amountPaid, notes } = body
+  const { clientId, sessionsPurchased, amountPaid, amountOwed, notes } = body
 
   if (!clientId || !sessionsPurchased || sessionsPurchased <= 0) {
     return NextResponse.json({ error: 'clientId and sessionsPurchased (>0) are required' }, { status: 400 })
@@ -100,22 +116,95 @@ export async function POST(request: Request) {
 
   const orgId = client?.organization_id || user.id
 
-  const { data: pkg, error } = await adminClient
+  // Try inserting with amount_owed, fall back if column doesn't exist
+  const insertData: any = {
+    client_id: clientId,
+    organization_id: orgId,
+    coach_id: user.id,
+    sessions_purchased: parseInt(sessionsPurchased),
+    amount_paid: amountPaid ? parseFloat(amountPaid) : 0,
+    notes: notes || null,
+  }
+  // amount_owed defaults to amountPaid if not provided (backwards compatible)
+  const owedValue = amountOwed !== undefined && amountOwed !== null && amountOwed !== ''
+    ? parseFloat(amountOwed)
+    : (amountPaid ? parseFloat(amountPaid) : 0)
+
+  let pkg: any = null
+  let error: any = null
+  const fullInsert = await adminClient
     .from('session_packages')
-    .insert({
-      client_id: clientId,
-      organization_id: orgId,
-      coach_id: user.id,
-      sessions_purchased: parseInt(sessionsPurchased),
-      amount_paid: amountPaid ? parseFloat(amountPaid) : 0,
-      notes: notes || null,
-    })
+    .insert({ ...insertData, amount_owed: owedValue })
     .select()
     .single()
+
+  if (fullInsert.error) {
+    // amount_owed column may not exist — retry without it
+    const fallbackInsert = await adminClient
+      .from('session_packages')
+      .insert(insertData)
+      .select()
+      .single()
+    pkg = fallbackInsert.data
+    error = fallbackInsert.error
+  } else {
+    pkg = fullInsert.data
+    error = fullInsert.error
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json({ success: true, package: pkg })
+}
+
+// PATCH /api/session-packages - Log a payment against a package (increment amount_paid)
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const { packageId, paymentAmount } = body
+
+  if (!packageId || !paymentAmount) {
+    return NextResponse.json({ error: 'packageId and paymentAmount are required' }, { status: 400 })
+  }
+
+  const adminClient = await getAdminClient()
+
+  // Get current amount_paid
+  const { data: pkg, error: fetchErr } = await adminClient
+    .from('session_packages')
+    .select('amount_paid')
+    .eq('id', packageId)
+    .single()
+
+  if (fetchErr || !pkg) {
+    return NextResponse.json({ error: 'Package not found' }, { status: 404 })
+  }
+
+  const newPaid = (parseFloat(pkg.amount_paid) || 0) + parseFloat(paymentAmount)
+
+  const { error } = await adminClient
+    .from('session_packages')
+    .update({ amount_paid: newPaid })
+    .eq('id', packageId)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, newAmountPaid: newPaid })
 }
