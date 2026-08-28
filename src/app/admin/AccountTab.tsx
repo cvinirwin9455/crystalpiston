@@ -35,7 +35,7 @@ type ClientData = {
   stravaProfileUrl?: string | null;
 };
 
-export default function AccountTab({ clientData, onSave, onArchive, onDelete, dateFormat, programTemplates }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
+export default function AccountTab({ clientData, onSave, onArchive, onDelete, onPlanChange, dateFormat, programTemplates }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; onPlanChange?: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
@@ -249,6 +249,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
         setNewPlanSessionCount("");
         setNewPlanPerSessionCost("");
         setNewPlanProgrammingCost("");
+        // Notify parent so the Sessions tab + active plan banner refresh
+        onPlanChange?.();
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Failed to create plan. Please try again.');
@@ -279,6 +281,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, da
           }
           return p;
         }));
+        // Notify parent (status changes like complete/reactivate affect the Sessions tab)
+        if (updates.status !== undefined) onPlanChange?.();
       } else {
         const errData = await res.json().catch(() => ({}));
         console.error("Plan update failed:", errData);

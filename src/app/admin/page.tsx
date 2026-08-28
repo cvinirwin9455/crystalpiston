@@ -2075,17 +2075,10 @@ export default function AdminPage() {
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
   const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string } | null>(null);
 
-  // Load weeks and active plan once when a client is first selected
-  const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
-  useEffect(() => {
-    if (!selectedClient || weeksLoadedFor === selectedClient) return;
-    const client = clients.find(c => c.id === selectedClient);
-    if (client && client.clientId) {
-      setWeeksLoadedFor(selectedClient);
-      fetchWeeks(client.clientId, true);
-      // Fetch active plan
+  // Reusable: refresh active plan + session data for a client
+  const refreshActivePlanAndSessions = useCallback((clientDbId: string) => {
       setLoadingPlan(true);
-      fetch(`/api/plans?client_id=${client.clientId}`)
+      fetch(`/api/plans?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : [])
         .then((plans: any[]) => {
           const active = plans.find((p: any) => p.status === 'active');
@@ -2109,16 +2102,14 @@ export default function AdminPage() {
         .catch(() => setActivePlan(null))
         .finally(() => setLoadingPlan(false));
 
-      // Fetch recurring schedules for this client (for auto-filling in-person days)
       const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const fmtTime12 = (t: string) => { const [h, m] = t.slice(0, 5).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12; return `${h12}:${String(m).padStart(2, '0')} ${ap}`; };
-      fetch(`/api/recurring-schedules?client_id=${client.clientId}`)
+      fetch(`/api/recurring-schedules?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : [])
         .then((schedules: any[]) => {
           const activeSchedule = schedules.find((s: any) => s.active);
           if (activeSchedule) {
             setClientRecurringDays(activeSchedule.days_of_week || []);
-            // Build schedule text for the banner
             let scheduleText = '';
             if (activeSchedule.day_times) {
               scheduleText = (activeSchedule.days_of_week || []).map((d: number) => `${DAY_ABBR[d]} ${fmtTime12(activeSchedule.day_times[String(d)] || activeSchedule.time_of_day)}`).join(', ');
@@ -2133,8 +2124,7 @@ export default function AdminPage() {
         })
         .catch(() => setClientRecurringDays([]));
 
-      // Fetch actual scheduled sessions for this client (dates)
-      fetch(`/api/sessions?client_id=${client.clientId}`)
+      fetch(`/api/sessions?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : [])
         .then((sessions: any[]) => {
           const now = new Date();
@@ -2150,8 +2140,7 @@ export default function AdminPage() {
         })
         .catch(() => setClientSessionDates([]));
 
-      // Fetch session balance for the banner
-      fetch(`/api/session-packages?client_id=${client.clientId}`)
+      fetch(`/api/session-packages?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : null)
         .then((data: any) => {
           if (data) {
@@ -2159,8 +2148,19 @@ export default function AdminPage() {
           }
         })
         .catch(() => {});
+  }, []);
+
+  // Load weeks and active plan once when a client is first selected
+  const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedClient || weeksLoadedFor === selectedClient) return;
+    const client = clients.find(c => c.id === selectedClient);
+    if (client && client.clientId) {
+      setWeeksLoadedFor(selectedClient);
+      fetchWeeks(client.clientId, true);
+      refreshActivePlanAndSessions(client.clientId);
     }
-  }, [selectedClient, clients.length]);
+  }, [selectedClient, clients.length, weeksLoadedFor, clients, refreshActivePlanAndSessions]);
 
   // Auto-populate weekPlan from program template when a week date range is selected
   useEffect(() => {
@@ -4238,6 +4238,7 @@ export default function AdminPage() {
               <AccountTab 
                 clientData={selectedClientData} 
                 onSave={() => fetchClients()} 
+                onPlanChange={() => { if (selectedClientData.clientId) refreshActivePlanAndSessions(selectedClientData.clientId); }}
                 onArchive={() => handleArchiveClient(selectedClientData.id)}
                 onDelete={async () => {
                   try {
