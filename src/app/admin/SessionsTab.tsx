@@ -42,6 +42,7 @@ const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", 
 export default function SessionsTab({ clientId, clientName, onSessionsChange }: SessionsTabProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
+  const [requests, setRequests] = useState<{ id: string; session_id: string; request_type: string; note: string | null; preferred_datetime: string | null; status: string; created_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
   const [showAddSession, setShowAddSession] = useState(false);
@@ -85,7 +86,33 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
     fetchSessions();
     fetchBalance();
     fetchSchedules();
+    fetchRequests();
   }, [clientId]);
+
+  const fetchRequests = async () => {
+    try {
+      const res = await fetch(`/api/session-requests?client_id=${clientId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch session requests:", err);
+    }
+  };
+
+  const handleResolveRequest = async (requestId: string) => {
+    try {
+      const res = await fetch('/api/session-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      if (res.ok) fetchRequests();
+    } catch (err) {
+      console.error("Failed to resolve request:", err);
+    }
+  };
 
   const fetchSessions = async () => {
     try {
@@ -779,12 +806,39 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
                 </div>
               ) : (
                 /* View mode */
+                <>
+                {/* Pending client request banner */}
+                {(() => {
+                  const pendingReq = requests.find(r => r.session_id === session.id && r.status === 'pending');
+                  if (!pendingReq) return null;
+                  return (
+                    <div className={`mb-3 rounded-lg p-2.5 border ${pendingReq.request_type === 'cancel' ? 'bg-red-500/10 border-red-500/30' : 'bg-yellow-500/10 border-yellow-500/30'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">⚠️</span>
+                          <span className={`text-xs font-medium ${pendingReq.request_type === 'cancel' ? 'text-red-400' : 'text-yellow-400'}`}>
+                            Client requested to {pendingReq.request_type === 'cancel' ? 'cancel' : 'reschedule'} this session
+                          </span>
+                        </div>
+                        <button onClick={() => handleResolveRequest(pendingReq.id)} className="text-gray-400 text-xs hover:text-white whitespace-nowrap">Dismiss</button>
+                      </div>
+                      {pendingReq.request_type === 'reschedule' && pendingReq.preferred_datetime && (
+                        <p className="text-gray-300 text-xs mt-1">Prefers: {formatDateTime(pendingReq.preferred_datetime)}</p>
+                      )}
+                      {pendingReq.note && <p className="text-gray-400 text-xs mt-1 italic">&ldquo;{pendingReq.note}&rdquo;</p>}
+                      <p className="text-gray-500 text-xs mt-1">Use the actions below to reschedule/cancel, then dismiss this request.</p>
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-white text-sm font-medium">{formatDateTime(session.scheduled_at)}</p>
                         {session.recurring_schedule_id && <span className="text-xs text-blue-400/60">🔄</span>}
+                        {requests.some(r => r.session_id === session.id && r.status === 'pending') && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⚠️ Request</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {session.session_type && <span className="text-gray-400 text-xs">{session.session_type}</span>}
@@ -832,6 +886,7 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
                     )}
                   </div>
                 </div>
+                </>
               )}
             </div>
           ))}

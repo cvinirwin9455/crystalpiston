@@ -8,7 +8,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { DragDropProvider, DraggableWorkout, DroppableDay, MoveToModal, MoveButton, Toast, ResetWeekButton, AutoSaveNotice } from "@/components/WorkoutDragDrop";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
-type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest" | "walk" | "cycling" | "stretching" | "strength" | "hiit" | "swimming"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; };
+type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest" | "walk" | "cycling" | "stretching" | "strength" | "hiit" | "swimming"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; sessionType?: "remote" | "in_person"; sessionId?: string | null; sessionScheduledAt?: string | null; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; completed: boolean; completedNotes: string | null; source?: string; stravaActivityId?: string | null; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; stravaActivities?: { id: string; day: string; type: string; miles: number; duration: string; averagePace: string; activityName: string; matchStatus: string; suggestedMatchId: string | null }[]; };
 
@@ -198,6 +198,45 @@ export default function DashboardPage() {
   const [moveModal, setMoveModal] = useState<{ workoutId: string; workoutType: "programmed" | "client"; title: string; currentDay: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info"; visible: boolean }>({ message: "", type: "success", visible: false });
   const [hasMovedWorkouts, setHasMovedWorkouts] = useState(false);
+
+  // In-person session request (cancel / reschedule) state
+  const [sessionRequestModal, setSessionRequestModal] = useState<{ sessionId: string; sessionLabel: string; requestType: 'cancel' | 'reschedule'; note: string; preferredDate: string; preferredTime: string } | null>(null);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+
+  const submitSessionRequest = async () => {
+    if (!sessionRequestModal) return;
+    setSubmittingRequest(true);
+    try {
+      let preferredDatetime: string | null = null;
+      if (sessionRequestModal.requestType === 'reschedule' && sessionRequestModal.preferredDate) {
+        const t = sessionRequestModal.preferredTime || '09:00';
+        preferredDatetime = `${sessionRequestModal.preferredDate}T${t}:00`;
+      }
+      const res = await fetch('/api/session-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionRequestModal.sessionId,
+          requestType: sessionRequestModal.requestType,
+          note: sessionRequestModal.note || null,
+          preferredDatetime,
+        }),
+      });
+      if (res.ok) {
+        setSessionRequestModal(null);
+        setToast({ message: `Request sent to your coach — they'll confirm.`, type: 'success', visible: true });
+        setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000);
+      } else {
+        setToast({ message: 'Could not send request. Please try again.', type: 'error', visible: true });
+        setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000);
+      }
+    } catch {
+      setToast({ message: 'Could not send request. Please try again.', type: 'error', visible: true });
+      setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000);
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   // Fetch unread message count
   useEffect(() => {
@@ -852,7 +891,7 @@ export default function DashboardPage() {
               coachMessage: w.coachMessage || '',
               stravaActivities: (w.stravaActivities || []).map((sa: any) => ({ id: sa.id, day: sa.day, type: sa.type, miles: sa.miles, duration: sa.duration, averagePace: sa.averagePace, activityName: sa.activityName, matchStatus: sa.matchStatus, suggestedMatchId: sa.suggestedMatchId || null, suggestedClientMatchId: sa.suggestedClientMatchId || null })),
               clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({ id: cw.id, day: cw.day, type: cw.type, trainingType: cw.trainingType || null, miles: cw.miles, notes: cw.notes, createdAt: cw.createdAt, isClientAdded: true as const, completed: cw.completed || false, completedNotes: cw.completedNotes || cw.completed_notes || null, source: cw.source || 'manual', stravaActivityId: cw.stravaActivityId || null, duration: cw.duration || null, averagePace: cw.averagePace || null, activityName: cw.activityName || null, avgHeartrate: cw.avgHeartrate || null, maxHeartrate: cw.maxHeartrate || null })),
-              workouts: (w.workouts || []).map((wo: any) => ({ id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi', description: wo.description || '', paceTarget: wo.paceTarget || '', location: wo.location || '', coachNotes: wo.coachNotes || '', completed: wo.completed || false, stravaSynced: wo.stravaSynced || false, stravaActivityName: wo.stravaActivityName || null, structure: wo.structure || null, status: wo.status || undefined, skipReason: wo.skipReason || undefined, log: wo.log || undefined })),
+              workouts: (w.workouts || []).map((wo: any) => ({ id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi', description: wo.description || '', paceTarget: wo.paceTarget || '', location: wo.location || '', coachNotes: wo.coachNotes || '', completed: wo.completed || false, stravaSynced: wo.stravaSynced || false, stravaActivityName: wo.stravaActivityName || null, structure: wo.structure || null, sessionType: wo.sessionType || 'remote', sessionId: wo.sessionId || null, sessionScheduledAt: wo.sessionScheduledAt || null, status: wo.status || undefined, skipReason: wo.skipReason || undefined, log: wo.log || undefined })),
             }));
             setWeeks(mapped);
           }
@@ -951,6 +990,9 @@ export default function DashboardPage() {
               stravaSynced: wo.stravaSynced || false,
               stravaActivityName: wo.stravaActivityName || null,
               structure: wo.structure || null,
+              sessionType: wo.sessionType || 'remote',
+              sessionId: wo.sessionId || null,
+              sessionScheduledAt: wo.sessionScheduledAt || null,
               status: wo.status || undefined,
               skipReason: wo.skipReason || undefined,
               log: wo.log || undefined,
@@ -1797,7 +1839,11 @@ export default function DashboardPage() {
                         return suggestion && suggestion.suggestedMatchId === workout.id;
                       });
                       
-                      const canMoveThisWorkout = weekOffset >= 0 && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
+                      const isInPerson = workout.sessionType === 'in_person';
+                      // In-person coached sessions are locked — the client can't drag/move them.
+                      const canMoveThisWorkout = weekOffset >= 0 && !isInPerson && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
+                      // Can request cancel/reschedule on upcoming in-person sessions that have a session record
+                      const canRequestSession = isInPerson && !!workout.sessionId && weekOffset >= 0 && workout.status !== 'complete';
 
                       return (
                 <DraggableWorkout key={workout.id} workoutId={workout.id} workoutType="programmed" day={day} title={workout.title || `${workout.trainingType || workout.type}`} disabled={!canMoveThisWorkout}>
@@ -1820,7 +1866,16 @@ export default function DashboardPage() {
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching" || workout.type === "strength" || workout.type === "hiit" || workout.type === "swimming") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
+                            {isInPerson && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1">🏋️ In-Person Session</span>}
                             {canMoveThisWorkout && <MoveButton onClick={() => setMoveModal({ workoutId: workout.id, workoutType: 'programmed', title: workout.title || `${workout.trainingType || workout.type}`, currentDay: day })} disabled={!canMoveThisWorkout} />}
+                            {canRequestSession && (
+                              <button
+                                onClick={() => setSessionRequestModal({ sessionId: workout.sessionId!, sessionLabel: `${workout.day} ${workout.date}`, requestType: 'reschedule', note: '', preferredDate: '', preferredTime: '' })}
+                                className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                              >
+                                Can&apos;t attend?
+                              </button>
+                            )}
                           </div>
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
@@ -3068,6 +3123,62 @@ export default function DashboardPage() {
           }}
           onClose={() => setMoveModal(null)}
         />
+      )}
+
+      {/* In-Person Session Request Modal (cancel / reschedule) */}
+      {sessionRequestModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSessionRequestModal(null)} />
+          <div className="relative bg-secondary border border-white/10 rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto p-5 m-0 sm:m-4">
+            <h3 className="font-heading text-sm uppercase text-white mb-1">Can&apos;t make your session?</h3>
+            <p className="text-gray-400 text-xs mb-4">{sessionRequestModal.sessionLabel} — your coach will confirm any change.</p>
+
+            {/* Cancel vs Reschedule */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setSessionRequestModal({ ...sessionRequestModal, requestType: 'reschedule' })}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${sessionRequestModal.requestType === 'reschedule' ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                Request Reschedule
+              </button>
+              <button
+                onClick={() => setSessionRequestModal({ ...sessionRequestModal, requestType: 'cancel' })}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${sessionRequestModal.requestType === 'cancel' ? 'bg-red-500/20 border border-red-500/40 text-red-400' : 'bg-primary/50 border border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                Cancel Session
+              </button>
+            </div>
+
+            {/* Preferred new day/time — reschedule only */}
+            {sessionRequestModal.requestType === 'reschedule' && (
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-gray-400 text-xs block mb-1">Preferred day <span className="text-gray-600">(optional)</span></label>
+                  <input type="date" value={sessionRequestModal.preferredDate} onChange={(e) => setSessionRequestModal({ ...sessionRequestModal, preferredDate: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs block mb-1">Preferred time</label>
+                  <input type="time" value={sessionRequestModal.preferredTime} onChange={(e) => setSessionRequestModal({ ...sessionRequestModal, preferredTime: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+                </div>
+              </div>
+            )}
+
+            {/* Note */}
+            <div className="mb-4">
+              <label className="text-gray-400 text-xs block mb-1">Message to your coach <span className="text-gray-600">(optional)</span></label>
+              <textarea value={sessionRequestModal.note} onChange={(e) => setSessionRequestModal({ ...sessionRequestModal, note: e.target.value })} rows={2} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" placeholder={sessionRequestModal.requestType === 'cancel' ? "e.g. Feeling unwell, sorry!" : "e.g. Could we do Thursday instead?"} />
+            </div>
+
+            <p className="text-gray-500 text-xs mb-4">{sessionRequestModal.requestType === 'reschedule' ? 'This is a request — your coach will confirm the new time. Your preferred time is not guaranteed.' : 'This notifies your coach that you can\u2019t attend. They\u2019ll confirm the cancellation.'}</p>
+
+            <div className="flex gap-2">
+              <button onClick={submitSessionRequest} disabled={submittingRequest} className="flex-1 bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
+                {submittingRequest ? 'Sending...' : 'Send Request'}
+              </button>
+              <button onClick={() => setSessionRequestModal(null)} className="text-gray-400 hover:text-white text-sm px-4 py-2">Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Auto-save Toast */}

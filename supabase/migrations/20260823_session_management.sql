@@ -239,3 +239,42 @@ UPDATE public.payments p
 
 CREATE INDEX IF NOT EXISTS idx_payments_client_id ON public.payments(client_id);
 CREATE INDEX IF NOT EXISTS idx_payments_session_package_id ON public.payments(session_package_id);
+
+
+
+-- ============================================================
+-- 13. Session requests table
+-- Clients can request to cancel or reschedule an in-person session.
+-- Coach must confirm — the session itself doesn't change until they act.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.session_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+  client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL,
+  request_type TEXT NOT NULL CHECK (request_type IN ('cancel', 'reschedule')),
+  note TEXT,
+  preferred_datetime TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'resolved')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_requests_session_id ON public.session_requests(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_requests_client_id ON public.session_requests(client_id);
+CREATE INDEX IF NOT EXISTS idx_session_requests_org_id ON public.session_requests(organization_id);
+CREATE INDEX IF NOT EXISTS idx_session_requests_pending ON public.session_requests(status) WHERE status = 'pending';
+
+ALTER TABLE public.session_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage session_requests"
+  ON public.session_requests FOR ALL
+  USING (public.is_admin());
+
+CREATE POLICY "Clients can view own session_requests"
+  ON public.session_requests FOR SELECT
+  USING (client_id IN (SELECT id FROM public.clients WHERE user_id = auth.uid()));
+
+CREATE POLICY "Clients can create own session_requests"
+  ON public.session_requests FOR INSERT
+  WITH CHECK (client_id IN (SELECT id FROM public.clients WHERE user_id = auth.uid()));

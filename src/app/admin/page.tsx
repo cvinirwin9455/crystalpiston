@@ -79,6 +79,8 @@ export default function AdminPage() {
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
   const [showMobileDashboard, setShowMobileDashboard] = useState(false);
+  // Pending session requests (dashboard widget)
+  const [pendingRequests, setPendingRequests] = useState<{ id: string; session_id: string; client_id: string; request_type: string; note: string | null; preferred_datetime: string | null; created_at: string; clientName?: string; sessionScheduledAt?: string | null }[]>([]);
 
   // AI Coach Assistant state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -1563,6 +1565,31 @@ export default function AdminPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  // Fetch pending session requests for the dashboard widget
+  const fetchPendingRequests = useCallback(async () => {
+    try {
+      const res = await fetch('/api/session-requests?pending=true');
+      if (res.ok) {
+        const data = await res.json();
+        setPendingRequests(data);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    fetchPendingRequests();
+  }, [fetchPendingRequests]);
+
+  const resolvePendingRequest = async (requestId: string) => {
+    try {
+      const res = await fetch('/api/session-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      if (res.ok) fetchPendingRequests();
+    } catch {}
+  };
 
   // Create new client via API
   const handleCreateClient = async () => {
@@ -5779,6 +5806,54 @@ export default function AdminPage() {
                   )}
 
 
+
+                  {/* Pending Session Requests */}
+                  {pendingRequests.length > 0 && (
+                    <div className="bg-secondary/50 border border-yellow-500/30 rounded-xl p-5">
+                      <h3 className="font-heading text-sm uppercase text-yellow-400 mb-3">⚠️ Session Requests ({pendingRequests.length})</h3>
+                      <div className="space-y-2">
+                        {pendingRequests.map((req) => {
+                          const fmtDt = (iso: string | null | undefined) => {
+                            if (!iso) return '';
+                            const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+                            if (!m) return new Date(iso).toLocaleString();
+                            const [, yy, mm, dd, hh, mi] = m;
+                            const dObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
+                            const wd = dObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                            const h = parseInt(hh); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12;
+                            return `${wd} at ${h12}:${mi} ${ap}`;
+                          };
+                          // Find the client id (clients use .id from clients table; match on clientId)
+                          const clientRow = clients.find((c: any) => c.clientId === req.client_id);
+                          return (
+                            <div key={req.id} className={`bg-primary/30 rounded-lg p-3 border ${req.request_type === 'cancel' ? 'border-red-500/20' : 'border-yellow-500/20'}`}>
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div>
+                                  <p className="text-white text-sm">
+                                    <span className="font-medium">{req.clientName || 'Client'}</span>
+                                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${req.request_type === 'cancel' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                      {req.request_type === 'cancel' ? 'Cancel' : 'Reschedule'}
+                                    </span>
+                                  </p>
+                                  <p className="text-gray-400 text-xs mt-0.5">Session: {fmtDt(req.sessionScheduledAt)}</p>
+                                  {req.request_type === 'reschedule' && req.preferred_datetime && (
+                                    <p className="text-gray-300 text-xs">Prefers: {fmtDt(req.preferred_datetime)}</p>
+                                  )}
+                                  {req.note && <p className="text-gray-400 text-xs italic mt-0.5">&ldquo;{req.note}&rdquo;</p>}
+                                </div>
+                                <div className="flex gap-2">
+                                  {clientRow && (
+                                    <button onClick={() => { setSelectedClient(clientRow.id); setClientTab('sessions'); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
+                                  )}
+                                  <button onClick={() => resolvePendingRequest(req.id)} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">Dismiss</button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Unread Messages */}
                   {totalUnread > 0 && (
