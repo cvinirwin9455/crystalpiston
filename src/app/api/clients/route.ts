@@ -116,6 +116,23 @@ export async function GET(request: Request) {
     activePlanByClientId.set(plan.client_id, plan)
   }
 
+  // Fetch session package totals per client (owed + paid) — for hybrid/per-session billing.
+  // Graceful if the columns/table don't exist yet.
+  const sessionOwedByClientId = new Map<string, number>()
+  const sessionPaidByClientId = new Map<string, number>()
+  try {
+    const pkgFull = await adminClient
+      .from('session_packages')
+      .select('client_id, amount_owed, amount_paid')
+    const pkgs = pkgFull.error ? [] : (pkgFull.data || [])
+    for (const pkg of pkgs) {
+      const owed = parseFloat(pkg.amount_owed ?? pkg.amount_paid) || 0
+      const paid = parseFloat(pkg.amount_paid) || 0
+      sessionOwedByClientId.set(pkg.client_id, (sessionOwedByClientId.get(pkg.client_id) || 0) + owed)
+      sessionPaidByClientId.set(pkg.client_id, (sessionPaidByClientId.get(pkg.client_id) || 0) + paid)
+    }
+  } catch { /* session_packages may not exist yet */ }
+
   // Fetch Strava connections for profile pictures
   const { data: stravaConnections } = await adminClient
     .from('strava_connections')
@@ -199,9 +216,15 @@ export async function GET(request: Request) {
 
     const activePlan = clientRecord ? activePlanByClientId.get(clientRecord.id) : null
 
-    // Use active plan financials if available, otherwise fall back to legacy clients table
-    const owed = activePlan ? (parseFloat(activePlan.owed) || 0) : 0
-    const paid = activePlan ? (parseFloat(activePlan.paid) || 0) : 0
+    // Programming financials from the active plan
+    const programmingOwed = activePlan ? (parseFloat(activePlan.owed) || 0) : 0
+    const programmingPaid = activePlan ? (parseFloat(activePlan.paid) || 0) : 0
+    // Session package financials (hybrid / per-session)
+    const sessionOwed = clientRecord ? (sessionOwedByClientId.get(clientRecord.id) || 0) : 0
+    const sessionPaid = clientRecord ? (sessionPaidByClientId.get(clientRecord.id) || 0) : 0
+    // Combined totals — so dashboard outstanding/collected include sessions
+    const owed = programmingOwed + sessionOwed
+    const paid = programmingPaid + sessionPaid
 
     // Determine invite status from auth user data
     const authUser = authUserMap.get(u.id)
@@ -241,6 +264,10 @@ export async function GET(request: Request) {
       planEnd: activePlan?.end_date || clientRecord?.plan_end || '',
       owed,
       paid,
+      programmingOwed,
+      programmingPaid,
+      sessionOwed,
+      sessionPaid,
       inviteStatus,
       createdAt: u.created_at,
       birthday: trainingProfileMap.get(clientRecord?.id)?.birthday || null,
