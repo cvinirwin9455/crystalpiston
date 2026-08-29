@@ -10,7 +10,10 @@ async function getAdminClient() {
   )
 }
 
-// GET /api/sessions?client_id=xxx - Get all sessions for a client
+// GET /api/sessions
+//   ?client_id=xxx  -> all sessions for one client
+//   ?upcoming=true  -> scheduled sessions across ALL the coach's clients for the next 7 days
+//                      (enriched with client name), grouped/sorted ascending
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -18,12 +21,81 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')
+  const upcoming = searchParams.get('upcoming') === 'true'
 
+  const adminClient = await getAdminClient()
+
+  // ---- Upcoming (dashboard) mode: next 7 days across all the coach's clients ----
+  if (upcoming) {
+    const days = parseInt(searchParams.get('days') || '7')
+    const now = new Date()
+    const start = new Date(now)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(now)
+    end.setDate(end.getDate() + days)
+    end.setHours(23, 59, 59, 999)
+
+    // Determine which clients this coach can see (assigned coach or org owner)
+    const { data: profile } = await adminClient
+      .from('users')
+      .select('role, organization_id')
+      .eq('id', user.id)
+      .single()
+
+    let sessionQuery = adminClient
+      .from('sessions')
+      .select('id, client_id, coach_id, organization_id, scheduled_at, duration_minutes, location, session_type, notes, status, recurring_schedule_id')
+      .eq('status', 'scheduled')
+      .gte('scheduled_at', start.toISOString())
+      .lte('scheduled_at', end.toISOString())
+      .order('scheduled_at', { ascending: true })
+
+    // Scope to org if available, else coach_id
+    if (profile?.organization_id) {
+      sessionQuery = sessionQuery.eq('organization_id', profile.organization_id)
+    } else {
+      sessionQuery = sessionQuery.eq('coach_id', user.id)
+    }
+
+    const { data: sessions, error } = await sessionQuery
+    if (error) {
+      return NextResponse.json([])
+    }
+
+    if (!sessions || sessions.length === 0) return NextResponse.json([])
+
+    // Enrich with client names
+    const clientIds = [...new Set(sessions.map((s: any) => s.client_id))]
+    const { data: clientRows } = await adminClient
+      .from('clients')
+      .select('id, user_id')
+      .in('id', clientIds)
+    const userIds = (clientRows || []).map((c: any) => c.user_id)
+    const { data: userRows } = await adminClient
+      .from('users')
+      .select('id, name, avatar_url')
+      .in('id', userIds)
+
+    const nameByClient: Record<string, string> = {}
+    const avatarByClient: Record<string, string | null> = {}
+    for (const c of clientRows || []) {
+      const u = (userRows || []).find((x: any) => x.id === c.user_id)
+      nameByClient[c.id] = u?.name || 'Client'
+      avatarByClient[c.id] = u?.avatar_url || null
+    }
+
+    const enriched = sessions.map((s: any) => ({
+      ...s,
+      clientName: nameByClient[s.client_id] || 'Client',
+      clientAvatar: avatarByClient[s.client_id] || null,
+    }))
+    return NextResponse.json(enriched)
+  }
+
+  // ---- Single-client mode ----
   if (!clientId) {
     return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
   }
-
-  const adminClient = await getAdminClient()
 
   const { data: sessions, error } = await adminClient
     .from('sessions')

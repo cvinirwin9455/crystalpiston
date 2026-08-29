@@ -81,6 +81,8 @@ export default function AdminPage() {
   const [showMobileDashboard, setShowMobileDashboard] = useState(false);
   // Pending session requests (dashboard widget)
   const [pendingRequests, setPendingRequests] = useState<{ id: string; session_id: string; client_id: string; request_type: string; note: string | null; preferred_datetime: string | null; created_at: string; clientName?: string; sessionScheduledAt?: string | null }[]>([]);
+  // Upcoming sessions next 7 days (dashboard widget)
+  const [upcomingSessions, setUpcomingSessions] = useState<{ id: string; client_id: string; scheduled_at: string; duration_minutes: number; location: string | null; session_type: string | null; status: string; clientName?: string; clientAvatar?: string | null }[]>([]);
 
   // AI Coach Assistant state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -1579,6 +1581,32 @@ export default function AdminPage() {
   useEffect(() => {
     fetchPendingRequests();
   }, [fetchPendingRequests]);
+
+  // Fetch upcoming sessions (next 7 days) for the dashboard widget
+  const fetchUpcomingSessions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sessions?upcoming=true&days=7');
+      if (res.ok) {
+        const data = await res.json();
+        setUpcomingSessions(data);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    fetchUpcomingSessions();
+  }, [fetchUpcomingSessions]);
+
+  // Mark a session status from the dashboard, then refresh
+  const dashboardMarkSession = async (sessionId: string, status: string) => {
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, status }),
+      });
+      if (res.ok) fetchUpcomingSessions();
+    } catch {}
+  };
 
   const resolvePendingRequest = async (requestId: string) => {
     try {
@@ -5773,6 +5801,82 @@ export default function AdminPage() {
               const unpaidClients = visibleClients.filter(c => c.status === "active" && c.owed - c.paid > 0);
               return (
                 <>
+                  {/* Upcoming Sessions (Next 7 Days) */}
+                  {upcomingSessions.length > 0 && (() => {
+                    // Group sessions by date
+                    const groups: { dateKey: string; label: string; items: typeof upcomingSessions }[] = [];
+                    const fmtTime = (iso: string) => {
+                      const m = iso.match(/T(\d{2}):(\d{2})/);
+                      if (!m) return '';
+                      const h = parseInt(m[1]); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12;
+                      return `${h12}:${m[2]} ${ap}`;
+                    };
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+                    for (const s of upcomingSessions) {
+                      const m = s.scheduled_at.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                      if (!m) continue;
+                      const dateKey = `${m[1]}-${m[2]}-${m[3]}`;
+                      let group = groups.find(g => g.dateKey === dateKey);
+                      if (!group) {
+                        const dObj = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+                        let label = dObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                        if (dObj.getTime() === today.getTime()) label = `Today · ${label}`;
+                        else if (dObj.getTime() === tomorrow.getTime()) label = `Tomorrow · ${label}`;
+                        group = { dateKey, label, items: [] };
+                        groups.push(group);
+                      }
+                      group.items.push(s);
+                    }
+                    return (
+                      <div className="bg-secondary/50 border border-blue-500/20 rounded-xl p-5">
+                        <h3 className="font-heading text-sm uppercase text-blue-400 mb-3">🏋️ Upcoming Sessions ({upcomingSessions.length}) · Next 7 Days</h3>
+                        <div className="space-y-4">
+                          {groups.map((group) => (
+                            <div key={group.dateKey}>
+                              <p className="text-gray-400 text-xs font-heading uppercase mb-2">{group.label}</p>
+                              <div className="space-y-2">
+                                {group.items.map((s) => {
+                                  const clientRow = clients.find((c: any) => c.clientId === s.client_id);
+                                  return (
+                                    <div key={s.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3 gap-2 flex-wrap">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <div className="text-center flex-shrink-0 w-16">
+                                          <p className="text-white text-sm font-bold">{fmtTime(s.scheduled_at)}</p>
+                                          <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-white text-sm truncate">{s.clientName}</p>
+                                          <div className="flex items-center gap-2">
+                                            {s.session_type && <span className="text-gray-400 text-xs">{s.session_type}</span>}
+                                            {s.location && <span className="text-gray-500 text-xs truncate">📍 {s.location}</span>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button onClick={() => dashboardMarkSession(s.id, 'completed')} title="Mark Complete" className="p-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors">
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        </button>
+                                        <button onClick={() => dashboardMarkSession(s.id, 'no_show')} title="No-Show" className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors">
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                        </button>
+                                        {clientRow && (
+                                          <button onClick={() => { setSelectedClient(clientRow.id); setClientTab('sessions'); }} title="Open" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Drafts Ready to Publish */}
                   {allDrafts.length > 0 && (
                     <div className="bg-secondary/50 border border-yellow-500/20 rounded-xl p-5">
