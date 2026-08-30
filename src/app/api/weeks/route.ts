@@ -462,7 +462,8 @@ export async function POST(request: Request) {
     const workoutRows = workouts.map((w: any, index: number) => ({
       week_id: week.id,
       day: w.day,
-      type: w.type || 'run',
+      // Blank/unselected type saves as 'rest' (was defaulting to 'run' — the phantom-run bug)
+      type: w.type || 'rest',
       training_type: w.trainingType || null,
       title: w.title || null,
       miles: w.miles ? parseFloat(w.miles) : null,
