@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import AccountTab from "./AccountTab";
 import SessionsTab from "./SessionsTab";
+import AssessmentTab from "./AssessmentTab";
 import BiometricSetup from "@/components/BiometricSetup";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay, getPaceRangeFromStructure } from "./StructuredRunBuilder";
@@ -38,7 +39,7 @@ export default function AdminPage() {
   const initialParams = getInitialParams();
 
   const [selectedClient, setSelectedClient] = useState<string | null>(initialParams.client);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats" | "sessions">(initialParams.tab);
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats" | "sessions" | "assessment">(initialParams.tab);
   const [editingWeek, setEditingWeek] = useState(false);
 
   // Persist navigation state in URL (survives refresh)
@@ -3347,7 +3348,7 @@ export default function AdminPage() {
 
               {/* Tabs (always in sticky area) */}
               <div className="px-6 pb-2 flex gap-1 flex-wrap">
-                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, ...(activePlan?.billingMode === 'per_session' || activePlan?.billingMode === 'hybrid' ? [{ key: "sessions", label: "Sessions" }] : []), { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, ...(activePlan?.billingMode === 'per_session' || activePlan?.billingMode === 'hybrid' ? [{ key: "sessions", label: "Sessions" }] : []), { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "assessment", label: "Assessment" }, { key: "account", label: "Account" }].map((tab) => (
                   <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { const _c = clients.find(c => c.id === selectedClient); if (_c?.clientId) refreshActivePlanAndSessions(_c.clientId); setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                     {tab.label}
                     {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
@@ -4325,6 +4326,14 @@ export default function AdminPage() {
                 clientId={selectedClientData.clientId || selectedClientData.id}
                 clientName={selectedClientData.name}
                 onSessionsChange={() => { if (selectedClientData.clientId) refreshActivePlanAndSessions(selectedClientData.clientId); }}
+              />
+            )}
+
+            {/* ASSESSMENT */}
+            {clientTab === "assessment" && (
+              <AssessmentTab
+                clientId={selectedClientData.clientId || selectedClientData.id}
+                clientName={selectedClientData.name}
               />
             )}
 

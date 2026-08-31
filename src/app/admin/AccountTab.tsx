@@ -52,6 +52,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   const [newPlanEnd, setNewPlanEnd] = useState("");
   const [newPlanOwed, setNewPlanOwed] = useState("");
   const [newPlanGoal, setNewPlanGoal] = useState("");
+  const [newPlanRequestAssessmentReview, setNewPlanRequestAssessmentReview] = useState(false);
   const [newPlanTargetDistance, setNewPlanTargetDistance] = useState("");
   const [newPlanRaceDate, setNewPlanRaceDate] = useState("");
   const [newPlanGoalPace, setNewPlanGoalPace] = useState("");
@@ -249,6 +250,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
         setNewPlanSessionCount("");
         setNewPlanPerSessionCost("");
         setNewPlanProgrammingCost("");
+        // If coach asked the client to review their assessment, flag it + notify them
+        if (newPlanRequestAssessmentReview) {
+          fetch("/api/assessment", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId: clientData.clientId, action: "request_review" }),
+          }).catch(() => {});
+        }
+        setNewPlanRequestAssessmentReview(false);
         // Notify parent so the Sessions tab + active plan banner refresh
         onPlanChange?.();
       } else {
@@ -641,6 +651,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                 <input type="text" value={newPlanInjuryNotes} onChange={(e) => setNewPlanInjuryNotes(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="e.g. History of shin splints, weak left knee" />
               </div>
             </div>
+
+            {/* Ask client to review their health assessment */}
+            <label className="flex items-start gap-2.5 cursor-pointer bg-primary/30 border border-white/10 rounded-lg p-3">
+              <input type="checkbox" checked={newPlanRequestAssessmentReview} onChange={(e) => setNewPlanRequestAssessmentReview(e.target.checked)} className="mt-0.5 accent-accent" />
+              <span>
+                <span className="text-white text-sm block">Ask client to review their health assessment</span>
+                <span className="text-gray-500 text-xs">Flags their assessment as &ldquo;review requested&rdquo; and notifies them to confirm it&apos;s still accurate or update it.</span>
+              </span>
+            </label>
 
             <div className="flex gap-3">
               <button onClick={handleCreatePlan} disabled={creatingPlan || !newPlanGoal || (newPlanBillingMode === 'programming_only' && (!newPlanStart || !newPlanEnd)) || (newPlanBillingMode === 'per_session' && (!newPlanSessionCount || parseInt(newPlanSessionCount) <= 0 || !newPlanPerSessionCost)) || (newPlanBillingMode === 'hybrid' && (!newPlanStart || !newPlanEnd || !newPlanSessionCount || parseInt(newPlanSessionCount) <= 0 || !newPlanPerSessionCost))} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">

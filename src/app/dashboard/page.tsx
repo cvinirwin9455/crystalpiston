@@ -6,6 +6,7 @@ import BiometricSetup from "@/components/BiometricSetup";
 import VideoModal from "@/components/VideoModal";
 import { useTheme } from "@/components/ThemeProvider";
 import { DragDropProvider, DraggableWorkout, DroppableDay, MoveToModal, MoveButton, Toast, ResetWeekButton, AutoSaveNotice } from "@/components/WorkoutDragDrop";
+import AssessmentForm from "@/app/components/assessment/AssessmentForm";
 
 type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; motivation: string; sleep: string; strength: string; recovery: string; mood: string; hunger: string; actualMiles?: string; actualPace?: string; onPeriod?: string; duration?: string; avgHeartrate?: number | null; maxHeartrate?: number | null; };
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest" | "walk" | "cycling" | "stretching" | "strength" | "hiit" | "swimming"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; status?: "complete" | "partial" | "skipped"; skipReason?: string; log?: WorkoutLog; structure?: any; sessionType?: "remote" | "in_person"; sessionId?: string | null; sessionScheduledAt?: string | null; };
@@ -174,6 +175,27 @@ export default function DashboardPage() {
   };
   const [activeTab, setActiveTab] = useState<"training" | "messages" | "account">(getInitialTab);
   const [videoModal, setVideoModal] = useState<{ url: string; exerciseName: string } | null>(null);
+  // Assessment state
+  const [assessmentStatus, setAssessmentStatus] = useState<string>("not_started");
+  const [assessmentReviewRequested, setAssessmentReviewRequested] = useState(false);
+  const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+  const [assessmentDismissed, setAssessmentDismissed] = useState(false);
+
+  const fetchAssessmentStatus = async () => {
+    try {
+      const res = await fetch("/api/assessment");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.assessment) {
+          setAssessmentStatus(data.assessment.status || "not_started");
+          setAssessmentReviewRequested(data.assessment.status === "review_requested");
+        } else {
+          setAssessmentStatus("not_started");
+        }
+      }
+    } catch {}
+  };
+  useEffect(() => { fetchAssessmentStatus(); }, []);
 
   // Persist tab in URL (survives refresh/pull-to-refresh)
   useEffect(() => {
@@ -1697,6 +1719,33 @@ export default function DashboardPage() {
         {/* TRAINING TAB (merged with dashboard stats) */}
         {activeTab === "training" && (
           <>
+            {/* Assessment prompt — shows until completed (or when a review is requested). Dismissible. */}
+            {!assessmentDismissed && (assessmentStatus === "not_started" || assessmentStatus === "review_requested") && (
+              <div className={`rounded-2xl p-4 mb-4 border flex items-start justify-between gap-3 ${assessmentStatus === "review_requested" ? "bg-yellow-500/10 border-yellow-500/30" : "bg-accent/10 border-accent/30"}`}>
+                <div className="flex items-start gap-3">
+                  <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${assessmentStatus === "review_requested" ? "text-yellow-400" : "text-accent"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                  <div>
+                    <p className={`text-sm font-medium ${assessmentStatus === "review_requested" ? "text-yellow-400" : "text-accent"}`}>
+                      {assessmentStatus === "review_requested" ? "Please review your health assessment" : "Complete your health assessment"}
+                    </p>
+                    <p className="text-gray-300 text-xs mt-0.5">
+                      {assessmentStatus === "review_requested"
+                        ? "Your coach has asked you to review and update it."
+                        : "It helps your coach plan your training safely. Takes a couple of minutes."}
+                    </p>
+                    <button
+                      onClick={() => { setActiveTab("account"); setShowAssessmentForm(true); }}
+                      className={`mt-2 font-bold py-1.5 px-4 rounded-lg text-xs text-white ${assessmentStatus === "review_requested" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-accent hover:bg-orange-700"}`}
+                    >
+                      {assessmentStatus === "review_requested" ? "Review Assessment" : "Complete Assessment"}
+                    </button>
+                  </div>
+                </div>
+                <button onClick={() => setAssessmentDismissed(true)} title="Dismiss" className="text-gray-500 hover:text-white flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            )}
             {/* Loading state */}
             {loadingWeeks && (
               <div className="text-center py-12">
@@ -2780,6 +2829,38 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Health & Assessment */}
+            <div className="bg-secondary/50 border border-white/10 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-heading text-xl uppercase text-accent">Health & Assessment</h2>
+                {!showAssessmentForm && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${assessmentStatus === "completed" ? "bg-green-500/20 text-green-400" : assessmentStatus === "review_requested" ? "bg-yellow-500/20 text-yellow-400" : "bg-gray-500/20 text-gray-400"}`}>
+                    {assessmentStatus === "completed" ? "✓ Completed" : assessmentStatus === "review_requested" ? "Review requested" : "Not started"}
+                  </span>
+                )}
+              </div>
+              {showAssessmentForm ? (
+                <AssessmentForm
+                  reviewRequested={assessmentReviewRequested}
+                  onSaved={() => { setShowAssessmentForm(false); fetchAssessmentStatus(); }}
+                  onCancel={() => setShowAssessmentForm(false)}
+                />
+              ) : (
+                <div>
+                  <p className="text-gray-400 text-sm mb-4">
+                    {assessmentStatus === "completed"
+                      ? "Your health assessment is complete. You can review and update it anytime."
+                      : assessmentStatus === "review_requested"
+                      ? "Your coach has asked you to review and update your assessment."
+                      : "Please complete your health assessment so your coach can plan your training safely."}
+                  </p>
+                  <button onClick={() => setShowAssessmentForm(true)} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-5 rounded-lg text-sm">
+                    {assessmentStatus === "completed" ? "Review / Update Assessment" : "Complete Assessment"}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Current Plan & Payment */}
