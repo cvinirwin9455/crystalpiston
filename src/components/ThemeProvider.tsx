@@ -46,9 +46,12 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
       html.classList.remove("light");
     }
 
-    // Apply brand-specific class for First Mile Coach
+    // Apply brand-specific class. First Mile Coach is the default brand for
+    // everything EXCEPT the Crystal Pistol domain (matches getBrandFromHost).
+    // This ensures preview/staging URLs (*.vercel.app) get First Mile styling.
     const hostname = window.location.hostname.toLowerCase();
-    if (hostname.includes('firstmilecoach')) {
+    const isCrystalPistol = hostname.includes('crystalpistolperformance');
+    if (!isCrystalPistol) {
       html.classList.add("brand-firstmile");
     } else {
       html.classList.remove("brand-firstmile");

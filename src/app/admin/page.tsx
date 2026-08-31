@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import AccountTab from "./AccountTab";
+import SessionsTab from "./SessionsTab";
+import AssessmentTab from "./AssessmentTab";
 import BiometricSetup from "@/components/BiometricSetup";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay, getPaceRangeFromStructure } from "./StructuredRunBuilder";
@@ -37,7 +39,7 @@ export default function AdminPage() {
   const initialParams = getInitialParams();
 
   const [selectedClient, setSelectedClient] = useState<string | null>(initialParams.client);
-  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats">(initialParams.tab);
+  const [clientTab, setClientTab] = useState<"plan" | "create" | "messages" | "drafts" | "account" | "stats" | "sessions" | "assessment">(initialParams.tab);
   const [editingWeek, setEditingWeek] = useState(false);
 
   // Persist navigation state in URL (survives refresh)
@@ -78,6 +80,10 @@ export default function AdminPage() {
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
   const [showMobileDashboard, setShowMobileDashboard] = useState(false);
+  // Pending session requests (dashboard widget)
+  const [pendingRequests, setPendingRequests] = useState<{ id: string; session_id: string; client_id: string; request_type: string; note: string | null; preferred_datetime: string | null; created_at: string; clientName?: string; sessionScheduledAt?: string | null }[]>([]);
+  // Upcoming sessions next 7 days (dashboard widget)
+  const [upcomingSessions, setUpcomingSessions] = useState<{ id: string; client_id: string; scheduled_at: string; duration_minutes: number; location: string | null; session_type: string | null; status: string; clientName?: string; clientAvatar?: string | null }[]>([]);
 
   // AI Coach Assistant state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -160,6 +166,12 @@ export default function AdminPage() {
   const [adminExpandedDays, setAdminExpandedDays] = useState<Record<string, boolean>>({});
   const [adminDefaultExpanded, setAdminDefaultExpanded] = useState(true);
 
+  // Session management settings
+  const [adminDefaultSessionDuration, setAdminDefaultSessionDuration] = useState(60);
+  const [adminDefaultSessionTime, setAdminDefaultSessionTime] = useState("09:00");
+  const [adminDefaultSessionLocation, setAdminDefaultSessionLocation] = useState("");
+  const [adminLowBalanceThreshold, setAdminLowBalanceThreshold] = useState(3);
+
   // Organization feature toggles
   const [orgFeatures, setOrgFeatures] = useState<{ run: boolean; walk: boolean; cycling: boolean; crossTraining: boolean; stretching: boolean; strength: boolean; hiit: boolean; swimming: boolean }>({ run: true, walk: true, cycling: true, crossTraining: true, stretching: true, strength: true, hiit: true, swimming: true });
   const [orgFeaturesLoaded, setOrgFeaturesLoaded] = useState(false);
@@ -234,6 +246,10 @@ export default function AdminPage() {
           if (data.weightUnit) setAdminWeightUnit(data.weightUnit);
           if (data.dateFormat) setAdminDateFormat(data.dateFormat);
           if (data.defaultExpanded !== undefined) setAdminDefaultExpanded(data.defaultExpanded);
+          if (data.defaultSessionDuration !== undefined) setAdminDefaultSessionDuration(data.defaultSessionDuration);
+          if (data.defaultSessionTime) setAdminDefaultSessionTime(data.defaultSessionTime);
+          if (data.defaultSessionLocation) setAdminDefaultSessionLocation(data.defaultSessionLocation);
+          if (data.lowBalanceThreshold !== undefined) setAdminLowBalanceThreshold(data.lowBalanceThreshold);
         }
       } catch (err) {
         console.error('Failed to fetch admin notification prefs:', err);
@@ -289,6 +305,19 @@ export default function AdminPage() {
     setNotifications(updated);
     saveAdminNotifPrefs(updated);
   };
+
+  // Save session management settings
+  const saveSessionSettings = async (settings: { defaultSessionDuration?: number; defaultSessionTime?: string; defaultSessionLocation?: string; lowBalanceThreshold?: number }) => {
+    try {
+      await fetch('/api/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+    } catch (err) {
+      console.error('Failed to save session settings:', err);
+    }
+  };
   const [clientFilter, setClientFilter] = useState<"active" | "archived" | "all">("active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -302,13 +331,13 @@ export default function AdminPage() {
   const [weekPlan, setWeekPlan] = useState({
     dateRange: "", focus: "", coachMessage: "",
     days: [
-      { day: "Monday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Tuesday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Wednesday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Thursday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Friday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Saturday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Sunday", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
     ],
   });
   const updateDayPlan = (dayIndex: number, workoutIndex: number, field: string, value: string) => {
@@ -539,7 +568,55 @@ export default function AdminPage() {
     sunday.setDate(sunday.getDate() + 6);
     setSelectedWeekStart(monday);
     const dateRange = `${formatDate(monday)} - ${formatDate(sunday)}`;
-    setWeekPlan({ ...weekPlan, dateRange });
+    
+    // Build a set of dates in this week that have actual scheduled sessions
+    const weekDates: Record<string, string> = {}; // dayName → YYYY-MM-DD
+    const daysInOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      weekDates[daysInOrder[i]] = dateStr;
+    }
+
+    // Check which days in this week have actual sessions scheduled
+    const daysWithSessions = new Set<string>();
+    for (const [dayName, dateStr] of Object.entries(weekDates)) {
+      if (clientSessionDates.includes(dateStr)) {
+        daysWithSessions.add(dayName);
+      }
+    }
+
+    // If no session dates found for this week, fall back to recurring pattern
+    const useSessionDates = daysWithSessions.size > 0;
+    
+    const billingMode = activePlan?.billingMode;
+    const dayNameToIndex: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
+
+    const updatedDays = weekPlan.days.map(day => {
+      let isInPersonDay: boolean;
+      
+      if (useSessionDates) {
+        // Use actual scheduled sessions for this specific week
+        isInPersonDay = daysWithSessions.has(day.day);
+      } else {
+        // Fallback to recurring pattern
+        isInPersonDay = clientRecurringDays.includes(dayNameToIndex[day.day]);
+      }
+      
+      if (billingMode === 'hybrid') {
+        return { ...day, sessionType: isInPersonDay ? 'in_person' as const : 'remote' as const };
+      } else if (billingMode === 'per_session') {
+        if (isInPersonDay) {
+          return { ...day, sessionType: 'in_person' as const };
+        } else {
+          return { ...day, sessionType: 'remote' as const, workouts: [{ ...day.workouts[0], type: 'rest' }] };
+        }
+      }
+      return day;
+    });
+    
+    setWeekPlan({ ...weekPlan, dateRange, days: updatedDays });
     setShowWeekPicker(false);
 
     // Check if a week already exists for this date range (published or draft)
@@ -550,8 +627,11 @@ export default function AdminPage() {
       return;
     }
 
-    // Validate against active plan dates
-    if (activePlan && activePlan.startDate && activePlan.endDate) {
+    // Validate against active plan dates — but SKIP for per_session clients,
+    // who don't have a fixed program period (their plan has no real date range).
+    if (activePlan?.billingMode === 'per_session') {
+      setWeekDateWarning("");
+    } else if (activePlan && activePlan.startDate && activePlan.endDate) {
       const planStart = new Date(activePlan.startDate);
       const planEnd = new Date(activePlan.endDate);
       planStart.setHours(0, 0, 0, 0);
@@ -1489,6 +1569,57 @@ export default function AdminPage() {
     fetchClients();
   }, [fetchClients]);
 
+  // Fetch pending session requests for the dashboard widget
+  const fetchPendingRequests = useCallback(async () => {
+    try {
+      const res = await fetch('/api/session-requests?pending=true');
+      if (res.ok) {
+        const data = await res.json();
+        setPendingRequests(data);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    fetchPendingRequests();
+  }, [fetchPendingRequests]);
+
+  // Fetch upcoming sessions (next 7 days) for the dashboard widget
+  const fetchUpcomingSessions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sessions?upcoming=true&days=7');
+      if (res.ok) {
+        const data = await res.json();
+        setUpcomingSessions(data);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    fetchUpcomingSessions();
+  }, [fetchUpcomingSessions]);
+
+  // Mark a session status from the dashboard, then refresh
+  const dashboardMarkSession = async (sessionId: string, status: string) => {
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, status }),
+      });
+      if (res.ok) fetchUpcomingSessions();
+    } catch {}
+  };
+
+  const resolvePendingRequest = async (requestId: string) => {
+    try {
+      const res = await fetch('/api/session-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      if (res.ok) fetchPendingRequests();
+    } catch {}
+  };
+
   // Create new client via API
   const handleCreateClient = async () => {
     setCreateError("");
@@ -1997,20 +2128,16 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Active plan for the selected client
-  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null } | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
+  const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
+  const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
+  const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string; totalPaid: number; totalOwed: number } | null>(null);
 
-  // Load weeks and active plan once when a client is first selected
-  const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
-  useEffect(() => {
-    if (!selectedClient || weeksLoadedFor === selectedClient) return;
-    const client = clients.find(c => c.id === selectedClient);
-    if (client && client.clientId) {
-      setWeeksLoadedFor(selectedClient);
-      fetchWeeks(client.clientId, true);
-      // Fetch active plan
+  // Reusable: refresh active plan + session data for a client
+  const refreshActivePlanAndSessions = useCallback((clientDbId: string) => {
       setLoadingPlan(true);
-      fetch(`/api/plans?client_id=${client.clientId}`)
+      fetch(`/api/plans?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : [])
         .then((plans: any[]) => {
           const active = plans.find((p: any) => p.status === 'active');
@@ -2025,6 +2152,7 @@ export default function AdminPage() {
               status: active.status,
               programTemplateId: active.program_template_id || null,
               raceDate: active.race_date || null,
+              billingMode: active.billing_mode || 'programming_only',
             });
           } else {
             setActivePlan(null);
@@ -2032,8 +2160,68 @@ export default function AdminPage() {
         })
         .catch(() => setActivePlan(null))
         .finally(() => setLoadingPlan(false));
+
+      const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const fmtTime12 = (t: string) => { const [h, m] = t.slice(0, 5).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12; return `${h12}:${String(m).padStart(2, '0')} ${ap}`; };
+      fetch(`/api/recurring-schedules?client_id=${clientDbId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((schedules: any[]) => {
+          const activeSchedule = schedules.find((s: any) => s.active);
+          if (activeSchedule) {
+            setClientRecurringDays(activeSchedule.days_of_week || []);
+            let scheduleText = '';
+            if (activeSchedule.day_times) {
+              scheduleText = (activeSchedule.days_of_week || []).map((d: number) => `${DAY_ABBR[d]} ${fmtTime12(activeSchedule.day_times[String(d)] || activeSchedule.time_of_day)}`).join(', ');
+            } else {
+              scheduleText = `${(activeSchedule.days_of_week || []).map((d: number) => DAY_ABBR[d]).join(', ')} @ ${fmtTime12(activeSchedule.time_of_day)}`;
+            }
+            setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText, totalPaid: prev?.totalPaid ?? 0, totalOwed: prev?.totalOwed ?? 0 }));
+          } else {
+            setClientRecurringDays([]);
+            setClientSessionSummary(prev => prev ? { ...prev, scheduleText: '' } : null);
+          }
+        })
+        .catch(() => setClientRecurringDays([]));
+
+      fetch(`/api/sessions?client_id=${clientDbId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((sessions: any[]) => {
+          const now = new Date();
+          const upcomingSessions = sessions.filter((s: any) => s.status === 'scheduled' && new Date(s.scheduled_at) >= now);
+          const dates = upcomingSessions
+            .map((s: any) => {
+              const match = s.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean);
+          setClientSessionDates(dates);
+          setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: upcomingSessions.length, scheduleText: prev?.scheduleText ?? '', totalPaid: prev?.totalPaid ?? 0, totalOwed: prev?.totalOwed ?? 0 }));
+        })
+        .catch(() => setClientSessionDates([]));
+
+      fetch(`/api/session-packages?client_id=${clientDbId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then((data: any) => {
+          if (data) {
+            const totalPaid = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_paid) || 0), 0);
+            const totalOwed = (data.packages || []).reduce((sum: number, p: any) => sum + (parseFloat(p.amount_owed ?? p.amount_paid) || 0), 0);
+            setClientSessionSummary(prev => ({ remaining: data.sessionsRemaining ?? 0, upcoming: prev?.upcoming ?? 0, scheduleText: prev?.scheduleText ?? '', totalPaid, totalOwed }));
+          }
+        })
+        .catch(() => {});
+  }, []);
+
+  // Load weeks and active plan once when a client is first selected
+  const [weeksLoadedFor, setWeeksLoadedFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedClient || weeksLoadedFor === selectedClient) return;
+    const client = clients.find(c => c.id === selectedClient);
+    if (client && client.clientId) {
+      setWeeksLoadedFor(selectedClient);
+      fetchWeeks(client.clientId, true);
+      refreshActivePlanAndSessions(client.clientId);
     }
-  }, [selectedClient, clients.length]);
+  }, [selectedClient, clients.length, weeksLoadedFor, clients, refreshActivePlanAndSessions]);
 
   // Auto-populate weekPlan from program template when a week date range is selected
   useEffect(() => {
@@ -2189,8 +2377,9 @@ export default function AdminPage() {
       return;
     }
 
-    // Validate week date range falls within plan dates
-    if (weekPlan.dateRange && activePlan.startDate && activePlan.endDate) {
+    // Validate week date range falls within plan dates — SKIP for per_session
+    // clients (no fixed program period; they can create weeks for any dates).
+    if (activePlan.billingMode !== 'per_session' && weekPlan.dateRange && activePlan.startDate && activePlan.endDate) {
       const weekStartStr = weekPlan.dateRange.split(' - ')[0];
       const weekEndStr = weekPlan.dateRange.split(' - ')[1];
       const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());
@@ -2246,6 +2435,7 @@ export default function AdminPage() {
         coachNotes: w.coachNotes || null,
         distanceUnit: w.distanceUnit || 'mi',
         structure: (w as any).crossTrainingStructure || (w as any).structure || null,
+        sessionType: activePlan?.billingMode === 'per_session' ? ((() => { const dMap: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 }; return clientRecurringDays.includes(dMap[day.day]) ? 'in_person' : 'remote'; })()) : (activePlan?.billingMode === 'hybrid' ? day.sessionType : 'remote'),
       }))
     );
 
@@ -2272,13 +2462,13 @@ export default function AdminPage() {
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
           days: [
-            { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-            { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+            { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
           ],
         });
         setSelectedWeekStart(null);
@@ -3160,8 +3350,8 @@ export default function AdminPage() {
 
               {/* Tabs (always in sticky area) */}
               <div className="px-6 pb-2 flex gap-1 flex-wrap">
-                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "account", label: "Account" }].map((tab) => (
-                  <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                {[{ key: "plan", label: "Training & Logs" }, { key: "create", label: "Create Week" }, { key: "drafts", label: `Drafts (${draftWeeks.length})` }, ...(activePlan?.billingMode === 'per_session' || activePlan?.billingMode === 'hybrid' ? [{ key: "sessions", label: "Sessions" }] : []), { key: "messages", label: "Messages" }, { key: "stats", label: "Stats" }, { key: "assessment", label: "Assessment" }, { key: "account", label: "Account" }].map((tab) => (
+                  <button key={tab.key} onClick={() => { setClientTab(tab.key as typeof clientTab); setEditingWeek(false); if (tab.key === "messages" && selectedClient) { setUnreadByClient(prev => ({ ...prev, [selectedClient]: 0 })); setTotalUnread(prev => prev - (unreadByClient[selectedClient] || 0)); } if (tab.key === "create" && !editingDraftId) { const _c = clients.find(c => c.id === selectedClient); if (_c?.clientId) refreshActivePlanAndSessions(_c.clientId); setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] }, { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: adminDistanceUnit }] } ] }); setSelectedWeekStart(null); setWeekDateWarning(""); } }} className={`px-4 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-colors relative ${clientTab === tab.key ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                     {tab.label}
                     {tab.key === "messages" && selectedClient && unreadByClient[selectedClient] > 0 && (
                       <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{unreadByClient[selectedClient]}</span>
@@ -3175,8 +3365,8 @@ export default function AdminPage() {
             {/* SCROLLABLE CONTENT */}
             <div ref={mainContentRef} className={`flex-1 overflow-y-auto p-6 overscroll-y-contain ${clientTab === 'messages' ? 'pb-6 flex flex-col' : 'pb-20 space-y-6'}`}>
 
-            {/* Stats Card (hidden on Messages/Account tabs) */}
-            {clientTab !== "messages" && clientTab !== "account" && (
+            {/* Stats Card (hidden on Messages/Account/Sessions tabs) */}
+            {clientTab !== "messages" && clientTab !== "account" && clientTab !== "sessions" && (
             <div className="bg-secondary/30 border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm uppercase text-gray-400">Stats</h3>
@@ -3630,8 +3820,36 @@ export default function AdminPage() {
                       <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
                       <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
                     </div>
-                    <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                    <div className="flex items-center gap-2">
+                      {activePlan.billingMode && activePlan.billingMode !== 'programming_only' && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${activePlan.billingMode === 'per_session' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
+                          {activePlan.billingMode === 'per_session' ? '🏋️ In-Person Only' : '📱+🏋️ Hybrid'}
+                        </span>
+                      )}
+                      {/* Payment status: per_session shows session totals; others show plan totals */}
+                      {activePlan.billingMode === 'per_session' ? (
+                        clientSessionSummary && (
+                          <p className="text-gray-400 text-xs">${clientSessionSummary.totalPaid.toFixed(0)}/${clientSessionSummary.totalOwed.toFixed(0)} paid</p>
+                        )
+                      ) : (
+                        <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                      )}
+                    </div>
                   </div>
+                  {/* In-person session summary */}
+                  {(activePlan.billingMode === 'hybrid' || activePlan.billingMode === 'per_session') && clientSessionSummary && (
+                    <div className="flex items-center gap-4 mt-1.5 border-t border-white/5 pt-1.5 flex-wrap">
+                      <span className="text-xs text-gray-300">🏋️ <span className={`font-bold ${clientSessionSummary.remaining <= 3 ? 'text-red-400' : 'text-green-400'}`}>{clientSessionSummary.remaining}</span> sessions remaining</span>
+                      <span className="text-xs text-gray-400">{clientSessionSummary.upcoming} upcoming scheduled</span>
+                      {clientSessionSummary.scheduleText && <span className="text-xs text-blue-300/80">📅 {clientSessionSummary.scheduleText}</span>}
+                    </div>
+                  )}
+                  {activePlan.billingMode === 'hybrid' && (
+                    <p className="text-purple-300/70 text-xs mt-1.5">💡 In-person days below are auto-tagged from the schedule. Adjust any day's Remote/In-Person toggle as needed.</p>
+                  )}
+                  {activePlan.billingMode === 'per_session' && (
+                    <p className="text-blue-300/70 text-xs mt-1.5">💡 In-person days are auto-set from the schedule. Other days default to rest — the client can still log their own activity.</p>
+                  )}
                 </div>
                 <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
@@ -3766,15 +3984,63 @@ export default function AdminPage() {
                     <p className="text-red-400 text-xs">{weekDateWarning}</p>
                   </div>
                 )}
+                {/* Nudge: per-session/hybrid client with a selected week but no scheduled sessions in it */}
+                {selectedWeekStart && (activePlan?.billingMode === 'per_session' || activePlan?.billingMode === 'hybrid') && (() => {
+                  // Build this week's dates (Mon–Sun) and check if any have a scheduled session
+                  const weekHasSession = (() => {
+                    for (let i = 0; i < 7; i++) {
+                      const d = new Date(selectedWeekStart);
+                      d.setDate(selectedWeekStart.getDate() + i);
+                      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                      if (clientSessionDates.includes(dateStr)) return true;
+                    }
+                    return false;
+                  })();
+                  if (weekHasSession) return null;
+                  return (
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-start gap-3">
+                      <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <div>
+                        <p className="text-blue-400 text-xs font-medium">No in-person sessions scheduled this week</p>
+                        <p className="text-gray-400 text-xs mt-0.5">This client has no sessions booked for {weekPlan.dateRange}. Set up their sessions in the <button onClick={() => setClientTab('sessions')} className="text-blue-400 underline hover:text-blue-300">Sessions tab</button> first, and their in-person days will auto-appear here. You can still program this week if you want.</p>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div><label className="text-gold text-xs font-heading uppercase block mb-1">Weekly Message to Client</label><textarea value={weekPlan.coachMessage} onChange={(e) => setWeekPlan({ ...weekPlan, coachMessage: e.target.value })} className="w-full bg-primary/50 border border-gold/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold resize-none" rows={2} placeholder="Shown at top of client's plan when published..." /></div>
 
                 {/* Mon-Sun */}
                 <div className="space-y-3">
                   {weekPlan.days.map((day, i) => (
-                    <div key={day.day} className={`bg-primary/30 border border-white/5 rounded-xl p-4 ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-white font-heading text-sm uppercase">{day.day}</span>
-                        <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
+                    <div key={day.day} className={`bg-primary/30 border rounded-xl p-4 ${day.sessionType === 'in_person' ? 'border-blue-500/30' : 'border-white/5'} ${day.workouts[0]?.type === "rest" && day.workouts.length === 1 ? "opacity-70" : ""}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-heading text-sm uppercase">{day.day}</span>
+                          <span className="text-gray-400 text-xs">({day.workouts.length} workout{day.workouts.length > 1 ? 's' : ''})</span>
+                          {/* Per-session: show in-person badge on scheduled days (shows BEFORE programming) */}
+                          {activePlan?.billingMode === 'per_session' && day.sessionType === 'in_person' && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">🏋️ In-Person Session</span>
+                          )}
+                          {/* Hybrid: show current status badge next to day name */}
+                          {activePlan?.billingMode === 'hybrid' && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded border ${day.sessionType === 'in_person' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/5 text-gray-400 border-white/10'}`}>
+                              {day.sessionType === 'in_person' ? '🏋️ In-Person' : '📱 Remote'}
+                            </span>
+                          )}
+                        </div>
+                        {/* Hybrid: show toggle button (works even before a workout type is selected) */}
+                        {activePlan?.billingMode === 'hybrid' && (
+                          <button
+                            onClick={() => {
+                              const updated = [...weekPlan.days];
+                              updated[i] = { ...updated[i], sessionType: day.sessionType === 'in_person' ? 'remote' : 'in_person' };
+                              setWeekPlan({ ...weekPlan, days: updated });
+                            }}
+                            className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${day.sessionType === 'in_person' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:border-white/30'}`}
+                          >
+                            {day.sessionType === 'in_person' ? 'Switch to Remote' : 'Switch to In-Person'}
+                          </button>
+                        )}
                       </div>
                       {/* Workouts for this day */}
                       {day.workouts.map((wo, wi) => (
@@ -4059,11 +4325,30 @@ export default function AdminPage() {
               <ClientStatsTab clientId={selectedClientData.clientId} distanceUnit={adminDistanceUnit} />
             )}
 
+            {/* SESSIONS */}
+            {clientTab === "sessions" && (
+              <SessionsTab
+                clientId={selectedClientData.clientId || selectedClientData.id}
+                clientName={selectedClientData.name}
+                onSessionsChange={() => { if (selectedClientData.clientId) refreshActivePlanAndSessions(selectedClientData.clientId); }}
+              />
+            )}
+
+            {/* ASSESSMENT */}
+            {clientTab === "assessment" && (
+              <AssessmentTab
+                clientId={selectedClientData.clientId || selectedClientData.id}
+                clientName={selectedClientData.name}
+                gender={selectedClientData.gender}
+              />
+            )}
+
             {/* ACCOUNT */}
             {clientTab === "account" && (
               <AccountTab 
                 clientData={selectedClientData} 
                 onSave={() => fetchClients()} 
+                onPlanChange={() => { if (selectedClientData.clientId) refreshActivePlanAndSessions(selectedClientData.clientId); }}
                 onArchive={() => handleArchiveClient(selectedClientData.id)}
                 onDelete={async () => {
                   try {
@@ -4185,6 +4470,67 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { setAdminDefaultExpanded(true); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, true); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Expanded</button>
                     <button onClick={() => { setAdminDefaultExpanded(false); setAdminExpandedDays({}); saveAdminNotifPrefs(notifications, undefined, undefined, false); }} className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${!adminDefaultExpanded ? "bg-accent/20 border border-accent/40 text-accent" : "bg-primary/50 border border-white/10 text-gray-400 hover:text-white"}`}>Collapsed</button>
+                  </div>
+                </div>
+
+                {/* Session Management Settings */}
+                <div className="bg-secondary/50 border border-white/10 rounded-xl p-6 space-y-5">
+                  <div>
+                    <h3 className="font-heading text-sm uppercase text-gray-400 mb-1">In-Person Session Defaults</h3>
+                    <p className="text-gray-300 text-xs">These defaults are used when sessions are auto-created from the week builder. You can override per-session.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Default Session Time</label>
+                      <input
+                        type="time"
+                        value={adminDefaultSessionTime}
+                        onChange={(e) => { setAdminDefaultSessionTime(e.target.value); saveSessionSettings({ defaultSessionTime: e.target.value }); }}
+                        className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs block mb-1">Default Duration</label>
+                      <select
+                        value={adminDefaultSessionDuration}
+                        onChange={(e) => { const v = parseInt(e.target.value); setAdminDefaultSessionDuration(v); saveSessionSettings({ defaultSessionDuration: v }); }}
+                        className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                      >
+                        <option value={30}>30 minutes</option>
+                        <option value={45}>45 minutes</option>
+                        <option value={60}>60 minutes</option>
+                        <option value={75}>75 minutes</option>
+                        <option value={90}>90 minutes</option>
+                        <option value={120}>120 minutes</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Default Location</label>
+                    <input
+                      type="text"
+                      value={adminDefaultSessionLocation}
+                      onChange={(e) => setAdminDefaultSessionLocation(e.target.value)}
+                      onBlur={() => saveSessionSettings({ defaultSessionLocation: adminDefaultSessionLocation })}
+                      className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                      placeholder="e.g. Main Street Gym, Studio B"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-xs block mb-1">Low Balance Alert Threshold</label>
+                    <p className="text-gray-500 text-xs mb-2">Send client a &quot;low balance&quot; email when they have this many sessions or fewer remaining.</p>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={adminLowBalanceThreshold}
+                      onChange={(e) => { const v = parseInt(e.target.value) || 3; setAdminLowBalanceThreshold(v); saveSessionSettings({ lowBalanceThreshold: v }); }}
+                      className="w-24 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                    />
+                    <span className="text-gray-400 text-xs ml-2">sessions remaining</span>
                   </div>
                 </div>
 
@@ -5470,6 +5816,82 @@ export default function AdminPage() {
               const unpaidClients = visibleClients.filter(c => c.status === "active" && c.owed - c.paid > 0);
               return (
                 <>
+                  {/* Upcoming Sessions (Next 7 Days) */}
+                  {upcomingSessions.length > 0 && (() => {
+                    // Group sessions by date
+                    const groups: { dateKey: string; label: string; items: typeof upcomingSessions }[] = [];
+                    const fmtTime = (iso: string) => {
+                      const m = iso.match(/T(\d{2}):(\d{2})/);
+                      if (!m) return '';
+                      const h = parseInt(m[1]); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12;
+                      return `${h12}:${m[2]} ${ap}`;
+                    };
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+                    for (const s of upcomingSessions) {
+                      const m = s.scheduled_at.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                      if (!m) continue;
+                      const dateKey = `${m[1]}-${m[2]}-${m[3]}`;
+                      let group = groups.find(g => g.dateKey === dateKey);
+                      if (!group) {
+                        const dObj = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+                        let label = dObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                        if (dObj.getTime() === today.getTime()) label = `Today · ${label}`;
+                        else if (dObj.getTime() === tomorrow.getTime()) label = `Tomorrow · ${label}`;
+                        group = { dateKey, label, items: [] };
+                        groups.push(group);
+                      }
+                      group.items.push(s);
+                    }
+                    return (
+                      <div className="bg-secondary/50 border border-blue-500/20 rounded-xl p-5">
+                        <h3 className="font-heading text-sm uppercase text-blue-400 mb-3">🏋️ Upcoming Sessions ({upcomingSessions.length}) · Next 7 Days</h3>
+                        <div className="space-y-4">
+                          {groups.map((group) => (
+                            <div key={group.dateKey}>
+                              <p className="text-gray-400 text-xs font-heading uppercase mb-2">{group.label}</p>
+                              <div className="space-y-2">
+                                {group.items.map((s) => {
+                                  const clientRow = clients.find((c: any) => c.clientId === s.client_id);
+                                  return (
+                                    <div key={s.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3 gap-2 flex-wrap">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <div className="text-center flex-shrink-0 w-16">
+                                          <p className="text-white text-sm font-bold">{fmtTime(s.scheduled_at)}</p>
+                                          <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-white text-sm truncate">{s.clientName}</p>
+                                          <div className="flex items-center gap-2">
+                                            {s.session_type && <span className="text-gray-400 text-xs">{s.session_type}</span>}
+                                            {s.location && <span className="text-gray-500 text-xs truncate">📍 {s.location}</span>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button onClick={() => dashboardMarkSession(s.id, 'completed')} title="Mark Complete" className="p-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors">
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        </button>
+                                        <button onClick={() => dashboardMarkSession(s.id, 'no_show')} title="No-Show" className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors">
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                        </button>
+                                        {clientRow && (
+                                          <button onClick={() => { setSelectedClient(clientRow.id); setClientTab('sessions'); }} title="Open" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Drafts Ready to Publish */}
                   {allDrafts.length > 0 && (
                     <div className="bg-secondary/50 border border-yellow-500/20 rounded-xl p-5">
@@ -5503,6 +5925,54 @@ export default function AdminPage() {
                   )}
 
 
+
+                  {/* Pending Session Requests */}
+                  {pendingRequests.length > 0 && (
+                    <div className="bg-secondary/50 border border-yellow-500/30 rounded-xl p-5">
+                      <h3 className="font-heading text-sm uppercase text-yellow-400 mb-3">⚠️ Session Requests ({pendingRequests.length})</h3>
+                      <div className="space-y-2">
+                        {pendingRequests.map((req) => {
+                          const fmtDt = (iso: string | null | undefined) => {
+                            if (!iso) return '';
+                            const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+                            if (!m) return new Date(iso).toLocaleString();
+                            const [, yy, mm, dd, hh, mi] = m;
+                            const dObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
+                            const wd = dObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                            const h = parseInt(hh); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12;
+                            return `${wd} at ${h12}:${mi} ${ap}`;
+                          };
+                          // Find the client id (clients use .id from clients table; match on clientId)
+                          const clientRow = clients.find((c: any) => c.clientId === req.client_id);
+                          return (
+                            <div key={req.id} className={`bg-primary/30 rounded-lg p-3 border ${req.request_type === 'cancel' ? 'border-red-500/20' : 'border-yellow-500/20'}`}>
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div>
+                                  <p className="text-white text-sm">
+                                    <span className="font-medium">{req.clientName || 'Client'}</span>
+                                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${req.request_type === 'cancel' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                      {req.request_type === 'cancel' ? 'Cancel' : 'Reschedule'}
+                                    </span>
+                                  </p>
+                                  <p className="text-gray-400 text-xs mt-0.5">Session: {fmtDt(req.sessionScheduledAt)}</p>
+                                  {req.request_type === 'reschedule' && req.preferred_datetime && (
+                                    <p className="text-gray-300 text-xs">Prefers: {fmtDt(req.preferred_datetime)}</p>
+                                  )}
+                                  {req.note && <p className="text-gray-400 text-xs italic mt-0.5">&ldquo;{req.note}&rdquo;</p>}
+                                </div>
+                                <div className="flex gap-2">
+                                  {clientRow && (
+                                    <button onClick={() => { setSelectedClient(clientRow.id); setClientTab('sessions'); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
+                                  )}
+                                  <button onClick={() => resolvePendingRequest(req.id)} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">Dismiss</button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Unread Messages */}
                   {totalUnread > 0 && (

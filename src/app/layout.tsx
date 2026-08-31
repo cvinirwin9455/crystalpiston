@@ -123,8 +123,9 @@ export default function RootLayout({
                     document.documentElement.classList.add('dark');
                     document.documentElement.classList.remove('light');
                   }
-                  // Apply brand class for First Mile Coach
-                  if (window.location.hostname.toLowerCase().indexOf('firstmilecoach') !== -1) {
+                  // Apply First Mile brand class for everything except Crystal Pistol
+                  // (matches getBrandFromHost — covers preview/staging URLs too)
+                  if (window.location.hostname.toLowerCase().indexOf('crystalpistolperformance') === -1) {
                     document.documentElement.classList.add('brand-firstmile');
                   }
                 } catch(e) {}

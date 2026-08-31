@@ -1,6 +1,31 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Parse a week date_range ("Aug 25 - Aug 31") into a Monday Date
+function parseWeekMonday(dateRange: string): Date | null {
+  if (!dateRange) return null
+  const startStr = dateRange.split(' - ')[0]
+  if (!startStr) return null
+  const now = new Date()
+  const year = now.getFullYear()
+  const parsed = new Date(`${startStr}, ${year}`)
+  if (isNaN(parsed.getTime())) return null
+  if (parsed.getTime() < now.getTime() - 180 * 24 * 60 * 60 * 1000) {
+    return new Date(`${startStr}, ${year + 1}`)
+  }
+  return parsed
+}
+
+// Get YYYY-MM-DD for a day name within a week (given the Monday date)
+function dateStrForDay(mondayDate: Date | null, dayName: string): string | null {
+  if (!mondayDate) return null
+  const dayMap: Record<string, number> = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 }
+  const offset = dayMap[dayName] ?? 0
+  const d = new Date(mondayDate)
+  d.setDate(mondayDate.getDate() + offset)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // GET /api/my-weeks - Get the logged-in client's published weeks
 export async function GET() {
   const supabase = await createClient()
@@ -49,11 +74,38 @@ export async function GET() {
 
   // Fetch all workouts for these weeks
   const weekIds = weeks.map(w => w.id)
-  const { data: workouts } = await adminClient
+  // Try selecting with session_type, fall back if the column doesn't exist yet
+  let workouts: any[] | null = null
+  const woFull = await adminClient
     .from('workouts')
-    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit, structure')
+    .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit, structure, session_type')
     .in('week_id', weekIds)
     .order('sort_order', { ascending: true })
+  if (woFull.error) {
+    const woFallback = await adminClient
+      .from('workouts')
+      .select('id, week_id, day, type, training_type, title, miles, description, pace_target, location, coach_notes, sort_order, distance_unit, structure')
+      .in('week_id', weekIds)
+      .order('sort_order', { ascending: true })
+    workouts = woFallback.data
+  } else {
+    workouts = woFull.data
+  }
+
+  // Fetch the client's scheduled sessions (for in-person day locking + requests).
+  // Map by date (YYYY-MM-DD) so the client can link a training day to a session.
+  const sessionsByDate = new Map<string, any>()
+  try {
+    const { data: clientSessions } = await adminClient
+      .from('sessions')
+      .select('id, scheduled_at, status, session_type, location, duration_minutes')
+      .eq('client_id', client.id)
+      .eq('status', 'scheduled')
+    for (const s of clientSessions || []) {
+      const m = String(s.scheduled_at).match(/^(\d{4}-\d{2}-\d{2})/)
+      if (m) sessionsByDate.set(m[1], s)
+    }
+  } catch { /* sessions table may not exist yet */ }
 
   // Fetch all workout logs for these workouts
   const workoutIds = (workouts || []).map(wo => wo.id)
@@ -204,6 +256,7 @@ export async function GET() {
   const formatted = weeks.map(w => {
     const weekWorkouts = workoutsByWeekId.get(w.id) || []
     const weekClientWorkouts = clientWorkoutsByWeekId.get(w.id) || []
+    const weekMonday = parseWeekMonday(w.date_range)
     return {
       weekId: w.id,
       dateRange: w.date_range,
@@ -267,6 +320,11 @@ export async function GET() {
           return h > 0 ? `${h}h ${m}m` : `${m}m`
         })() : null)) : null
 
+        // Match this workout's day to a scheduled session (for in-person locking + requests)
+        const woDateStr = dateStrForDay(weekMonday, wo.day)
+        const matchedSession = woDateStr ? sessionsByDate.get(woDateStr) : null
+        const woSessionType = wo.session_type || 'remote'
+
         return {
           id: wo.id,
           day: wo.day,
@@ -280,6 +338,9 @@ export async function GET() {
           location: wo.location || '',
           coachNotes: wo.coach_notes || '',
           structure: wo.structure || null,
+          sessionType: woSessionType,
+          sessionId: matchedSession?.id || null,
+          sessionScheduledAt: matchedSession?.scheduled_at || null,
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,

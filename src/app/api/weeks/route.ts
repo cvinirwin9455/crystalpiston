@@ -1,6 +1,85 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
+function parseDateRange(dateRange: string): Date | null {
+  if (!dateRange) return null
+  const startStr = dateRange.split(' - ')[0] // e.g. "Aug 25"
+  if (!startStr) return null
+  // Try parsing with current year, fallback to next year if it's way in the past
+  const now = new Date()
+  const year = now.getFullYear()
+  const parsed = new Date(`${startStr}, ${year}`)
+  if (isNaN(parsed.getTime())) return null
+  // If parsed date is more than 6 months in the past, assume next year
+  if (parsed.getTime() < now.getTime() - 180 * 24 * 60 * 60 * 1000) {
+    return new Date(`${startStr}, ${year + 1}`)
+  }
+  return parsed
+}
+
+// Helper: get actual date for a day of the week given the Monday start date
+function getDateForDay(mondayDate: Date, dayName: string): Date {
+  const dayMap: Record<string, number> = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 }
+  const offset = dayMap[dayName] ?? 0
+  const date = new Date(mondayDate)
+  date.setDate(date.getDate() + offset)
+  return date
+}
+
+// Helper: link programmed workouts to EXISTING scheduled sessions when a week is published.
+// (Schedule-first model: sessions are created in the Sessions tab, NOT here.)
+// For each in-person day that has a scheduled session, update that session's
+// notes/type to reflect what the coach programmed — so the session shows the plan.
+async function linkWorkoutsToSessions(
+  adminClient: any,
+  clientId: string,
+  dateRange: string,
+  workouts: any[]
+) {
+  const inPersonWorkouts = workouts.filter((w: any) => w.sessionType === 'in_person' && w.type && w.type !== 'rest')
+  if (inPersonWorkouts.length === 0) return
+
+  const mondayDate = parseDateRange(dateRange)
+  if (!mondayDate) return
+
+  // Group by day
+  const inPersonDays = [...new Set(inPersonWorkouts.map((w: any) => w.day))]
+
+  for (const dayName of inPersonDays) {
+    const sessionDate = getDateForDay(mondayDate, dayName as string)
+    const y = sessionDate.getFullYear()
+    const m = String(sessionDate.getMonth() + 1).padStart(2, '0')
+    const d = String(sessionDate.getDate()).padStart(2, '0')
+    const dayStart = `${y}-${m}-${d}T00:00:00`
+    const dayEnd = `${y}-${m}-${d}T23:59:59`
+
+    // Find an existing scheduled session on this date
+    const { data: sessions } = await adminClient
+      .from('sessions')
+      .select('id, notes, session_type')
+      .eq('client_id', clientId)
+      .eq('status', 'scheduled')
+      .gte('scheduled_at', dayStart)
+      .lte('scheduled_at', dayEnd)
+      .limit(1)
+
+    const session = (sessions || [])[0]
+    if (session) {
+      const workout = inPersonWorkouts.find((w: any) => w.day === dayName)
+      // Only fill in type/notes if the session doesn't already have them (don't overwrite coach edits)
+      const updates: any = {}
+      if (!session.session_type && workout?.type) updates.session_type = workout.type
+      if (!session.notes && workout?.title) updates.notes = workout.title
+      if (Object.keys(updates).length > 0) {
+        await adminClient.from('sessions').update(updates).eq('id', session.id)
+      }
+    }
+    // If no session exists for this in-person day, we do NOT create one —
+    // sessions must be scheduled in the Sessions tab first.
+  }
+}
+
 // GET /api/weeks?client_id=xxx - Get all weeks for a client
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -383,7 +462,8 @@ export async function POST(request: Request) {
     const workoutRows = workouts.map((w: any, index: number) => ({
       week_id: week.id,
       day: w.day,
-      type: w.type || 'run',
+      // Blank/unselected type saves as 'rest' (was defaulting to 'run' — the phantom-run bug)
+      type: w.type || 'rest',
       training_type: w.trainingType || null,
       title: w.title || null,
       miles: w.miles ? parseFloat(w.miles) : null,
@@ -394,6 +474,7 @@ export async function POST(request: Request) {
       sort_order: index,
       distance_unit: w.distanceUnit || 'mi',
       structure: w.structure || null,
+      session_type: w.sessionType || 'remote',
     }))
 
     const { error: workoutsError } = await adminClient
@@ -402,6 +483,16 @@ export async function POST(request: Request) {
 
     if (workoutsError) {
       return NextResponse.json({ error: workoutsError.message }, { status: 500 })
+    }
+  }
+
+  // If week is published, link programmed workouts to existing scheduled sessions
+  // (schedule-first: sessions are created in the Sessions tab, not here)
+  if (status === 'published' && workouts && workouts.length > 0) {
+    try {
+      await linkWorkoutsToSessions(adminClient, clientId, dateRange, workouts)
+    } catch (sessErr) {
+      console.error('Failed to link workouts to sessions:', sessErr)
     }
   }
 

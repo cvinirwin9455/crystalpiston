@@ -1,6 +1,29 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
+function parseDateRange(dateRange: string): Date | null {
+  if (!dateRange) return null
+  const startStr = dateRange.split(' - ')[0]
+  if (!startStr) return null
+  const now = new Date()
+  const year = now.getFullYear()
+  const parsed = new Date(`${startStr}, ${year}`)
+  if (isNaN(parsed.getTime())) return null
+  if (parsed.getTime() < now.getTime() - 180 * 24 * 60 * 60 * 1000) {
+    return new Date(`${startStr}, ${year + 1}`)
+  }
+  return parsed
+}
+
+function getDateForDay(mondayDate: Date, dayName: string): Date {
+  const dayMap: Record<string, number> = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 }
+  const offset = dayMap[dayName] ?? 0
+  const date = new Date(mondayDate)
+  date.setDate(date.getDate() + offset)
+  return date
+}
+
 // PATCH /api/weeks/[id] - Update a week (status, focus, coach message)
 export async function PATCH(
   request: Request,
@@ -55,6 +78,57 @@ export async function PATCH(
         .single()
 
       if (week) {
+        // Link programmed workouts to EXISTING scheduled sessions (schedule-first model).
+        // Sessions are created in the Sessions tab, NOT here. We just annotate the
+        // existing session with what's programmed (if it doesn't already have details).
+        try {
+          const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+          const sessionAdminClient = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            { auth: { autoRefreshToken: false, persistSession: false } }
+          )
+          const { data: inPersonWorkouts } = await sessionAdminClient
+            .from('workouts')
+            .select('id, day, type, title, session_type')
+            .eq('week_id', weekId)
+            .eq('session_type', 'in_person')
+            .neq('type', 'rest')
+
+          if (inPersonWorkouts && inPersonWorkouts.length > 0) {
+            const mondayDate = parseDateRange(week.date_range)
+            if (mondayDate) {
+              const inPersonDays = [...new Set(inPersonWorkouts.map((w: any) => w.day))]
+              for (const dayName of inPersonDays) {
+                const sessionDate = getDateForDay(mondayDate, dayName as string)
+                const y = sessionDate.getFullYear()
+                const mo = String(sessionDate.getMonth() + 1).padStart(2, '0')
+                const dd = String(sessionDate.getDate()).padStart(2, '0')
+                const { data: existing } = await sessionAdminClient
+                  .from('sessions')
+                  .select('id, notes, session_type')
+                  .eq('client_id', week.client_id)
+                  .eq('status', 'scheduled')
+                  .gte('scheduled_at', `${y}-${mo}-${dd}T00:00:00`)
+                  .lte('scheduled_at', `${y}-${mo}-${dd}T23:59:59`)
+                  .limit(1)
+                const sess = (existing || [])[0]
+                if (sess) {
+                  const workout = inPersonWorkouts.find((w: any) => w.day === dayName)
+                  const updates: any = {}
+                  if (!sess.session_type && workout?.type) updates.session_type = workout.type
+                  if (!sess.notes && workout?.title) updates.notes = workout.title
+                  if (Object.keys(updates).length > 0) {
+                    await sessionAdminClient.from('sessions').update(updates).eq('id', sess.id)
+                  }
+                }
+              }
+            }
+          }
+        } catch (sessErr) {
+          console.error('Failed to link workouts to sessions on publish:', sessErr)
+        }
+
         // Get the client's user_id
         const { data: client } = await supabase
           .from('clients')
