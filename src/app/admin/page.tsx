@@ -2359,7 +2359,7 @@ export default function AdminPage() {
   const displayComplete = displayWorkouts.filter(w => w.status === "complete" || (w.completed && !w.status));
   const displayPartial = displayWorkouts.filter(w => w.status === "partial");
   const displayMilesCompleted = displayComplete.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || convertDist(w.miles || 0, w.distanceUnit), "mi"), 0) + displayPartial.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + convertDist(Number(w.log?.actualMiles) || 0, "mi"), 0) + (adminStatsFilter === "currentWeek" ? currentWeekClientMiles : adminStatsFilter === "currentPlan" ? planClientAddedMiles : allClientAddedMiles);
-  const displayMilesProgrammed = displayWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0);
+  const displayMilesProgrammed = displayWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0);
   const displayAvgRpe = (() => { const withRpe = displayMarked.filter(w => w.log?.rpe); if (withRpe.length === 0) return "—"; return (withRpe.reduce((a, w) => a + Number(w.log!.rpe), 0) / withRpe.length).toFixed(1); })();
   const displayCompletion = displayWorkouts.length > 0 ? Math.round(((displayComplete.length * 1 + displayPartial.length * 0.5) / displayWorkouts.length) * 100) : 0;
 
@@ -2408,8 +2408,10 @@ export default function AdminPage() {
             alert(`${day.day}: ${w.type === 'run' ? 'Run' : 'Walk'} type requires a subtype to be selected.`);
             return;
           }
-          if (!w.miles) {
-            alert(`${day.day}: ${w.type === 'run' ? 'Run' : 'Walk'} type requires distance (miles/km) to be entered.`);
+          // Allow runs without miles if they have a time-based structure (e.g. "30 min easy")
+          const hasStructure = !!(w as any).structure && ((w as any).structure.warmUp || ((w as any).structure.blocks && (w as any).structure.blocks.length > 0 && (w as any).structure.blocks.some((b: any) => b.work?.value)) || (w as any).structure.coolDown);
+          if (!w.miles && !hasStructure) {
+            alert(`${day.day}: ${w.type === 'run' ? 'Run' : 'Walk'} type requires distance (miles/km) to be entered, or a structured workout with time intervals.`);
             return;
           }
         }
@@ -2553,7 +2555,7 @@ export default function AdminPage() {
       };
       unitEdits[w.id] = w.distanceUnit || 'mi';
       // Extract cross-training structure from the workout's structure field
-      if (w.type === 'cross' && (w as any).structure?.exercises) {
+      if ((w.type === 'cross' || w.type === 'strength' || w.type === 'hiit' || w.type === 'stretching') && (w as any).structure?.exercises) {
         crossStructEdits[w.id] = (w as any).structure;
       }
       // Extract run structure from the workout's structure field
@@ -2616,7 +2618,7 @@ export default function AdminPage() {
             location: edited.location || null,
             coachNotes: edited.coachNotes || null,
             distanceUnit: editDistanceUnits[w.id] || 'mi',
-            structure: edited.type === 'cross' && crossStruct ? crossStruct : edited.type === 'run' && runStruct ? runStruct : undefined,
+            structure: (edited.type === 'cross' || edited.type === 'strength' || edited.type === 'hiit' || edited.type === 'stretching') && crossStruct ? crossStruct : edited.type === 'run' && runStruct ? runStruct : undefined,
           }),
         });
       });
@@ -3433,7 +3435,7 @@ export default function AdminPage() {
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
                     <div className="flex items-center justify-center gap-2 mt-0.5">
                       {selectedWeek && <span className="text-gray-400 text-xs">{selectedWeek.focus}</span>}
-                      {selectedWeek && <span className="text-white text-xs font-medium bg-white/5 px-2 py-0.5 rounded">{selectedWeek.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(1)} {distUnitShort}</span>}
+                      {selectedWeek && <span className="text-white text-xs font-medium bg-white/5 px-2 py-0.5 rounded">{selectedWeek.workouts.reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(1)} {distUnitShort}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -3484,7 +3486,7 @@ export default function AdminPage() {
                     if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
                     const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                     const daySummary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
-                    const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+                    const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, w.distanceUnit) : 0), 0);
                     const isAdminDayExpanded = adminExpandedDays[day] ?? adminDefaultExpanded;
                     const adminDayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
                     const adminWeekStart = getAdminMondayForOffset(adminWeekOffset);
@@ -3497,7 +3499,7 @@ export default function AdminPage() {
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
                             <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
-                            {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${convertDist(dayMiles).toFixed(1)} ${distUnitShort}` : ''}</span>}
+                            {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${dayMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
@@ -3527,7 +3529,7 @@ export default function AdminPage() {
                               <p className="text-gray-300 text-sm mt-0.5">{(w as any).structure ? (((w as any).structure.exercises && Array.isArray((w as any).structure.exercises)) ? formatCrossTrainingForDisplay((w as any).structure) : formatStructureForDisplay((w as any).structure)).split('\n').map((line: string, li: number) => <span key={li}>{adminDistanceUnit === 'km' ? line.replace(/(\d+:\d+)(?:-(\d+:\d+))?\/mi/g, (match: string, p1: string, p2: string) => { const conv = (p: string) => { const [m, s] = p.split(':').map(Number); const totalSec = m * 60 + s; const kmSec = Math.round(totalSec / 1.60934); return `${Math.floor(kmSec / 60)}:${(kmSec % 60).toString().padStart(2, '0')}`; }; return p2 ? `${conv(p1)}-${conv(p2)}/km` : `${conv(p1)}/km`; }).replace(/(\d+(?:\.\d+)?)\s*(?:miles|mi)\b/g, (match: string, v: string) => `${(parseFloat(v) * 1.60934).toFixed(2).replace(/\.?0+$/, '')} km`) : adminDistanceUnit === 'mi' ? line.replace(/(\d+:\d+)(?:-(\d+:\d+))?\/km/g, (match: string, p1: string, p2: string) => { const conv = (p: string) => { const [m, s] = p.split(':').map(Number); const totalSec = m * 60 + s; const miSec = Math.round(totalSec * 1.60934); return `${Math.floor(miSec / 60)}:${(miSec % 60).toString().padStart(2, '0')}`; }; return p2 ? `${conv(p1)}-${conv(p2)}/mi` : `${conv(p1)}/mi`; }).replace(/(\d+(?:\.\d+)?)\s*km\b/g, (match: string, v: string) => `${(parseFloat(v) / 1.60934).toFixed(2).replace(/\.?0+$/, '')} mi`) : line}{li < (((w as any).structure.exercises && Array.isArray((w as any).structure.exercises)) ? formatCrossTrainingForDisplay((w as any).structure) : formatStructureForDisplay((w as any).structure)).split('\n').length - 1 ? <br /> : null}</span>) : `${w.title || ''}${w.description ? ` — ${w.description}` : ''}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{convertPace(w.paceTarget)}</p>}
                             </div>
-                            {w.miles && <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                            {w.miles != null && w.miles > 0 && <div className="flex items-baseline gap-1.5 flex-shrink-0">
                               {w.completed && w.log?.actualMiles ? (
                                 <>
                                   <span className="text-green-400 font-heading text-lg">{convertDist(Number(w.log.actualMiles))}</span>
@@ -3720,7 +3722,7 @@ export default function AdminPage() {
                                   </div>
                                 )}
                               </div>
-                              {cw.miles && <span className="text-green-400 font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
+                              {cw.miles != null && cw.miles > 0 && <span className="text-green-400 font-heading text-lg flex-shrink-0">{convertDist(cw.miles)}<span className="text-gray-300 text-xs ml-0.5">{distUnitShort}</span></span>}
                             </div>
                             {/* Comments on client workouts */}
                             {cw.completed && (
@@ -3744,7 +3746,7 @@ export default function AdminPage() {
                         ))}
                         {/* Add workout to day button (edit mode) */}
                         {editingWeek && (
-                          <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/workouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weekId: selectedWeek.weekId, day, type: 'run', trainingType: '', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', sortOrder: 99 }) }); if (res.ok) { setEditingWeek(false); setEditedWorkouts({}); await fetchWeeks(client.clientId); setTimeout(() => enterEditMode(), 100); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
+                          <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/workouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weekId: selectedWeek.weekId, day, type: 'rest', trainingType: 'Rest', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', sortOrder: 99 }) }); if (res.ok) { setEditingWeek(false); setEditedWorkouts({}); await fetchWeeks(client.clientId); setTimeout(() => enterEditMode(), 100); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                             Add workout to {day}
                           </button>
@@ -3771,7 +3773,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2"><h4 className="text-white font-medium">{week.dateRange}</h4><span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Draft</span></div>
-                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{week.workouts.reduce((s, w) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>
+                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{week.workouts.reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => publishWeek(week.weekId)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Publish</button>
@@ -3784,7 +3786,7 @@ export default function AdminPage() {
                         <div key={w.id} className="bg-primary/50 rounded p-2 text-center">
                           <p className="text-gray-300 text-xs">{w.day.slice(0,3)}</p>
                           <p className="text-white text-xs font-medium truncate">{w.title || getTypeLabel(w.type)}</p>
-                          {w.miles && <p className="text-accent text-xs">{convertDist(w.miles, w.distanceUnit)}{distUnitShort}</p>}
+                          {w.miles != null && w.miles > 0 && <p className="text-accent text-xs">{convertDist(w.miles, w.distanceUnit)}{distUnitShort}</p>}
                         </div>
                       ))}
                     </div>
@@ -4055,7 +4057,7 @@ export default function AdminPage() {
                                   <option value="" disabled>Run Type *</option><option value="ClosePace">Close to Race Pace</option><option value="Easy">Easy Run</option><option value="Intervals">Intervals (Run/Walk)</option><option value="LongRun">Long Run</option><option value="Progressive">Progressive</option><option value="RacePace">Race Pace</option><option value="SpeedRoad">Speed - Road</option><option value="SpeedTrack">Speed - Track</option><option value="Trail">Trail</option>
                                 </select>
                                 <div className="flex items-center gap-1">
-                                  <span className={`w-14 bg-primary/30 border border-white/5 rounded px-2 py-1 text-xs text-center ${wo.miles ? 'text-white' : 'text-gray-500'}`}>{wo.miles || '—'}</span>
+                                  <span className={`w-14 bg-primary/30 border border-white/5 rounded px-2 py-1 text-xs text-center ${wo.miles ? 'text-white' : 'text-gray-500'}`}>{wo.miles || (((wo as any).structure?.blocks?.some((b: any) => b.work?.type === 'time') || (wo as any).structure?.warmUp?.type === 'time') ? 'Time' : '—')}</span>
                                   <button type="button" onClick={() => handleToggleDistanceUnit(i, wi)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={wo.distanceUnit === "km" ? "text-accent" : "text-white"}>{wo.distanceUnit === "km" ? "km" : "mi"}</span></button>
                                   {(() => { const paceDisplay = getPaceRangeFromStructure((wo as any).structure, wo.distanceUnit === "km" ? "km" : "mi"); return paceDisplay ? <span className="text-accent text-xs px-2 py-1 bg-primary/30 border border-accent/20 rounded">{paceDisplay}</span> : null; })()}
                                 </div>
@@ -4115,6 +4117,9 @@ export default function AdminPage() {
                                   const autoValue = calculateTotalDistance(structure, woUnit);
                                   if (autoValue > 0) {
                                     (workouts[wi] as any).miles = autoValue.toString();
+                                  } else {
+                                    // Clear miles when structure is entirely time-based (no calculable distance)
+                                    (workouts[wi] as any).miles = "";
                                   }
                                   updated[i] = { ...updated[i], workouts };
                                   setWeekPlan({ ...weekPlan, days: updated });
@@ -5586,7 +5591,7 @@ export default function AdminPage() {
                                               <span className="text-white font-heading text-[10px] uppercase w-12">{d.day?.slice(0, 3)}</span>
                                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeBadge(wo.type || 'rest')}`}>{getTypeLabel(wo.type || 'rest')}</span>
                                               {wo.trainingType && wo.trainingType !== 'Rest' && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo.trainingType)}</span>}
-                                              {wo.miles && <span className="text-accent text-[10px] font-medium">{convertDist(Number(wo.miles))}{distUnitShort}</span>}
+                                              {wo.miles != null && Number(wo.miles) > 0 && <span className="text-accent text-[10px] font-medium">{convertDist(Number(wo.miles))}{distUnitShort}</span>}
                                               {wo.title && <span className="text-white text-[10px] truncate">{wo.title}</span>}
                                             </div>
                                             {d.workouts?.length > 1 && d.workouts.slice(1).map((wo2: any, wi2: number) => (
@@ -5901,7 +5906,7 @@ export default function AdminPage() {
                                 ) : null}
                                 <span className={`${(item.client.avatarUrl || item.client.stravaProfileUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>{item.client.name.charAt(0)}</span>
                               </div>
-                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>

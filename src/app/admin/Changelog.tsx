@@ -21,8 +21,25 @@ const updates = [
     ],
   },
   {
+    date: "August 24, 2026",
+    items: [
+      { area: "Marketing", text: "Reworked: The First Mile Coach marketing page has been completely rewritten. Removed all pricing — the message is now 'free during beta, low-cost after'. The page is aimed at new coaches AND side coaches who have a few clients but can't justify expensive platforms" },
+      { area: "Marketing", text: "New headline: 'A few clients shouldn't cost a fortune to manage' — more inclusive of coaches who aren't brand new but are coaching on the side" },
+      { area: "Marketing", text: "Added: 'What's a beta user?' section that explains in plain language what signing up for beta means" },
+      { area: "Marketing", text: "Updated: Now directly names competitors (TrueCoach, TrainHeroic, My PT Hub) and positions First Mile Coach as 'the introduction, not the destination' — when coaches outgrow us, that's a win" },
+      { area: "Marketing", text: "Reworked: FAQ page completely updated — removed all pricing questions, updated all answers to match the new messaging, added new questions about beta safety and what happens after" },
+      { area: "Marketing", text: "Fixed: Coach Login and Client Login buttons now stay on the same line in the header on desktop" },
+      { area: "Marketing", text: "Removed: Currency/region toggle is gone from the marketing pages (no pricing to localize anymore)" },
+    ],
+  },
+  {
     date: "August 23, 2026",
     items: [
+      { area: "Client", text: "Fixed: Run distance (miles/km) was sometimes not showing on training cards — the programmed distance now displays reliably on the card, collapsed day summary, and weekly total" },
+      { area: "Admin", text: "Fixed: Same distance display fix on the admin Training & Logs view — workout miles now show correctly in all views including drafts and collapsed day headers" },
+      { area: "Admin", text: "Fixed: Editing Strength, HIIT, or Stretching workouts in Training & Logs now saves properly — exercise details, demo video links, and structure changes were not being saved when you clicked 'Save Changes'. This also means demo videos you add to exercises now persist and show on the client side" },
+      { area: "Admin", text: "Improved: Day totals now properly convert mixed units — if you program some runs in km and some in miles for the same client, the collapsed day summary correctly converts everything to the client's preferred unit" },
+      { area: "Admin", text: "Improved: Runs with time-based structures (e.g. '30 min easy') can now be saved without a distance value. The card will show the time structure clearly without a misleading '0 mi' display" },
       { area: "Admin", text: "Fixed: Coach Guide was showing a blank page on mobile in portrait mode. It now displays properly without needing to rotate your phone" },
       { area: "Admin", text: "NEW: Dashboard button on mobile — you can now tap 'Dashboard' from the client list screen to see your stats, drafts to publish, and payment overview without switching to landscape. Tap 'Back to Clients' to return" },
       { area: "Admin", text: "Fixed: Scrolling issue on mobile — when viewing a client's Training & Logs, Create Week, or other tabs, scrolling back up was triggering a page refresh instead of scrolling. This is now fixed so you can scroll freely in both directions" },

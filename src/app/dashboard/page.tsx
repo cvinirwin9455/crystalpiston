@@ -1189,7 +1189,7 @@ export default function DashboardPage() {
   const currentWeek = getWeekPlan(weekOffset);
   const clientMilesThisWeek = currentWeek ? (currentWeek.clientWorkouts || []).filter(cw => (cw.type === 'run' || cw.type === 'walk') && completedClientWorkouts[cw.id]).reduce((s, cw) => s + convertDist(cw.miles || 0, clientDistanceUnit, 'mi'), 0) : 0;
   // Convert all programmed miles to client's preferred unit before summing (run + walk only)
-  const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
+  const weeklyTotal = currentWeek ? currentWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((sum, w) => sum + (w.miles != null && w.miles > 0 ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0) + clientMilesThisWeek : 0;
   const weeklyTotalConverted = weeklyTotal; // already in client's preferred unit
   const completedCount = currentWeek ? currentWeek.workouts.filter((w) => w.completed && w.type !== "rest").length : 0;
   const allWorkouts = weeks.flatMap((w) => w.workouts);
@@ -1846,7 +1846,7 @@ export default function DashboardPage() {
                 const isDayEmpty = dayWorkouts.length === 0 && dayClientWorkouts.length === 0;
                 const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                 const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
-                const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles || 0), 0);
+                const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0);
                 const isExpanded = expandedDays[day] ?? defaultExpanded;
                 // Calculate date for this day
                 const dayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
@@ -1865,7 +1865,7 @@ export default function DashboardPage() {
                       <div>
                         <span className="text-white font-heading uppercase text-sm">{day}</span>
                         <span className="text-gray-300 text-xs ml-2">{dayDateStr}</span>
-                        {!isExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${convertDist(totalMiles, clientDistanceUnit, 'mi').toFixed(1)} ${distUnitShort}` : ''}</span>}
+                        {!isExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{summary}{totalMiles > 0 ? ` • ${totalMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
                         {isDayEmpty && <span className="text-gray-500 text-xs ml-3">Rest Day</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -1990,7 +1990,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles && <div className="flex items-baseline gap-2">
+                        {workout.miles != null && workout.miles > 0 && <div className="flex items-baseline gap-2">
                           {workout.completed && workout.log?.actualMiles ? (
                             <>
                               <span className="font-heading text-xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</span>
@@ -2255,7 +2255,7 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
-                      {cw.miles && <div className="text-right ml-3">
+                      {cw.miles != null && cw.miles > 0 && <div className="text-right ml-3">
                         <p className="font-heading text-xl text-green-400">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p>
                         <p className="text-gray-400 text-xs">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</p>
                         <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [cw.id]: getWorkoutUnit(cw.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(cw.id) === "km" ? "→ mi" : "→ km"}</button>
@@ -2352,7 +2352,7 @@ export default function DashboardPage() {
                                           <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Your Workout</span>
                                           <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(suggestedClientWorkout.type)}`}>{getTypeLabel(suggestedClientWorkout.type)}</span>
                                           {suggestedClientWorkout.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(suggestedClientWorkout.trainingType)}`}>{getTrainingTypeLabel(suggestedClientWorkout.trainingType)}</span>}
-                                          {suggestedClientWorkout.miles && <span className="text-white text-xs font-bold ml-auto">{convertDist(suggestedClientWorkout.miles, getWorkoutUnit(suggestedClientWorkout.id), 'mi')} {getWorkoutUnit(suggestedClientWorkout.id) === "km" ? "km" : "mi"}</span>}
+                                          {suggestedClientWorkout.miles != null && suggestedClientWorkout.miles > 0 && <span className="text-white text-xs font-bold ml-auto">{convertDist(suggestedClientWorkout.miles, getWorkoutUnit(suggestedClientWorkout.id), 'mi')} {getWorkoutUnit(suggestedClientWorkout.id) === "km" ? "km" : "mi"}</span>}
                                         </div>
                                         {suggestedClientWorkout.notes && <p className="text-gray-300 text-xs">{suggestedClientWorkout.notes}</p>}
                                       </div>
@@ -2386,7 +2386,7 @@ export default function DashboardPage() {
                                                 </div>
                                               </div>
                                               <div className="text-right flex items-center gap-2">
-                                                {w.miles ? <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
+                                                {w.miles != null && w.miles > 0 ? <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
                                                 <span className="text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
                                               </div>
                                             </div>
@@ -2404,7 +2404,7 @@ export default function DashboardPage() {
                                                 </div>
                                               </div>
                                               <div className="text-right flex items-center gap-2">
-                                                {cwk.miles ? <span className="text-white text-xs font-bold">{convertDist(cwk.miles, getWorkoutUnit(cwk.id), 'mi')} {distUnitShort}</span> : null}
+                                                {cwk.miles != null && cwk.miles > 0 ? <span className="text-white text-xs font-bold">{convertDist(cwk.miles, getWorkoutUnit(cwk.id), 'mi')} {distUnitShort}</span> : null}
                                                 <span className="text-cyan-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
                                               </div>
                                             </div>
@@ -2449,7 +2449,7 @@ export default function DashboardPage() {
                                                 {w.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                                 {w.title && <span className="text-gray-300 text-xs">{w.title}</span>}
                                               </div>
-                                              {w.miles && <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span>}
+                                              {w.miles != null && w.miles > 0 && <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span>}
                                             </div>
                                           </button>
                                         ))}
@@ -2506,7 +2506,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            {cw.miles && <div className="text-right">
+                            {cw.miles != null && cw.miles > 0 && <div className="text-right">
                               <p className="font-heading text-xl text-green-400">{convertDist(cw.miles, getWorkoutUnit(cw.id), 'mi')}</p>
                               <p className="text-gray-300 text-xs">{getWorkoutUnit(cw.id) === "km" ? "km" : "mi"}</p>
                               <button onClick={() => setWorkoutUnitOverrides(prev => ({ ...prev, [cw.id]: getWorkoutUnit(cw.id) === "km" ? "mi" : "km" }))} className="text-gray-600 hover:text-accent text-xs mt-0.5 transition-colors">{getWorkoutUnit(cw.id) === "km" ? "→ mi" : "→ km"}</button>
