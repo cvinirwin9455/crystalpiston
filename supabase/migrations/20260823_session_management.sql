@@ -164,6 +164,18 @@ CREATE OR REPLACE TRIGGER update_recurring_schedules_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================
+-- 8a. Add amount_owed to session_packages BEFORE the balance view uses it
+-- (Coach can set total cost owed and log payments against it)
+-- ============================================================
+ALTER TABLE public.session_packages
+  ADD COLUMN IF NOT EXISTS amount_owed NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
+-- Backfill: for existing packages, set amount_owed = amount_paid (assume paid in full)
+UPDATE public.session_packages
+  SET amount_owed = amount_paid
+  WHERE amount_owed = 0 AND amount_paid > 0;
+
+-- ============================================================
 -- 8. Helper view: session balance per client
 -- Calculates remaining sessions from packages minus used sessions
 -- ============================================================
