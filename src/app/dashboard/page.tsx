@@ -412,6 +412,11 @@ export default function DashboardPage() {
   }, []);
 
   const clientUpdates = [
+    { date: "August 31, 2026", items: [
+      "NEW: Health Assessment — you can now fill out a quick health screening (medical history, medication, injuries, lifestyle, and goals) so your coach can plan your training safely. Find it under the Account tab, and update it anytime. There's a privacy consent step, and your coach can only see it once you've completed it.",
+      "NEW: In-person sessions — if your coach trains you in person, you'll now see your upcoming sessions on your Training tab, along with how many sessions you have left.",
+      "NEW: Request a reschedule — need to move or cancel an in-person session? You can now send your coach a request right from the app, and they'll confirm it.",
+    ]},
     { date: "August 19, 2026", items: [
       "Improved: Help Center now supports dark and light mode — it follows your theme preference just like the rest of the app",
       "NEW: Help Center updated with new articles on workout rescheduling, structured workouts, dark/light mode, profile photos, cycle tracking, and installing the app on your phone",
@@ -558,7 +563,7 @@ export default function DashboardPage() {
     const lastSeen = localStorage.getItem("changelog_last_seen_client") || "";
     setLastSeenUpdates(lastSeen);
     // Show badge if user hasn't seen the latest updates (use current timestamp as threshold)
-    const latestUpdateTimestamp = "2026-08-14T12:00:00Z";
+    const latestUpdateTimestamp = "2026-08-31T12:00:00Z";
     if (!lastSeen || lastSeen < latestUpdateTimestamp) {
       setShowNewBadge(true);
     }
