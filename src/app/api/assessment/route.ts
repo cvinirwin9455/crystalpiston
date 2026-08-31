@@ -61,16 +61,32 @@ export async function POST(request: Request) {
 
   const adminClient = await getAdminClient()
 
-  // Resolve the logged-in client's record + org
-  const { data: clientRow } = await adminClient
+  // Resolve the logged-in client's record. Select only 'id' — matches the
+  // working /api/my-weeks pattern. (organization_id lives on users, not clients,
+  // so selecting it here can error and wrongly 404.)
+  const { data: clientRow, error: clientErr } = await adminClient
     .from('clients')
-    .select('id, organization_id')
+    .select('id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
+  if (clientErr) {
+    return NextResponse.json({ error: `Could not resolve client: ${clientErr.message}` }, { status: 500 })
+  }
   if (!clientRow) {
     return NextResponse.json({ error: 'Client record not found' }, { status: 404 })
   }
+
+  // Best-effort: pull org id from the users table (nullable, non-fatal)
+  let organizationId: string | null = null
+  try {
+    const { data: userRow } = await adminClient
+      .from('users')
+      .select('organization_id')
+      .eq('id', user.id)
+      .maybeSingle()
+    organizationId = userRow?.organization_id || null
+  } catch { /* organization_id column may not exist — ignore */ }
 
   const now = new Date().toISOString()
 
@@ -83,7 +99,7 @@ export async function POST(request: Request) {
 
   const payload: any = {
     client_id: clientRow.id,
-    organization_id: clientRow.organization_id || null,
+    organization_id: organizationId,
     answers: answers || {},
     consent_given: !!consentGiven,
     status: 'completed',
@@ -139,13 +155,25 @@ export async function PATCH(request: Request) {
   const now = new Date().toISOString()
 
   if (action === 'request_review') {
-    // Get client org for the row (in case we need to create it)
+    // Get the client row (select only safe columns — organization_id lives on users)
     const { data: clientRow } = await adminClient
       .from('clients')
-      .select('id, organization_id, user_id')
+      .select('id, user_id')
       .eq('id', clientId)
-      .single()
+      .maybeSingle()
     if (!clientRow) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+
+    // Resolve org from the client's users row (nullable, non-fatal)
+    let clientOrgId: string | null = null
+    try {
+      const { data: cu } = await adminClient
+        .from('users')
+        .select('organization_id')
+        .eq('id', clientRow.user_id)
+        .maybeSingle()
+      clientOrgId = cu?.organization_id || null
+    } catch { /* ignore */ }
+    ;(clientRow as any).organization_id = clientOrgId
 
     // Upsert: mark review_requested (create a not_started row if none exists)
     const { data: existing } = await adminClient
