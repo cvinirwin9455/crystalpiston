@@ -3,9 +3,23 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-23T15:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-08-31T12:00:00Z";
 
 const updates = [
+  {
+    date: "August 31, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Session Management for in-person coaching — you can now track face-to-face training sessions right inside the app. Each client has a Sessions tab showing their upcoming sessions, session history, and their session balance (how many they've paid for vs. used)" },
+      { area: "Admin", text: "NEW: Billing modes per client — when you create a plan you can choose how the client pays: 'Programming only' (they pay for your online programming, same as before), 'Per session' (they pay for in-person sessions), or 'Hybrid' (both). Existing clients stay on 'Programming only' automatically, so nothing changes for them" },
+      { area: "Admin", text: "NEW: Session packages — sell blocks of sessions up front. Enter how many sessions a client bought and how much they paid, and the app tracks the balance as sessions are used. Owed vs. paid is tracked separately from your programming payments" },
+      { area: "Admin", text: "NEW: Recurring schedules — set a repeating pattern (e.g. every Monday and Thursday) and the app knows those are the client's in-person days, with a specific time for each day. You can also add one-off sessions" },
+      { area: "Admin", text: "NEW: Schedule-first week building — when you build a client's week, their scheduled in-person days are shown so you can attach the workout to the session. Creating a week no longer auto-creates sessions; the schedule drives it" },
+      { area: "Admin", text: "NEW: Unified payments — programming payments and session payments now log in one place, so a client's full payment history is together. Your dashboard's outstanding and collected totals now include session balances too" },
+      { area: "Admin", text: "NEW: Upcoming Sessions widget — the coach dashboard now shows your in-person sessions for the next 7 days at a glance" },
+      { area: "Client", text: "NEW: Cancel or reschedule requests — clients with in-person sessions can request to cancel or reschedule a session from their side. You get notified and confirm it; the session doesn't change until you approve, so you stay in control" },
+      { area: "All", text: "NEW: Health Assessment — new clients are prompted to complete a health screening (medical conditions, medication, injuries, lifestyle, and goals) with a privacy consent step. Coaches get a read-only Assessment tab on each client that highlights any health flags to review. Clients can update it anytime, and coaches can ask a client to review it — for example when starting a new plan. The pregnancy question is only shown to female clients" },
+    ],
+  },
   {
     date: "August 23, 2026",
     items: [
