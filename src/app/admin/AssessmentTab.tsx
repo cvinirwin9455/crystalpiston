@@ -6,9 +6,11 @@ import { ASSESSMENT_SECTIONS } from "@/app/components/assessment/questions";
 interface AssessmentTabProps {
   clientId: string;
   clientName: string;
+  gender?: string | null;
 }
 
-export default function AssessmentTab({ clientId, clientName }: AssessmentTabProps) {
+export default function AssessmentTab({ clientId, clientName, gender }: AssessmentTabProps) {
+  const isMale = (gender || "").toLowerCase() === "male";
   const [assessment, setAssessment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
@@ -54,6 +56,7 @@ export default function AssessmentTab({ clientId, clientName }: AssessmentTabPro
   const flagged: { label: string; detail?: string }[] = [];
   for (const section of ASSESSMENT_SECTIONS) {
     for (const field of section.fields) {
+      if ((field as any).hideIfMale && isMale) continue;
       if ((field as any).flagOnYes) {
         const v = answers[field.key];
         if (v === "yes" || (field.type === "select" && v === "Yes")) {
@@ -141,6 +144,7 @@ export default function AssessmentTab({ clientId, clientName }: AssessmentTabPro
               <h4 className="font-heading text-sm uppercase text-gray-300 mb-3">{section.title}</h4>
               <div className="space-y-2.5">
                 {section.fields.map((field) => {
+                  if ((field as any).hideIfMale && isMale) return null;
                   if (field.type === "medications" && answers.takingMedication !== "yes") return null;
                   const isFlagged = (field as any).flagOnYes && (answers[field.key] === "yes" || answers[field.key] === "Yes");
                   return (

@@ -12,6 +12,8 @@ export type AssessmentField = {
   // Health-risk flag: coach view highlights when this answers 'yes'
   flagOnYes?: boolean;
   placeholder?: string;
+  // Hide this field for male clients (e.g. pregnancy) — gender is captured at setup
+  hideIfMale?: boolean;
 };
 
 export type AssessmentSection = {
@@ -35,7 +37,7 @@ export const ASSESSMENT_SECTIONS: AssessmentSection[] = [
       { key: 'chestPainDizziness', label: 'Any chest pain, dizziness, or fainting during activity?', type: 'yesno', flagOnYes: true },
       { key: 'doctorRestricted', label: 'Has a doctor ever advised you to restrict exercise?', type: 'yesno_text', revealOn: 'yes', followUpLabel: 'What did they advise?', flagOnYes: true },
       { key: 'recentSurgery', label: 'Any recent surgery or hospitalisation?', type: 'yesno_text', revealOn: 'yes', followUpLabel: 'Please describe', flagOnYes: true },
-      { key: 'pregnancy', label: 'Are you pregnant or postnatal?', type: 'select', options: ['No', 'Yes', 'Not applicable'], flagOnYes: true },
+      { key: 'pregnancy', label: 'Are you pregnant or postnatal?', type: 'select', options: ['No', 'Yes', 'Not applicable'], flagOnYes: true, hideIfMale: true },
     ],
   },
   {

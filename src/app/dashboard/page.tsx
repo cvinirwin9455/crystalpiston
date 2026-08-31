@@ -2844,6 +2844,7 @@ export default function DashboardPage() {
               {showAssessmentForm ? (
                 <AssessmentForm
                   reviewRequested={assessmentReviewRequested}
+                  gender={clientGender}
                   onSaved={() => { setShowAssessmentForm(false); fetchAssessmentStatus(); }}
                   onCancel={() => setShowAssessmentForm(false)}
                 />

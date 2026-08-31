@@ -7,9 +7,11 @@ interface AssessmentFormProps {
   onSaved?: () => void;
   onCancel?: () => void;
   reviewRequested?: boolean;
+  gender?: string | null;
 }
 
-export default function AssessmentForm({ onSaved, onCancel, reviewRequested }: AssessmentFormProps) {
+export default function AssessmentForm({ onSaved, onCancel, reviewRequested, gender }: AssessmentFormProps) {
+  const isMale = (gender || "").toLowerCase() === "male";
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [meds, setMeds] = useState<{ name: string; reason: string }[]>([{ name: "", reason: "" }]);
   const [consent, setConsent] = useState(false);
@@ -200,6 +202,8 @@ export default function AssessmentForm({ onSaved, onCancel, reviewRequested }: A
           {section.description && <p className="text-gray-400 text-xs mb-3">{section.description}</p>}
           <div className="space-y-4 mt-3">
             {section.fields.map((field) => {
+              // Skip gender-specific fields (e.g. pregnancy) for male clients
+              if (field.hideIfMale && isMale) return null;
               // Hide the medications list field entirely if not applicable (handled inside render)
               if (field.type === "medications" && answers.takingMedication !== "yes") return null;
               return (

@@ -4334,6 +4334,7 @@ export default function AdminPage() {
               <AssessmentTab
                 clientId={selectedClientData.clientId || selectedClientData.id}
                 clientName={selectedClientData.name}
+                gender={selectedClientData.gender}
               />
             )}
 
