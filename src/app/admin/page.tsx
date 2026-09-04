@@ -3551,12 +3551,19 @@ export default function AdminPage() {
                     <button onClick={() => { const allDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; const newState: Record<string,boolean> = {}; allDays.forEach(d => newState[d] = false); setAdminExpandedDays(newState); }} className="text-gray-400 hover:text-white text-xs">Collapse All</button>
                   </div>
                   {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                    const dayWorkouts = selectedWeek?.workouts.filter(w => w.day === day) || [];
+                    const allDayWorkouts = selectedWeek?.workouts.filter(w => w.day === day) || [];
                     const dayClientWorkouts = (selectedWeek?.clientWorkouts || []).filter(cw => cw.day === day);
-                    // A day with no workout rows is a rest day (e.g. the workout was moved to
+                    // A day can end up with a leftover 'rest' row alongside a real workout when a
+                    // client moves a workout onto a rest day (the move only changes the workout's
+                    // day, it doesn't remove the day's existing rest row). If there's a real
+                    // (non-rest) workout on the day, hide the redundant rest row(s) so we don't
+                    // show e.g. "Long Run" AND "Rest" on the same day.
+                    const hasRealWorkout = allDayWorkouts.some(w => w.type !== 'rest') || dayClientWorkouts.length > 0;
+                    const dayWorkouts = hasRealWorkout ? allDayWorkouts.filter(w => w.type !== 'rest') : allDayWorkouts;
+                    // A day with no real workout rows is a rest day (e.g. the workout was moved to
                     // another day). Show it as a collapsed Rest Day rather than hiding it, so the
                     // coach sees the full week — matching what the client sees on their plan.
-                    const isDayEmpty = dayWorkouts.length === 0 && dayClientWorkouts.length === 0;
+                    const isDayEmpty = !hasRealWorkout;
                     const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                     const daySummary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
                     const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, w.distanceUnit) : 0), 0);
