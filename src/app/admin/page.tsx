@@ -3245,7 +3245,7 @@ export default function AdminPage() {
       </button>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-auto pb-20'}`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary || showGuide || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
