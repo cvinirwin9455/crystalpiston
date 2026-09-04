@@ -123,7 +123,7 @@ export async function relinkOrphanedStravaActivities(
       })
       .eq('id', activity.id)
 
-    // Also update or create the client_workouts entry
+    // Manage the standalone client_workouts entry for this Strava activity.
     const { data: existingCw } = await adminClient
       .from('client_workouts')
       .select('id')
@@ -131,14 +131,23 @@ export async function relinkOrphanedStravaActivities(
       .eq('user_id', userId)
       .single()
 
-    if (existingCw) {
-      // Update existing entry with week_id
+    if (suggestedMatchId) {
+      // The activity matched a programmed workout — it will show as that workout's
+      // completed entry (with backfilled metrics). Do NOT keep a standalone strava
+      // client_workouts row, or the day would show the run twice. Mirrors the
+      // live-import auto-match path which skips creating a client_workouts row.
+      if (existingCw) {
+        await adminClient.from('client_workouts').delete().eq('id', existingCw.id)
+      }
+    } else if (existingCw) {
+      // No match — keep the standalone entry, just attach it to the week.
       await adminClient
         .from('client_workouts')
         .update({ week_id: weekId })
         .eq('id', existingCw.id)
     } else {
-      // Create a new client_workouts entry
+      // No match and no existing entry — create a standalone strava entry so the
+      // unmatched run is still visible for the coach/client to review.
       await adminClient
         .from('client_workouts')
         .insert({
