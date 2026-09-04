@@ -10,6 +10,8 @@ const updates = [
     date: "September 4, 2026",
     items: [
       { area: "Client", text: "Fixed: In-person session days now show correctly on the client's training plan. Previously, if a client had a schedule and paid sessions AND a training plan assigned, every day was being shown as a remote/online day — even the days that were actually booked in-person sessions. Now, any day with a scheduled in-person session is correctly marked as in-person (so it's locked from being moved and shows the 'request cancel/reschedule' option), while all other days remain remote as expected" },
+      { area: "Admin", text: "Fixed: A rest day is never treated as an in-person session anymore. Before, if a client's schedule had an in-person session land on a day the training program marked as 'Rest', that rest day was wrongly shown as an in-person session (on both your Create Week screen and the client's plan). Now a rest day always stays a remote rest day" },
+      { area: "Admin", text: "NEW: Scheduling conflict warning — if you have an in-person session booked on a day your program says is a rest day, the Create Week screen now shows an amber '⚠️ Session scheduled on a rest day' badge on that day, so you can spot the mismatch and fix either the schedule or the plan. If you give that day a real workout, it automatically becomes an in-person day again" },
     ],
   },
   {

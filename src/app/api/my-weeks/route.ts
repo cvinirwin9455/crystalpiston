@@ -323,10 +323,15 @@ export async function GET() {
         // Match this workout's day to a scheduled session (for in-person locking + requests)
         const woDateStr = dateStrForDay(weekMonday, wo.day)
         const matchedSession = woDateStr ? sessionsByDate.get(woDateStr) : null
+        const woIsRest = (wo.type || 'run') === 'rest'
         // A booked coaching session on this date IS an in-person session (sessions
         // always represent in-person, paid coaching). Only fall back to the workout's
         // own session_type (which defaults to 'remote') when there's no linked session.
-        const woSessionType = matchedSession ? 'in_person' : (wo.session_type || 'remote')
+        // EXCEPTION: a rest day can never be in-person — a rest day that happens to
+        // overlap a scheduled session is a scheduling conflict, not a coached session.
+        // We keep it 'remote' and surface the conflict rather than locking a rest day.
+        const woSessionType = (matchedSession && !woIsRest) ? 'in_person' : (wo.session_type || 'remote')
+        const woSessionConflict = !!matchedSession && woIsRest
 
         return {
           id: wo.id,
@@ -342,8 +347,11 @@ export async function GET() {
           coachNotes: wo.coach_notes || '',
           structure: wo.structure || null,
           sessionType: woSessionType,
-          sessionId: matchedSession?.id || null,
-          sessionScheduledAt: matchedSession?.scheduled_at || null,
+          // Don't link a rest day to its session for the client-facing in-person
+          // lock/reschedule UI — the day is remote. The conflict flag is for the coach.
+          sessionId: (matchedSession && !woIsRest) ? matchedSession.id : null,
+          sessionScheduledAt: (matchedSession && !woIsRest) ? matchedSession.scheduled_at : null,
+          sessionConflict: woSessionConflict,
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,

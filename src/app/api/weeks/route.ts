@@ -459,23 +459,29 @@ export async function POST(request: Request) {
 
   // Create workouts if provided
   if (workouts && workouts.length > 0) {
-    const workoutRows = workouts.map((w: any, index: number) => ({
-      week_id: week.id,
-      day: w.day,
+    const workoutRows = workouts.map((w: any, index: number) => {
       // Blank/unselected type saves as 'rest' (was defaulting to 'run' — the phantom-run bug)
-      type: w.type || 'rest',
-      training_type: w.trainingType || null,
-      title: w.title || null,
-      miles: w.miles ? parseFloat(w.miles) : null,
-      description: w.description || null,
-      pace_target: w.paceTarget || null,
-      location: w.location || null,
-      coach_notes: w.coachNotes || null,
-      sort_order: index,
-      distance_unit: w.distanceUnit || 'mi',
-      structure: w.structure || null,
-      session_type: w.sessionType || 'remote',
-    }))
+      const woType = w.type || 'rest'
+      // A rest day can never be an in-person coached session — enforce it here so the
+      // DB never stores a contradictory row, regardless of what the form sent.
+      const woSessionType = woType === 'rest' ? 'remote' : (w.sessionType || 'remote')
+      return {
+        week_id: week.id,
+        day: w.day,
+        type: woType,
+        training_type: w.trainingType || null,
+        title: w.title || null,
+        miles: w.miles ? parseFloat(w.miles) : null,
+        description: w.description || null,
+        pace_target: w.paceTarget || null,
+        location: w.location || null,
+        coach_notes: w.coachNotes || null,
+        sort_order: index,
+        distance_unit: w.distanceUnit || 'mi',
+        structure: w.structure || null,
+        session_type: woSessionType,
+      }
+    })
 
     const { error: workoutsError } = await adminClient
       .from('workouts')

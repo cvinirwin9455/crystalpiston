@@ -20,6 +20,10 @@ type WorkoutLog = { rpe: string; stress: string; notes: string; energy: string; 
 type WorkoutDay = { id: string; day: string; date: string; type: "run" | "cross" | "rest" | "walk" | "cycling" | "stretching" | "strength" | "hiit" | "swimming"; trainingType: string; title: string; miles: number | null; distanceUnit?: "mi" | "km"; description: string; paceTarget?: string; location?: string; coachNotes?: string; completed: boolean; stravaSynced?: boolean; stravaActivityName?: string | null; log?: WorkoutLog; };
 type ClientWorkout = { id: string; day: string; type: string; trainingType: string | null; miles: number | null; notes: string | null; createdAt: string; isClientAdded: true; source?: string; duration?: string | null; averagePace?: string | null; activityName?: string | null; avgHeartrate?: number | null; maxHeartrate?: number | null; completed?: boolean; completedNotes?: string | null; };
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
+// Editable Create-Week form shapes. Kept permissive (fields optional / index signature)
+// because workouts carry optional structure data and are built from several sources.
+type WeekPlanWorkout = { type: string; trainingType: string; title: string; miles: string; description: string; paceTarget: string; location: string; coachNotes: string; distanceUnit: string; structure?: any; crossTrainingStructure?: any; [key: string]: any };
+type WeekPlanDay = { day: string; sessionType: "remote" | "in_person"; sessionConflict: boolean; workouts: WeekPlanWorkout[] };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
@@ -328,23 +332,35 @@ export default function AdminPage() {
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
   const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "", trackCycle: false });
 
-  const [weekPlan, setWeekPlan] = useState({
+  const [weekPlan, setWeekPlan] = useState<{ dateRange: string; focus: string; coachMessage: string; days: WeekPlanDay[] }>({
     dateRange: "", focus: "", coachMessage: "",
     days: [
-      { day: "Monday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Thursday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Friday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Saturday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
-      { day: "Sunday", sessionType: "remote" as "remote" | "in_person", workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Monday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Tuesday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Wednesday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Thursday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Friday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Saturday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
+      { day: "Sunday", sessionType: "remote" as "remote" | "in_person", sessionConflict: false, workouts: [{ type: "" as string, trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] },
     ],
   });
   const updateDayPlan = (dayIndex: number, workoutIndex: number, field: string, value: string) => {
     const updated = [...weekPlan.days];
     const workouts = [...updated[dayIndex].workouts];
     (workouts[workoutIndex] as Record<string, string>)[field] = value;
-    updated[dayIndex] = { ...updated[dayIndex], workouts };
+    let nextDay: any = { ...updated[dayIndex], workouts };
+    // Re-reconcile rest/in-person when the workout TYPE changes.
+    if (field === 'type') {
+      const isRestDay = workouts.length > 0 && workouts.every(w => w.type === 'rest');
+      if (nextDay.sessionConflict && !isRestDay) {
+        // The day was flagged as "session on a rest day"; the coach has now given it a
+        // real workout, so the scheduled in-person session applies again — restore it.
+        nextDay = { ...nextDay, sessionType: 'in_person', sessionConflict: false };
+      } else {
+        nextDay = reconcileRestInPerson(nextDay);
+      }
+    }
+    updated[dayIndex] = nextDay;
     setWeekPlan({ ...weekPlan, days: updated });
   };
 
@@ -562,6 +578,19 @@ export default function AdminPage() {
   const [aiCoachNotes, setAiCoachNotes] = useState("");
   const [aiCredits, setAiCredits] = useState<{ used: number; total: number } | null>(null);
 
+  // Enforce the rule: a rest day can never be an in-person coached session.
+  // If a day is marked in-person but its workout(s) are all "rest", keep it remote
+  // and set sessionConflict=true so the coach sees a warning (their schedule has an
+  // in-person session on a day the program says is rest). Non-rest in-person days and
+  // remote days pass through with sessionConflict=false.
+  const reconcileRestInPerson = <T extends { sessionType: "remote" | "in_person"; workouts: { type: string }[] },>(day: T): T & { sessionConflict: boolean } => {
+    const isRestDay = day.workouts.length > 0 && day.workouts.every(w => w.type === 'rest');
+    if (day.sessionType === 'in_person' && isRestDay) {
+      return { ...day, sessionType: 'remote', sessionConflict: true };
+    }
+    return { ...day, sessionConflict: false };
+  };
+
   // AI credits fetch — DISABLED (AI features removed for cost savings)
   const selectWeek = (monday: Date) => {
     const sunday = new Date(monday);
@@ -604,16 +633,19 @@ export default function AdminPage() {
         isInPersonDay = clientRecurringDays.includes(dayNameToIndex[day.day]);
       }
       
+      // A rest day can never be in-person. If a day is scheduled in-person but its
+      // (already-present) workout is a rest day, keep it remote and flag the conflict
+      // so the coach is warned. reconcileRestInPerson centralizes this rule.
       if (billingMode === 'hybrid') {
-        return { ...day, sessionType: isInPersonDay ? 'in_person' as const : 'remote' as const };
+        return reconcileRestInPerson({ ...day, sessionType: isInPersonDay ? 'in_person' as const : 'remote' as const });
       } else if (billingMode === 'per_session') {
         if (isInPersonDay) {
-          return { ...day, sessionType: 'in_person' as const };
+          return reconcileRestInPerson({ ...day, sessionType: 'in_person' as const });
         } else {
-          return { ...day, sessionType: 'remote' as const, workouts: [{ ...day.workouts[0], type: 'rest' }] };
+          return { ...day, sessionType: 'remote' as const, sessionConflict: false, workouts: [{ ...day.workouts[0], type: 'rest' }] };
         }
       }
-      return day;
+      return { ...day, sessionConflict: false };
     });
     
     setWeekPlan({ ...weekPlan, dateRange, days: updatedDays });
@@ -1079,11 +1111,17 @@ export default function AdminPage() {
       }
       return { day: d.day, workouts: [{ type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '', description: d.description || '', paceTarget: d.paceTarget || '', location: d.location || '', coachNotes: d.coachNotes || '', distanceUnit: d.distanceUnit || 'mi', ...(d.structure ? { structure: d.structure } : {}), ...(d.crossTrainingStructure ? { crossTrainingStructure: d.crossTrainingStructure } : {}) }] };
     });
+    // Templates don't carry a schedule; default to remote and reconcile rest days.
+    const normalizedDays: WeekPlanDay[] = days.map((d: any) => reconcileRestInPerson({
+      day: d.day,
+      sessionType: (d.sessionType === 'in_person' ? 'in_person' : 'remote') as 'remote' | 'in_person',
+      workouts: d.workouts,
+    }));
     setWeekPlan({
       ...weekPlan,
       focus: data.focus || '',
       coachMessage: data.coachMessage || '',
-      days: days.length === 7 ? days : weekPlan.days,
+      days: normalizedDays.length === 7 ? normalizedDays : weekPlan.days,
     });
   };
 
@@ -1160,12 +1198,16 @@ export default function AdminPage() {
         };
       });
 
-      setWeekPlan({
-        ...weekPlan,
-        focus: suggestion.focus || weekPlan.focus,
-        coachMessage: suggestion.coachMessage || weekPlan.coachMessage,
-        days: mappedDays,
-      });
+      setWeekPlan(prev => ({
+        ...prev,
+        focus: suggestion.focus || prev.focus,
+        coachMessage: suggestion.coachMessage || prev.coachMessage,
+        // Preserve the schedule-driven sessionType per day, then enforce rest => remote.
+        days: mappedDays.map(md => {
+          const prevDay = prev.days.find(d => d.day === md.day);
+          return reconcileRestInPerson({ ...md, sessionType: prevDay?.sessionType ?? 'remote' });
+        }),
+      }));
 
       setAiReasoning(suggestion.reasoning || '');
     } catch (err: any) {
@@ -2298,7 +2340,16 @@ export default function AdminPage() {
     setWeekPlan(prev => ({
       ...prev,
       focus: programWeek.label || '',
-      days: mappedDays,
+      // Merge the program's workouts onto each day while preserving the sessionType
+      // that selectWeek already set from the client's schedule. Then reconcile:
+      // a rest day scheduled in-person becomes remote + flagged as a conflict.
+      days: mappedDays.map(md => {
+        const prevDay = prev.days.find(d => d.day === md.day);
+        return reconcileRestInPerson({
+          ...md,
+          sessionType: prevDay?.sessionType ?? 'remote',
+        });
+      }),
     }));
   }, [clientTab, activePlan?.programTemplateId, programTemplates.length, weekPlan.dateRange]);
 
@@ -2435,7 +2486,12 @@ export default function AdminPage() {
         coachNotes: w.coachNotes || null,
         distanceUnit: w.distanceUnit || 'mi',
         structure: (w as any).crossTrainingStructure || (w as any).structure || null,
-        sessionType: activePlan?.billingMode === 'per_session' ? ((() => { const dMap: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 }; return clientRecurringDays.includes(dMap[day.day]) ? 'in_person' : 'remote'; })()) : (activePlan?.billingMode === 'hybrid' ? day.sessionType : 'remote'),
+        // A rest day can never be in-person, regardless of billing mode or schedule.
+        sessionType: w.type === 'rest'
+          ? 'remote'
+          : (activePlan?.billingMode === 'per_session'
+              ? ((() => { const dMap: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 }; return clientRecurringDays.includes(dMap[day.day]) ? 'in_person' : 'remote'; })())
+              : (activePlan?.billingMode === 'hybrid' ? day.sessionType : 'remote')),
       }))
     );
 
@@ -2650,10 +2706,15 @@ export default function AdminPage() {
       days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((dayName) => {
         const dayWorkouts = week.workouts.filter(w => w.day === dayName);
         if (dayWorkouts.length === 0) {
-          return { day: dayName, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] };
+          return { day: dayName, sessionType: 'remote' as const, sessionConflict: false, workouts: [{ type: 'rest', trainingType: 'Rest', title: '', miles: '', description: '', paceTarget: '', location: '', coachNotes: '', distanceUnit: 'mi' }] };
         }
+        const anyInPerson = dayWorkouts.some(w => (w as any).sessionType === 'in_person');
+        const allRest = dayWorkouts.every(w => (w.type || 'rest') === 'rest');
         return {
           day: dayName,
+          // Preserve stored in-person marking, but never on a rest day (defensive).
+          sessionType: (anyInPerson && !allRest ? 'in_person' : 'remote') as 'remote' | 'in_person',
+          sessionConflict: anyInPerson && allRest,
           workouts: dayWorkouts.map(w => ({
             type: w.type || 'rest',
             trainingType: w.trainingType || '',
@@ -4027,13 +4088,22 @@ export default function AdminPage() {
                               {day.sessionType === 'in_person' ? '🏋️ In-Person' : '📱 Remote'}
                             </span>
                           )}
+                          {/* Conflict: an in-person session is scheduled on a day the program marks as Rest */}
+                          {(day as any).sessionConflict && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/40" title="You have an in-person session scheduled on a rest day. Kept as a remote rest day — review the schedule in the Sessions tab or change this day's workout.">
+                              ⚠️ Session scheduled on a rest day
+                            </span>
+                          )}
                         </div>
                         {/* Hybrid: show toggle button (works even before a workout type is selected) */}
                         {activePlan?.billingMode === 'hybrid' && (
                           <button
                             onClick={() => {
                               const updated = [...weekPlan.days];
-                              updated[i] = { ...updated[i], sessionType: day.sessionType === 'in_person' ? 'remote' : 'in_person' };
+                              const next = day.sessionType === 'in_person' ? 'remote' as const : 'in_person' as const;
+                              // reconcileRestInPerson keeps a rest day from becoming in-person
+                              // (it will flag a conflict instead) and clears the flag otherwise.
+                              updated[i] = reconcileRestInPerson({ ...updated[i], sessionType: next });
                               setWeekPlan({ ...weekPlan, days: updated });
                             }}
                             className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${day.sessionType === 'in_person' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:border-white/30'}`}
@@ -4214,7 +4284,7 @@ export default function AdminPage() {
                   <span className="text-gray-400 text-sm">Weekly Mileage Total:</span>
                   <span className="text-accent font-heading text-lg">{weekPlan.days.reduce((total, day) => total + day.workouts.reduce((dayTotal, wo) => dayTotal + (wo.miles && (wo.type === 'run' || wo.type === 'walk') ? parseFloat(wo.miles) || 0 : 0), 0), 0).toFixed(2)} {weekPlan.days.some(d => d.workouts.some(wo => wo.distanceUnit === 'km')) ? 'km' : 'mi'}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
+                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
                 {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
