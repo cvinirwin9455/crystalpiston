@@ -3553,7 +3553,10 @@ export default function AdminPage() {
                   {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
                     const dayWorkouts = selectedWeek?.workouts.filter(w => w.day === day) || [];
                     const dayClientWorkouts = (selectedWeek?.clientWorkouts || []).filter(cw => cw.day === day);
-                    if (dayWorkouts.length === 0 && dayClientWorkouts.length === 0) return null;
+                    // A day with no workout rows is a rest day (e.g. the workout was moved to
+                    // another day). Show it as a collapsed Rest Day rather than hiding it, so the
+                    // coach sees the full week — matching what the client sees on their plan.
+                    const isDayEmpty = dayWorkouts.length === 0 && dayClientWorkouts.length === 0;
                     const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                     const daySummary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
                     const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, w.distanceUnit) : 0), 0);
@@ -3569,10 +3572,12 @@ export default function AdminPage() {
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
                             <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
-                            {!isAdminDayExpanded && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${dayMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
+                            {!isAdminDayExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${dayMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
+                            {isDayEmpty && <span className="text-gray-500 text-xs ml-3">Rest Day</span>}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
+                            {!isDayEmpty && <span className="text-gray-300 text-xs">{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>}
+                            {isDayEmpty && <span className="text-green-400/60 text-xs">Rest</span>}
                             <svg aria-hidden="true" className={`w-4 h-4 text-gray-400 transition-transform ${isAdminDayExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </div>
                         </button>
@@ -3814,6 +3819,13 @@ export default function AdminPage() {
                             )}
                           </div>
                         ))}
+                        {/* Empty day (rest) — nothing programmed. Shown when not editing. */}
+                        {isDayEmpty && !editingWeek && (
+                          <div className="flex items-center gap-2 text-gray-500 text-xs py-1">
+                            <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-green-500/15 text-green-400">Rest</span>
+                            <span>No workout programmed for this day.</span>
+                          </div>
+                        )}
                         {/* Add workout to day button (edit mode) */}
                         {editingWeek && (
                           <button onClick={async () => { if (!selectedWeek) return; const client = clients.find(c => c.id === selectedClient); if (!client?.clientId) return; const res = await fetch('/api/workouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weekId: selectedWeek.weekId, day, type: 'rest', trainingType: 'Rest', title: '', miles: null, description: '', paceTarget: '', location: '', coachNotes: '', sortOrder: 99 }) }); if (res.ok) { setEditingWeek(false); setEditedWorkouts({}); await fetchWeeks(client.clientId); setTimeout(() => enterEditMode(), 100); } }} className="w-full border border-dashed border-accent/30 rounded-xl py-2 text-accent hover:text-white hover:border-accent/50 text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
