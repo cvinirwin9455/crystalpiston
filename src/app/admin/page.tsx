@@ -4401,6 +4401,8 @@ export default function AdminPage() {
                 clientId={selectedClientData.clientId || selectedClientData.id}
                 clientName={selectedClientData.name}
                 onSessionsChange={() => { if (selectedClientData.clientId) refreshActivePlanAndSessions(selectedClientData.clientId); }}
+                programTemplateName={activePlan?.programTemplateId ? (programTemplates.find(p => p.id === activePlan.programTemplateId)?.name ?? null) : null}
+                programTemplateData={activePlan?.programTemplateId ? (programTemplates.find(p => p.id === activePlan.programTemplateId)?.data ?? null) : null}
               />
             )}
 

@@ -30,16 +30,26 @@ interface RecurringSchedule {
   created_at: string;
 }
 
+// Shape of the program template's structured weeks (from the templates table, type='program')
+interface ProgramTemplateData {
+  totalWeeks: number;
+  weeks: { weekNumber: number; label?: string; days: { day: string; workouts: { type?: string }[] }[] }[];
+}
+
 interface SessionsTabProps {
   clientId: string;
   clientName: string;
   onSessionsChange?: () => void;
+  // The program template assigned to this client's active plan (if any), used to warn
+  // when a scheduled day lands on a rest day in the program.
+  programTemplateName?: string | null;
+  programTemplateData?: ProgramTemplateData | null;
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-export default function SessionsTab({ clientId, clientName, onSessionsChange }: SessionsTabProps) {
+export default function SessionsTab({ clientId, clientName, onSessionsChange, programTemplateName, programTemplateData }: SessionsTabProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
   const [requests, setRequests] = useState<{ id: string; session_id: string; request_type: string; note: string | null; preferred_datetime: string | null; status: string; created_at: string }[]>([]);
@@ -81,6 +91,84 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
   const [editScheduleDuration, setEditScheduleDuration] = useState("");
   const [editScheduleLocation, setEditScheduleLocation] = useState("");
   const [editScheduleType, setEditScheduleType] = useState("");
+
+  // ============ PROGRAM REST-DAY CONFLICT ANALYSIS ============
+  // A day in a program week counts as "rest" if it has no workouts, or all its
+  // workouts are type 'rest'. Mirrors the reconcileRestInPerson rule in page.tsx.
+  const isProgramRestDay = (day: { workouts?: { type?: string }[] } | undefined): boolean => {
+    if (!day) return true; // day missing from the week => effectively rest
+    const workouts = day.workouts || [];
+    if (workouts.length === 0) return true;
+    return workouts.every(w => (w.type || 'rest') === 'rest');
+  };
+
+  // For a given day-of-week number (Sun=0), how many program weeks mark it as a rest
+  // day, and how many define it at all. Returns null if there's no program to check.
+  const restDayInfoForDow = (dow: number): { restWeeks: number; definedWeeks: number; isEverRest: boolean } | null => {
+    if (!programTemplateData || !programTemplateData.weeks || programTemplateData.weeks.length === 0) return null;
+    const dayName = DAY_NAMES_FULL[dow];
+    let restWeeks = 0;
+    let definedWeeks = 0;
+    for (const wk of programTemplateData.weeks) {
+      const day = (wk.days || []).find(d => d.day === dayName);
+      if (!day) continue;
+      definedWeeks++;
+      if (isProgramRestDay(day)) restWeeks++;
+    }
+    return { restWeeks, definedWeeks, isEverRest: restWeeks > 0 };
+  };
+
+  // The set of day names that are a rest day in at least one program week (for display).
+  const programRestDayNames = (): string[] => {
+    if (!programTemplateData || !programTemplateData.weeks) return [];
+    const result: string[] = [];
+    for (let dow = 0; dow < 7; dow++) {
+      const info = restDayInfoForDow(dow);
+      if (info && info.isEverRest) result.push(DAY_NAMES_FULL[dow]);
+    }
+    return result;
+  };
+
+  // Convert a "YYYY-MM-DD" string to a day-of-week number (Sun=0), TZ-safe (noon local).
+  const dowFromDateStr = (dateStr: string): number | null => {
+    const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12).getDay();
+  };
+
+  // Amber warning banner for a set of recurring schedule days that clash with program
+  // rest days. Returns null when there's no program or no clash. Shared by the add +
+  // edit recurring schedule forms.
+  const renderScheduleConflictWarning = (days: number[]) => {
+    if (!programTemplateData) return null;
+    const conflicts = days
+      .map(dow => ({ dow, info: restDayInfoForDow(dow) }))
+      .filter(c => c.info && c.info.isEverRest) as { dow: number; info: { restWeeks: number; definedWeeks: number; isEverRest: boolean } }[];
+    if (conflicts.length === 0) return null;
+    const restNames = programRestDayNames();
+    return (
+      <div className="bg-amber-500/10 border border-amber-500/40 rounded-lg p-3 space-y-1.5">
+        <p className="text-amber-400 text-xs font-medium">⚠️ Heads up: some of these days are rest days in this client&apos;s program</p>
+        <p className="text-gray-300 text-xs">
+          {programTemplateName ? <span className="text-amber-300">{programTemplateName}</span> : 'This program'} has{' '}
+          {conflicts.map((c, i) => (
+            <span key={c.dow}>
+              {i > 0 ? ', ' : ''}
+              <span className="text-white font-medium">{DAY_NAMES_FULL[c.dow]}</span> as a rest day in{' '}
+              <span className="text-white font-medium">{c.info.restWeeks} of {c.info.definedWeeks}</span> week{c.info.definedWeeks !== 1 ? 's' : ''}
+            </span>
+          ))}
+          . Scheduling in-person sessions on {conflicts.length > 1 ? 'those days' : 'that day'} will clash with those rest days.
+        </p>
+        <div className="text-gray-400 text-xs pt-0.5">
+          <span className="text-gray-500">Program rest days:</span> {restNames.map(n => DAY_NAMES[DAY_NAMES_FULL.indexOf(n)]).join(', ') || '—'}
+          {'  ·  '}
+          <span className="text-gray-500">Your schedule:</span> {days.map(d => DAY_NAMES[d]).join(', ') || '—'}
+        </div>
+        <p className="text-gray-500 text-xs italic">You can still save — those sessions will show as conflicts on rest weeks — or pick a different day.</p>
+      </div>
+    );
+  };
 
   useEffect(() => {
     fetchSessions();
@@ -546,6 +634,8 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
               /* Edit schedule */
               <div className="space-y-3">
                 {renderDayPicker(editScheduleDays, setEditScheduleDays, editScheduleDayTimes, setEditScheduleDayTimes)}
+                {/* Program rest-day conflict warning (edit recurring) */}
+                {renderScheduleConflictWarning(editScheduleDays)}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-gray-400 text-xs block mb-1">Duration</label>
@@ -629,6 +719,8 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
               <label className="text-gray-400 text-xs block mb-2">Days & Times *</label>
               {renderDayPicker(scheduleDays, setScheduleDays, scheduleDayTimes, setScheduleDayTimes)}
             </div>
+            {/* Program rest-day conflict warning (recurring) */}
+            {renderScheduleConflictWarning(scheduleDays)}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Start Date *</label>
@@ -702,6 +794,26 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange }: 
               <input type="text" value={newNotes} onChange={(e) => setNewNotes(e.target.value)} placeholder="Optional notes" className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" />
             </div>
           </div>
+          {/* Program rest-day conflict warning (one-off) */}
+          {(() => {
+            if (!programTemplateData || !newDate) return null;
+            const dow = dowFromDateStr(newDate);
+            if (dow === null) return null;
+            const info = restDayInfoForDow(dow);
+            if (!info || !info.isEverRest) return null;
+            return (
+              <div className="bg-amber-500/10 border border-amber-500/40 rounded-lg p-3 space-y-1">
+                <p className="text-amber-400 text-xs font-medium">⚠️ This date falls on a program rest day</p>
+                <p className="text-gray-300 text-xs">
+                  {programTemplateName ? <span className="text-amber-300">{programTemplateName}</span> : 'This program'} has{' '}
+                  <span className="text-white font-medium">{DAY_NAMES_FULL[dow]}</span> as a rest day in{' '}
+                  <span className="text-white font-medium">{info.restWeeks} of {info.definedWeeks}</span> week{info.definedWeeks !== 1 ? 's' : ''}.
+                  Booking an in-person session here will clash with the program&apos;s rest day.
+                </p>
+                <p className="text-gray-500 text-xs italic">You can still save — or pick a different date.</p>
+              </div>
+            );
+          })()}
           <div className="flex gap-2 pt-1">
             <button onClick={handleAddSession} disabled={!newDate || saving} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
               {saving ? "Creating..." : "Create Session"}
