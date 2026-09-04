@@ -5569,7 +5569,7 @@ export default function AdminPage() {
                                             <div key={woi}>
                                             <div className="flex items-center gap-2 flex-wrap">
                                               <select value={wo.type || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], type: e.target.value, trainingType: e.target.value === 'rest' ? 'Rest' : '' }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-20">
-                                                <option value="">—</option><option value="run">Run</option><option value="cross">Cross</option><option value="walk">Walk</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
+                                                <option value="">—</option><option value="run">Run</option><option value="cross">Cross</option><option value="strength">Strength</option><option value="hiit">HIIT</option><option value="walk">Walk</option><option value="swimming">Swim</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
                                               </select>
                                               {(wo.type === "run" || wo.type === "walk") && (
                                                 <>
@@ -5585,12 +5585,55 @@ export default function AdminPage() {
                                                   <option value="">Type</option><option value="FoamRoll">Foam Roll</option><option value="Stretching">Stretching</option><option value="Yoga">Yoga</option>
                                                 </select>
                                               )}
+                                              {wo.type === "strength" && (
+                                                <select value={wo.trainingType || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], trainingType: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                                  <option value="">Type</option><option value="UpperBody">Upper Body</option><option value="LowerBody">Lower Body</option><option value="FullBody">Full Body</option><option value="Core">Core</option><option value="OlympicLifts">Olympic Lifts</option><option value="Powerlifting">Powerlifting</option>
+                                                </select>
+                                              )}
+                                              {wo.type === "hiit" && (
+                                                <select value={wo.trainingType || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], trainingType: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                                  <option value="">Type</option><option value="AMRAP">AMRAP</option><option value="EMOM">EMOM</option><option value="Tabata">Tabata</option><option value="Circuit">Circuit</option><option value="Intervals">Intervals</option>
+                                                </select>
+                                              )}
                                               {day.workouts.length > 1 && <button type="button" onClick={() => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; nd[di] = { ...nd[di], workouts: nd[di].workouts.filter((_: any, idx: number) => idx !== woi) }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="text-red-400 text-xs hover:text-red-300">x</button>}
                                             </div>
                                             {wo.type && wo.type !== "rest" && (
                                               <div className="flex items-center gap-2 mt-1">
                                                 <input type="text" value={wo.title || ''} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], title: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1" placeholder="Title (e.g. Tempo Tuesday)" />
                                                 <input type="text" value={wo.coachNotes || ''} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], coachNotes: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1" placeholder="Notes (e.g. Keep conversational pace)" />
+                                              </div>
+                                            )}
+                                            {/* Structured workout builders — same as Create Week, wired to programWeeks */}
+                                            {wo.type === "run" && (
+                                              <div className="mt-2">
+                                                <StructuredRunBuilder
+                                                  structure={(wo as any).structure || { warmUp: null, blocks: [{ blockType: "intervals", reps: "", work: { type: "distance", value: "", unit: (wo.distanceUnit || adminDistanceUnit) === "km" ? "km" : "miles" }, intensity: "", recovery: { type: "distance", value: "", unit: (wo.distanceUnit || adminDistanceUnit) === "km" ? "km" : "miles", recoveryType: "Jog" } }], coolDown: null }}
+                                                  distanceUnit={wo.distanceUnit || adminDistanceUnit}
+                                                  onChange={(structure) => {
+                                                    const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts];
+                                                    const woUnit = nwo[woi].distanceUnit || adminDistanceUnit;
+                                                    const autoValue = calculateTotalDistance(structure, woUnit);
+                                                    nwo[woi] = { ...nwo[woi], structure, miles: autoValue > 0 ? autoValue.toString() : "" };
+                                                    nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw);
+                                                  }}
+                                                />
+                                              </div>
+                                            )}
+                                            {(wo.type === "cross" || wo.type === "strength" || wo.type === "hiit" || wo.type === "stretching") && (
+                                              <div className="mt-2">
+                                                <StructuredCrossTrainingBuilder
+                                                  structure={(wo as any).crossTrainingStructure || { exercises: [{ name: "", measureType: "reps", measureValue: "", weight: "", weightUnit: adminWeightUnit, sets: 3, rest: "01:00", notes: "" }] }}
+                                                  weightUnit={adminWeightUnit}
+                                                  exerciseLibrary={exerciseLibrary}
+                                                  workoutType={wo.type}
+                                                  showRounds={wo.type === "hiit"}
+                                                  hiitSubtype={wo.type === "hiit" ? wo.trainingType : undefined}
+                                                  onChange={(crossTrainingStructure) => {
+                                                    const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts];
+                                                    nwo[woi] = { ...nwo[woi], crossTrainingStructure, description: formatCrossTrainingForDisplay(crossTrainingStructure) };
+                                                    nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw);
+                                                  }}
+                                                />
                                               </div>
                                             )}
                                             </div>
