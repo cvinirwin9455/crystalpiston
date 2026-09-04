@@ -1846,9 +1846,14 @@ export default function DashboardPage() {
               </div>
 
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                const dayWorkouts = currentWeek.workouts.filter(w => w.day === day);
+                const allDayWorkouts = currentWeek.workouts.filter(w => w.day === day);
                 const dayClientWorkouts = (currentWeek.clientWorkouts || []).filter(cw => cw.day === day);
-                const isDayEmpty = dayWorkouts.length === 0 && dayClientWorkouts.length === 0;
+                // If a workout was moved onto a rest day, a leftover 'rest' row can remain in the
+                // DB alongside the real workout. Hide redundant rest rows when the day has a real
+                // workout, so we never show a workout AND a Rest entry on the same day.
+                const hasRealWorkout = allDayWorkouts.some(w => w.type !== 'rest') || dayClientWorkouts.length > 0;
+                const dayWorkouts = hasRealWorkout ? allDayWorkouts.filter(w => w.type !== 'rest') : allDayWorkouts;
+                const isDayEmpty = !hasRealWorkout;
                 const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                 const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
                 const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0);
