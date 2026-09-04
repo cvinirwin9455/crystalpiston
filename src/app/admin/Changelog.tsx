@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-08-31T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-04T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 4, 2026",
+    items: [
+      { area: "Client", text: "Fixed: In-person session days now show correctly on the client's training plan. Previously, if a client had a schedule and paid sessions AND a training plan assigned, every day was being shown as a remote/online day — even the days that were actually booked in-person sessions. Now, any day with a scheduled in-person session is correctly marked as in-person (so it's locked from being moved and shows the 'request cancel/reschedule' option), while all other days remain remote as expected" },
+    ],
+  },
   {
     date: "August 31, 2026",
     items: [

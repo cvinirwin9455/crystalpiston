@@ -323,7 +323,10 @@ export async function GET() {
         // Match this workout's day to a scheduled session (for in-person locking + requests)
         const woDateStr = dateStrForDay(weekMonday, wo.day)
         const matchedSession = woDateStr ? sessionsByDate.get(woDateStr) : null
-        const woSessionType = wo.session_type || 'remote'
+        // A booked coaching session on this date IS an in-person session (sessions
+        // always represent in-person, paid coaching). Only fall back to the workout's
+        // own session_type (which defaults to 'remote') when there's no linked session.
+        const woSessionType = matchedSession ? 'in_person' : (wo.session_type || 'remote')
 
         return {
           id: wo.id,
