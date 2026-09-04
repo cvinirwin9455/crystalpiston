@@ -163,7 +163,10 @@ export async function GET(request: Request) {
 
     allStravaActivities = stravaActivities || []
     for (const sa of allStravaActivities) {
-      if (sa.match_status === 'matched' && sa.matched_workout_id) {
+      // Both 'matched' (live auto-match) and 'suggested' (linked at week-publish via
+      // relinkOrphanedStravaActivities) mean this Strava run represents this programmed
+      // workout — so dedupe it against that workout and hide the standalone strava card.
+      if ((sa.match_status === 'matched' || sa.match_status === 'suggested') && sa.matched_workout_id) {
         stravaMatchedActivityIds.add(sa.id)
         stravaMatchedWorkoutIds.add(sa.matched_workout_id)
         if (sa.activity_name) {
