@@ -193,9 +193,31 @@ export async function GET() {
       // Skip 0-mile distance-based activities (accidental start/stop) but allow stretching/strength/cross
       const distanceTypes = ['run', 'walk', 'cycling']
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
-      const weekWorkouts = workoutsByWeekId.get(sa.week_id) || []
-      for (const wo of weekWorkouts) {
-        if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
+      // Pick the CLOSEST same-day/same-type workout by distance — never attribute a run to a
+      // workout of a clearly different distance (prevents a 10mi run also showing on a 6mi run).
+      const weekWorkoutsAll = workoutsByWeekId.get(sa.week_id) || []
+      const saMilesForMatch = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
+      const isDistanceTypeForMatch = ['run', 'walk', 'cycling'].includes(sa.type)
+      const weekWorkouts = weekWorkoutsAll
+        .filter((wo: any) => wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id))
+        .filter((wo: any) => {
+          if (!isDistanceTypeForMatch) return true
+          const woMiles = wo.miles != null ? parseFloat(wo.miles) : null
+          if (!woMiles || !saMilesForMatch) return true
+          const ratio = Math.min(woMiles, saMilesForMatch) / Math.max(woMiles, saMilesForMatch)
+          return ratio >= 0.7
+        })
+        .sort((a: any, b: any) => {
+          if (!isDistanceTypeForMatch || !saMilesForMatch) return 0
+          const am = a.miles != null ? parseFloat(a.miles) : null
+          const bm = b.miles != null ? parseFloat(b.miles) : null
+          const ad = am != null ? Math.abs(am - saMilesForMatch) : Number.MAX_SAFE_INTEGER
+          const bd = bm != null ? Math.abs(bm - saMilesForMatch) : Number.MAX_SAFE_INTEGER
+          return ad - bd
+        })
+      const wo = weekWorkouts[0]
+      if (wo) {
+        {
           // Only hide if we can get the Strava data OR the log already has miles
           // Non-distance types (stretching, strength, cross) can always be hidden
           const existingLog = logsByWorkoutId.get(wo.id)
@@ -226,7 +248,6 @@ export async function GET() {
               if (sa.max_heartrate && !existingLog.max_heartrate) existingLog.max_heartrate = sa.max_heartrate
             }
           }
-          break
         }
       }
     }
