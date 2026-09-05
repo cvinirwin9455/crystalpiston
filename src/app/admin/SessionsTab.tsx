@@ -52,7 +52,7 @@ const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", 
 export default function SessionsTab({ clientId, clientName, onSessionsChange, programTemplateName, programTemplateData }: SessionsTabProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
-  const [requests, setRequests] = useState<{ id: string; session_id: string; request_type: string; note: string | null; preferred_datetime: string | null; status: string; created_at: string }[]>([]);
+  const [requests, setRequests] = useState<{ id: string; session_id: string; request_type: string; note: string | null; preferred_datetime: string | null; preferred_slots: string[] | null; status: string; created_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
   const [showAddSession, setShowAddSession] = useState(false);
@@ -199,6 +199,54 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
       if (res.ok) fetchRequests();
     } catch (err) {
       console.error("Failed to resolve request:", err);
+    }
+  };
+
+  // Accept one of the availability slots the client offered: the server moves the
+  // session to that time, resolves the request, and emails the client to confirm.
+  const handleAcceptSlot = async (requestId: string, slot: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/session-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action: 'accept_slot', acceptedSlot: slot }),
+      });
+      if (res.ok) {
+        fetchRequests();
+        fetchSessions();
+      } else {
+        alert('Failed to confirm the new time. Please try again.');
+      }
+    } catch (err) {
+      console.error("Failed to accept slot:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // None of the offered times work: the server cancels the session (no charge),
+  // resolves the request, and emails the client to contact the coach.
+  const handleRejectRequest = async (requestId: string) => {
+    if (!confirm("None of the client's offered times work? This will cancel the session (no charge) and email the client to contact you for a new time.")) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/session-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action: 'reject' }),
+      });
+      if (res.ok) {
+        fetchRequests();
+        fetchSessions();
+        fetchBalance();
+      } else {
+        alert('Failed to cancel the session. Please try again.');
+      }
+    } catch (err) {
+      console.error("Failed to reject request:", err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -932,13 +980,74 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
                             Client requested to {pendingReq.request_type === 'cancel' ? 'cancel' : 'reschedule'} this session
                           </span>
                         </div>
-                        <button onClick={() => handleResolveRequest(pendingReq.id)} className="text-gray-400 text-xs hover:text-white whitespace-nowrap">Dismiss</button>
                       </div>
-                      {pendingReq.request_type === 'reschedule' && pendingReq.preferred_datetime && (
-                        <p className="text-gray-300 text-xs mt-1">Prefers: {formatDateTime(pendingReq.preferred_datetime)}</p>
-                      )}
                       {pendingReq.note && <p className="text-gray-400 text-xs mt-1 italic">&ldquo;{pendingReq.note}&rdquo;</p>}
-                      <p className="text-gray-500 text-xs mt-1">Use the actions below to reschedule/cancel, then dismiss this request.</p>
+                      {pendingReq.request_type === 'reschedule' ? (() => {
+                        // Slots the client offered (fall back to the single legacy preferred_datetime).
+                        const offeredSlots = (pendingReq.preferred_slots && pendingReq.preferred_slots.length > 0)
+                          ? pendingReq.preferred_slots
+                          : (pendingReq.preferred_datetime ? [pendingReq.preferred_datetime] : []);
+                        return (
+                          <div className="mt-2">
+                            {offeredSlots.length > 0 ? (
+                              <>
+                                <p className="text-gray-300 text-xs mb-1.5">They&apos;re available at these times — tap one to confirm it:</p>
+                                <div className="flex flex-col gap-1.5 mb-2">
+                                  {offeredSlots.map((slot, si) => (
+                                    <button
+                                      key={si}
+                                      onClick={() => handleAcceptSlot(pendingReq.id, slot)}
+                                      disabled={saving}
+                                      className="w-full sm:w-auto self-start bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50 flex items-center gap-1.5"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                      Confirm {formatDateTime(slot)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-gray-400 text-xs mb-2">The client didn&apos;t offer specific times.</p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={() => startEditing(session)}
+                                className="bg-white/10 hover:bg-white/20 text-white font-medium py-1.5 px-3 rounded-lg text-xs"
+                              >
+                                Pick a different time
+                              </button>
+                              <button
+                                onClick={() => handleRejectRequest(pendingReq.id)}
+                                disabled={saving}
+                                className="text-red-400 text-xs hover:text-red-300 px-2 py-1.5 disabled:opacity-50"
+                              >
+                                None of these work (cancel session)
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })() : (
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <button
+                            onClick={() => { handleUpdateStatus(session.id, "cancelled_no_charge"); handleResolveRequest(pendingReq.id); }}
+                            className="bg-white/10 hover:bg-white/20 text-white font-medium py-1.5 px-3 rounded-lg text-xs"
+                          >
+                            Cancel (no charge)
+                          </button>
+                          <button
+                            onClick={() => { handleUpdateStatus(session.id, "cancelled_charged"); handleResolveRequest(pendingReq.id); }}
+                            className="bg-white/10 hover:bg-white/20 text-white font-medium py-1.5 px-3 rounded-lg text-xs"
+                          >
+                            Cancel (charge)
+                          </button>
+                          <button
+                            onClick={() => handleResolveRequest(pendingReq.id)}
+                            className="text-gray-400 text-xs hover:text-white px-2 py-1.5"
+                          >
+                            Decline (keep session)
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
