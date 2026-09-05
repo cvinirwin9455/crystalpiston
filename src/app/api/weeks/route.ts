@@ -213,10 +213,38 @@ export async function GET(request: Request) {
       // Skip 0-mile distance-based activities (accidental start/stop) but allow stretching/strength/cross
       const distanceTypes = ['run', 'walk', 'cycling']
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
-      // Check if there's a completed programmed workout on the same day with same type IN THE SAME WEEK
-      const saWeekWorkouts = sa.week_id ? (workoutsByWeekId.get(sa.week_id) || []) : []
-      for (const wo of saWeekWorkouts) {
-          if (wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id)) {
+      // Check if there's a completed programmed workout on the same day with same type IN THE SAME WEEK.
+      // When there are MULTIPLE same-day/same-type workouts (e.g. two runs on one day), pick the
+      // one whose programmed distance is CLOSEST to the Strava activity — never attribute a run to
+      // a workout of a clearly different distance (that's what caused a 10mi run to also show on a
+      // 6mi run). For distance-based types we require the distances to be reasonably close.
+      const saWeekWorkoutsAll = sa.week_id ? (workoutsByWeekId.get(sa.week_id) || []) : []
+      const saMilesForMatch = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
+      const isDistanceTypeForMatch = ['run', 'walk', 'cycling'].includes(sa.type)
+      const saWeekWorkouts = saWeekWorkoutsAll
+        .filter((wo: any) => wo.day === sa.day && wo.type === sa.type && logsByWorkoutId.has(wo.id) && !stravaMatchedWorkoutIds.has(wo.id))
+        .filter((wo: any) => {
+          // For distance types, require the programmed distance to be within ~30% of the activity.
+          // If either distance is unknown, don't block (fall back to same-day/same-type).
+          if (!isDistanceTypeForMatch) return true
+          const woMiles = wo.miles != null ? parseFloat(wo.miles) : null
+          if (!woMiles || !saMilesForMatch) return true
+          const ratio = Math.min(woMiles, saMilesForMatch) / Math.max(woMiles, saMilesForMatch)
+          return ratio >= 0.7
+        })
+        .sort((a: any, b: any) => {
+          // Closest programmed distance first
+          if (!isDistanceTypeForMatch || !saMilesForMatch) return 0
+          const am = a.miles != null ? parseFloat(a.miles) : null
+          const bm = b.miles != null ? parseFloat(b.miles) : null
+          const ad = am != null ? Math.abs(am - saMilesForMatch) : Number.MAX_SAFE_INTEGER
+          const bd = bm != null ? Math.abs(bm - saMilesForMatch) : Number.MAX_SAFE_INTEGER
+          return ad - bd
+        })
+      // Attach the activity to at most ONE workout — the closest same-day/same-type match.
+      const wo = saWeekWorkouts[0]
+      if (wo) {
+          {
             // Try to get Strava data to backfill
             const existingLog = logsByWorkoutId.get(wo.id)
             let backfillMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
@@ -277,7 +305,6 @@ export async function GET(request: Request) {
                 }).eq('id', sa.id).then(() => {})
               }
             }
-            break
           }
         }
       if (stravaMatchedActivityIds.has(sa.id)) continue
