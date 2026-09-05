@@ -3,9 +3,21 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-04T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-05T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 5, 2026",
+    items: [
+      { area: "Admin", text: "Improved: On the Manage Coaches page, the 'Invite New Coach' form is now collapsed by default and tucked behind a button. The page opens straight to your list of current coaches, and when you want to add someone you just click 'Invite New Coach' to expand the form. This keeps the page cleaner and less cluttered, especially on mobile" },
+      { area: "Admin", text: "NEW: In-person days are now marked on your Training & Logs view. For clients on 'Per session' or 'Hybrid' billing, any day that has a scheduled in-person session now shows a blue '🏋️ In-Person' badge (both on the collapsed day header and on the workout itself), while remote days show a '📱 Remote' badge. This matches what you already see on Create Week and what the client sees on their plan, so you can tell at a glance which programmed days are in-person vs online. Rest days are never marked in-person" },
+      { area: "Admin", text: "Improved: In-person days on Training & Logs now show the session's details. The collapsed day header shows a compact '🏋️ In-Person · 9:00 AM' badge, and when you expand the day there's a blue banner with the full time, duration, location, and session type. No need to jump to the Sessions tab to see when and where you're meeting the client" },
+      { area: "Client", text: "NEW: Clients now see the time and location of their in-person sessions on their Training plan. The in-person badge shows the time (e.g. '🏋️ In-Person Session · 3:00 PM') and a line underneath shows the time and where to meet (📍 location), so they know exactly when and where to show up" },
+      { area: "Client", text: "NEW: When a client can't make an in-person session and asks to reschedule, they now offer up to 3 dates & times that DO work for them (instead of proposing a single time). The first option is pre-filled with their current session day/time so they only have to tweak it. This gives you clear options to choose from" },
+      { area: "Admin", text: "NEW: Reschedule requests are now a simple yes/no. When a client requests a reschedule, the request banner on the Sessions tab lists each time they offered as its own 'Confirm' button — one tap moves the session to that time and the client gets an email confirming the new slot. You also get 'Pick a different time' (opens the edit form) and 'None of these work (cancel session)', which cancels the session with no charge and emails the client to reach out to you to find a new time. No more manually editing the session and separately dismissing the banner" },
+      { area: "Admin", text: "Improved: Cancel requests from clients now have clear one-click actions in the banner too — 'Cancel (no charge)', 'Cancel (charge)', or 'Decline (keep session)'" },
+    ],
+  },
   {
     date: "September 4, 2026",
     items: [

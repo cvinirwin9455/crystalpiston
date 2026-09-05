@@ -222,17 +222,21 @@ export default function DashboardPage() {
   const [hasMovedWorkouts, setHasMovedWorkouts] = useState(false);
 
   // In-person session request (cancel / reschedule) state
-  const [sessionRequestModal, setSessionRequestModal] = useState<{ sessionId: string; sessionLabel: string; requestType: 'cancel' | 'reschedule'; note: string; preferredDate: string; preferredTime: string } | null>(null);
+  const [sessionRequestModal, setSessionRequestModal] = useState<{ sessionId: string; sessionLabel: string; requestType: 'cancel' | 'reschedule'; note: string; slots: { date: string; time: string }[] } | null>(null);
   const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const submitSessionRequest = async () => {
     if (!sessionRequestModal) return;
     setSubmittingRequest(true);
     try {
-      let preferredDatetime: string | null = null;
-      if (sessionRequestModal.requestType === 'reschedule' && sessionRequestModal.preferredDate) {
-        const t = sessionRequestModal.preferredTime || '09:00';
-        preferredDatetime = `${sessionRequestModal.preferredDate}T${t}:00`;
+      // Build the list of availability slots the client is offering (reschedule only).
+      // Each needs a date; time defaults to 09:00 if left blank. Cap at 3.
+      let preferredSlots: string[] = [];
+      if (sessionRequestModal.requestType === 'reschedule') {
+        preferredSlots = sessionRequestModal.slots
+          .filter(s => s.date)
+          .slice(0, 3)
+          .map(s => `${s.date}T${s.time || '09:00'}:00`);
       }
       const res = await fetch('/api/session-requests', {
         method: 'POST',
@@ -241,7 +245,7 @@ export default function DashboardPage() {
           sessionId: sessionRequestModal.sessionId,
           requestType: sessionRequestModal.requestType,
           note: sessionRequestModal.note || null,
-          preferredDatetime,
+          preferredSlots,
         }),
       });
       if (res.ok) {
@@ -1899,6 +1903,16 @@ export default function DashboardPage() {
                       });
                       
                       const isInPerson = workout.sessionType === 'in_person';
+                      // Friendly time for the in-person session (parse timezone-naive, no TZ shift).
+                      const inPersonTime = (isInPerson && workout.sessionScheduledAt)
+                        ? (() => {
+                            const m = workout.sessionScheduledAt.match(/T(\d{2}):(\d{2})/);
+                            if (!m) return '';
+                            const h = parseInt(m[1]); const min = m[2];
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            return `${h % 12 || 12}:${min} ${ampm}`;
+                          })()
+                        : '';
                       // In-person coached sessions are locked — the client can't drag/move them.
                       const canMoveThisWorkout = weekOffset >= 0 && !isInPerson && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
                       // Can request cancel/reschedule on upcoming in-person sessions that have a session record
@@ -1925,17 +1939,31 @@ export default function DashboardPage() {
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching" || workout.type === "strength" || workout.type === "hiit" || workout.type === "swimming") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
-                            {isInPerson && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1">🏋️ In-Person Session</span>}
+                            {isInPerson && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1">🏋️ In-Person Session{inPersonTime ? ` · ${inPersonTime}` : ''}</span>}
                             {canMoveThisWorkout && <MoveButton onClick={() => setMoveModal({ workoutId: workout.id, workoutType: 'programmed', title: workout.title || `${workout.trainingType || workout.type}`, currentDay: day })} disabled={!canMoveThisWorkout} />}
                             {canRequestSession && (
                               <button
-                                onClick={() => setSessionRequestModal({ sessionId: workout.sessionId!, sessionLabel: `${workout.day} ${workout.date}`, requestType: 'reschedule', note: '', preferredDate: '', preferredTime: '' })}
+                                onClick={() => {
+                                  // Default the first availability slot to the session's actual scheduled day/time,
+                                  // so the client only has to tweak it. Parse timezone-naive (no TZ shift).
+                                  const sa = workout.sessionScheduledAt || '';
+                                  const dateMatch = sa.match(/^(\d{4}-\d{2}-\d{2})/);
+                                  const timeMatch = sa.match(/T(\d{2}):(\d{2})/);
+                                  const defaultSlot = { date: dateMatch ? dateMatch[1] : '', time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '' };
+                                  setSessionRequestModal({ sessionId: workout.sessionId!, sessionLabel: `${workout.day} ${workout.date}`, requestType: 'reschedule', note: '', slots: [defaultSlot] });
+                                }}
                                 className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
                               >
                                 Can&apos;t attend?
                               </button>
                             )}
                           </div>
+                          {isInPerson && (inPersonTime || workout.location) && (
+                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-1">
+                              {inPersonTime && <span className="text-blue-400 text-xs">🕒 {inPersonTime}</span>}
+                              {workout.location && <span className="text-blue-400 text-xs">📍 {workout.location}</span>}
+                            </div>
+                          )}
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
                             workout.structure.exercises && Array.isArray(workout.structure.exercises) && workout.structure.exercises.some((ex: any) => ex.demoVideo) ? (
@@ -3241,17 +3269,57 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Preferred new day/time — reschedule only */}
+            {/* Availability slots — reschedule only. Client offers up to 3 date/times they CAN do. */}
             {sessionRequestModal.requestType === 'reschedule' && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <label className="text-gray-400 text-xs block mb-1">Preferred day <span className="text-gray-600">(optional)</span></label>
-                  <input type="date" value={sessionRequestModal.preferredDate} onChange={(e) => setSessionRequestModal({ ...sessionRequestModal, preferredDate: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
+              <div className="mb-4">
+                <label className="text-gray-400 text-xs block mb-1">When are you available? <span className="text-gray-600">(offer up to 3)</span></label>
+                <p className="text-gray-500 text-[11px] mb-2">We&apos;ve started with your current session day — change it and add other dates &amp; times that work for you, and your coach will pick one.</p>
+                <div className="space-y-2">
+                  {sessionRequestModal.slots.map((slot, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={slot.date}
+                        onChange={(e) => {
+                          const next = [...sessionRequestModal.slots];
+                          next[i] = { ...next[i], date: e.target.value };
+                          setSessionRequestModal({ ...sessionRequestModal, slots: next });
+                        }}
+                        className="flex-1 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]"
+                      />
+                      <input
+                        type="time"
+                        value={slot.time}
+                        onChange={(e) => {
+                          const next = [...sessionRequestModal.slots];
+                          next[i] = { ...next[i], time: e.target.value };
+                          setSessionRequestModal({ ...sessionRequestModal, slots: next });
+                        }}
+                        className="w-28 bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]"
+                      />
+                      {sessionRequestModal.slots.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setSessionRequestModal({ ...sessionRequestModal, slots: sessionRequestModal.slots.filter((_, idx) => idx !== i) })}
+                          className="text-gray-500 hover:text-red-400 p-1"
+                          aria-label="Remove this time"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="text-gray-400 text-xs block mb-1">Preferred time</label>
-                  <input type="time" value={sessionRequestModal.preferredTime} onChange={(e) => setSessionRequestModal({ ...sessionRequestModal, preferredTime: e.target.value })} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
-                </div>
+                {sessionRequestModal.slots.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setSessionRequestModal({ ...sessionRequestModal, slots: [...sessionRequestModal.slots, { date: '', time: '' }] })}
+                    className="mt-2 text-xs font-medium text-accent hover:text-orange-400 flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Add another time
+                  </button>
+                )}
               </div>
             )}
 
@@ -3261,7 +3329,7 @@ export default function DashboardPage() {
               <textarea value={sessionRequestModal.note} onChange={(e) => setSessionRequestModal({ ...sessionRequestModal, note: e.target.value })} rows={2} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none" placeholder={sessionRequestModal.requestType === 'cancel' ? "e.g. Feeling unwell, sorry!" : "e.g. Could we do Thursday instead?"} />
             </div>
 
-            <p className="text-gray-500 text-xs mb-4">{sessionRequestModal.requestType === 'reschedule' ? 'This is a request — your coach will confirm the new time. Your preferred time is not guaranteed.' : 'This notifies your coach that you can\u2019t attend. They\u2019ll confirm the cancellation.'}</p>
+            <p className="text-gray-500 text-xs mb-4">{sessionRequestModal.requestType === 'reschedule' ? 'Your coach will pick one of the times you offered and confirm it — or reach out if none work.' : 'This notifies your coach that you can\u2019t attend. They\u2019ll confirm the cancellation.'}</p>
 
             <div className="flex gap-2">
               <button onClick={submitSessionRequest} disabled={submittingRequest} className="flex-1 bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
