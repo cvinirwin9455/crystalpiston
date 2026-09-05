@@ -2174,6 +2174,8 @@ export default function AdminPage() {
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
+  // Full in-person session objects for the selected client (so Training & Logs can show time/location per day)
+  const [clientSessions, setClientSessions] = useState<{ id: string; scheduled_at: string; duration_minutes: number; location: string | null; session_type: string | null; status: string }[]>([]);
   const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string; totalPaid: number; totalOwed: number } | null>(null);
 
   // Reusable: refresh active plan + session data for a client
@@ -2229,8 +2231,12 @@ export default function AdminPage() {
         .then(res => res.ok ? res.json() : [])
         .then((sessions: any[]) => {
           const now = new Date();
-          const upcomingSessions = sessions.filter((s: any) => s.status === 'scheduled' && new Date(s.scheduled_at) >= now);
-          const dates = upcomingSessions
+          // Keep the full scheduled-session objects so Training & Logs can show each
+          // in-person day's time and location (for any week, not just future ones).
+          const scheduledSessions = sessions.filter((s: any) => s.status === 'scheduled');
+          setClientSessions(scheduledSessions.map((s: any) => ({ id: s.id, scheduled_at: s.scheduled_at, duration_minutes: s.duration_minutes, location: s.location, session_type: s.session_type, status: s.status })));
+          const upcomingSessions = scheduledSessions.filter((s: any) => new Date(s.scheduled_at) >= now);
+          const dates = scheduledSessions
             .map((s: any) => {
               const match = s.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
               return match ? match[1] : null;
@@ -2239,7 +2245,7 @@ export default function AdminPage() {
           setClientSessionDates(dates);
           setClientSessionSummary(prev => ({ remaining: prev?.remaining ?? 0, upcoming: upcomingSessions.length, scheduleText: prev?.scheduleText ?? '', totalPaid: prev?.totalPaid ?? 0, totalOwed: prev?.totalOwed ?? 0 }));
         })
-        .catch(() => setClientSessionDates([]));
+        .catch(() => { setClientSessionDates([]); setClientSessions([]); });
 
       fetch(`/api/session-packages?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : null)
@@ -3591,13 +3597,27 @@ export default function AdminPage() {
                     const isAdminInPersonDay = (adminBillingMode === 'per_session' || adminBillingMode === 'hybrid')
                       && adminScheduledInPerson
                       && !isDayEmpty;
+                    // Find the concrete session on this day (if any) so we can show its time + location.
+                    const adminDaySession = isAdminInPersonDay
+                      ? clientSessions.find(s => (s.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]) === adminDayDateISO)
+                      : undefined;
+                    const adminSessionTime = adminDaySession
+                      ? (() => {
+                          const m = adminDaySession.scheduled_at.match(/T(\d{2}):(\d{2})/);
+                          if (!m) return '';
+                          const h = parseInt(m[1]); const min = m[2];
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          return `${h % 12 || 12}:${min} ${ampm}`;
+                        })()
+                      : '';
                     return (
                       <div key={day} className={`border rounded-xl overflow-hidden ${isAdminInPersonDay ? 'border-blue-500/40' : 'border-white/10'}`}>
                         <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
                             <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
-                            {isAdminInPersonDay && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 ml-2 whitespace-nowrap">🏋️ In-Person</span>}
+                            {isAdminInPersonDay && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 ml-2 whitespace-nowrap">🏋️ In-Person{adminSessionTime ? ` · ${adminSessionTime}` : ''}</span>}
+                            {isAdminInPersonDay && adminDaySession?.location && <span className="text-blue-400/70 text-xs ml-2 whitespace-nowrap">📍 {adminDaySession.location}</span>}
                             {!isAdminDayExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${dayMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
                             {isDayEmpty && <span className="text-gray-500 text-xs ml-3">Rest Day</span>}
                           </div>
@@ -3609,6 +3629,15 @@ export default function AdminPage() {
                         </button>
                         {isAdminDayExpanded && (
                         <div className="p-3 space-y-3">
+                        {isAdminInPersonDay && (
+                          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
+                            <span className="text-blue-400 text-xs font-bold">🏋️ In-Person Session</span>
+                            {adminSessionTime && <span className="text-blue-300 text-xs">🕒 {adminSessionTime}{adminDaySession?.duration_minutes ? ` · ${adminDaySession.duration_minutes} min` : ''}</span>}
+                            {adminDaySession?.location && <span className="text-blue-300 text-xs">📍 {adminDaySession.location}</span>}
+                            {adminDaySession?.session_type && <span className="text-blue-300 text-xs">{adminDaySession.session_type}</span>}
+                            {!adminDaySession && <span className="text-blue-300/70 text-xs">Scheduled via recurring pattern — set a specific time on the Sessions tab.</span>}
+                          </div>
+                        )}
                         {dayWorkouts.map((w, wi) => (
                     <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
                       {(!editingWeek || w.completed) ? (

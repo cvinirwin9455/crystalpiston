@@ -10,6 +10,7 @@ const updates = [
     date: "September 5, 2026",
     items: [
       { area: "Admin", text: "NEW: In-person days are now marked on your Training & Logs view. For clients on 'Per session' or 'Hybrid' billing, any day that has a scheduled in-person session now shows a blue '🏋️ In-Person' badge (both on the collapsed day header and on the workout itself), while remote days show a '📱 Remote' badge. This matches what you already see on Create Week and what the client sees on their plan, so you can tell at a glance which programmed days are in-person vs online. Rest days are never marked in-person" },
+      { area: "Admin", text: "Improved: In-person days on Training & Logs now show the session's time and location right on the day — the collapsed day header shows '🏋️ In-Person · 9:00 AM 📍 Location', and when you expand the day there's a blue banner with the time, duration, location, and session type. No need to jump to the Sessions tab to see when and where you're meeting the client" },
     ],
   },
   {
