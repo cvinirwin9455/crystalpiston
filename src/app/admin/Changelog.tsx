@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-04T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-05T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 5, 2026",
+    items: [
+      { area: "Admin", text: "Improved: On the Manage Coaches page, the 'Invite New Coach' form is now collapsed by default and tucked behind a button. The page opens straight to your list of current coaches, and when you want to add someone you just click 'Invite New Coach' to expand the form. This keeps the page cleaner and less cluttered, especially on mobile" },
+    ],
+  },
   {
     date: "September 4, 2026",
     items: [

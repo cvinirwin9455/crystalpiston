@@ -699,6 +699,7 @@ export default function AdminPage() {
   const [coachAssigning, setCoachAssigning] = useState(false);
 
   // Manage coaches state
+  const [showInviteCoachForm, setShowInviteCoachForm] = useState(false);
   const [newCoachForm, setNewCoachForm] = useState({ name: "", email: "", accessLevel: "all_clients" as "all_clients" | "own_clients", coachLevel: "coach" as "account_coach" | "coach" });
   const [creatingCoach, setCreatingCoach] = useState(false);
   const [editingCoachId, setEditingCoachId] = useState<string | null>(null);
@@ -5773,7 +5774,21 @@ export default function AdminPage() {
 
                 {/* Invite New Coach */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
-                  <h3 className="font-heading text-sm uppercase text-purple-400 mb-4">Invite New Coach</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteCoachForm(v => !v)}
+                    className="w-full flex items-center justify-between gap-3 text-left group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      </span>
+                      <h3 className="font-heading text-sm uppercase text-purple-400">Invite New Coach</h3>
+                    </div>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${showInviteCoachForm ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  {showInviteCoachForm && (
+                  <div className="mt-4">
                   <p className="text-gray-300 text-xs mb-4">Send an invite email to a new coach. They&apos;ll set their password and get full admin access to manage clients, create weeks, send messages, etc.</p>
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div>
@@ -5814,6 +5829,8 @@ export default function AdminPage() {
                     {createCoachError && <p className="text-red-400 text-xs">{createCoachError}</p>}
                     {createCoachSuccess && <p className="text-green-400 text-xs">{createCoachSuccess}</p>}
                   </div>
+                  </div>
+                  )}
                 </div>
 
                 {/* Existing Coaches */}
