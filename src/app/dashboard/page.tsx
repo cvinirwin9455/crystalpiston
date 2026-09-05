@@ -1933,7 +1933,15 @@ export default function DashboardPage() {
                             {canMoveThisWorkout && <MoveButton onClick={() => setMoveModal({ workoutId: workout.id, workoutType: 'programmed', title: workout.title || `${workout.trainingType || workout.type}`, currentDay: day })} disabled={!canMoveThisWorkout} />}
                             {canRequestSession && (
                               <button
-                                onClick={() => setSessionRequestModal({ sessionId: workout.sessionId!, sessionLabel: `${workout.day} ${workout.date}`, requestType: 'reschedule', note: '', slots: [{ date: '', time: '' }] })}
+                                onClick={() => {
+                                  // Default the first availability slot to the session's actual scheduled day/time,
+                                  // so the client only has to tweak it. Parse timezone-naive (no TZ shift).
+                                  const sa = workout.sessionScheduledAt || '';
+                                  const dateMatch = sa.match(/^(\d{4}-\d{2}-\d{2})/);
+                                  const timeMatch = sa.match(/T(\d{2}):(\d{2})/);
+                                  const defaultSlot = { date: dateMatch ? dateMatch[1] : '', time: timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '' };
+                                  setSessionRequestModal({ sessionId: workout.sessionId!, sessionLabel: `${workout.day} ${workout.date}`, requestType: 'reschedule', note: '', slots: [defaultSlot] });
+                                }}
                                 className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
                               >
                                 Can&apos;t attend?
@@ -3249,7 +3257,7 @@ export default function DashboardPage() {
             {sessionRequestModal.requestType === 'reschedule' && (
               <div className="mb-4">
                 <label className="text-gray-400 text-xs block mb-1">When are you available? <span className="text-gray-600">(offer up to 3)</span></label>
-                <p className="text-gray-500 text-[11px] mb-2">Give your coach a few dates &amp; times that work for you, and they&apos;ll pick one.</p>
+                <p className="text-gray-500 text-[11px] mb-2">We&apos;ve started with your current session day — change it and add other dates &amp; times that work for you, and your coach will pick one.</p>
                 <div className="space-y-2">
                   {sessionRequestModal.slots.map((slot, i) => (
                     <div key={i} className="flex items-center gap-2">

@@ -9,7 +9,7 @@ const updates = [
   {
     date: "September 5, 2026",
     items: [
-      { area: "Client", text: "NEW: When a client can't make an in-person session and asks to reschedule, they now offer up to 3 dates & times that DO work for them (instead of proposing a single time). This gives you clear options to choose from" },
+      { area: "Client", text: "NEW: When a client can't make an in-person session and asks to reschedule, they now offer up to 3 dates & times that DO work for them (instead of proposing a single time). The first option is pre-filled with their current session day/time so they only have to tweak it. This gives you clear options to choose from" },
       { area: "Admin", text: "NEW: Reschedule requests are now a simple yes/no. When a client requests a reschedule, the request banner on the Sessions tab lists each time they offered as its own 'Confirm' button — one tap moves the session to that time and the client gets an email confirming the new slot. You also get 'Pick a different time' (opens the edit form) and 'None of these work (cancel session)', which cancels the session with no charge and emails the client to reach out to you to find a new time. No more manually editing the session and separately dismissing the banner" },
       { area: "Admin", text: "Improved: Cancel requests from clients now have clear one-click actions in the banner too — 'Cancel (no charge)', 'Cancel (charge)', or 'Decline (keep session)'" },
     ],
