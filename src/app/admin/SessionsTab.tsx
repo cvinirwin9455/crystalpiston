@@ -202,6 +202,31 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
     }
   };
 
+  // Approve a reschedule request: move the session to the time the client asked for,
+  // then mark the request resolved. preferred_datetime is already stored as a
+  // timezone-naive "YYYY-MM-DDTHH:mm:00" string — the same format the sessions PATCH
+  // endpoint expects for scheduledAt — so it passes straight through.
+  const handleApproveReschedule = async (requestId: string, sessionId: string, preferredDatetime: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, scheduledAt: preferredDatetime }),
+      });
+      if (res.ok) {
+        await handleResolveRequest(requestId);
+        fetchSessions();
+      } else {
+        alert('Failed to move the session to the requested time. Please try again.');
+      }
+    } catch (err) {
+      console.error("Failed to approve reschedule:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const fetchSessions = async () => {
     try {
       const res = await fetch(`/api/sessions?client_id=${clientId}`);
@@ -932,13 +957,58 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
                             Client requested to {pendingReq.request_type === 'cancel' ? 'cancel' : 'reschedule'} this session
                           </span>
                         </div>
-                        <button onClick={() => handleResolveRequest(pendingReq.id)} className="text-gray-400 text-xs hover:text-white whitespace-nowrap">Dismiss</button>
                       </div>
                       {pendingReq.request_type === 'reschedule' && pendingReq.preferred_datetime && (
                         <p className="text-gray-300 text-xs mt-1">Prefers: {formatDateTime(pendingReq.preferred_datetime)}</p>
                       )}
                       {pendingReq.note && <p className="text-gray-400 text-xs mt-1 italic">&ldquo;{pendingReq.note}&rdquo;</p>}
-                      <p className="text-gray-500 text-xs mt-1">Use the actions below to reschedule/cancel, then dismiss this request.</p>
+                      {pendingReq.request_type === 'reschedule' ? (
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          {pendingReq.preferred_datetime && (
+                            <button
+                              onClick={() => handleApproveReschedule(pendingReq.id, session.id, pendingReq.preferred_datetime as string)}
+                              disabled={saving}
+                              className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              Approve new time
+                            </button>
+                          )}
+                          <button
+                            onClick={() => startEditing(session)}
+                            className="bg-white/10 hover:bg-white/20 text-white font-medium py-1.5 px-3 rounded-lg text-xs"
+                          >
+                            Pick a different time
+                          </button>
+                          <button
+                            onClick={() => handleResolveRequest(pendingReq.id)}
+                            className="text-gray-400 text-xs hover:text-white px-2 py-1.5"
+                          >
+                            Decline (keep current time)
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <button
+                            onClick={() => { handleUpdateStatus(session.id, "cancelled_no_charge"); handleResolveRequest(pendingReq.id); }}
+                            className="bg-white/10 hover:bg-white/20 text-white font-medium py-1.5 px-3 rounded-lg text-xs"
+                          >
+                            Cancel (no charge)
+                          </button>
+                          <button
+                            onClick={() => { handleUpdateStatus(session.id, "cancelled_charged"); handleResolveRequest(pendingReq.id); }}
+                            className="bg-white/10 hover:bg-white/20 text-white font-medium py-1.5 px-3 rounded-lg text-xs"
+                          >
+                            Cancel (charge)
+                          </button>
+                          <button
+                            onClick={() => handleResolveRequest(pendingReq.id)}
+                            className="text-gray-400 text-xs hover:text-white px-2 py-1.5"
+                          >
+                            Decline (keep session)
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

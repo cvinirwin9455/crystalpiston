@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-04T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-05T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 5, 2026",
+    items: [
+      { area: "Admin", text: "Improved: When a client asks to reschedule or cancel a session, the yellow request banner on the Sessions tab now has clear action buttons right inside it, so you know exactly what to do. For a reschedule request you get 'Approve new time' (one click moves the session to the time the client asked for and clears the request), 'Pick a different time' (opens the edit form to choose your own), and 'Decline (keep current time)'. For a cancel request you get 'Cancel (no charge)', 'Cancel (charge)', and 'Decline (keep session)'. Previously you had to figure out the row buttons yourself and manually dismiss the banner" },
+    ],
+  },
   {
     date: "September 4, 2026",
     items: [
