@@ -9,7 +9,9 @@ const updates = [
   {
     date: "September 5, 2026",
     items: [
-      { area: "Admin", text: "Improved: When a client asks to reschedule or cancel a session, the yellow request banner on the Sessions tab now has clear action buttons right inside it, so you know exactly what to do. For a reschedule request you get 'Approve new time' (one click moves the session to the time the client asked for and clears the request), 'Pick a different time' (opens the edit form to choose your own), and 'Decline (keep current time)'. For a cancel request you get 'Cancel (no charge)', 'Cancel (charge)', and 'Decline (keep session)'. Previously you had to figure out the row buttons yourself and manually dismiss the banner" },
+      { area: "Client", text: "NEW: When a client can't make an in-person session and asks to reschedule, they now offer up to 3 dates & times that DO work for them (instead of proposing a single time). This gives you clear options to choose from" },
+      { area: "Admin", text: "NEW: Reschedule requests are now a simple yes/no. When a client requests a reschedule, the request banner on the Sessions tab lists each time they offered as its own 'Confirm' button — one tap moves the session to that time and the client gets an email confirming the new slot. You also get 'Pick a different time' (opens the edit form) and 'None of these work (cancel session)', which cancels the session with no charge and emails the client to reach out to you to find a new time. No more manually editing the session and separately dismissing the banner" },
+      { area: "Admin", text: "Improved: Cancel requests from clients now have clear one-click actions in the banner too — 'Cancel (no charge)', 'Cancel (charge)', or 'Decline (keep session)'" },
     ],
   },
   {

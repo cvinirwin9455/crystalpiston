@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
   let query = adminClient
     .from('session_requests')
-    .select('id, session_id, client_id, request_type, note, preferred_datetime, status, created_at, resolved_at')
+    .select('id, session_id, client_id, request_type, note, preferred_datetime, preferred_slots, status, created_at, resolved_at')
     .order('created_at', { ascending: false })
 
   if (clientId) {
@@ -88,11 +88,23 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { sessionId, requestType, note, preferredDatetime } = body
+  const { sessionId, requestType, note, preferredDatetime, preferredSlots } = body
 
   if (!sessionId || !requestType || !['cancel', 'reschedule'].includes(requestType)) {
     return NextResponse.json({ error: 'sessionId and valid requestType are required' }, { status: 400 })
   }
+
+  // Normalize the offered availability slots (reschedule only). Accept an array of
+  // timezone-naive datetime strings, cap at 3, and drop blanks. Fall back to the
+  // legacy single preferredDatetime if no slots array was sent.
+  let slots: string[] = []
+  if (Array.isArray(preferredSlots)) {
+    slots = preferredSlots.filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0).slice(0, 3)
+  } else if (preferredDatetime) {
+    slots = [preferredDatetime]
+  }
+  // Keep preferred_datetime in sync with the first slot for backward compatibility.
+  const firstSlot = slots.length > 0 ? slots[0] : (preferredDatetime || null)
 
   const adminClient = await getAdminClient()
 
@@ -127,7 +139,8 @@ export async function POST(request: Request) {
       organization_id: session.organization_id,
       request_type: requestType,
       note: note || null,
-      preferred_datetime: preferredDatetime || null,
+      preferred_datetime: firstSlot,
+      preferred_slots: requestType === 'reschedule' && slots.length > 0 ? slots : null,
       status: 'pending',
     })
     .select()
@@ -139,7 +152,7 @@ export async function POST(request: Request) {
 
   // Notify the coach(es) — fire and forget
   try {
-    await notifyCoachesOfRequest(adminClient, session, requestType, note, preferredDatetime, request.url, user.id)
+    await notifyCoachesOfRequest(adminClient, session, requestType, note, requestType === 'reschedule' && slots.length > 0 ? slots : (firstSlot ? [firstSlot] : []), request.url, user.id)
   } catch (notifErr) {
     console.error('Failed to notify coaches of session request:', notifErr)
   }
@@ -164,12 +177,48 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { requestId } = body
+  const { requestId, action, acceptedSlot } = body
   if (!requestId) {
     return NextResponse.json({ error: 'requestId is required' }, { status: 400 })
   }
 
   const adminClient = await getAdminClient()
+
+  // Load the request + its session so we can act on it and notify the client.
+  const { data: reqRow } = await adminClient
+    .from('session_requests')
+    .select('id, session_id, client_id, organization_id, request_type')
+    .eq('id', requestId)
+    .single()
+
+  if (!reqRow) {
+    return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+  }
+
+  // action: 'accept_slot' -> move the session to acceptedSlot, then resolve + notify client
+  //         'reject'       -> cancel the session (no charge), resolve + notify client to contact coach
+  //         (none)         -> legacy: just resolve/dismiss the request (no session change, no email)
+  if (action === 'accept_slot') {
+    if (!acceptedSlot || typeof acceptedSlot !== 'string') {
+      return NextResponse.json({ error: 'acceptedSlot is required for accept_slot' }, { status: 400 })
+    }
+    const { error: sessErr } = await adminClient
+      .from('sessions')
+      .update({ scheduled_at: acceptedSlot, status: 'scheduled' })
+      .eq('id', reqRow.session_id)
+    if (sessErr) {
+      return NextResponse.json({ error: sessErr.message }, { status: 500 })
+    }
+  } else if (action === 'reject') {
+    const { error: sessErr } = await adminClient
+      .from('sessions')
+      .update({ status: 'cancelled_no_charge', marked_at: new Date().toISOString() })
+      .eq('id', reqRow.session_id)
+    if (sessErr) {
+      return NextResponse.json({ error: sessErr.message }, { status: 500 })
+    }
+  }
+
   const { error } = await adminClient
     .from('session_requests')
     .update({ status: 'resolved', resolved_at: new Date().toISOString() })
@@ -179,7 +228,111 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Notify the client of the coach's decision (accept/reject only) — fire and forget.
+  if (action === 'accept_slot' || action === 'reject') {
+    try {
+      await notifyClientOfDecision(adminClient, reqRow, action, acceptedSlot || null, request.url)
+    } catch (notifErr) {
+      console.error('Failed to notify client of session decision:', notifErr)
+    }
+  }
+
   return NextResponse.json({ success: true })
+}
+
+// Helper: notify the client after the coach accepts a new time or cancels the session.
+async function notifyClientOfDecision(
+  adminClient: any,
+  reqRow: any,
+  action: 'accept_slot' | 'reject',
+  acceptedSlot: string | null,
+  requestUrl: string
+) {
+  // Resolve the client's user + email + coach name.
+  const { data: clientRow } = await adminClient
+    .from('clients')
+    .select('id, user_id')
+    .eq('id', reqRow.client_id)
+    .single()
+  if (!clientRow?.user_id) return
+
+  const { data: clientUser } = await adminClient
+    .from('users')
+    .select('email, name')
+    .eq('id', clientRow.user_id)
+    .single()
+  if (!clientUser?.email) return
+
+  const firstName = clientUser.name?.split(' ')[0] || 'there'
+
+  // Coach name (first assigned coach or session coach) for a friendly signature.
+  const { data: session } = await adminClient
+    .from('sessions')
+    .select('coach_id, location')
+    .eq('id', reqRow.session_id)
+    .single()
+  let coachName = 'your coach'
+  if (session?.coach_id) {
+    const { data: coach } = await adminClient
+      .from('users')
+      .select('name')
+      .eq('id', session.coach_id)
+      .single()
+    if (coach?.name) coachName = coach.name
+  }
+
+  const fmtSlot = (slot: string): string => {
+    const m = slot.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+    if (!m) return slot
+    const [, y, mo, d, hh, mm] = m
+    const disp = new Date(parseInt(y), parseInt(mo) - 1, parseInt(d))
+    const weekday = disp.toLocaleDateString('en-US', { weekday: 'long' })
+    const monthName = disp.toLocaleDateString('en-US', { month: 'long' })
+    const hour = parseInt(hh)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${weekday}, ${monthName} ${parseInt(d)} at ${hour12}:${mm} ${ampm}`
+  }
+
+  const { sendEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
+  const brand = getEmailBrandFromOrgId(reqRow.organization_id)
+  const siteUrl = getProductionUrl(requestUrl)
+
+  let subject: string
+  let emailHtml: string
+
+  if (action === 'accept_slot' && acceptedSlot) {
+    const when = fmtSlot(acceptedSlot)
+    subject = 'Your session has been rescheduled'
+    emailHtml = `
+      <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Your session is confirmed for a new time</h2>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #e0e0e0;">Hi ${firstName}, ${coachName} has rescheduled your session to a time you said works:</p>
+      <div style="margin: 0 0 24px; padding: 16px; background-color: rgba(59,130,246,0.12); border-left: 3px solid #3b82f6; border-radius: 4px;">
+        <p style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 700;">${when}</p>
+        ${session?.location ? `<p style="margin: 8px 0 0; font-size: 14px; color: #e0e0e0;">📍 ${session.location}</p>` : ''}
+      </div>
+      <p style="margin: 0 0 16px; font-size: 13px; color: #9e9e9e;">See it anytime on your Training tab.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+        <tr><td align="center">
+          <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">View My Training</a>
+        </td></tr>
+      </table>
+    `
+  } else {
+    subject = 'About your session request'
+    emailHtml = `
+      <h2 style="margin: 0 0 16px; font-size: 20px; color: #ffffff; font-weight: 700;">Let's find a time that works</h2>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #e0e0e0;">Hi ${firstName}, unfortunately none of the times you offered worked for ${coachName}, so that session has been cancelled for now.</p>
+      <p style="margin: 0 0 24px; font-size: 14px; color: #e0e0e0;">Please reach out to ${coachName} directly so you can sort out a new time together.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+        <tr><td align="center">
+          <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #f26522; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">Message My Coach</a>
+        </td></tr>
+      </table>
+    `
+  }
+
+  sendEmail({ to: clientUser.email, subject, html: emailHtml, brand }).catch(console.error)
 }
 
 // Helper: notify assigned coaches of a new session request (email + push)
@@ -188,7 +341,7 @@ async function notifyCoachesOfRequest(
   session: any,
   requestType: string,
   note: string | null,
-  preferredDatetime: string | null,
+  preferredSlots: string[],
   requestUrl: string,
   clientUserId: string
 ) {
@@ -228,10 +381,28 @@ async function notifyCoachesOfRequest(
   const actionLabel = requestType === 'cancel' ? 'cancel' : 'reschedule'
   const subject = `${clientName} wants to ${actionLabel} a session`
 
+  // Render a timezone-naive slot string ("YYYY-MM-DDTHH:mm:00") without TZ conversion.
+  const fmtSlot = (slot: string): string => {
+    const m = slot.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+    if (!m) return slot
+    const [, y, mo, d, hh, mm] = m
+    const disp = new Date(parseInt(y), parseInt(mo) - 1, parseInt(d))
+    const weekday = disp.toLocaleDateString('en-US', { weekday: 'short' })
+    const monthName = disp.toLocaleDateString('en-US', { month: 'short' })
+    const hour = parseInt(hh)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${weekday}, ${monthName} ${parseInt(d)} at ${hour12}:${mm} ${ampm}`
+  }
+
   let preferredText = ''
-  if (requestType === 'reschedule' && preferredDatetime) {
-    const pd = new Date(preferredDatetime)
-    preferredText = `<p style="margin: 0 0 8px; font-size: 14px; color: #e0e0e0;">Preferred new time: <strong>${pd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${pd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</strong></p>`
+  if (requestType === 'reschedule' && preferredSlots.length > 0) {
+    if (preferredSlots.length === 1) {
+      preferredText = `<p style="margin: 0 0 8px; font-size: 14px; color: #e0e0e0;">They're available: <strong>${fmtSlot(preferredSlots[0])}</strong></p>`
+    } else {
+      const items = preferredSlots.map(s => `<li style="margin: 0 0 4px;"><strong>${fmtSlot(s)}</strong></li>`).join('')
+      preferredText = `<p style="margin: 0 0 4px; font-size: 14px; color: #e0e0e0;">Times they're available:</p><ul style="margin: 0 0 8px; padding-left: 20px; font-size: 14px; color: #e0e0e0;">${items}</ul>`
+    }
   }
 
   const { sendEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
