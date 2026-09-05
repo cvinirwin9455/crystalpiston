@@ -3573,12 +3573,31 @@ export default function AdminPage() {
                     const adminDayDate = new Date(adminWeekStart);
                     adminDayDate.setDate(adminWeekStart.getDate() + adminDayIndex);
                     const adminDayDateStr = adminDayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                    // Determine whether this day is a scheduled in-person session, mirroring the
+                    // logic in selectWeek: use concrete scheduled session dates for the week if any
+                    // exist, otherwise fall back to the client's recurring weekday pattern. Only
+                    // per_session / hybrid clients can have in-person days, and a rest day (no real
+                    // workout) is never treated as in-person.
+                    const adminBillingMode = activePlan?.billingMode;
+                    const adminDayDateISO = `${adminDayDate.getFullYear()}-${String(adminDayDate.getMonth() + 1).padStart(2, '0')}-${String(adminDayDate.getDate()).padStart(2, '0')}`;
+                    const adminDayNameToIndex: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
+                    const adminWeekHasSessionDates = clientSessionDates.some(dateStr => {
+                      const d = new Date(dateStr + 'T00:00:00');
+                      return d >= adminWeekStart && d < new Date(adminWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    });
+                    const adminScheduledInPerson = adminWeekHasSessionDates
+                      ? clientSessionDates.includes(adminDayDateISO)
+                      : clientRecurringDays.includes(adminDayNameToIndex[day]);
+                    const isAdminInPersonDay = (adminBillingMode === 'per_session' || adminBillingMode === 'hybrid')
+                      && adminScheduledInPerson
+                      && !isDayEmpty;
                     return (
-                      <div key={day} className="border border-white/10 rounded-xl overflow-hidden">
+                      <div key={day} className={`border rounded-xl overflow-hidden ${isAdminInPersonDay ? 'border-blue-500/40' : 'border-white/10'}`}>
                         <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                           <div>
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
                             <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
+                            {isAdminInPersonDay && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 ml-2 whitespace-nowrap">🏋️ In-Person</span>}
                             {!isAdminDayExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${dayMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
                             {isDayEmpty && <span className="text-gray-500 text-xs ml-3">Rest Day</span>}
                           </div>
@@ -3604,6 +3623,9 @@ export default function AdminPage() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-medium text-sm">{w.day}</span>
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Programmed</span>
+                                {isAdminInPersonDay
+                                  ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">🏋️ In-Person</span>
+                                  : (adminBillingMode === 'per_session' || adminBillingMode === 'hybrid') && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">📱 Remote</span>}
                                 <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${getTypeBadge(w.type)}`}>{getTypeLabel(w.type)}</span>
                                 {w.type === "run" && w.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                 {w.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{w.stravaActivityName || 'Synced'}</span>}
