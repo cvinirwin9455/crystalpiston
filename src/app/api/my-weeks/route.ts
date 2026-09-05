@@ -367,7 +367,8 @@ export async function GET() {
           distanceUnit: wo.distance_unit || 'mi',
           description: wo.description || '',
           paceTarget: wo.pace_target || '',
-          location: wo.location || '',
+          // For in-person coached days, prefer the session's location so the client sees where to meet.
+          location: ((matchedSession && !woIsRest) ? matchedSession.location : null) || wo.location || '',
           coachNotes: wo.coach_notes || '',
           structure: wo.structure || null,
           sessionType: woSessionType,

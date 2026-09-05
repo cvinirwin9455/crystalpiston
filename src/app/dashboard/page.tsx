@@ -1903,6 +1903,16 @@ export default function DashboardPage() {
                       });
                       
                       const isInPerson = workout.sessionType === 'in_person';
+                      // Friendly time for the in-person session (parse timezone-naive, no TZ shift).
+                      const inPersonTime = (isInPerson && workout.sessionScheduledAt)
+                        ? (() => {
+                            const m = workout.sessionScheduledAt.match(/T(\d{2}):(\d{2})/);
+                            if (!m) return '';
+                            const h = parseInt(m[1]); const min = m[2];
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            return `${h % 12 || 12}:${min} ${ampm}`;
+                          })()
+                        : '';
                       // In-person coached sessions are locked — the client can't drag/move them.
                       const canMoveThisWorkout = weekOffset >= 0 && !isInPerson && !workout.stravaSynced && workout.status !== 'complete' && workout.status !== 'partial' && workout.status !== 'skipped';
                       // Can request cancel/reschedule on upcoming in-person sessions that have a session record
@@ -1929,7 +1939,7 @@ export default function DashboardPage() {
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getTypeBadge(workout.type)}`}>{getTypeLabel(workout.type)}</span>
                             {(workout.type === "run" || workout.type === "walk" || workout.type === "stretching" || workout.type === "strength" || workout.type === "hiit" || workout.type === "swimming") && workout.trainingType && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getTrainingTypeBadge(workout.trainingType)}`}>{getTrainingTypeLabel(workout.trainingType)}</span>}
                             {workout.stravaSynced && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>{workout.stravaActivityName || 'Synced'}</span>}
-                            {isInPerson && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1">🏋️ In-Person Session</span>}
+                            {isInPerson && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1">🏋️ In-Person Session{inPersonTime ? ` · ${inPersonTime}` : ''}</span>}
                             {canMoveThisWorkout && <MoveButton onClick={() => setMoveModal({ workoutId: workout.id, workoutType: 'programmed', title: workout.title || `${workout.trainingType || workout.type}`, currentDay: day })} disabled={!canMoveThisWorkout} />}
                             {canRequestSession && (
                               <button
@@ -1948,6 +1958,12 @@ export default function DashboardPage() {
                               </button>
                             )}
                           </div>
+                          {isInPerson && (inPersonTime || workout.location) && (
+                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-1">
+                              {inPersonTime && <span className="text-blue-400 text-xs">🕒 {inPersonTime}</span>}
+                              {workout.location && <span className="text-blue-400 text-xs">📍 {workout.location}</span>}
+                            </div>
+                          )}
                           <h3 className={`font-bold mb-0.5 ${workout.completed ? "text-gray-400 line-through" : "text-white"}`}>{workout.title}</h3>
                           {workout.structure ? (
                             workout.structure.exercises && Array.isArray(workout.structure.exercises) && workout.structure.exercises.some((ex: any) => ex.demoVideo) ? (

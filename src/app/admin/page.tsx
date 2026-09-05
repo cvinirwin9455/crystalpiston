@@ -3618,7 +3618,6 @@ export default function AdminPage() {
                             <span className="text-white font-heading uppercase text-sm">{day}</span>
                             <span className="text-gray-300 text-xs ml-2">{adminDayDateStr}</span>
                             {isAdminInPersonDay && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 ml-2 whitespace-nowrap">🏋️ In-Person{adminSessionTime ? ` · ${adminSessionTime}` : ''}</span>}
-                            {isAdminInPersonDay && adminDaySession?.location && <span className="text-blue-400/70 text-xs ml-2 whitespace-nowrap">📍 {adminDaySession.location}</span>}
                             {!isAdminDayExpanded && !isDayEmpty && <span className="text-gray-400 text-xs ml-3">{daySummary}{dayMiles > 0 ? ` • ${dayMiles.toFixed(1)} ${distUnitShort}` : ''}</span>}
                             {isDayEmpty && <span className="text-gray-500 text-xs ml-3">Rest Day</span>}
                           </div>
