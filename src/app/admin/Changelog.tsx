@@ -9,6 +9,7 @@ const updates = [
   {
     date: "September 6, 2026",
     items: [
+      { area: "Admin", text: "Fixed: Exercises added to the library (including ones added for all coaches by the admin) now show up when you type to add an exercise while building a workout. Previously, if an exercise wasn't tagged with a matching workout-type category, it would appear in the Exercise Library list but not in the workout builder's search. Now typing a name always finds any matching exercise, and untagged exercises show up everywhere" },
       { area: "Admin", text: "Updated: The Coach Guide now has a full 'Session Management' section covering billing modes (Programming / Per Session / Hybrid), session packages and balances, recurring schedules and one-off sessions, in-person vs remote day tagging, and how to handle client reschedule/cancel requests" },
       { area: "Client", text: "Updated: The Help Center now has articles on in-person sessions — where to see your session time and location, and how to use 'Can't attend?' to request a reschedule (offering up to 3 times that work for you) or a cancel" },
       { area: "Client", text: "Fixed: The client Account → Notifications section no longer says 'Choose which emails you receive from Pistol Performance' for First Mile Coach users — it now just reads 'Choose which emails you receive,' which is correct for every coach's brand" },
