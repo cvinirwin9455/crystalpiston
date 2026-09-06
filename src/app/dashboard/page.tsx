@@ -3109,7 +3109,7 @@ export default function DashboardPage() {
               </div>
 
               <hr className="border-white/10 mb-6" />
-              <p className="text-gray-300 text-xs mb-6">Choose which emails you receive from Pistol Performance.</p>
+              <p className="text-gray-300 text-xs mb-6">Choose which emails you receive.</p>
 
               <div className="space-y-5">
                 {/* New Training Plan Published */}

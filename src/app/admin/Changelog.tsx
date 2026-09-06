@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-05T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-06T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 6, 2026",
+    items: [
+      { area: "Client", text: "Fixed: The client Account → Notifications section no longer says 'Choose which emails you receive from Pistol Performance' for First Mile Coach users — it now just reads 'Choose which emails you receive,' which is correct for every coach's brand" },
+    ],
+  },
   {
     date: "September 5, 2026",
     items: [
