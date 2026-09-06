@@ -32,7 +32,7 @@ const faqItems: FAQItem[] = [
   {
     id: "who-is-it-for",
     question: "Who is First Mile Coach designed for?",
-    answer: "It's designed for coaches who are just starting out, coaching on the side, or running a small operation: new running coaches with their first few clients, personal trainers working from a park or small gym, CrossFit coaches managing a handful of athletes, or any fitness professional who needs simple client management without the complexity and cost of enterprise platforms like TrueCoach or TrainHeroic.",
+    answer: "It's designed for coaches who are just starting out, coaching on the side, or running a small operation: new running coaches with their first few clients, personal trainers running in-person or hybrid sessions from a park or small gym, CrossFit coaches managing a handful of athletes, or any fitness professional who needs simple client management — online, in-person, or both — without the complexity and cost of enterprise platforms like TrueCoach or TrainHeroic.",
     category: "Getting Started",
     tags: ["who", "target", "audience", "coaches", "trainers"],
   },
@@ -69,7 +69,7 @@ const faqItems: FAQItem[] = [
   {
     id: "what-features",
     question: "What features are included?",
-    answer: "Everything you need to manage clients professionally: Weekly training plan builder (runs, strength, cross-training, rest days), Client dashboards (mobile-friendly, add-to-homescreen), Structured workout builders (intervals, tempo, circuits, sets/reps), In-app messaging with email notifications, Exercise library with video demos, Client progress tracking & stats, Draft & publish workflow, Multi-coach support, Strava integration, and more. All features are included — no tiers, no paywalls.",
+    answer: "Everything you need to manage clients professionally: Weekly training plan builder (runs, strength, cross-training, rest days), Client dashboards (mobile-friendly, add-to-homescreen), Structured workout builders (intervals, tempo, circuits, sets/reps), In-app messaging with email notifications, Exercise library with video demos, Client progress tracking & stats, Draft & publish workflow, In-person session management (scheduling, packages, and reschedule requests), Multi-coach support, Strava integration, and more. All features are included — no tiers, no paywalls.",
     category: "Platform Features",
     tags: ["features", "included", "what", "tools", "capabilities"],
   },
@@ -130,6 +130,27 @@ const faqItems: FAQItem[] = [
     tags: ["multi-coach", "team", "multiple", "coaches", "assign"],
   },
   {
+    id: "in-person-training",
+    question: "Can I use this for in-person training, not just online programming?",
+    answer: "Yes. First Mile Coach supports three billing modes per client: Programming Only (online plans, the classic setup), Per Session (in-person training), or Hybrid (both). For in-person and hybrid clients you get session scheduling, pre-paid session packages with balance tracking, and reschedule/cancel requests — so it works whether you coach remotely, train people face-to-face, or do a mix.",
+    category: "Platform Features",
+    tags: ["in-person", "personal trainer", "PT", "billing mode", "hybrid", "per session", "face to face"],
+  },
+  {
+    id: "session-management",
+    question: "How does in-person session management work?",
+    answer: "For clients you train in person, you can set a recurring schedule (e.g. every Monday and Thursday at 9 AM) or add one-off sessions, each with a time, duration, and location. Those days are automatically tagged as in-person on the training plan (with the time and location shown), and marked separately from remote days. When a client can't make it, they send a reschedule or cancel request that you confirm — the session only changes once you approve it, and the client is emailed the outcome.",
+    category: "Platform Features",
+    tags: ["session", "in-person", "schedule", "recurring", "booking", "reschedule", "appointment"],
+  },
+  {
+    id: "session-packages",
+    question: "Can I track pre-paid session packages and balances?",
+    answer: "Yes. If a client buys a block of sessions up front, you enter how many they bought and what they paid, and the platform tracks the remaining balance as sessions are completed. Balances stack when they buy more, and you can set a low-balance alert so you know when it's time to prompt a re-up. In-person session payments are tracked separately from your online programming payments.",
+    category: "Platform Features",
+    tags: ["package", "sessions", "balance", "prepaid", "credits", "payment", "low balance"],
+  },
+  {
     id: "strava-integration",
     question: "Does it integrate with Strava?",
     answer: "Yes. Clients can connect their Strava account so their GPS activities auto-sync to the platform. When a Strava activity matches a programmed workout (same day, type, and similar distance), it auto-completes the workout with real data — pace, distance, duration, and heart rate. No manual logging needed for Strava-connected clients.",
@@ -183,7 +204,7 @@ const faqItems: FAQItem[] = [
   {
     id: "clients-reschedule",
     question: "Can clients reschedule workouts?",
-    answer: "Yes. If a client needs to move a workout to a different day within the same week, they can use the reschedule/move feature. The workout moves to the new day and you're notified of the change. This is great for when life gets in the way and plans need to shuffle.",
+    answer: "Yes. For a regular (online) workout, clients can move it to a different day within the same week — it moves and you're notified. In-person sessions work differently: because they're booked appointments, clients tap 'Can't attend?' to send you a request rather than moving it themselves. They can offer up to 3 dates/times that work for them, and you confirm one (or cancel) — nothing changes until you approve it. Great for when life gets in the way.",
     category: "Client Experience",
     tags: ["client", "reschedule", "move", "swap", "change day"],
   },
