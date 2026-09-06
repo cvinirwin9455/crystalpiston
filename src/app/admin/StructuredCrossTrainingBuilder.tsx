@@ -173,23 +173,33 @@ export default function StructuredCrossTrainingBuilder({ structure, onChange, we
     onChange({ ...structure, exercises });
   };
 
-  // Autocomplete: filter exercise library by workout type category, then by name
+  // Autocomplete: filter exercise library by name and (softly) by workout type category.
   const getFilteredLibrary = (searchText: string) => {
+    const lower = searchText.trim().toLowerCase();
+    const hasSearch = lower.length > 0;
+
+    // When the coach is actively typing, a NAME match always wins — we never hide an
+    // exercise just because its category tags don't match the current workout type.
+    // (Exercises added by a super-admin can have empty/mismatched categories, and they
+    // must still be findable by name here, exactly as they appear in the Exercise Library.)
+    if (hasSearch) {
+      return exerciseLibrary
+        .filter(item => item.name.toLowerCase().includes(lower))
+        .slice(0, 8);
+    }
+
+    // With no search text (e.g. on focus) we suggest exercises for this workout type.
+    // An exercise is suggested if it matches the workout type OR has no category tags at
+    // all (untagged exercises are treated as universal so they're never hidden).
     let filtered = exerciseLibrary;
-    // Filter by workout type category if provided
     if (workoutType && filtered.length > 0) {
       const categoryFiltered = filtered.filter(item =>
-        item.categories && item.categories.includes(workoutType)
+        !item.categories || item.categories.length === 0 || item.categories.includes(workoutType)
       );
-      // Only apply filter if it returns results (graceful fallback for untagged exercises)
+      // Graceful fallback: if nothing matches, show the full list rather than an empty picker.
       if (categoryFiltered.length > 0) {
         filtered = categoryFiltered;
       }
-    }
-    // Filter by search text
-    if (searchText.length > 0) {
-      const lower = searchText.toLowerCase();
-      filtered = filtered.filter(item => item.name.toLowerCase().includes(lower));
     }
     return filtered.slice(0, 8);
   };
