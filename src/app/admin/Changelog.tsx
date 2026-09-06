@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-05T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-06T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 6, 2026",
+    items: [
+      { area: "Admin", text: "Updated: The Coach Guide now has a full 'Session Management' section covering billing modes (Programming / Per Session / Hybrid), session packages and balances, recurring schedules and one-off sessions, in-person vs remote day tagging, and how to handle client reschedule/cancel requests" },
+      { area: "Client", text: "Updated: The Help Center now has articles on in-person sessions — where to see your session time and location, and how to use 'Can't attend?' to request a reschedule (offering up to 3 times that work for you) or a cancel" },
+    ],
+  },
   {
     date: "September 5, 2026",
     items: [

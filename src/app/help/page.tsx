@@ -53,7 +53,21 @@ const helpArticles: HelpArticle[] = [
     title: "Rescheduling (Moving) a Workout",
     category: "Training",
     keywords: ["reschedule", "move", "swap", "drag", "different day", "change day"],
-    content: `Need to move a workout to a different day? On any workout card, look for the **Move** option (arrow icon or hold and drag on mobile).\n\nSelect the new day you'd like to move it to. The workout will be rescheduled, and your coach will be notified of the change. This is great when life gets in the way and you need to shuffle your week around.\n\n**Note:** You can only reschedule workouts within the current week. You cannot move workouts to a different week.`,
+    content: `Need to move a workout to a different day? On any workout card, look for the **Move** option (arrow icon or hold and drag on mobile).\n\nSelect the new day you'd like to move it to. The workout will be rescheduled, and your coach will be notified of the change. This is great when life gets in the way and you need to shuffle your week around.\n\n**Note:** You can only reschedule workouts within the current week. You cannot move workouts to a different week.\n\n**In-person sessions are different** — those are booked appointments with your coach and can't be dragged to another day. To change one, use the "Can't attend?" option (see the in-person session articles below).`,
+  },
+  {
+    id: "in-person-sessions",
+    title: "In-Person Sessions (Time & Location)",
+    category: "Training",
+    keywords: ["in-person", "in person", "session", "coach", "meet", "location", "time", "where", "appointment"],
+    content: `If your coach trains you face-to-face, those days appear on your Training plan with a blue **"🏋️ In-Person Session"** badge.\n\nEach in-person day shows:\n\n• **The time** — right on the badge (e.g. "🏋️ In-Person Session · 3:00 PM")\n• **Where to meet** — a line underneath shows the time (🕒) and location (📍), so you know exactly when and where to show up\n\nIn-person sessions are booked appointments, so — unlike regular workouts — you can't drag them to a different day yourself. If you need to change one, tap **"Can't attend?"** on that session (see the next article).\n\nIf you've bought a block of sessions, your remaining session balance also shows on your Training tab.`,
+  },
+  {
+    id: "reschedule-session",
+    title: "Can't Attend? Requesting a Reschedule or Cancel",
+    category: "Training",
+    keywords: ["can't attend", "cant attend", "reschedule session", "cancel session", "in-person", "availability", "move session", "miss session"],
+    content: `Can't make an in-person session? On that session, tap **"Can't attend?"** and choose what you need:\n\n**Request Reschedule** — Offer your coach up to **3 dates and times that DO work for you**. The first option is pre-filled with your current session day/time, so you just adjust it and add any others. Tap "Add another time" for more options.\n\n**Cancel Session** — Let your coach know you can't make it at all.\n\nAdd an optional message, then tap **Send Request**.\n\n**What happens next:** Your coach reviews your request. Nothing changes until they act. If you asked to reschedule, they'll pick one of the times you offered and confirm it — you'll get an **email with your new confirmed time**. If none of your times work for them, they'll cancel that session and email you to reach out and find a new time together.\n\n**Tip:** The more options you offer, the more likely your coach can lock one in quickly.`,
   },
   {
     id: "structured-workouts",
