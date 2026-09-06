@@ -9,6 +9,7 @@ const updates = [
   {
     date: "September 6, 2026",
     items: [
+      { area: "Marketing", text: "Updated: The public FAQ (firstmilecoach.com) now covers in-person coaching — new questions on using the platform for in-person/hybrid training, how session scheduling and packages work, and how in-person reschedule requests differ from moving an online workout. The features list and 'who it's for' answer now mention in-person session management too" },
       { area: "Admin", text: "Fixed: Exercises added to the library (including ones added for all coaches by the admin) now show up when you type to add an exercise while building a workout. Previously, if an exercise wasn't tagged with a matching workout-type category, it would appear in the Exercise Library list but not in the workout builder's search. Now typing a name always finds any matching exercise, and untagged exercises show up everywhere" },
       { area: "Admin", text: "Updated: The Coach Guide now has a full 'Session Management' section covering billing modes (Programming / Per Session / Hybrid), session packages and balances, recurring schedules and one-off sessions, in-person vs remote day tagging, and how to handle client reschedule/cancel requests" },
       { area: "Client", text: "Updated: The Help Center now has articles on in-person sessions — where to see your session time and location, and how to use 'Can't attend?' to request a reschedule (offering up to 3 times that work for you) or a cancel" },
