@@ -3,9 +3,18 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-06T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-12T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 12, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: In-person sessions no longer quietly disappear from your active list when their time passes. Before, once a session's date/time went by, it dropped into History even if you never marked what happened — so sessions you still needed to deal with were easy to miss. Now a session stays in the client's 'Upcoming' list for as long as it's still marked 'Scheduled', no matter how old it is. It only moves to History once you've actually resolved it (marked it Completed, No-Show, Cancelled, etc.)" },
+      { area: "Admin", text: "NEW: 'Needs action' flag for overdue sessions — any scheduled session whose time has already passed but hasn't been marked yet now shows an amber '⏰ Needs action' badge and sorts to the top of the client's Upcoming list, so the ones you've overlooked are front and center" },
+      { area: "Admin", text: "Fixed: The dashboard's Upcoming Sessions widget had the same problem — it only ever showed the next 7 days, so past-due sessions you hadn't marked never appeared there at all. Now those overdue sessions show in a pinned '⏰ Needs Action · Overdue' group at the top of the widget (with the date they were scheduled), so you can clear them right from your dashboard" },
+      { area: "Admin", text: "Improved: The dashboard sessions widget now has the full set of quick actions on every session — Mark Complete, No-Show, Cancel (charged), and Cancel (no charge) — matching what you get on the client's Sessions tab, so you can fully resolve a session without opening the client" },
+    ],
+  },
   {
     date: "September 6, 2026",
     items: [
