@@ -19,7 +19,9 @@ function getEmailBrandAssets(brand: EmailBrand): EmailBrandAssets {
     return {
       name: 'Pistol Performance Coaching',
       senderName: 'Pistol Performance Coaching',
-      senderEmail: process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com',
+      // Send from a First Mile-verified domain (Crystal Pistol domains removed from Resend
+      // during the email-domain consolidation). Visible brand name/logo below stay Crystal Pistol.
+      senderEmail: process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com',
       logoUrl: 'https://www.crystalpistolperformance.com/IMG_5861.PNG',
       logoAlt: 'Pistol Performance Coaching',
       footerText: 'Pistol Performance Coaching &bull; crystalpistolperformance.com',
