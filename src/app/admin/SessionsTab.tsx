@@ -531,13 +531,25 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
   // ============ DISPLAY HELPERS ============
 
   const now = new Date();
+  // A session stays "active" (Upcoming) for as long as its status is still "scheduled" —
+  // even if the date/time has passed. A past-due scheduled session hasn't been dealt with
+  // yet: the coach still needs to mark it complete / no-show / cancelled. It only drops
+  // into History once it has a resolved status (completed, no-show, cancelled, rescheduled).
+  const isOverdue = (s: Session) => s.status === "scheduled" && new Date(s.scheduled_at) < now;
   const filteredSessions = sessions.filter((s) => {
-    if (filter === "upcoming") return new Date(s.scheduled_at) >= now && s.status === "scheduled";
-    if (filter === "past") return new Date(s.scheduled_at) < now || s.status !== "scheduled";
+    if (filter === "upcoming") return s.status === "scheduled";
+    if (filter === "past") return s.status !== "scheduled";
     return true;
   }).sort((a, b) => {
-    // Upcoming: soonest first (ascending). Past/All: most recent first (descending).
-    if (filter === "upcoming") return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+    if (filter === "upcoming") {
+      // Overdue sessions (need action now) float to the top, oldest overdue first so the
+      // most-overlooked ones are dealt with first. Then future sessions, soonest first.
+      const aOver = isOverdue(a);
+      const bOver = isOverdue(b);
+      if (aOver !== bOver) return aOver ? -1 : 1;
+      return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+    }
+    // Past/All: most recent first (descending).
     return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
   });
 
@@ -904,7 +916,7 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
       <div className="flex gap-1">
         {(["upcoming", "past", "all"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-accent/20 text-accent" : "text-gray-400 hover:text-white bg-white/5"}`}>
-            {f === "upcoming" ? `Upcoming (${sessions.filter(s => new Date(s.scheduled_at) >= now && s.status === "scheduled").length})` : f === "past" ? "History" : "All"}
+            {f === "upcoming" ? `Upcoming (${sessions.filter(s => s.status === "scheduled").length})` : f === "past" ? "History" : "All"}
           </button>
         ))}
       </div>
@@ -1057,6 +1069,9 @@ export default function SessionsTab({ clientId, clientName, onSessionsChange, pr
                       <div className="flex items-center gap-2">
                         <p className="text-white text-sm font-medium">{formatDateTime(session.scheduled_at)}</p>
                         {session.recurring_schedule_id && <span className="text-xs text-blue-400/60">🔄</span>}
+                        {isOverdue(session) && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 font-medium" title="This session's time has passed but hasn't been marked yet — mark it complete, no-show, or cancelled.">⏰ Needs action</span>
+                        )}
                         {requests.some(r => r.session_id === session.id && r.status === 'pending') && (
                           <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">⚠️ Request</span>
                         )}
