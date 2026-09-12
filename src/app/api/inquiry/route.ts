@@ -52,9 +52,13 @@ export async function POST(request: Request) {
     // Send email notification (fire and forget — don't block on this)
     const apiKey = process.env.RESEND_API_KEY
     if (apiKey) {
+      // Both brands now SEND from a First Mile-verified domain (Crystal Pistol domains were
+      // removed from Resend). The Crystal inquiry still goes TO crystal@pistolpc.com with
+      // reply_to = the customer's email, and the visible brand name/colors below stay
+      // "Pistol Performance Coaching" — only the technical from-address changed.
       const senderEmail = isFirstMile
         ? (process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com')
-        : (process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com')
+        : (process.env.FIRSTMILE_SENDER_EMAIL || process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com')
       const recipientEmail = isFirstMile
         ? ['curtisirwin@me.com', 'cvin9455@gmail.com']
         : ['crystal@pistolpc.com']

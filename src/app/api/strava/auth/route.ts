@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   // Always use the production domain for Strava callback (must match Strava app settings)
   const productionHost = process.env.NEXT_PUBLIC_SITE_URL 
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL).host 
-    : 'www.crystalpistolperformance.com'
+    : 'www.firstmilecoach.com'
   const redirectUri = `https://${productionHost}/api/strava/callback`
 
   // Use user ID as state parameter to verify on callback
