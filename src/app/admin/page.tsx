@@ -2231,12 +2231,13 @@ export default function AdminPage() {
       fetch(`/api/sessions?client_id=${clientDbId}`)
         .then(res => res.ok ? res.json() : [])
         .then((sessions: any[]) => {
-          const now = new Date();
           // Keep the full scheduled-session objects so Training & Logs can show each
           // in-person day's time and location (for any week, not just future ones).
           const scheduledSessions = sessions.filter((s: any) => s.status === 'scheduled');
           setClientSessions(scheduledSessions.map((s: any) => ({ id: s.id, scheduled_at: s.scheduled_at, duration_minutes: s.duration_minutes, location: s.location, session_type: s.session_type, status: s.status })));
-          const upcomingSessions = scheduledSessions.filter((s: any) => new Date(s.scheduled_at) >= now);
+          // A still-'scheduled' session counts as upcoming/active until the coach marks it,
+          // even if its time has passed (overdue) — matches the Sessions tab + dashboard widget.
+          const upcomingSessions = scheduledSessions;
           const dates = scheduledSessions
             .map((s: any) => {
               const match = s.scheduled_at.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -6026,19 +6027,27 @@ export default function AdminPage() {
               const unpaidClients = visibleClients.filter(c => c.status === "active" && c.owed - c.paid > 0);
               return (
                 <>
-                  {/* Upcoming Sessions (Next 7 Days) */}
+                  {/* Upcoming Sessions (overdue-needing-action + next 7 days) */}
                   {upcomingSessions.length > 0 && (() => {
-                    // Group sessions by date
-                    const groups: { dateKey: string; label: string; items: typeof upcomingSessions }[] = [];
                     const fmtTime = (iso: string) => {
                       const m = iso.match(/T(\d{2}):(\d{2})/);
                       if (!m) return '';
                       const h = parseInt(m[1]); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12;
                       return `${h12}:${m[2]} ${ap}`;
                     };
+                    const now = new Date();
                     const today = new Date(); today.setHours(0, 0, 0, 0);
                     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-                    for (const s of upcomingSessions) {
+                    // Split overdue (scheduled, time already passed) from the rest. Overdue
+                    // sessions still need the coach to mark them, so they get their own group
+                    // pinned to the top of the widget.
+                    const overdue = upcomingSessions
+                      .filter(s => new Date(s.scheduled_at) < now)
+                      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+                    const rest = upcomingSessions.filter(s => new Date(s.scheduled_at) >= now);
+                    // Group the non-overdue sessions by date
+                    const groups: { dateKey: string; label: string; items: typeof upcomingSessions }[] = [];
+                    for (const s of rest) {
                       const m = s.scheduled_at.match(/^(\d{4})-(\d{2})-(\d{2})/);
                       if (!m) continue;
                       const dateKey = `${m[1]}-${m[2]}-${m[3]}`;
@@ -6053,47 +6062,70 @@ export default function AdminPage() {
                       }
                       group.items.push(s);
                     }
+                    // Renders the action buttons + client row shared by both overdue and upcoming items.
+                    const renderSessionRow = (s: typeof upcomingSessions[number], isOverdue: boolean) => {
+                      const clientRow = clients.find((c: any) => c.clientId === s.client_id);
+                      const m = s.scheduled_at.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                      const overdueDateLabel = isOverdue && m
+                        ? new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                        : null;
+                      return (
+                        <div key={s.id} className={`flex items-center justify-between rounded-lg p-3 gap-2 flex-wrap ${isOverdue ? 'bg-orange-500/5 border border-orange-500/20' : 'bg-primary/30'}`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="text-center flex-shrink-0 w-16">
+                              <p className="text-white text-sm font-bold">{fmtTime(s.scheduled_at)}</p>
+                              <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-white text-sm truncate">{s.clientName}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {overdueDateLabel && <span className="text-orange-400 text-xs font-medium">{overdueDateLabel}</span>}
+                                {s.session_type && <span className="text-gray-400 text-xs">{s.session_type}</span>}
+                                {s.location && <span className="text-gray-500 text-xs truncate">📍 {s.location}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => dashboardMarkSession(s.id, 'completed')} title="Mark Complete" className="p-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                            <button onClick={() => dashboardMarkSession(s.id, 'no_show')} title="No-Show" className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                            </button>
+                            <button onClick={() => dashboardMarkSession(s.id, 'cancelled_charged')} title="Cancel (charged)" className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <button onClick={() => dashboardMarkSession(s.id, 'cancelled_no_charge')} title="Cancel (no charge)" className="p-1.5 rounded-lg bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
+                            {clientRow && (
+                              <button onClick={() => { setSelectedClient(clientRow.id); setClientTab('sessions'); }} title="Open" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    };
                     return (
                       <div className="bg-secondary/50 border border-blue-500/20 rounded-xl p-5">
-                        <h3 className="font-heading text-sm uppercase text-blue-400 mb-3">🏋️ Upcoming Sessions ({upcomingSessions.length}) · Next 7 Days</h3>
+                        <h3 className="font-heading text-sm uppercase text-blue-400 mb-3">🏋️ Upcoming Sessions ({upcomingSessions.length})</h3>
                         <div className="space-y-4">
+                          {/* Overdue sessions needing action */}
+                          {overdue.length > 0 && (
+                            <div className="bg-orange-500/5 border border-orange-500/30 rounded-xl p-3">
+                              <p className="text-orange-400 text-xs font-heading uppercase mb-2">⏰ Needs Action · Overdue ({overdue.length})</p>
+                              <p className="text-gray-400 text-xs mb-2">These sessions&apos; times have passed but haven&apos;t been marked yet.</p>
+                              <div className="space-y-2">
+                                {overdue.map((s) => renderSessionRow(s, true))}
+                              </div>
+                            </div>
+                          )}
                           {groups.map((group) => (
                             <div key={group.dateKey}>
                               <p className="text-gray-400 text-xs font-heading uppercase mb-2">{group.label}</p>
                               <div className="space-y-2">
-                                {group.items.map((s) => {
-                                  const clientRow = clients.find((c: any) => c.clientId === s.client_id);
-                                  return (
-                                    <div key={s.id} className="flex items-center justify-between bg-primary/30 rounded-lg p-3 gap-2 flex-wrap">
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <div className="text-center flex-shrink-0 w-16">
-                                          <p className="text-white text-sm font-bold">{fmtTime(s.scheduled_at)}</p>
-                                          <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
-                                        </div>
-                                        <div className="min-w-0">
-                                          <p className="text-white text-sm truncate">{s.clientName}</p>
-                                          <div className="flex items-center gap-2">
-                                            {s.session_type && <span className="text-gray-400 text-xs">{s.session_type}</span>}
-                                            {s.location && <span className="text-gray-500 text-xs truncate">📍 {s.location}</span>}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-1 flex-shrink-0">
-                                        <button onClick={() => dashboardMarkSession(s.id, 'completed')} title="Mark Complete" className="p-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors">
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        </button>
-                                        <button onClick={() => dashboardMarkSession(s.id, 'no_show')} title="No-Show" className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors">
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                        </button>
-                                        {clientRow && (
-                                          <button onClick={() => { setSelectedClient(clientRow.id); setClientTab('sessions'); }} title="Open" className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                {group.items.map((s) => renderSessionRow(s, false))}
                               </div>
                             </div>
                           ))}

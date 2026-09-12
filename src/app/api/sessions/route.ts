@@ -29,11 +29,13 @@ export async function GET(request: Request) {
   if (upcoming) {
     const days = parseInt(searchParams.get('days') || '7')
     const now = new Date()
-    const start = new Date(now)
-    start.setHours(0, 0, 0, 0)
     const end = new Date(now)
     end.setDate(end.getDate() + days)
     end.setHours(23, 59, 59, 999)
+    // Note: we intentionally do NOT set a lower bound. Any session that is still
+    // 'scheduled' but whose time has already passed ("overdue") hasn't been dealt
+    // with by the coach yet, so it must keep showing on the dashboard until they
+    // mark it. We fetch every scheduled session up to `end` (overdue + next N days).
 
     const { data: profile } = await adminClient
       .from('users')
@@ -71,7 +73,6 @@ export async function GET(request: Request) {
       .from('sessions')
       .select('id, client_id, coach_id, organization_id, scheduled_at, duration_minutes, location, session_type, notes, status, recurring_schedule_id')
       .eq('status', 'scheduled')
-      .gte('scheduled_at', start.toISOString())
       .lte('scheduled_at', end.toISOString())
       .order('scheduled_at', { ascending: true })
 
