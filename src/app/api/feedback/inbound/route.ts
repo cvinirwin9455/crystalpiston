@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // Extract feedback ID from the To address
-    // Format: feedback+{uuid}@reply.crystalpistolperformance.com
+    // Format: feedback+{uuid}@reply.firstmilecoach.com (matched domain-agnostically below)
     let feedbackId: string | null = null
     const toAddresses = Array.isArray(toField) ? toField : [toField]
     for (const addr of toAddresses) {

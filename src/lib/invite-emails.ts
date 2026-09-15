@@ -19,7 +19,8 @@ function getBrandAssets(brand: Brand): BrandAssets {
     return {
       name: 'Pistol Performance Coaching',
       senderName: 'Pistol Performance Coaching',
-      senderEmail: process.env.SENDER_EMAIL || 'noreply@crystalpistolperformance.com',
+      // Send from a First Mile-verified domain (Crystal Pistol domains removed from Resend).
+      senderEmail: process.env.SENDER_EMAIL || 'noreply@firstmilecoach.com',
       logoHtml: `<td style="padding: 32px 32px 24px; text-align: center; background: linear-gradient(145deg, #1a1a2e, #16213e);">
               <img src="https://www.crystalpistolperformance.com/IMG_5861.PNG" alt="Pistol Performance Coaching" width="160" style="display: block; margin: 0 auto;" />
             </td>`,

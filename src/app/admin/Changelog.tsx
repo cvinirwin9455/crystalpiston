@@ -14,6 +14,25 @@ const updates = [
     ],
   },
   {
+    date: "September 12, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: In-person sessions no longer quietly disappear from your active list when their time passes. Before, once a session's date/time went by, it dropped into History even if you never marked what happened — so sessions you still needed to deal with were easy to miss. Now a session stays in the client's 'Upcoming' list for as long as it's still marked 'Scheduled', no matter how old it is. It only moves to History once you've actually resolved it (marked it Completed, No-Show, Cancelled, etc.)" },
+      { area: "Admin", text: "NEW: 'Needs action' flag for overdue sessions — any scheduled session whose time has already passed but hasn't been marked yet now shows an amber '⏰ Needs action' badge and sorts to the top of the client's Upcoming list, so the ones you've overlooked are front and center" },
+      { area: "Admin", text: "Fixed: The dashboard's Upcoming Sessions widget had the same problem — it only ever showed the next 7 days, so past-due sessions you hadn't marked never appeared there at all. Now those overdue sessions show in a pinned '⏰ Needs Action · Overdue' group at the top of the widget (with the date they were scheduled), so you can clear them right from your dashboard" },
+      { area: "Admin", text: "Improved: The dashboard sessions widget now has the full set of quick actions on every session — Mark Complete, No-Show, Cancel (charged), and Cancel (no charge) — matching what you get on the client's Sessions tab, so you can fully resolve a session without opening the client" },
+    ],
+  },
+  {
+    date: "September 6, 2026",
+    items: [
+      { area: "Marketing", text: "Updated: The public FAQ (firstmilecoach.com) now covers in-person coaching — new questions on using the platform for in-person/hybrid training, how session scheduling and packages work, and how in-person reschedule requests differ from moving an online workout. The features list and 'who it's for' answer now mention in-person session management too" },
+      { area: "Admin", text: "Fixed: Exercises added to the library (including ones added for all coaches by the admin) now show up when you type to add an exercise while building a workout. Previously, if an exercise wasn't tagged with a matching workout-type category, it would appear in the Exercise Library list but not in the workout builder's search. Now typing a name always finds any matching exercise, and untagged exercises show up everywhere" },
+      { area: "Admin", text: "Updated: The Coach Guide now has a full 'Session Management' section covering billing modes (Programming / Per Session / Hybrid), session packages and balances, recurring schedules and one-off sessions, in-person vs remote day tagging, and how to handle client reschedule/cancel requests" },
+      { area: "Client", text: "Updated: The Help Center now has articles on in-person sessions — where to see your session time and location, and how to use 'Can't attend?' to request a reschedule (offering up to 3 times that work for you) or a cancel" },
+      { area: "Client", text: "Fixed: The client Account → Notifications section no longer says 'Choose which emails you receive from Pistol Performance' for First Mile Coach users — it now just reads 'Choose which emails you receive,' which is correct for every coach's brand" },
+    ],
+  },
+  {
     date: "September 5, 2026",
     items: [
       { area: "Admin", text: "Improved: On the Manage Coaches page, the 'Invite New Coach' form is now collapsed by default and tucked behind a button. The page opens straight to your list of current coaches, and when you want to add someone you just click 'Invite New Coach' to expand the form. This keeps the page cleaner and less cluttered, especially on mobile" },

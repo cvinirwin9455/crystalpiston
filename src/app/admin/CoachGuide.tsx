@@ -187,6 +187,111 @@ const guideSections: GuideSection[] = [
     content: `If you run a coaching team, you can invite other coaches and assign them to specific clients. Each coach only sees their assigned clients, while head coaches have full visibility across the roster.`,
   },
 
+  // === SESSION MANAGEMENT ===
+  {
+    id: "billing-modes",
+    title: "Billing Modes — Programming, In-Person, or Hybrid",
+    category: "Session Management",
+    icon: "dollar",
+    keywords: ["billing", "billing mode", "in-person", "per session", "hybrid", "programming only", "payment type"],
+    steps: [
+      "When you create a client's Plan (Account tab → + New Plan), choose their Billing Mode",
+      "Programming Only — they pay for your online programming (the classic setup, and the default)",
+      "Per Session — they pay for in-person training sessions instead of programming",
+      "Hybrid — they pay for both online programming AND in-person sessions",
+      "Existing clients stay on 'Programming Only' automatically — nothing changes for them",
+    ],
+    tips: [
+      "Only Per Session and Hybrid clients get the in-person Session tools (packages, schedules, in-person day tagging)",
+      "You can change a plan's billing mode by editing the plan",
+      "Session payments are tracked separately from your programming payments — they don't mix",
+    ],
+    content: `Billing Mode tells the platform how a client pays you, which unlocks the right tools. **Programming Only** is the standard online-coaching setup. **Per Session** and **Hybrid** turn on Session Management — packages, recurring schedules, and in-person day tagging — for clients you train face-to-face.`,
+  },
+  {
+    id: "session-packages",
+    title: "Session Packages (Tracking Pre-Paid Sessions)",
+    category: "Session Management",
+    icon: "dollar",
+    keywords: ["package", "sessions", "balance", "prepaid", "pre-paid", "block", "remaining", "credits", "low balance"],
+    steps: [
+      "Open a Per Session or Hybrid client → click the 'Sessions' tab",
+      "Add a package: enter how many sessions the client bought and how much they paid",
+      "The balance stacks — add more packages anytime and they add to the remaining total",
+      "As sessions are marked complete, the remaining balance goes down automatically",
+      "Set a low-balance threshold so you (and the client) get an alert when they're running low",
+    ],
+    tips: [
+      "Owed vs. paid for sessions is tracked separately from your programming payments",
+      "The client sees their remaining session balance on their Training tab",
+      "Use packages for clients who buy blocks up front (e.g. '10 sessions for $X')",
+    ],
+    content: `Session Packages let you sell blocks of in-person sessions up front and track the balance as they're used. Enter the sessions bought and amount paid, and the platform counts down the balance as you mark sessions complete. A low-balance alert helps you prompt a re-up before they run out.`,
+  },
+  {
+    id: "recurring-schedules",
+    title: "Recurring Schedules & One-Off Sessions",
+    category: "Session Management",
+    icon: "repeat",
+    keywords: ["recurring", "schedule", "repeating", "weekly", "one-off", "book", "session time", "days of week"],
+    steps: [
+      "On the client's 'Sessions' tab, set a recurring schedule (e.g. every Monday & Thursday at 9:00 AM)",
+      "Pick the days, set a time for each day, a default duration, and a location",
+      "The platform treats those days as the client's in-person days going forward",
+      "Add one-off sessions anytime for extra or rescheduled meetings",
+      "If a scheduled day lands on a program rest day, you'll see an amber heads-up before you save",
+    ],
+    tips: [
+      "The recurring pattern defines which days show as 'In-Person' on Create Week and Training & Logs",
+      "Editing one session doesn't change the whole recurring pattern — it only changes that instance",
+      "A rest day is never treated as in-person — you'll be warned about the clash so you can fix the schedule or the plan",
+    ],
+    content: `Recurring Schedules define a repeating pattern of in-person days and times (e.g. Mondays and Thursdays at 9 AM). Those days are then auto-tagged as in-person across the client's plan. You can also add one-off sessions for anything outside the pattern. The rest-day warning catches conflicts before you build the week.`,
+  },
+  {
+    id: "in-person-days",
+    title: "Seeing In-Person vs Remote Days",
+    category: "Session Management",
+    icon: "calendar-plus",
+    keywords: ["in-person", "remote", "badge", "training log", "create week", "location", "time", "which days"],
+    steps: [
+      "On Create Week and Training & Logs, Per Session / Hybrid clients' days are tagged automatically",
+      "In-person days show a blue '🏋️ In-Person' badge; online days show a '📱 Remote' badge",
+      "On Training & Logs, the day header shows the in-person time (e.g. '🏋️ In-Person · 9:00 AM')",
+      "Expand an in-person day to see a blue banner with the full time, duration, location, and session type",
+      "On Create Week (Hybrid), you can toggle any day between In-Person and Remote if you need to override",
+    ],
+    tips: [
+      "This mirrors what the client sees on their plan, so you're both looking at the same thing",
+      "Rest days are never marked in-person, even if the schedule lands on them",
+      "No need to jump to the Sessions tab just to see when and where you're meeting a client",
+    ],
+    content: `Once a client has a schedule, their in-person days are tagged automatically wherever you look — Create Week and Training & Logs — with blue In-Person badges (and Remote badges on the online days). Training & Logs also shows the session's time and location right on the day, so you always know when and where you're meeting.`,
+  },
+  {
+    id: "session-requests",
+    title: "Handling Reschedule & Cancel Requests",
+    category: "Session Management",
+    icon: "bell",
+    keywords: ["reschedule", "cancel", "request", "confirm", "availability", "client can't attend", "move session", "approve", "decline"],
+    steps: [
+      "If a client can't attend, they tap 'Can't attend?' on their session and send you a request",
+      "For a reschedule, the client offers up to 3 dates/times that work for them",
+      "You'll be notified — open the client's 'Sessions' tab to see the request banner",
+      "Each time the client offered shows as its own 'Confirm' button — tap one to move the session to that time",
+      "The client automatically gets an email confirming the new time",
+      "Prefer your own time? Tap 'Pick a different time' to edit the session directly",
+      "None of the offered times work? Tap 'None of these work' — it cancels the session (no charge) and emails the client to reach out to you",
+    ],
+    tips: [
+      "For a cancel request, you get clear one-tap actions: Cancel (no charge), Cancel (charge), or Decline (keep session)",
+      "Confirming a slot is a single decision — no back-and-forth messaging needed",
+      "The client is always emailed the outcome so they know what happened",
+      "Pending requests also show on your dashboard so you don't miss them",
+    ],
+    content: `When a client can't make a session, they send a request rather than changing anything themselves — the session only changes when you act. For reschedules, the client offers a few times that work and you simply confirm one (or pick your own, or cancel). It's a clear yes/no decision, and the client is emailed the result automatically.`,
+  },
+
   // === PROGRAMMING ===
   {
     id: "create-week",
@@ -632,7 +737,7 @@ const guideSections: GuideSection[] = [
   },
 ];
 
-const categories = ["All", "Getting Started", "Client Management", "Programming", "Client Interaction", "Stats & Tracking", "Exercise Library", "Business & Settings", "Tips & Best Practices"];
+const categories = ["All", "Getting Started", "Client Management", "Programming", "Session Management", "Client Interaction", "Stats & Tracking", "Exercise Library", "Business & Settings", "Tips & Best Practices"];
 
 function GuideIcon({ icon, className = "w-5 h-5" }: { icon: string; className?: string }) {
   switch (icon) {

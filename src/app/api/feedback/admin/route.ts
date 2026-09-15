@@ -222,8 +222,10 @@ export async function PATCH(request: Request) {
       `
 
       if (existingFeedback.user_email) {
-        // Set reply-to so user replies go to inbound processing
-        const replyToAddress = `feedback+${feedbackId}@reply.crystalpistolperformance.com`
+        // Set reply-to so user replies go to inbound processing.
+        // Uses reply.firstmilecoach.com (Crystal Pistol reply domain removed from Resend).
+        // The inbound parser matches on feedback+{id}@ regardless of domain.
+        const replyToAddress = `feedback+${feedbackId}@reply.firstmilecoach.com`
         await sendEmail({
           to: existingFeedback.user_email,
           subject: `Update on your ${typeLabel} — ${statusLabel}`,

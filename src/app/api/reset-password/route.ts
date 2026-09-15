@@ -37,9 +37,11 @@ export async function POST(request: Request) {
       .single()
 
     // Determine brand: use the brand passed from the client (based on hostname),
-    // or fall back to the user's org if available
-    let brand: EmailBrand = 'crystal-pistol'
-    let domain = 'www.crystalpistolperformance.com'
+    // or fall back to the user's org if available.
+    // Default the reset LINK domain to First Mile (the management app lives there now;
+    // the Crystal domain only serves marketing and redirects platform routes anyway).
+    let brand: EmailBrand = 'first-mile'
+    let domain = 'www.firstmilecoach.com'
 
     if (brandSlug === 'first-mile') {
       brand = 'first-mile'
