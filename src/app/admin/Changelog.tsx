@@ -9,6 +9,7 @@ const updates = [
   {
     date: "September 15, 2026",
     items: [
+      { area: "Marketing", text: "Simplified: The firstmilecoach.com pages (home, features, FAQ) now have a single 'Log In' button instead of separate 'Coach Login' and 'Client Login' buttons. Since one login can now be a coach, a client, or both, the app automatically sends you to the right place after you log in — so there's no need to pick which kind of login you are. Cleaner on mobile too." },
       { area: "All", text: "NEW: One login can now be BOTH a coach and a client. If someone you coach also wants their own coaching account (or a coach wants to be coached themselves), they no longer need two separate email addresses — the same login can carry both. After they log in, they pick which side they want to open — 'Coaching' (manage their clients) or 'My Training' (their own plan) — and a 'Switch to Coaching / Switch to My Training' option in the account menu lets them flip between the two anytime. People who only have one account see no change at all" },
       { area: "Admin", text: "NEW: Adding an existing account as a coach or client just works now. If you invite someone as a coach and that email is already a client in the system, they're simply granted coach access on their existing login (no duplicate account, no error). The same goes the other way: adding an existing coach as a client attaches a client account to their login and assigns you as their coach. They keep their password and can switch views after logging in" },
     ],
