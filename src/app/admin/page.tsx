@@ -3090,9 +3090,13 @@ export default function AdminPage() {
             const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
             const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
             const hideOtherClients = myAccessLevel === 'own_clients' || myCoachLevel === 'coach';
-            // When there's only 1 coach, include unassigned clients in "My Clients" since there's no one else to manage them
+            // When there's only 1 coach, include EVERY client this coach can see
+            // in "My Clients" — clients assigned to them (default OR non-default)
+            // plus unassigned clients — since there's no one else to manage them.
+            // (Previously a non-default assignment with only one coach fell into
+            //  no section at all and vanished from the sidebar.)
             const effectivePrimaryClients = allCoaches.length <= 1 
-              ? [...primaryClients, ...otherClients]
+              ? [...primaryClients, ...secondaryClients, ...otherClients]
               : primaryClients;
             return (
               <>
