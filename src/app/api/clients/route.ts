@@ -61,10 +61,46 @@ export async function GET(request: Request) {
     clientQuery = clientQuery.eq('organization_id', orgId)
   }
 
-  const { data: clientUsers, error: usersError } = await clientQuery
+  const { data: clientUsersRaw, error: usersError } = await clientQuery
 
   if (usersError) {
     return NextResponse.json({ error: usersError.message }, { status: 500 })
+  }
+
+  const clientUsers = clientUsersRaw || []
+
+  const { data: clientRecords } = await adminClient
+    .from('clients')
+    .select('id, user_id, goal, start_date, plan_end, owed, paid')
+
+  // Dual-role support: a user can be a client even if their PRIMARY role isn't
+  // 'client' (e.g. a coach who is also coached by someone else). Those users
+  // are filtered out by the role='client' query above, so pull them in
+  // explicitly via their client record and merge them into the list.
+  const clientUserIdSet = new Set((clientUsers).map((u: any) => u.id))
+  const missingClientUserIds = [
+    ...new Set(
+      (clientRecords || [])
+        .map((cr: any) => cr.user_id)
+        .filter((uid: string) => uid && !clientUserIdSet.has(uid))
+    ),
+  ]
+  if (missingClientUserIds.length > 0) {
+    let extraQuery = adminClient
+      .from('users')
+      .select('id, email, name, gender, status, avatar_url, created_at')
+      .in('id', missingClientUserIds)
+    // Keep org scoping consistent with the main query.
+    if (orgId) {
+      extraQuery = extraQuery.eq('organization_id', orgId)
+    }
+    const { data: extraUsers } = await extraQuery
+    for (const eu of extraUsers || []) {
+      if (!clientUserIdSet.has(eu.id)) {
+        clientUsers.push(eu)
+        clientUserIdSet.add(eu.id)
+      }
+    }
   }
 
   // Fetch auth user data to determine invite status
@@ -73,10 +109,6 @@ export async function GET(request: Request) {
   for (const au of authUsers || []) {
     authUserMap.set(au.id, au)
   }
-
-  const { data: clientRecords } = await adminClient
-    .from('clients')
-    .select('id, user_id, goal, start_date, plan_end, owed, paid')
 
   // Try to fetch training profile fields (columns may not exist yet)
   let trainingProfiles: any[] = []
