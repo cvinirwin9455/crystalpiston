@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -24,11 +25,11 @@ export async function POST(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -121,11 +122,11 @@ export async function PATCH(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -198,11 +199,11 @@ export async function DELETE(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

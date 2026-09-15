@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 // POST /api/workouts - Create a workout
 export async function POST(request: Request) {
@@ -19,11 +20,11 @@ export async function POST(request: Request) {
   // Check role using service role client (bypasses RLS on users table)
   const { data: profile } = await adminClient
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

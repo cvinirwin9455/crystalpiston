@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getBrandFromHost } from "@/lib/brand";
+import { hasCoachAccess, PREFERRED_VIEW_COOKIE } from "@/lib/roles";
 
 function LoginContent() {
   const [email, setEmail] = useState("");
@@ -22,6 +23,41 @@ function LoginContent() {
   const isFirstMile = brand.slug === 'first-mile';
   const roleParam = searchParams.get('role');
   const isClientLogin = roleParam === 'client';
+
+  // Decide where to send a user after a successful sign-in, honoring dual-role
+  // accounts (coach capability + an existing client record).
+  async function redirectAfterLogin(userId: string) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role, has_coach_access")
+      .eq("id", userId)
+      .single();
+
+    const canCoach = hasCoachAccess(profile);
+
+    if (canCoach) {
+      // Do they also have a client record? → dual-role.
+      const { data: clientRow } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (clientRow) {
+        const preferred = document.cookie
+          .split("; ")
+          .find((c) => c.startsWith(`${PREFERRED_VIEW_COOKIE}=`))
+          ?.split("=")[1];
+        if (preferred === "client") window.location.href = "/dashboard";
+        else if (preferred === "coach") window.location.href = "/admin";
+        else window.location.href = "/choose-view";
+        return;
+      }
+      window.location.href = "/admin";
+      return;
+    }
+    window.location.href = "/dashboard";
+  }
 
   // Check for hash fragments (invite/recovery links that landed here by mistake)
   // Also check for error params
@@ -155,20 +191,10 @@ function LoginContent() {
       // Save email for next time
       localStorage.setItem("biometric-email", email);
 
-      // Redirect based on role
+      // Redirect based on role / capabilities
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (profile?.role === "admin") {
-          window.location.href = "/admin";
-        } else {
-          window.location.href = "/dashboard";
-        }
+        await redirectAfterLogin(user.id);
       }
     } catch (err: any) {
       console.error("Biometric login error:", err);
@@ -194,22 +220,11 @@ function LoginContent() {
       return;
     }
 
-    // Get user role to redirect appropriately
+    // Get user to redirect appropriately (honors dual-role accounts)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.role === "admin") {
-        window.location.href = "/admin";
-        return;
-      } else {
-        window.location.href = "/dashboard";
-        return;
-      }
+      await redirectAfterLogin(user.id);
+      return;
     }
 
     router.refresh();

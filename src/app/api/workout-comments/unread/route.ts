@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 // MIGRATION NEEDED: Add this column to notification_preferences table:
 // ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS comment_viewed_at jsonb DEFAULT '{}';
@@ -13,11 +14,11 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -168,11 +169,11 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

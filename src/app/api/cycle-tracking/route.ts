@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -27,11 +28,11 @@ export async function GET(request: Request) {
     // Coach is querying a specific client
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('role, has_coach_access')
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    if (!hasCoachAccess(profile)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -85,11 +86,11 @@ export async function PUT(request: Request) {
   if (body.clientId !== undefined && body.requested !== undefined) {
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('role, has_coach_access')
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    if (!hasCoachAccess(profile)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

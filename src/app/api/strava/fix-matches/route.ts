@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { findBestMatch } from '@/lib/strava-matching'
 import type { MatchCandidate } from '@/lib/strava-matching'
+import { hasCoachAccess } from '@/lib/roles'
 
 // POST /api/strava/fix-matches - Admin-only: re-run matching on all unmatched Strava activities
 // and auto-confirm high-confidence matches (>= 80)
@@ -21,11 +22,11 @@ export async function POST(request: Request) {
   // Verify admin
   const { data: adminUser } = await adminClient
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (adminUser?.role !== 'admin') {
+  if (!hasCoachAccess(adminUser)) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 })
   }
 

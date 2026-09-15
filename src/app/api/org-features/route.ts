@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
+import { hasCoachAccess } from '@/lib/roles'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -74,11 +75,11 @@ export async function PUT(request: Request) {
   // Check that user is an account_coach (owner), not a regular coach
   const { data: profile } = await supabase
     .from('users')
-    .select('role, coach_level')
+    .select('role, coach_level, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin' || profile?.coach_level === 'coach') {
+  if (!hasCoachAccess(profile) || profile?.coach_level === 'coach') {
     return NextResponse.json({ error: 'Only account owners can manage feature toggles' }, { status: 403 })
   }
 

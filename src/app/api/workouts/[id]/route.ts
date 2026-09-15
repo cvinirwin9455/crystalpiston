@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 // PATCH /api/workouts/[id] - Update a workout
 export async function PATCH(
@@ -22,11 +23,11 @@ export async function PATCH(
   // Check role using service role client (bypasses RLS on users table)
   const { data: profile } = await adminClient
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -72,11 +73,11 @@ export async function DELETE(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
