@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
+import { hasCoachAccess } from '@/lib/roles'
 
 // POST /api/ai-coach - AI coaching assistant for Crystal
 export async function POST(request: Request) {
@@ -16,8 +17,8 @@ export async function POST(request: Request) {
   )
 
   // Verify admin
-  const { data: adminUser } = await adminClient.from('users').select('role').eq('id', user.id).single()
-  if (adminUser?.role !== 'admin') {
+  const { data: adminUser } = await adminClient.from('users').select('role, has_coach_access').eq('id', user.id).single()
+  if (!hasCoachAccess(adminUser)) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 })
   }
 
@@ -269,8 +270,8 @@ export async function GET() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data: adminUser } = await adminClient.from('users').select('role').eq('id', user.id).single()
-  if (adminUser?.role !== 'admin') {
+  const { data: adminUser } = await adminClient.from('users').select('role, has_coach_access').eq('id', user.id).single()
+  if (!hasCoachAccess(adminUser)) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 })
   }
 

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   // Get user's role
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
   let uploadUserId = user.id
   if (targetUserId && targetUserId !== user.id) {
     // Only admins can update another user's avatar
-    if (profile?.role !== 'admin') {
+    if (!hasCoachAccess(profile)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     uploadUserId = targetUserId
@@ -137,7 +138,7 @@ export async function DELETE(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
@@ -147,7 +148,7 @@ export async function DELETE(request: Request) {
 
   let removeUserId = user.id
   if (targetUserId && targetUserId !== user.id) {
-    if (profile?.role !== 'admin') {
+    if (!hasCoachAccess(profile)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     removeUserId = targetUserId

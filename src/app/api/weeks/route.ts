@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess } from '@/lib/roles'
 
 // Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
 function parseDateRange(dateRange: string): Date | null {
@@ -446,11 +447,11 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

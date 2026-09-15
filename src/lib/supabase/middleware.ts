@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { hasCoachAccess, PREFERRED_VIEW_COOKIE } from '@/lib/roles'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -58,9 +59,12 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     const { data: profile } = await supabase
       .from('users')
-      .select('role, status, is_super_admin')
+      .select('role, status, is_super_admin, has_coach_access')
       .eq('id', user.id)
       .single()
+
+    // Coach capability = primary admin role OR granted coach access (dual-role).
+    const canCoach = hasCoachAccess(profile)
 
     // Block archived/inactive clients from accessing protected routes
     // Admins are never blocked. Public routes (login, etc.) are not blocked.
@@ -71,18 +75,35 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // If on login page, redirect to appropriate dashboard
+    // If on login page, redirect to appropriate landing.
+    // Dual-role users (coach capability + an existing client record) are sent
+    // to their remembered view, or to the chooser if they have no preference.
     if (pathname === '/login') {
       const url = request.nextUrl.clone()
-      if (profile?.role === 'admin') {
-        url.pathname = '/admin'
+      const preferred = request.cookies.get(PREFERRED_VIEW_COOKIE)?.value
+      if (canCoach) {
+        // Detect whether they ALSO have a client record → dual-role.
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (clientRow) {
+          // Dual-role: honor preference, else let them choose.
+          if (preferred === 'client') url.pathname = '/dashboard'
+          else if (preferred === 'coach') url.pathname = '/admin'
+          else url.pathname = '/choose-view'
+        } else {
+          url.pathname = '/admin'
+        }
       } else {
         url.pathname = '/dashboard'
       }
       return NextResponse.redirect(url)
     }
 
-    // Prevent clients from accessing admin routes
+    // Guard admin routes by COACH CAPABILITY (not just primary role), so a
+    // dual-role user whose primary role is 'client' can still reach /admin.
     if (pathname.startsWith('/admin') || pathname.startsWith('/super-admin')) {
       if (pathname.startsWith('/super-admin')) {
         // Only super admins can access /super-admin
@@ -91,7 +112,7 @@ export async function updateSession(request: NextRequest) {
           url.pathname = '/admin'
           return NextResponse.redirect(url)
         }
-      } else if (profile?.role !== 'admin') {
+      } else if (!canCoach) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
         return NextResponse.redirect(url)

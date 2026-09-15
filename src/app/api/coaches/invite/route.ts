@@ -46,16 +46,60 @@ export async function POST(request: Request) {
   // Check if this email already exists
   const { data: existingUser } = await adminClient
     .from('users')
-    .select('id, role')
+    .select('id, role, has_coach_access')
     .eq('email', email)
     .single()
 
+  // Dual-role support: an existing CLIENT can also become a coach. Rather than
+  // rejecting the email, we grant coach capability to their existing account.
+  // They keep their client record + coach assignments and can switch views.
   if (existingUser) {
-    if (existingUser.role === 'admin') {
+    if (existingUser.role === 'admin' || existingUser.has_coach_access) {
       return NextResponse.json({ error: 'This email is already a coach/admin in the system.' }, { status: 400 })
-    } else {
-      return NextResponse.json({ error: 'This email belongs to an existing client. A user cannot be both a client and a coach.' }, { status: 400 })
     }
+
+    // Existing client → grant coach access in place (no new invite needed;
+    // they already have a password / can log in).
+    const existingUpdate: Record<string, any> = { has_coach_access: true }
+    // Only assign an org if they don't already belong to one — never move an
+    // existing client out of their current organization.
+    const { data: existingOrg } = await adminClient
+      .from('users')
+      .select('organization_id')
+      .eq('id', existingUser.id)
+      .single()
+    if (!existingOrg?.organization_id) {
+      const orgIdForExisting = await getOrgIdForUser(adminClient, user.id)
+      if (orgIdForExisting) existingUpdate.organization_id = orgIdForExisting
+    }
+
+    const { error: upgradeError } = await adminClient
+      .from('users')
+      .update(existingUpdate)
+      .eq('id', existingUser.id)
+
+    if (upgradeError) {
+      return NextResponse.json({ error: upgradeError.message }, { status: 500 })
+    }
+
+    // Apply access_level / coach_level if provided (columns may not exist yet).
+    if (accessLevel) {
+      try {
+        await adminClient.from('users').update({ access_level: accessLevel }).eq('id', existingUser.id)
+      } catch {}
+    }
+    if (coachLevel) {
+      try {
+        await adminClient.from('users').update({ coach_level: coachLevel }).eq('id', existingUser.id)
+      } catch {}
+    }
+
+    return NextResponse.json({
+      success: true,
+      userId: existingUser.id,
+      dualRole: true,
+      message: `${name || email} is now also a coach. They can switch between their coaching and client views after logging in.`,
+    })
   }
 
   // Determine the correct redirect URL based on the inviting coach's organization

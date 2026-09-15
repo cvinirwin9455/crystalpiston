@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
 import BiometricSetup from "@/components/BiometricSetup";
+import AccountSwitcher from "@/components/AccountSwitcher";
 import VideoModal from "@/components/VideoModal";
 import { useTheme } from "@/components/ThemeProvider";
 import { DragDropProvider, DraggableWorkout, DroppableDay, MoveToModal, MoveButton, Toast, ResetWeekButton, AutoSaveNotice } from "@/components/WorkoutDragDrop";
@@ -1633,6 +1634,9 @@ export default function DashboardPage() {
                       Help Center
                     </a>
                     <div className="border-t border-white/10 mt-1.5 pt-1.5">
+                      <div onClick={() => setShowClientMenu(false)}>
+                        <AccountSwitcher current="client" variant="dashboard" mobile />
+                      </div>
                       <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-left text-gray-400 hover:text-accent text-sm py-2.5 px-4 hover:bg-white/5 transition-colors whitespace-nowrap">
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Logout

@@ -5,6 +5,7 @@ import AccountTab from "./AccountTab";
 import SessionsTab from "./SessionsTab";
 import AssessmentTab from "./AssessmentTab";
 import BiometricSetup from "@/components/BiometricSetup";
+import AccountSwitcher from "@/components/AccountSwitcher";
 import Changelog from "./Changelog";
 import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay, getPaceRangeFromStructure } from "./StructuredRunBuilder";
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
@@ -2996,6 +2997,7 @@ export default function AdminPage() {
                     </a>
                     )}
                     <div className="border-t border-white/10 mt-1 pt-1">
+                      <AccountSwitcher current="coach" variant="admin" />
                       <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-red-400 hover:text-red-300">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Logout
@@ -3056,6 +3058,7 @@ export default function AdminPage() {
                     </a>
                     )}
                     <div className="border-t border-white/10 mt-1 pt-1">
+                      <AccountSwitcher current="coach" variant="admin" mobile />
                       <a href="/auth/signout" className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-red-400 active:bg-white/10">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Logout
@@ -3087,9 +3090,13 @@ export default function AdminPage() {
             const otherClients = filteredClients.filter(c => !c.coaches.some(cc => cc.coachId === loggedInUserId));
             const showSecondary = allCoaches.length > 1 && (secondaryClients.length > 0 || otherClients.length > 0);
             const hideOtherClients = myAccessLevel === 'own_clients' || myCoachLevel === 'coach';
-            // When there's only 1 coach, include unassigned clients in "My Clients" since there's no one else to manage them
+            // When there's only 1 coach, include EVERY client this coach can see
+            // in "My Clients" — clients assigned to them (default OR non-default)
+            // plus unassigned clients — since there's no one else to manage them.
+            // (Previously a non-default assignment with only one coach fell into
+            //  no section at all and vanished from the sidebar.)
             const effectivePrimaryClients = allCoaches.length <= 1 
-              ? [...primaryClients, ...otherClients]
+              ? [...primaryClients, ...secondaryClients, ...otherClients]
               : primaryClients;
             return (
               <>

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
 import { sendClientInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
+import { hasCoachAccess } from '@/lib/roles'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -25,11 +26,11 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, access_level, coach_level, is_super_admin')
+    .select('role, access_level, coach_level, is_super_admin, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -60,10 +61,46 @@ export async function GET(request: Request) {
     clientQuery = clientQuery.eq('organization_id', orgId)
   }
 
-  const { data: clientUsers, error: usersError } = await clientQuery
+  const { data: clientUsersRaw, error: usersError } = await clientQuery
 
   if (usersError) {
     return NextResponse.json({ error: usersError.message }, { status: 500 })
+  }
+
+  const clientUsers = clientUsersRaw || []
+
+  const { data: clientRecords } = await adminClient
+    .from('clients')
+    .select('id, user_id, goal, start_date, plan_end, owed, paid')
+
+  // Dual-role support: a user can be a client even if their PRIMARY role isn't
+  // 'client' (e.g. a coach who is also coached by someone else). Those users
+  // are filtered out by the role='client' query above, so pull them in
+  // explicitly via their client record and merge them into the list.
+  const clientUserIdSet = new Set((clientUsers).map((u: any) => u.id))
+  const missingClientUserIds = [
+    ...new Set(
+      (clientRecords || [])
+        .map((cr: any) => cr.user_id)
+        .filter((uid: string) => uid && !clientUserIdSet.has(uid))
+    ),
+  ]
+  if (missingClientUserIds.length > 0) {
+    let extraQuery = adminClient
+      .from('users')
+      .select('id, email, name, gender, status, avatar_url, created_at')
+      .in('id', missingClientUserIds)
+    // Keep org scoping consistent with the main query.
+    if (orgId) {
+      extraQuery = extraQuery.eq('organization_id', orgId)
+    }
+    const { data: extraUsers } = await extraQuery
+    for (const eu of extraUsers || []) {
+      if (!clientUserIdSet.has(eu.id)) {
+        clientUsers.push(eu)
+        clientUserIdSet.add(eu.id)
+      }
+    }
   }
 
   // Fetch auth user data to determine invite status
@@ -72,10 +109,6 @@ export async function GET(request: Request) {
   for (const au of authUsers || []) {
     authUserMap.set(au.id, au)
   }
-
-  const { data: clientRecords } = await adminClient
-    .from('clients')
-    .select('id, user_id, goal, start_date, plan_end, owed, paid')
 
   // Try to fetch training profile fields (columns may not exist yet)
   let trainingProfiles: any[] = []
@@ -293,11 +326,11 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, has_coach_access')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!hasCoachAccess(profile)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -312,6 +345,85 @@ export async function POST(request: Request) {
 
   // Get org scope for this coach
   const orgId = await getOrgIdForUser(adminClient, user.id)
+
+  // Dual-role support: if this email already belongs to an existing account
+  // (e.g. a coach/admin), don't re-invite them — instead add a client record
+  // and assign this coach. They already have a password and can log in, and
+  // will gain a client "view" they can switch to.
+  const { data: existingUser } = await adminClient
+    .from('users')
+    .select('id, role')
+    .eq('email', email)
+    .single()
+
+  if (existingUser) {
+    // Does a client record already exist for them?
+    const { data: existingClient } = await adminClient
+      .from('clients')
+      .select('id')
+      .eq('user_id', existingUser.id)
+      .maybeSingle()
+
+    let clientId = existingClient?.id
+    if (!clientId) {
+      const { data: created, error: createErr } = await adminClient
+        .from('clients')
+        .insert({
+          user_id: existingUser.id,
+          goal: goal || null,
+          start_date: startDate || null,
+          plan_end: planEnd || null,
+          owed: 0,
+          paid: 0,
+        })
+        .select('id')
+        .single()
+      if (createErr) {
+        return NextResponse.json({ error: createErr.message }, { status: 500 })
+      }
+      clientId = created.id
+    }
+
+    // Assign this coach as a coach for the client (default if none yet).
+    try {
+      const { data: existingAssignments } = await adminClient
+        .from('client_coaches')
+        .select('id')
+        .eq('client_id', clientId)
+      await adminClient
+        .from('client_coaches')
+        .upsert(
+          {
+            client_id: clientId,
+            coach_id: user.id,
+            is_default: !existingAssignments || existingAssignments.length === 0,
+          },
+          { onConflict: 'client_id,coach_id' }
+        )
+    } catch (err) {
+      console.error('Failed to assign coach to existing user as client:', err)
+    }
+
+    // Optional initial plan if an owed amount was supplied.
+    if (owed && parseFloat(owed) > 0 && clientId) {
+      await adminClient.from('plans').insert({
+        client_id: clientId,
+        start_date: startDate || new Date().toISOString().split('T')[0],
+        end_date: planEnd || null,
+        goal: goal || null,
+        owed: parseFloat(owed),
+        paid: 0,
+        status: 'active',
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      userId: existingUser.id,
+      dualRole: true,
+      message: `${name || email} already has an account and has been added as your client. They can switch to their client view after logging in.`,
+    })
+  }
 
   // Get the coach's name for the email
   const { data: coachProfile } = await adminClient

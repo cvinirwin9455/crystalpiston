@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasCoachAccess, PREFERRED_VIEW_COOKIE } from '@/lib/roles'
 
 // GET /auth/callback - Handle Supabase auth redirects (PKCE code exchange)
 // This runs server-side so cookies are properly set for the session
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
         // invited_at exists but email_confirmed_at might just have been set by this exchange
         const { data: profile } = await supabase
           .from('users')
-          .select('role')
+          .select('role, has_coach_access')
           .eq('id', user.id)
           .single()
 
@@ -43,8 +44,25 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/reset-password`)
         }
 
-        // Default: route based on role
-        if (profile?.role === 'admin') {
+        // Default: route based on capabilities (dual-role aware)
+        if (hasCoachAccess(profile)) {
+          // Coach-capable — but if they ALSO have a client record they're
+          // dual-role, so honor their remembered view or send to the chooser.
+          const { data: clientRow } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (clientRow) {
+            const preferred = request.headers
+              .get('cookie')
+              ?.split('; ')
+              .find((c) => c.startsWith(`${PREFERRED_VIEW_COOKIE}=`))
+              ?.split('=')[1]
+            if (preferred === 'client') return NextResponse.redirect(`${origin}/dashboard`)
+            if (preferred === 'coach') return NextResponse.redirect(`${origin}/admin`)
+            return NextResponse.redirect(`${origin}/choose-view`)
+          }
           return NextResponse.redirect(`${origin}/admin`)
         } else {
           // New users who just exchanged code should set password

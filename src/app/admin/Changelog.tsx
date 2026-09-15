@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-12T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-15T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 15, 2026",
+    items: [
+      { area: "All", text: "NEW: One login can now be BOTH a coach and a client. If someone you coach also wants their own coaching account (or a coach wants to be coached themselves), they no longer need two separate email addresses — the same login can carry both. After they log in, they pick which side they want to open — 'Coaching' (manage their clients) or 'My Training' (their own plan) — and a 'Switch to Coaching / Switch to My Training' option in the account menu lets them flip between the two anytime. People who only have one account see no change at all" },
+      { area: "Admin", text: "NEW: Adding an existing account as a coach or client just works now. If you invite someone as a coach and that email is already a client in the system, they're simply granted coach access on their existing login (no duplicate account, no error). The same goes the other way: adding an existing coach as a client attaches a client account to their login and assigns you as their coach. They keep their password and can switch views after logging in" },
+    ],
+  },
   {
     date: "September 12, 2026",
     items: [
