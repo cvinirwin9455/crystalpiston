@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { getWorkoutDistanceForDisplay, getWorkoutStructureForDisplay, normalizeWorkoutDistance } from '@/lib/workout-distance'
 
 // Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
 function parseDateRange(dateRange: string): Date | null {
@@ -399,14 +400,14 @@ export async function GET(request: Request) {
           type: wo.type,
           trainingType: wo.training_type,
           title: wo.title,
-          miles: wo.miles ? parseFloat(wo.miles) : null,
+          miles: getWorkoutDistanceForDisplay(wo),
           distanceUnit: wo.distance_unit || 'mi',
           description: wo.description,
           paceTarget: wo.pace_target,
           location: wo.location,
           coachNotes: wo.coach_notes,
           sortOrder: wo.sort_order,
-          structure: wo.structure || null,
+          structure: getWorkoutStructureForDisplay(wo),
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,
@@ -483,6 +484,17 @@ export async function POST(request: Request) {
     )
   }
 
+  const normalizedDistances = workouts.map((workout: any) => normalizeWorkoutDistance(workout))
+  const invalidDistanceIndex = normalizedDistances.findIndex((distance: any) => distance.error)
+  if (invalidDistanceIndex !== -1) {
+    const workout = workouts[invalidDistanceIndex]
+    const label = `${workout.day} ${workout.type === 'swimming' ? 'swim' : workout.type || 'workout'}`
+    return NextResponse.json(
+      { error: `${label} ${normalizedDistances[invalidDistanceIndex].error}. Nothing was saved; correct that distance and try again.` },
+      { status: 400 }
+    )
+  }
+
   // Create the week first, then roll it back if any workout cannot be saved.
   // Supabase's REST client cannot wrap these two inserts in one transaction, so the
   // explicit cleanup prevents an empty week from blocking every retry.
@@ -517,9 +529,7 @@ export async function POST(request: Request) {
       // A rest day can never be an in-person coached session — enforce it here so the
       // DB never stores a contradictory row, regardless of what the form sent.
       const woSessionType = woType !== 'rest' && w.sessionType === 'in_person' ? 'in_person' : 'remote'
-      const parsedMiles = w.miles !== null && w.miles !== undefined && w.miles !== ''
-        ? Number.parseFloat(String(w.miles))
-        : null
+      const normalizedDistance = normalizedDistances[index]
 
       return {
         week_id: week.id,
@@ -527,14 +537,14 @@ export async function POST(request: Request) {
         type: woType,
         training_type: w.trainingType || null,
         title: w.title || null,
-        miles: parsedMiles !== null && Number.isFinite(parsedMiles) ? parsedMiles : null,
+        miles: normalizedDistance.miles,
         description: w.description || null,
         pace_target: w.paceTarget || null,
         location: w.location || null,
         coach_notes: w.coachNotes || null,
         sort_order: index,
-        distance_unit: w.distanceUnit === 'km' ? 'km' : 'mi',
-        structure: w.structure || null,
+        distance_unit: normalizedDistance.distanceUnit,
+        structure: normalizedDistance.structure,
         session_type: woSessionType,
       }
     })
