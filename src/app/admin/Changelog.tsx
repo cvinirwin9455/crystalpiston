@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-15T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-21T07:32:02Z";
 
 const updates = [
+  {
+    date: "September 21, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: Creating a client's training week no longer appears to do nothing or leaves behind an empty week that blocks you from trying again. If any part of the week cannot be saved, the incomplete copy is removed automatically and you'll see a clear message explaining what happened. The save buttons also show when they're working and prevent accidental double-clicks." },
+    ],
+  },
   {
     date: "September 15, 2026",
     items: [
