@@ -149,6 +149,8 @@ export function mapStravaTypeToWorkoutType(stravaType: string): string {
     case 'WeightTraining':
     case 'Crossfit':
       return 'strength'
+    case 'Swim':
+      return 'swimming'
     default:
       return 'cross'
   }

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getWorkoutDistanceInMiles } from '@/lib/workout-distance'
 import { NextResponse } from 'next/server'
 import {
   getValidAccessToken,
@@ -139,7 +140,7 @@ export async function POST() {
           if (weekId) {
             const { data: programmedWorkouts } = await adminClient
               .from('workouts')
-              .select('id, day, type, training_type, miles, title')
+              .select('id, day, type, training_type, miles, title, distance_unit, structure')
               .eq('week_id', weekId)
 
             const workoutIds = (programmedWorkouts || []).map((w: any) => w.id)
@@ -169,7 +170,7 @@ export async function POST() {
                 day: w.day,
                 workoutType: w.type,
                 trainingType: w.training_type || null,
-                miles: w.miles ? parseFloat(w.miles) : null,
+                miles: getWorkoutDistanceInMiles(w),
                 title: w.title || null,
                 completed: completedIds.includes(w.id),
               }))

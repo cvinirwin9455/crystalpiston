@@ -98,6 +98,14 @@ export function normalizeWorkoutDistance(workout: any): StoredWorkoutDistance {
   }
 }
 
+export function isMileageWorkoutType(type: unknown): boolean {
+  return type === 'run' || type === 'walk'
+}
+
+export function getWorkoutDistanceUnitForDisplay(workout: any): 'mi' | 'km' | undefined {
+  return workout.type === 'swimming' ? undefined : (workout.distance_unit === 'km' ? 'km' : 'mi')
+}
+
 export function getWorkoutStructureForDisplay(workout: any): unknown {
   const structure = workout.structure
   if (workout.type !== 'swimming' || !structure || typeof structure !== 'object' || Array.isArray(structure)) {
@@ -106,6 +114,15 @@ export function getWorkoutStructureForDisplay(workout: any): unknown {
 
   const { swimDistanceMeters: _storedSwimDistance, ...displayStructure } = structure
   return Object.keys(displayStructure).length > 0 ? displayStructure : null
+}
+
+export function getWorkoutDistanceInMiles(workout: any): number | null {
+  const displayDistance = getWorkoutDistanceForDisplay(workout)
+  if (displayDistance === null || displayDistance <= 0) return null
+  if (workout.type === 'swimming') return displayDistance / 1609.344
+  return workout.distance_unit === 'km' || workout.distanceUnit === 'km'
+    ? displayDistance / 1.60934
+    : displayDistance
 }
 
 /** Return the UI-facing distance. New swims retain exact entered meters in JSON. */

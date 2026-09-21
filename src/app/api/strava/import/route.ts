@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getWorkoutDistanceInMiles } from '@/lib/workout-distance'
 import { NextResponse } from 'next/server'
 import {
   getValidAccessToken,
@@ -231,7 +232,7 @@ export async function POST(request: Request) {
           // Run matching for this activity
           const { data: programmedForMatch } = await adminClient
             .from('workouts')
-            .select('id, day, type, training_type, title, miles')
+            .select('id, day, type, training_type, title, miles, distance_unit, structure')
             .eq('week_id', targetWeekId)
 
           const matchWorkoutIds = (programmedForMatch || []).map((w: any) => w.id)
@@ -270,7 +271,7 @@ export async function POST(request: Request) {
                 day: w.day,
                 workoutType: w.type,
                 trainingType: w.training_type || null,
-                miles: w.miles ? parseFloat(w.miles) : null,
+                miles: getWorkoutDistanceInMiles(w),
                 title: w.title || null,
                 completed: matchCompletedIds.includes(w.id),
               })),
@@ -283,7 +284,7 @@ export async function POST(request: Request) {
                 day: w.day,
                 workoutType: w.type,
                 trainingType: w.training_type || null,
-                miles: w.miles ? parseFloat(w.miles) : null,
+                miles: getWorkoutDistanceInMiles(w),
                 title: w.notes || null,
                 completed: false,
               })),
@@ -315,7 +316,7 @@ export async function POST(request: Request) {
     if (weekId) {
       const { data: programmedWorkouts } = await adminClient
         .from('workouts')
-        .select('id, day, type, training_type, title, miles')
+        .select('id, day, type, training_type, title, miles, distance_unit, structure')
         .eq('week_id', weekId)
 
       const workoutIds = (programmedWorkouts || []).map(w => w.id)
@@ -355,7 +356,7 @@ export async function POST(request: Request) {
             day: w.day,
             workoutType: w.type,
             trainingType: w.training_type || null,
-            miles: w.miles ? parseFloat(w.miles) : null,
+            miles: getWorkoutDistanceInMiles(w),
             title: w.title || null,
             completed: completedIds.includes(w.id),
           })),
@@ -368,7 +369,7 @@ export async function POST(request: Request) {
             day: w.day,
             workoutType: w.type,
             trainingType: w.training_type || null,
-            miles: w.miles ? parseFloat(w.miles) : null,
+            miles: getWorkoutDistanceInMiles(w),
             title: w.notes || null,
             completed: false,
           })),
