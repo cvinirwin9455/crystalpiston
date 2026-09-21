@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-21T07:52:28Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-21T10:56:12Z";
 
 const updates = [
   {
     date: "September 21, 2026",
     items: [
+      { area: "Admin", text: "Fixed: Training weeks containing swimming or other non-running workouts no longer fail with a 'numeric field overflow' message. Swimming distances entered in meters are now stored safely and still display in meters, hidden leftover distances are cleared from workouts that do not use mileage, and any genuinely invalid distance now identifies the affected day so it is easy to correct." },
       { area: "Admin", text: "Fixed: When building a structured run, you can now erase the default recovery distance and type a new number normally. Previously, deleting the default '1' made the recovery field disappear and then reset back to '1', forcing you to work around it. This fix applies anywhere structured runs are built or edited, including client weeks and saved templates." },
       { area: "Admin", text: "Fixed: Creating a client's training week no longer appears to do nothing or leaves behind an empty week that blocks you from trying again. If any part of the week cannot be saved, the incomplete copy is removed automatically and you'll see a clear message explaining what happened. The save buttons also show when they're working and prevent accidental double-clicks." },
     ],

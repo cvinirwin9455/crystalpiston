@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getWorkoutDistanceForDisplay, getWorkoutStructureForDisplay } from '@/lib/workout-distance'
 
 // Parse a week date_range ("Aug 25 - Aug 31") into a Monday Date
 function parseWeekMonday(dateRange: string): Date | null {
@@ -363,14 +364,14 @@ export async function GET() {
           type: wo.type || 'run',
           trainingType: wo.training_type || '',
           title: wo.title || '',
-          miles: wo.miles ? parseFloat(wo.miles) : null,
+          miles: getWorkoutDistanceForDisplay(wo),
           distanceUnit: wo.distance_unit || 'mi',
           description: wo.description || '',
           paceTarget: wo.pace_target || '',
           // For in-person coached days, prefer the session's location so the client sees where to meet.
           location: ((matchedSession && !woIsRest) ? matchedSession.location : null) || wo.location || '',
           coachNotes: wo.coach_notes || '',
-          structure: wo.structure || null,
+          structure: getWorkoutStructureForDisplay(wo),
           sessionType: woSessionType,
           // Don't link a rest day to its session for the client-facing in-person
           // lock/reschedule UI — the day is remote. The conflict flag is for the coach.
