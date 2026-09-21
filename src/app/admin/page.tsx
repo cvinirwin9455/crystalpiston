@@ -330,6 +330,7 @@ export default function AdminPage() {
   const [pickerMonth, setPickerMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth()));
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [savingWeek, setSavingWeek] = useState(false);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
   const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "", trackCycle: false });
 
@@ -2425,6 +2426,8 @@ export default function AdminPage() {
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
+    if (savingWeek) return;
+
     const client = clients.find(c => c.id === selectedClient);
     if (!client || !client.clientId) {
       alert("Error: No client record found. Please refresh and try again.");
@@ -2504,10 +2507,15 @@ export default function AdminPage() {
       }))
     );
 
+    setSavingWeek(true);
     try {
       // If editing an existing draft, delete the old one first
       if (editingDraftId) {
-        await fetch(`/api/weeks/${editingDraftId}`, { method: 'DELETE' });
+        const deleteRes = await fetch(`/api/weeks/${editingDraftId}`, { method: 'DELETE' });
+        if (!deleteRes.ok) {
+          const deleteError = await deleteRes.json().catch(() => ({}));
+          throw new Error(deleteError.error || 'The existing draft could not be replaced.');
+        }
       }
 
       const res = await fetch('/api/weeks', {
@@ -2559,9 +2567,15 @@ export default function AdminPage() {
           setAdminMaxOffset(prev => Math.max(prev, targetOffset));
         }
         setClientTab(publishStatus === "draft" ? "drafts" : "plan");
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'The week could not be saved. Please try again.');
       }
     } catch (err) {
       console.error('Failed to save week:', err);
+      alert(err instanceof Error ? err.message : 'The week could not be saved. Please try again.');
+    } finally {
+      setSavingWeek(false);
     }
   };
 
@@ -4371,7 +4385,7 @@ export default function AdminPage() {
                   <span className="text-gray-400 text-sm">Weekly Mileage Total:</span>
                   <span className="text-accent font-heading text-lg">{weekPlan.days.reduce((total, day) => total + day.workouts.reduce((dayTotal, wo) => dayTotal + (wo.miles && (wo.type === 'run' || wo.type === 'walk') ? parseFloat(wo.miles) || 0 : 0), 0), 0).toFixed(2)} {weekPlan.days.some(d => d.workouts.some(wo => wo.distanceUnit === 'km')) ? 'km' : 'mi'}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
+                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save as Draft"}</button><button onClick={() => handleSaveWeek("published")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save & Publish"}</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
                 {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
