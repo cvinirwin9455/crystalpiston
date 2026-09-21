@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
 import { hasCoachAccess } from '@/lib/roles'
+import { getWorkoutDistanceForDisplay, getWorkoutDistanceInMiles, isMileageWorkoutType } from '@/lib/workout-distance'
 
 // POST /api/ai-coach - AI coaching assistant for Crystal
 export async function POST(request: Request) {
@@ -432,7 +433,7 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       const batch = weekIds.slice(i, i + 20)
       const { data } = await adminClient
         .from('workouts')
-        .select('id, week_id, day, type, training_type, miles')
+        .select('id, week_id, day, type, training_type, miles, distance_unit, structure')
         .in('week_id', batch)
       if (data) workoutsData = [...workoutsData, ...data]
     }
@@ -461,10 +462,10 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       const completed = weekWorkouts.filter((w: any) => logMap.has(w.id))
       const totalMilesMi = completed.filter((w: any) => {
         const log = logMap.get(w.id)
-        return log && log.status !== 'skipped'
+        return isMileageWorkoutType(w.type) && log && log.status !== 'skipped'
       }).reduce((s: number, w: any) => {
         const log = logMap.get(w.id)
-        return s + (Number(log?.actual_miles) || Number(w.miles) || 0)
+        return s + (Number(log?.actual_miles) || getWorkoutDistanceInMiles(w) || 0)
       }, 0)
 
       // Also include client-added workout miles for this week
@@ -472,9 +473,9 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
       try {
         const { data: cwData } = await adminClient
           .from('client_workouts')
-          .select('miles, completed')
+          .select('type, miles, completed')
           .eq('week_id', week.id)
-        clientAddedMilesMi = (cwData || []).filter((cw: any) => cw.completed && cw.miles).reduce((s: number, cw: any) => s + (Number(cw.miles) || 0), 0)
+        clientAddedMilesMi = (cwData || []).filter((cw: any) => cw.completed && isMileageWorkoutType(cw.type) && cw.miles).reduce((s: number, cw: any) => s + (Number(cw.miles) || 0), 0)
       } catch {}
 
       const totalMilesWithExtras = totalMilesMi + clientAddedMilesMi
@@ -520,9 +521,16 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
 
         if (log) {
           const statusLabel = log.status === 'skipped' ? 'SKIPPED' : log.status === 'partial' ? 'PARTIAL' : 'complete'
-          const logMiles = Number(log?.actual_miles) || Number(wo.miles) || 0
-          const logDist = distanceUnit === 'km' ? (logMiles * 1.60934).toFixed(1) : logMiles.toFixed(1)
-          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${statusLabel}${log.status === 'skipped' && log.skip_reason ? ' (' + log.skip_reason + ')' : ''} | ${log.status !== 'skipped' ? logDist + unitLabel + ' | RPE ' + (log.rpe || '?') : ''}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
+          let distanceText = ''
+          if (log.status !== 'skipped' && wo.type === 'swimming') {
+            const swimMeters = getWorkoutDistanceForDisplay(wo)
+            distanceText = swimMeters ? `${swimMeters}m | ` : ''
+          } else if (log.status !== 'skipped' && isMileageWorkoutType(wo.type)) {
+            const logMiles = Number(log?.actual_miles) || getWorkoutDistanceInMiles(wo) || 0
+            const logDist = distanceUnit === 'km' ? (logMiles * 1.60934).toFixed(1) : logMiles.toFixed(1)
+            distanceText = `${logDist}${unitLabel} | `
+          }
+          workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: ${statusLabel}${log.status === 'skipped' && log.skip_reason ? ' (' + log.skip_reason + ')' : ''} | ${distanceText}${log.status !== 'skipped' ? 'RPE ' + (log.rpe || '?') : ''}${log.sleep ? ' | Sleep ' + log.sleep : ''}${log.notes && !log.notes.startsWith('Auto-synced') && !log.notes.startsWith('Synced from') ? ' | "' + log.notes + '"' : ''}\n`
         } else if (isFutureDay) {
           workoutSummary += `    ${wo.day} ${wo.type}${wo.training_type ? '/' + wo.training_type : ''}: UPCOMING (hasn't happened yet)\n`
         } else {
@@ -543,9 +551,13 @@ async function getClientContext(adminClient: any, clientId: string, depth: strin
     if (clientWorkouts && clientWorkouts.length > 0) {
       extraContext += '\n\nCLIENT-ADDED & STRAVA WORKOUTS (actual activity the client DID — this IS training they completed on their own):\n'
       for (const cw of clientWorkouts) {
-        const cwDist = cw.miles ? (distanceUnit === 'km' ? (Number(cw.miles) * 1.60934).toFixed(1) : Number(cw.miles).toFixed(1)) : '?'
+        const cwDistance = cw.type === 'swimming' && cw.miles
+          ? `${cw.source === 'strava' ? Math.round(Number(cw.miles) * 1609.344) : Number(cw.miles)}m`
+          : isMileageWorkoutType(cw.type) && cw.miles
+            ? `${distanceUnit === 'km' ? (Number(cw.miles) * 1.60934).toFixed(1) : Number(cw.miles).toFixed(1)}${distanceUnit}`
+            : ''
         const sourceLabel = cw.source === 'strava' ? '[Strava]' : '[Client-Added]'
-        extraContext += `  ${cw.day} ${sourceLabel} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}${cw.activity_name ? ' "' + cw.activity_name + '"' : ''}: ${cwDist}${distanceUnit} ${cw.completed ? '(completed)' : '(planned)'} ${cw.notes || ''}\n`
+        extraContext += `  ${cw.day} ${sourceLabel} ${cw.type}${cw.training_type ? '/' + cw.training_type : ''}${cw.activity_name ? ' "' + cw.activity_name + '"' : ''}${cwDistance ? ': ' + cwDistance : ''} ${cw.completed ? '(completed)' : '(planned)'} ${cw.notes || ''}\n`
       }
     }
 

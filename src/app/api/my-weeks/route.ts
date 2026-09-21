@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getWorkoutDistanceForDisplay, getWorkoutStructureForDisplay } from '@/lib/workout-distance'
+import { getWorkoutDistanceForDisplay, getWorkoutDistanceUnitForDisplay, getWorkoutStructureForDisplay } from '@/lib/workout-distance'
 
 // Parse a week date_range ("Aug 25 - Aug 31") into a Monday Date
 function parseWeekMonday(dateRange: string): Date | null {
@@ -365,7 +365,7 @@ export async function GET() {
           trainingType: wo.training_type || '',
           title: wo.title || '',
           miles: getWorkoutDistanceForDisplay(wo),
-          distanceUnit: wo.distance_unit || 'mi',
+          distanceUnit: getWorkoutDistanceUnitForDisplay(wo),
           description: wo.description || '',
           paceTarget: wo.pace_target || '',
           // For in-person coached days, prefer the session's location so the client sees where to meet.

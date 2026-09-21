@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { getWorkoutDistanceForDisplay, getWorkoutDistanceInMiles, getWorkoutDistanceUnitForDisplay, isMileageWorkoutType } from '@/lib/workout-distance'
 
 // POST /api/ai-suggest-week - Generate AI-suggested week plan for a client
 export async function POST(request: Request) {
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
     if (weekIds.length > 0) {
       const { data } = await adminClient
         .from('workouts')
-        .select('id, week_id, day, type, training_type, title, miles, description, pace_target, distance_unit')
+        .select('id, week_id, day, type, training_type, title, miles, description, pace_target, distance_unit, structure')
         .in('week_id', weekIds)
         .order('sort_order', { ascending: true })
       pastWorkouts = data || []
@@ -220,8 +221,9 @@ export async function POST(request: Request) {
             type: wo.type,
             trainingType: wo.training_type,
             title: wo.title,
-            programmedMiles: wo.miles,
-            distanceUnit: wo.distance_unit || 'mi',
+            programmedMiles: isMileageWorkoutType(wo.type) ? wo.miles : null,
+            programmedMeters: wo.type === 'swimming' ? getWorkoutDistanceForDisplay(wo) : null,
+            distanceUnit: getWorkoutDistanceUnitForDisplay(wo),
             description: wo.description,
             paceTarget: wo.pace_target,
             completed: !!log,
@@ -289,10 +291,10 @@ export async function POST(request: Request) {
     // Calculate weekly mileage trend
     const weeklyMileage = (pastWeeks || []).map(week => {
       const weekWorkoutMiles = pastWorkouts
-        .filter(w => w.week_id === week.id && w.miles)
-        .reduce((sum, w) => sum + parseFloat(w.miles), 0)
+        .filter(w => w.week_id === week.id && isMileageWorkoutType(w.type) && w.miles)
+        .reduce((sum, w) => sum + (getWorkoutDistanceInMiles(w) || 0), 0)
       const actualMiles = workoutLogs
-        .filter(l => pastWorkouts.find(w => w.id === l.workout_id && w.week_id === week.id) && l.actual_miles)
+        .filter(l => pastWorkouts.find(w => w.id === l.workout_id && w.week_id === week.id && isMileageWorkoutType(w.type)) && l.actual_miles)
         .reduce((sum, l) => sum + parseFloat(l.actual_miles), 0)
       return {
         dateRange: week.date_range,

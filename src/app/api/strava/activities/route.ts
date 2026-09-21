@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getWorkoutDistanceInMiles } from '@/lib/workout-distance'
 import {
   getValidAccessToken,
   getStravaActivity,
@@ -123,7 +124,7 @@ export async function POST(request: Request) {
         // Get programmed workouts for this week
         const { data: programmedWorkouts } = await adminClient
           .from('workouts')
-          .select('id, day, type, training_type, title, miles')
+          .select('id, day, type, training_type, title, miles, distance_unit, structure')
           .eq('week_id', weekId)
 
         // Get existing workout logs to know which are already completed
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
               day: w.day,
               workoutType: w.type,
               trainingType: w.training_type || null,
-              miles: w.miles ? parseFloat(w.miles) : null,
+              miles: getWorkoutDistanceInMiles(w),
               title: w.title || null,
               completed: completedIds.includes(w.id),
             })),
@@ -185,7 +186,7 @@ export async function POST(request: Request) {
               day: w.day,
               workoutType: w.type,
               trainingType: w.training_type || null,
-              miles: w.miles ? parseFloat(w.miles) : null,
+              miles: getWorkoutDistanceInMiles(w),
               title: w.notes || null,
               completed: false,
             })),

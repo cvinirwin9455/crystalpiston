@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
-import { getWorkoutDistanceForDisplay, getWorkoutStructureForDisplay, normalizeWorkoutDistance } from '@/lib/workout-distance'
+import { getWorkoutDistanceForDisplay, getWorkoutDistanceUnitForDisplay, getWorkoutStructureForDisplay, normalizeWorkoutDistance } from '@/lib/workout-distance'
 
 // Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
 function parseDateRange(dateRange: string): Date | null {
@@ -401,7 +401,7 @@ export async function GET(request: Request) {
           trainingType: wo.training_type,
           title: wo.title,
           miles: getWorkoutDistanceForDisplay(wo),
-          distanceUnit: wo.distance_unit || 'mi',
+          distanceUnit: getWorkoutDistanceUnitForDisplay(wo),
           description: wo.description,
           paceTarget: wo.pace_target,
           location: wo.location,

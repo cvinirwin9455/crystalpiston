@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getWorkoutDistanceInMiles } from '@/lib/workout-distance'
 import {
   getValidAccessToken,
   mapStravaTypeToWorkoutType,
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
             if (weekId) {
               const { data: programmedWorkouts } = await adminClient
                 .from('workouts')
-                .select('id, day, type, training_type, miles, title')
+                .select('id, day, type, training_type, miles, title, distance_unit, structure')
                 .eq('week_id', weekId)
 
               // Get already-matched activities for this week
@@ -200,7 +201,7 @@ export async function POST(request: Request) {
                   day: w.day,
                   workoutType: w.type,
                   trainingType: w.training_type || null,
-                  miles: w.miles ? parseFloat(w.miles) : null,
+                  miles: getWorkoutDistanceInMiles(w),
                   title: w.title || null,
                   completed: false,
                 }))
