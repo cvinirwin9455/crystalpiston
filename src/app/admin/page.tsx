@@ -1569,7 +1569,7 @@ export default function AdminPage() {
                         workouts: (w.workouts || []).map((wo: any) => ({
                           id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
                           trainingType: wo.trainingType || '', title: wo.title || '',
-                          miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
+                          miles: wo.miles, distanceUnit: wo.distanceUnit,
                           description: wo.description || '', paceTarget: wo.paceTarget || '',
                           location: wo.location || '', coachNotes: wo.coachNotes || '',
                           completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
@@ -6230,7 +6230,7 @@ export default function AdminPage() {
                                 ) : null}
                                 <span className={`${(item.client.avatarUrl || item.client.stravaProfileUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>{item.client.name.charAt(0)}</span>
                               </div>
-                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{sumProgrammedMileage(item.week.workouts).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>
