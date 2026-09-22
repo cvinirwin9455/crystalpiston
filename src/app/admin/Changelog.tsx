@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-21T12:51:35Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-22T19:07:14Z";
 
 const updates = [
+  {
+    date: "September 22, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: The coach dashboard's 'Drafts Ready to Publish' section now shows the correct running mileage when a draft includes swimming. Previously, a 5,000 m swim was accidentally added as 5,000 miles, making a 36.95-mile week appear as 5,036.95 miles. Dashboard totals now count only runs and walks, while swimming stays in meters." },
+    ],
+  },
   {
     date: "September 21, 2026",
     items: [
