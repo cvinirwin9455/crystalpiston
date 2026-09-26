@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { resolveCoachRequestScope } from '@/lib/coach-scope'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -38,36 +39,29 @@ export async function GET(request: Request) {
     // with by the coach yet, so it must keep showing on the dashboard until they
     // mark it. We fetch every scheduled session up to `end` (overdue + next N days).
 
-    const { data: profile } = await adminClient
-      .from('users')
-      .select('role, organization_id')
-      .eq('id', user.id)
-      .single()
+    const scopeResult = await resolveCoachRequestScope(
+      adminClient,
+      user.id,
+      searchParams.get('org'),
+      searchParams.get('coach')
+    )
+    if (!scopeResult.scope) {
+      return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+    }
 
-    // Determine which client IDs this coach can see:
-    // - org owners / account coaches: all clients in their org
-    // - otherwise: clients assigned to this coach (client_coaches) + sessions they coach
+    const { organizationId, coachId, effectiveProfile } = scopeResult.scope
+    const ownClientsOnly = effectiveProfile.coach_level === 'coach'
+      || effectiveProfile.access_level === 'own_clients'
+
     let allowedClientIds: string[] | null = null
-    try {
-      // Clients assigned to this coach
-      const { data: assignments } = await adminClient
+    if (ownClientsOnly) {
+      const { data: assignments, error: assignmentsError } = await adminClient
         .from('client_coaches')
         .select('client_id')
-        .eq('coach_id', user.id)
-      const assignedIds = (assignments || []).map((a: any) => a.client_id)
+        .eq('coach_id', coachId)
 
-      // Also include clients in the coach's org (if org set)
-      let orgClientIds: string[] = []
-      if (profile?.organization_id) {
-        const { data: orgClients } = await adminClient
-          .from('clients')
-          .select('id')
-          .eq('organization_id', profile.organization_id)
-        orgClientIds = (orgClients || []).map((c: any) => c.id)
-      }
-      allowedClientIds = [...new Set([...assignedIds, ...orgClientIds])]
-    } catch {
-      allowedClientIds = null
+      if (assignmentsError) return NextResponse.json([])
+      allowedClientIds = (assignments || []).map((assignment: any) => assignment.client_id)
     }
 
     let sessionQuery = adminClient
@@ -77,18 +71,23 @@ export async function GET(request: Request) {
       .lte('scheduled_at', end.toISOString())
       .order('scheduled_at', { ascending: true })
 
-    // Prefer scoping by allowed clients; if we couldn't compute that, fall back to coach_id
+    if (organizationId) {
+      sessionQuery = sessionQuery.eq('organization_id', organizationId)
+    } else {
+      sessionQuery = sessionQuery.eq('coach_id', coachId)
+    }
+
     const { data: allSessions, error } = await sessionQuery
     if (error) {
       return NextResponse.json([])
     }
 
     let sessions = allSessions || []
-    if (allowedClientIds && allowedClientIds.length > 0) {
+    if (allowedClientIds) {
       const allowedSet = new Set(allowedClientIds)
-      sessions = sessions.filter((s: any) => allowedSet.has(s.client_id) || s.coach_id === user.id)
-    } else {
-      sessions = sessions.filter((s: any) => s.coach_id === user.id)
+      sessions = sessions.filter((session: any) => (
+        allowedSet.has(session.client_id) || session.coach_id === coachId
+      ))
     }
 
     if (sessions.length === 0) return NextResponse.json([])

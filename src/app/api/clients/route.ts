@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
 import { sendClientInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
 import { hasCoachAccess } from '@/lib/roles'
+import { resolveCoachRequestScope } from '@/lib/coach-scope'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -24,31 +25,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, access_level, coach_level, is_super_admin, has_coach_access')
-    .eq('id', user.id)
-    .single()
+  const adminClient = await createAdminClient()
+  const { searchParams } = new URL(request.url)
+  const scopeResult = await resolveCoachRequestScope(
+    adminClient,
+    user.id,
+    searchParams.get('org'),
+    searchParams.get('coach')
+  )
 
-  if (!hasCoachAccess(profile)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
   }
+
+  const { organizationId: orgId, coachId, effectiveProfile } = scopeResult.scope
 
   // If coach_level is 'coach', always restrict to own clients regardless of access_level
-  const accessLevel = profile?.coach_level === 'coach' ? 'own_clients' : (profile?.access_level || 'all_clients')
-
-  const adminClient = await createAdminClient()
-
-  // Super admin org override: if ?org= param is passed and user is super admin, use that org
-  const { searchParams } = new URL(request.url)
-  const orgOverride = searchParams.get('org')
-  let orgId: string | null = null
-
-  if (orgOverride && profile?.is_super_admin) {
-    orgId = orgOverride
-  } else {
-    orgId = await getOrgIdForUser(adminClient, user.id)
-  }
+  const accessLevel = effectiveProfile.coach_level === 'coach'
+    ? 'own_clients'
+    : (effectiveProfile.access_level || 'all_clients')
   // Query users and clients separately to avoid join issues
   let clientQuery = adminClient
     .from('users')
@@ -219,7 +214,7 @@ export async function GET(request: Request) {
     // Find all client_ids this coach is assigned to
     const myClientIds = new Set(
       coachAssignments
-        .filter(ca => ca.coach_id === user.id)
+        .filter(ca => ca.coach_id === coachId)
         .map(ca => ca.client_id)
     )
     // Map client_ids back to user_ids
