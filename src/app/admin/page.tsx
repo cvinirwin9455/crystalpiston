@@ -3014,8 +3014,9 @@ export default function AdminPage() {
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span className="text-sm font-bold">SUPER ADMIN VIEW</span>
-          <span className="text-xs opacity-90">— You are viewing this account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
+          <span className="text-sm font-bold whitespace-nowrap">SUPER ADMIN VIEW</span>
+          <span className="hidden md:inline text-xs opacity-90">— You are viewing {(isSuperAdminViewing && superAdminTargetCoachName) ? `${superAdminTargetCoachName}'s` : "this"} account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
+          <span className="md:hidden text-xs opacity-90 truncate">Viewing {(isSuperAdminViewing && superAdminTargetCoachName) ? superAdminTargetCoachName : "this coach"}</span>
           <button
             onClick={() => {
               clientsRequestIdRef.current += 1;
@@ -3030,9 +3031,10 @@ export default function AdminPage() {
               sessionStorage.removeItem('superadmin_target_org');
               sessionStorage.removeItem('superadmin_target_coach');
             }}
-            className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0"
+            title="Stop viewing as this coach and return to your own account"
+            className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0 whitespace-nowrap"
           >
-            Dismiss
+            Exit Coach View
           </button>
         </div>
       )}
@@ -3367,7 +3369,7 @@ export default function AdminPage() {
       </button>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary || showGuide || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${isSuperAdminViewing ? "pt-10" : ""} ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showExerciseLibrary || showGuide || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
