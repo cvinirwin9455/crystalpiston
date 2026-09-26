@@ -204,15 +204,76 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Signup not found' }, { status: 404 })
     }
 
-    // Check if user already exists
+    // Check if user already exists (e.g. they're already a CLIENT of another
+    // coach). With dual-role accounts, we must NOT reject them and must NOT
+    // create a second auth identity — that corrupts their existing account.
+    // Instead, grant coach capability in place and give them their own new
+    // coaching organization, while leaving their client record + existing
+    // coach assignments untouched.
     const { data: existingUser } = await adminClient
       .from('users')
-      .select('id')
+      .select('id, role, has_coach_access')
       .eq('email', signup.email)
       .single()
 
     if (existingUser) {
-      return NextResponse.json({ error: 'A user with this email already exists' }, { status: 400 })
+      if (existingUser.role === 'admin' || existingUser.has_coach_access) {
+        return NextResponse.json({ error: 'This email is already a coach/admin in the system.' }, { status: 400 })
+      }
+
+      // Create the coach's own isolated organization.
+      const existingCoachSlug = signup.full_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const { data: existingNewOrg, error: existingOrgError } = await adminClient
+        .from('organizations')
+        .insert({
+          name: `${signup.full_name}`,
+          slug: `fmc-${existingCoachSlug}-${Date.now().toString(36)}`,
+          domain: 'firstmilecoach.com',
+        })
+        .select()
+        .single()
+
+      if (existingOrgError) {
+        return NextResponse.json({ error: `Failed to create organization: ${existingOrgError.message}` }, { status: 500 })
+      }
+
+      const existingNewOrgId = existingNewOrg.id
+
+      // Grant coach capability. Keep role='client' as their PRIMARY role so all
+      // existing client queries keep working; has_coach_access unlocks the coach
+      // side. Move their org to their OWN coaching org (their client capability
+      // is preserved via the clients + client_coaches rows, which are org-agnostic).
+      const { error: upgradeError } = await adminClient
+        .from('users')
+        .update({
+          has_coach_access: true,
+          organization_id: existingNewOrgId,
+          coach_level: 'account_coach',
+          access_level: 'all_clients',
+        })
+        .eq('id', existingUser.id)
+
+      if (upgradeError) {
+        return NextResponse.json({ error: upgradeError.message }, { status: 500 })
+      }
+
+      // Link the beta signup to the new org and seed the coach's exercise library.
+      await adminClient
+        .from('beta_signups')
+        .update({ organization_id: existingNewOrgId })
+        .eq('id', signupId)
+
+      const existingSeed = await seedExerciseLibrary(adminClient, existingNewOrgId)
+      if (!existingSeed.success) {
+        console.error(`Failed to seed exercise library for org ${existingNewOrgId}:`, existingSeed.error)
+      }
+
+      return NextResponse.json({
+        success: true,
+        userId: existingUser.id,
+        dualRole: true,
+        message: `${signup.full_name} already had an account and is now also a coach with their own organization. They can switch between their coaching and client views after logging in — no new invite email needed.`,
+      })
     }
 
     // Create a NEW organization for this coach (each beta coach is their own isolated account)

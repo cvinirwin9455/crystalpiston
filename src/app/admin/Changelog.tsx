@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-26T21:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-26T22:00:00Z";
 
 const updates = [
   {
     date: "September 26, 2026",
     items: [
+      { area: "Admin", text: "Fixed: Activating a beta coach whose email is already a client account no longer errors or corrupts their account. Instead, that person is granted their own coaching organization while keeping their existing client account and coach — one login now works as both. Previously this required signing up with a different email address." },
       { area: "Admin", text: "Improved: Super Admin 'View as' now fully replicates the coach's account — their name and profile photo are shown throughout the header and sidebar instead of the super admin's, so the view looks exactly like the coach's own account. Only the red banner at the top indicates a super admin is behind the scenes." },
       { area: "Admin", text: "Fixed: When a super admin adds a new client (or resends an invite) while viewing as a coach, the client is now created under THAT coach's account and the invite email is sent from that coach's name — previously it was incorrectly attached to the super admin's own account. Resent invites are now always branded and named after the client's actual assigned coach." },
       { area: "Admin", text: "Improved: The red 'Super Admin View' banner no longer covers the top of the dashboard while you're viewing a coach's account — the page content now sits below the banner so nothing is hidden. The banner also shows which coach you're viewing." },
