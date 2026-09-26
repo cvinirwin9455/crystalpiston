@@ -89,6 +89,9 @@ export default function AdminPage() {
   const [pendingRequests, setPendingRequests] = useState<{ id: string; session_id: string; client_id: string; request_type: string; note: string | null; preferred_datetime: string | null; created_at: string; clientName?: string; sessionScheduledAt?: string | null }[]>([]);
   // Upcoming sessions next 7 days (dashboard widget)
   const [upcomingSessions, setUpcomingSessions] = useState<{ id: string; client_id: string; scheduled_at: string; duration_minutes: number; location: string | null; session_type: string | null; status: string; clientName?: string; clientAvatar?: string | null }[]>([]);
+  const clientsRequestIdRef = useRef(0);
+  const pendingRequestsRequestIdRef = useRef(0);
+  const upcomingSessionsRequestIdRef = useRef(0);
 
   // AI Coach Assistant state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -111,9 +114,11 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Detect super-admin impersonation mode
+  // Detect super-admin impersonation mode before tenant-scoped requests run.
   const [isSuperAdminViewing, setIsSuperAdminViewing] = useState(false);
   const [superAdminTargetOrgId, setSuperAdminTargetOrgId] = useState<string | null>(null);
+  const [superAdminTargetCoachId, setSuperAdminTargetCoachId] = useState<string | null>(null);
+  const [superAdminScopeReady, setSuperAdminScopeReady] = useState(false);
   const [superAdminTargetCoachName, setSuperAdminTargetCoachName] = useState<string | null>(null);
   const [superAdminTargetCoachAvatar, setSuperAdminTargetCoachAvatar] = useState<string | null>(null);
   useEffect(() => {
@@ -121,22 +126,36 @@ export default function AdminPage() {
     if (params.get('superadmin') === 'true') {
       setIsSuperAdminViewing(true);
       sessionStorage.setItem('superadmin_viewing', 'true');
-      // Store the target org if provided
+
       const targetOrg = params.get('org');
+      const targetCoach = params.get('coach');
       if (targetOrg) {
         setSuperAdminTargetOrgId(targetOrg);
         sessionStorage.setItem('superadmin_target_org', targetOrg);
+      } else {
+        sessionStorage.removeItem('superadmin_target_org');
       }
-      // Clean the URL params without reload
+      if (targetCoach) {
+        setSuperAdminTargetCoachId(targetCoach);
+        sessionStorage.setItem('superadmin_target_coach', targetCoach);
+      } else {
+        sessionStorage.removeItem('superadmin_target_coach');
+      }
+
+      // Clean the URL params without reload.
       const url = new URL(window.location.href);
       url.searchParams.delete('superadmin');
       url.searchParams.delete('org');
+      url.searchParams.delete('coach');
       window.history.replaceState({}, '', url.toString());
     } else if (sessionStorage.getItem('superadmin_viewing') === 'true') {
       setIsSuperAdminViewing(true);
       const storedOrg = sessionStorage.getItem('superadmin_target_org');
+      const storedCoach = sessionStorage.getItem('superadmin_target_coach');
       if (storedOrg) setSuperAdminTargetOrgId(storedOrg);
+      if (storedCoach) setSuperAdminTargetCoachId(storedCoach);
     }
+    setSuperAdminScopeReady(true);
   }, []);
 
   // Fetch target coach info when viewing as super admin
@@ -144,16 +163,21 @@ export default function AdminPage() {
     if (!superAdminTargetOrgId) return;
     const fetchTargetCoach = async () => {
       try {
-        const res = await fetch(`/api/super-admin?action=org-owner&orgId=${superAdminTargetOrgId}`);
+        const coachParam = superAdminTargetCoachId ? `&coachId=${encodeURIComponent(superAdminTargetCoachId)}` : '';
+        const res = await fetch(`/api/super-admin?action=org-owner&orgId=${encodeURIComponent(superAdminTargetOrgId)}${coachParam}`);
         if (res.ok) {
           const data = await res.json();
+          if (data.id) {
+            setSuperAdminTargetCoachId(data.id);
+            sessionStorage.setItem('superadmin_target_coach', data.id);
+          }
           if (data.name) setSuperAdminTargetCoachName(data.name);
           if (data.avatarUrl) setSuperAdminTargetCoachAvatar(data.avatarUrl);
         }
       } catch {}
     };
     fetchTargetCoach();
-  }, [superAdminTargetOrgId]);
+  }, [superAdminTargetOrgId, superAdminTargetCoachId]);
 
   const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
@@ -1512,10 +1536,16 @@ export default function AdminPage() {
 
   // Fetch clients from API
   const fetchClients = useCallback(async () => {
+    if (!superAdminScopeReady) return;
+    const requestId = ++clientsRequestIdRef.current;
     try {
-      const orgParam = superAdminTargetOrgId ? `?org=${superAdminTargetOrgId}` : '';
-      const res = await fetch(`/api/clients${orgParam}`);
+      const scopeParams = new URLSearchParams();
+      if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+      if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+      const scopeQuery = scopeParams.toString();
+      const res = await fetch(`/api/clients${scopeQuery ? `?${scopeQuery}` : ''}`);
       const data = await res.json();
+      if (requestId !== clientsRequestIdRef.current) return;
       if (res.ok) {
         const mapped: Client[] = data.map((c: any) => ({
           id: c.userId,
@@ -1587,6 +1617,8 @@ export default function AdminPage() {
             })
           );
 
+          if (requestId !== clientsRequestIdRef.current) return;
+
           // Apply all drafts in one state update
           const draftsMap = new Map<string, any[]>();
           for (const result of draftResults) {
@@ -1606,9 +1638,9 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Failed to fetch clients:', err);
     } finally {
-      setLoadingClients(false);
+      if (requestId === clientsRequestIdRef.current) setLoadingClients(false);
     }
-  }, [superAdminTargetOrgId]);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
 
   useEffect(() => {
     fetchClients();
@@ -1616,28 +1648,38 @@ export default function AdminPage() {
 
   // Fetch pending session requests for the dashboard widget
   const fetchPendingRequests = useCallback(async () => {
+    if (!superAdminScopeReady) return;
+    const requestId = ++pendingRequestsRequestIdRef.current;
     try {
-      const res = await fetch('/api/session-requests?pending=true');
+      const scopeParams = new URLSearchParams({ pending: 'true' });
+      if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+      if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+      const res = await fetch(`/api/session-requests?${scopeParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setPendingRequests(data);
+        if (requestId === pendingRequestsRequestIdRef.current) setPendingRequests(data);
       }
     } catch {}
-  }, []);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
   useEffect(() => {
     fetchPendingRequests();
   }, [fetchPendingRequests]);
 
   // Fetch upcoming sessions (next 7 days) for the dashboard widget
   const fetchUpcomingSessions = useCallback(async () => {
+    if (!superAdminScopeReady) return;
+    const requestId = ++upcomingSessionsRequestIdRef.current;
     try {
-      const res = await fetch('/api/sessions?upcoming=true&days=7');
+      const scopeParams = new URLSearchParams({ upcoming: 'true', days: '7' });
+      if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+      if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+      const res = await fetch(`/api/sessions?${scopeParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setUpcomingSessions(data);
+        if (requestId === upcomingSessionsRequestIdRef.current) setUpcomingSessions(data);
       }
     } catch {}
-  }, []);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
   useEffect(() => {
     fetchUpcomingSessions();
   }, [fetchUpcomingSessions]);
@@ -2975,7 +3017,19 @@ export default function AdminPage() {
           <span className="text-sm font-bold">SUPER ADMIN VIEW</span>
           <span className="text-xs opacity-90">— You are viewing this account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
           <button
-            onClick={() => { setIsSuperAdminViewing(false); setSuperAdminTargetOrgId(null); sessionStorage.removeItem('superadmin_viewing'); sessionStorage.removeItem('superadmin_target_org'); }}
+            onClick={() => {
+              clientsRequestIdRef.current += 1;
+              pendingRequestsRequestIdRef.current += 1;
+              upcomingSessionsRequestIdRef.current += 1;
+              setIsSuperAdminViewing(false);
+              setSuperAdminTargetOrgId(null);
+              setSuperAdminTargetCoachId(null);
+              setSuperAdminTargetCoachName(null);
+              setSuperAdminTargetCoachAvatar(null);
+              sessionStorage.removeItem('superadmin_viewing');
+              sessionStorage.removeItem('superadmin_target_org');
+              sessionStorage.removeItem('superadmin_target_coach');
+            }}
             className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0"
           >
             Dismiss

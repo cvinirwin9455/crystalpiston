@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { resolveCoachRequestScope } from '@/lib/coach-scope'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -25,6 +26,35 @@ export async function GET(request: Request) {
 
   const adminClient = await getAdminClient()
 
+  let pendingOrganizationId: string | null = null
+  let allowedPendingClientIds: string[] | null = null
+  if (pendingOnly) {
+    const scopeResult = await resolveCoachRequestScope(
+      adminClient,
+      user.id,
+      searchParams.get('org'),
+      searchParams.get('coach')
+    )
+    if (!scopeResult.scope) {
+      return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+    }
+
+    const { organizationId, coachId, effectiveProfile } = scopeResult.scope
+    pendingOrganizationId = organizationId
+    const ownClientsOnly = effectiveProfile.coach_level === 'coach'
+      || effectiveProfile.access_level === 'own_clients'
+
+    if (ownClientsOnly) {
+      const { data: assignments, error: assignmentsError } = await adminClient
+        .from('client_coaches')
+        .select('client_id')
+        .eq('coach_id', coachId)
+
+      if (assignmentsError || !assignments?.length) return NextResponse.json([])
+      allowedPendingClientIds = assignments.map((assignment: any) => assignment.client_id)
+    }
+  }
+
   let query = adminClient
     .from('session_requests')
     .select('id, session_id, client_id, request_type, note, preferred_datetime, preferred_slots, status, created_at, resolved_at')
@@ -35,6 +65,12 @@ export async function GET(request: Request) {
   }
   if (pendingOnly) {
     query = query.eq('status', 'pending')
+    if (pendingOrganizationId) {
+      query = query.eq('organization_id', pendingOrganizationId)
+    }
+    if (allowedPendingClientIds) {
+      query = query.in('client_id', allowedPendingClientIds)
+    }
   }
 
   const { data: requests, error } = await query

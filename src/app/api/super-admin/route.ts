@@ -39,14 +39,26 @@ export async function GET(request: Request) {
     const orgId = searchParams.get('orgId')
     if (!orgId) return NextResponse.json({ error: 'orgId required' }, { status: 400 })
 
-    // Find the account_coach (owner) for this org
-    const { data: owner } = await adminClient
+    const coachId = searchParams.get('coachId')
+
+    // Prefer the specifically selected coach. Older links only carry an org,
+    // so they continue to fall back to that organization's account coach.
+    let ownerQuery = adminClient
       .from('users')
       .select('id, name, email, avatar_url')
       .eq('organization_id', orgId)
-      .eq('role', 'admin')
-      .eq('coach_level', 'account_coach')
-      .maybeSingle()
+
+    if (coachId) {
+      ownerQuery = ownerQuery.eq('id', coachId)
+    } else {
+      ownerQuery = ownerQuery.eq('role', 'admin').eq('coach_level', 'account_coach')
+    }
+
+    const { data: owner } = await ownerQuery.maybeSingle()
+
+    if (!owner && coachId) {
+      return NextResponse.json({ error: 'Target coach not found in organization' }, { status: 404 })
+    }
 
     if (!owner) {
       // Fallback: get any admin in that org
@@ -59,6 +71,7 @@ export async function GET(request: Request) {
         .single()
 
       return NextResponse.json({
+        id: anyAdmin?.id || null,
         name: anyAdmin?.name || 'Unknown Coach',
         email: anyAdmin?.email || '',
         avatarUrl: anyAdmin?.avatar_url || null,
@@ -66,6 +79,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
+      id: owner.id,
       name: owner.name || owner.email || 'Unknown Coach',
       email: owner.email || '',
       avatarUrl: owner.avatar_url || null,
@@ -457,13 +471,16 @@ export async function POST(request: Request) {
       .eq('id', targetUserId)
       .single()
 
-    // Return a direct URL to the admin page with superadmin + org params
-    // No magic link needed — the super admin is already authenticated and has is_super_admin=true
-    const impersonateUrl = `https://www.firstmilecoach.com/admin?superadmin=true&org=${targetOrgId}`
+    // Keep View As on the same deployment that initiated it, so preview
+    // testing does not silently jump to production.
+    const impersonateUrl = new URL('/admin', request.url)
+    impersonateUrl.searchParams.set('superadmin', 'true')
+    impersonateUrl.searchParams.set('org', targetOrgId)
+    impersonateUrl.searchParams.set('coach', targetUserId)
 
     return NextResponse.json({
       success: true,
-      url: impersonateUrl,
+      url: impersonateUrl.toString(),
       targetName: targetUser?.name || targetUser?.email || 'Unknown',
     })
   }
