@@ -471,13 +471,16 @@ export async function POST(request: Request) {
       .eq('id', targetUserId)
       .single()
 
-    // Carry both the target organization and coach. The authenticated super
-    // admin remains the actor, while tenant-scoped APIs resolve this target.
-    const impersonateUrl = `https://www.firstmilecoach.com/admin?superadmin=true&org=${encodeURIComponent(targetOrgId)}&coach=${encodeURIComponent(targetUserId)}`
+    // Keep View As on the same deployment that initiated it, so preview
+    // testing does not silently jump to production.
+    const impersonateUrl = new URL('/admin', request.url)
+    impersonateUrl.searchParams.set('superadmin', 'true')
+    impersonateUrl.searchParams.set('org', targetOrgId)
+    impersonateUrl.searchParams.set('coach', targetUserId)
 
     return NextResponse.json({
       success: true,
-      url: impersonateUrl,
+      url: impersonateUrl.toString(),
       targetName: targetUser?.name || targetUser?.email || 'Unknown',
     })
   }
