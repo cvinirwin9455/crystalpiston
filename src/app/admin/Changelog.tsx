@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-26T16:45:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-26T18:30:00Z";
 
 const updates = [
   {
     date: "September 26, 2026",
     items: [
+      { area: "Admin", text: "Improved: The red 'Super Admin View' banner no longer covers the top of the dashboard while you're viewing a coach's account — the page content now sits below the banner so nothing is hidden. The banner also shows which coach you're viewing." },
+      { area: "Admin", text: "Improved: The banner's 'Dismiss' button is now labeled 'Exit Coach View' to make it clear that it stops viewing as the coach and returns you to your own account (it isn't just hiding the banner)." },
       { area: "Admin", text: "Fixed: When a super admin chooses 'View as' for another coach, the dashboard now consistently shows that coach's own clients, drafts, payment totals, upcoming sessions, and pending session requests. Previously, the coach name could change while Crystal's account data remained on screen. Switching out of the super-admin view now also reloads the correct account cleanly." },
     ],
   },
