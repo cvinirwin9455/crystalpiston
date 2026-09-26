@@ -173,6 +173,10 @@ export default function AdminPage() {
           }
           if (data.name) setSuperAdminTargetCoachName(data.name);
           if (data.avatarUrl) setSuperAdminTargetCoachAvatar(data.avatarUrl);
+          // Fully replicate the coach's account: show THEIR name and photo
+          // everywhere (only the red banner reveals a super admin is behind it).
+          setLoggedInUser(data.name || data.email || '');
+          setAdminAvatarUrl(data.avatarUrl || null);
         }
       } catch {}
     };
@@ -892,12 +896,19 @@ export default function AdminPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: profile } = await supabase.from('users').select('name, avatar_url, access_level, coach_level, is_super_admin').eq('id', user.id).single();
-          setLoggedInUser(profile?.name || user.email || '');
           setLoggedInUserId(user.id);
-          if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
           if (profile?.access_level) setMyAccessLevel(profile.access_level);
           if (profile?.coach_level) setMyCoachLevel(profile.coach_level);
           if (profile?.is_super_admin) setIsSuperAdmin(true);
+          // When impersonating a coach, the displayed identity (name, photo)
+          // belongs to that coach — the target-coach effect sets those. Only
+          // load the real user's identity when NOT impersonating.
+          const impersonating = sessionStorage.getItem('superadmin_viewing') === 'true'
+            && !!sessionStorage.getItem('superadmin_target_org');
+          if (!impersonating) {
+            setLoggedInUser(profile?.name || user.email || '');
+            if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
+          }
         }
       } catch (err) { console.error(err); }
     };
