@@ -1721,6 +1721,10 @@ export default function AdminPage() {
           gender: newClientForm.gender,
           birthday: newClientForm.birthday || null,
           trackCycle: newClientForm.gender === 'female' ? newClientForm.trackCycle : false,
+          // When a super admin is viewing as a coach, create the client under
+          // that coach's account, not the super admin's own.
+          ...(superAdminTargetOrgId ? { org: superAdminTargetOrgId } : {}),
+          ...(superAdminTargetCoachId ? { coach: superAdminTargetCoachId } : {}),
         }),
       });
       const data = await res.json();
