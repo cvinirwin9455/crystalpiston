@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-22T19:07:14Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-26T16:45:00Z";
 
 const updates = [
+  {
+    date: "September 26, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: When a super admin chooses 'View as' for another coach, the dashboard now consistently shows that coach's own clients, drafts, payment totals, upcoming sessions, and pending session requests. Previously, the coach name could change while Crystal's account data remained on screen. Switching out of the super-admin view now also reloads the correct account cleanly." },
+    ],
+  },
   {
     date: "September 22, 2026",
     items: [
