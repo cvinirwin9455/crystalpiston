@@ -918,6 +918,8 @@ export default function AdminPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
+  const [copyLinkStatus, setCopyLinkStatus] = useState<'idle' | 'copied' | 'shown'>('idle');
   const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
   const [totalUnread, setTotalUnread] = useState(0);
   const [clientsWithComments, setClientsWithComments] = useState<Set<string>>(new Set());
@@ -1804,6 +1806,38 @@ export default function AdminPage() {
       console.error('Failed to resend invite:', err);
     } finally {
       setResendingInvite(false);
+    }
+  };
+
+  // Get the client's setup link to copy/share directly (bypasses email delivery).
+  const handleCopyInviteLink = async (userId: string) => {
+    setCopyingLink(true);
+    try {
+      const res = await fetch(`/api/clients/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkOnly: true }),
+      });
+      const data = await res.json();
+      if (res.ok && data.inviteUrl) {
+        try {
+          await navigator.clipboard.writeText(data.inviteUrl);
+          setCopyLinkStatus('copied');
+        } catch {
+          // Clipboard blocked (e.g. non-secure context) — show the link so the
+          // coach can copy it manually.
+          setCopyLinkStatus('shown');
+          window.prompt('Copy this one-time setup link and send it to your client:', data.inviteUrl);
+        }
+        setTimeout(() => setCopyLinkStatus('idle'), 5000);
+      } else {
+        alert(data.error || 'Failed to generate invite link');
+      }
+    } catch (err) {
+      console.error('Failed to generate invite link:', err);
+      alert('Failed to generate invite link');
+    } finally {
+      setCopyingLink(false);
     }
   };
 
@@ -3616,13 +3650,23 @@ export default function AdminPage() {
                     </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleResendInvite(selectedClientData.id)} 
-                  disabled={resendingInvite}
-                  className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50 flex-shrink-0"
-                >
-                  {resendingInvite ? "Sending..." : resendSuccess ? "Sent ✓" : "Resend Invite"}
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleCopyInviteLink(selectedClientData.id)}
+                    disabled={copyingLink}
+                    title="Get a one-time setup link you can text or message to your client if the email isn't arriving"
+                    className="bg-secondary border border-white/15 hover:border-accent/40 text-gray-200 hover:text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50"
+                  >
+                    {copyingLink ? "Generating..." : copyLinkStatus === 'copied' ? "Link copied ✓" : copyLinkStatus === 'shown' ? "Link shown" : "Copy Invite Link"}
+                  </button>
+                  <button
+                    onClick={() => handleResendInvite(selectedClientData.id)}
+                    disabled={resendingInvite}
+                    className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50"
+                  >
+                    {resendingInvite ? "Sending..." : resendSuccess ? "Sent ✓" : "Resend Invite"}
+                  </button>
+                </div>
               </div>
             )}
 

@@ -36,6 +36,15 @@ export async function POST(
   const userId = params.id
   const adminClient = await getAdminClient()
 
+  // Optional mode: return the setup link for the coach to copy/share directly
+  // (text, WhatsApp, their own email) instead of relying on our email being
+  // delivered. Useful when the client's mail server blocks our invites.
+  let linkOnly = false
+  try {
+    const body = await request.json()
+    linkOnly = body?.linkOnly === true
+  } catch { /* no body — normal resend */ }
+
   // Get the user's email
   const { data: clientUser } = await adminClient
     .from('users')
@@ -76,6 +85,11 @@ export async function POST(
 
   // Construct the invite URL using token_hash format
   const inviteUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+
+  // Link-only mode: return the URL without sending the email.
+  if (linkOnly) {
+    return NextResponse.json({ success: true, inviteUrl, email: clientUser.email })
+  }
 
   const { getOrgIdForUser } = await import('@/lib/org')
   const { getEmailBrandFromOrgId } = await import('@/lib/email')
