@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-26T23:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-27T00:00:00Z";
 
 const updates = [
   {
     date: "September 26, 2026",
     items: [
+      { area: "Admin", text: "New (Super Admin): You can now message a coach directly from the Coaches tab — even one who hasn't started anything yet. Click 'Message' on a coach, write a subject and note, and it emails them from hello@firstmilecoach.com. The coach can simply reply by email, and their reply lands in your Super Admin Inbox as a conversation." },
       { area: "Admin", text: "New: On a client whose invite is still pending, there's now a 'Copy Invite Link' button next to 'Resend Invite'. It gives you a one-time setup link you can send the client directly (text, WhatsApp, your own email) — handy when their email provider is blocking our invite emails." },
       { area: "All", text: "Improved: Account setup / invite emails now include a reply-to address (hello@firstmilecoach.com) and a plain-text version alongside the styled email. This helps them get through stricter business email servers that were silently filtering them." },
       { area: "Admin", text: "Fixed: Activating a beta coach whose email is already a client account no longer errors or corrupts their account. Instead, that person is granted their own coaching organization while keeping their existing client account and coach — one login now works as both. Previously this required signing up with a different email address." },
