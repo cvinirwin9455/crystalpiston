@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-27T00:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-27T02:00:00Z";
 
 const updates = [
+  {
+    date: "September 27, 2026",
+    items: [
+      { area: "Admin", text: "Fixed (Super Admin — important safety fix): Deleting a beta signup can no longer wipe a real account. Previously, deleting a signup (or clicking 'Resend Invite') could delete the matching person's entire login and client data — including their training history. Now the Delete button offers two clear choices: 'Remove beta signup only' (safe — keeps their login and data) or 'Delete entire account & all data' (which now requires typing the email to confirm and is blocked automatically if the account has client data). 'Resend Invite' no longer deletes and recreates the account — it just sends a fresh setup link." },
+    ],
+  },
   {
     date: "September 26, 2026",
     items: [

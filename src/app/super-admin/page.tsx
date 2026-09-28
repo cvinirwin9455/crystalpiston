@@ -169,6 +169,8 @@ export default function SuperAdminPage() {
     }
   }
 
+  // Removes ONLY the beta signup record. Never touches the person's login or
+  // client data. This is the safe default for clearing out leftover signups.
   async function deleteAccount(signupId: string) {
     setActionMessage(null);
     try {
@@ -176,6 +178,37 @@ export default function SuperAdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete_account", signupId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setActionMessage({ text: data.error || "Failed to delete", type: "error" });
+      } else {
+        setActionMessage({ text: data.message, type: "success" });
+        setDeletingId(null);
+        fetchData();
+      }
+    } catch {
+      setActionMessage({ text: "Network error", type: "error" });
+    }
+  }
+
+  // Fully deletes the person's ENTIRE account and all data. Heavily guarded:
+  // requires a typed confirmation, and the server still refuses if the account
+  // has client data unless force is set.
+  async function deleteEntireAccount(signupId: string, name: string, email: string) {
+    setActionMessage(null);
+    const typed = window.prompt(
+      `⚠️ DANGER: This permanently deletes the ENTIRE account and ALL data for ${name} (${email}) — login, client record, training plans, and logged workouts. This cannot be undone.\n\nTo confirm, type the email address exactly:`
+    );
+    if (typed !== email) {
+      setActionMessage({ text: "Cancelled — email did not match. Nothing was deleted.", type: "error" });
+      return;
+    }
+    try {
+      const res = await fetch("/api/super-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_account", signupId, deleteUserToo: true, force: true }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -555,16 +588,25 @@ export default function SuperAdminPage() {
                         )}
 
                         {deletingId === signup.id ? (
-                          <div className="flex gap-2 mt-1">
+                          <div className="flex flex-col gap-2 mt-1 bg-gray-50 border border-gray-200 rounded-lg p-3 max-w-md">
+                            <p className="text-xs text-gray-600">Choose what to remove:</p>
                             <button
                               onClick={() => deleteAccount(signup.id)}
-                              className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-medium"
+                              className="text-sm bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition font-medium text-left"
                             >
-                              Confirm Delete
+                              Remove beta signup only
+                              <span className="block text-[11px] font-normal text-gray-200">Clears this signup from the list. The person's login and any client data are kept. (Safe — use this for duplicate/unused signups.)</span>
+                            </button>
+                            <button
+                              onClick={() => deleteEntireAccount(signup.id, signup.full_name, signup.email)}
+                              className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-medium text-left"
+                            >
+                              Delete entire account &amp; all data
+                              <span className="block text-[11px] font-normal text-red-100">Permanently deletes their login, client record, plans, and logged workouts. Requires typing their email to confirm.</span>
                             </button>
                             <button
                               onClick={() => setDeletingId(null)}
-                              className="text-sm text-gray-500 px-3 py-2 hover:text-gray-800 transition"
+                              className="text-sm text-gray-500 px-3 py-1 hover:text-gray-800 transition self-start"
                             >
                               Cancel
                             </button>
