@@ -36,6 +36,30 @@ type Page = {
 
 const SITE = typeof window !== "undefined" ? window.location.origin : "https://www.firstmilecoach.com";
 
+// When a super admin is "viewing as" a coach, these are stored in sessionStorage
+// (set by the admin page). Pass them through so the Applications APIs resolve the
+// impersonated coach's data instead of the super admin's own.
+function scopeQuery(): string {
+  if (typeof window === "undefined") return "";
+  const org = sessionStorage.getItem("superadmin_target_org");
+  const coach = sessionStorage.getItem("superadmin_target_coach");
+  const p = new URLSearchParams();
+  if (org) p.set("org", org);
+  if (coach) p.set("coach", coach);
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+function scopeBody(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const org = sessionStorage.getItem("superadmin_target_org");
+  const coach = sessionStorage.getItem("superadmin_target_coach");
+  const b: Record<string, string> = {};
+  if (org) b.org = org;
+  if (coach) b.coach = coach;
+  return b;
+}
+
 export default function ApplicationsTab() {
   const [apps, setApps] = useState<Application[]>([]);
   const [page, setPage] = useState<Page | null>(null);
@@ -58,9 +82,10 @@ export default function ApplicationsTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const sq = scopeQuery();
       const [appsRes, pageRes] = await Promise.all([
-        fetch("/api/coach-applications"),
-        fetch("/api/application-page"),
+        fetch(`/api/coach-applications${sq}`),
+        fetch(`/api/application-page${sq}`),
       ]);
       const appsData = await appsRes.json().catch(() => ({}));
       const pageData = await pageRes.json().catch(() => ({}));
@@ -100,7 +125,7 @@ export default function ApplicationsTab() {
       const res = await fetch("/api/coach-applications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action }),
+        body: JSON.stringify({ id, action, ...scopeBody() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -134,6 +159,7 @@ export default function ApplicationsTab() {
           intro: editIntro,
           pricing: editPricing,
           is_enabled: editEnabled,
+          ...scopeBody(),
         }),
       });
       const data = await res.json().catch(() => ({}));
