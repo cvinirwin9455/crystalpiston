@@ -99,8 +99,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
     <main style={pageWrap}>
       <div style={card}>
         {/* First Mile branding strip (white, logo at a legible size) */}
-        <div style={{ background: '#ffffff', borderBottom: '1px solid #eef1f3', padding: '18px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" style={{ display: 'block', height: 40, width: 'auto' }} />
+        <div style={{ background: '#ffffff', borderBottom: '1px solid #eef1f3', padding: '22px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" style={{ display: 'block', height: 72, width: 'auto' }} />
         </div>
 
         {/* Coach hero: avatar + name centered */}
