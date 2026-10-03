@@ -3,18 +3,55 @@ import ApplicationForm from './ApplicationForm'
 
 export const dynamic = 'force-dynamic'
 
-async function fetchPage(slug: string) {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.firstmilecoach.com'
+type PageData = {
+  slug: string
+  coachName: string
+  coachAvatar: string | null
+  headline: string
+  intro: string
+  pricing: string
+}
+
+// Read the coach's public application page DIRECTLY from the database using the
+// service-role client. We deliberately do NOT make an HTTP fetch to our own API
+// here: on preview/branch deployments an absolute base URL (NEXT_PUBLIC_SITE_URL)
+// can point at the WRONG environment (e.g. production), which would look up the
+// slug in the wrong database and render "not active". Querying the DB directly
+// always uses the same database this deployment is wired to.
+async function fetchPage(slug: string): Promise<PageData | null> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null
+  }
   try {
-    const res = await fetch(`${base}/api/apply/${encodeURIComponent(slug)}`, { cache: 'no-store' })
-    if (!res.ok) return null
-    return (await res.json()) as {
-      slug: string
-      coachName: string
-      coachAvatar: string | null
-      headline: string
-      intro: string
-      pricing: string
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+
+    const normalized = (slug || '').toLowerCase()
+    const { data: page } = await supabase
+      .from('coach_application_pages')
+      .select('coach_id, slug, is_enabled, headline, intro, pricing')
+      .eq('slug', normalized)
+      .maybeSingle()
+
+    if (!page || !page.is_enabled) return null
+
+    const { data: coach } = await supabase
+      .from('users')
+      .select('name, avatar_url')
+      .eq('id', page.coach_id)
+      .maybeSingle()
+
+    return {
+      slug: page.slug,
+      coachName: coach?.name || 'Your coach',
+      coachAvatar: coach?.avatar_url || null,
+      headline: page.headline || `Apply for coaching with ${coach?.name || 'me'}`,
+      intro: page.intro || '',
+      pricing: page.pricing || '',
     }
   } catch {
     return null
