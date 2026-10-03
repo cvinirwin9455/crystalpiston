@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-27T02:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-09-30T12:00:00Z";
 
 const updates = [
+  {
+    date: "September 30, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Your own public application link. You now get a single link (e.g. firstmilecoach.com/join/your-name) that you can copy and paste into your social media bios, posts, or DMs. When someone clicks it, they see a page describing what you offer (you can write your own headline, description, and plans/pricing) and fill out a short application — their name, email, phone, age, running experience, goals, target race, availability, PRs, injuries, and why they want coaching. No account is created at this stage; it just comes to you as a request" },
+      { area: "Admin", text: "NEW: 'Applications' inbox. Everyone who applies through your link shows up under a new Applications section in your menu, with a count badge so you can see at a glance how many are waiting. You review each application and either Accept — which creates their First Mile client account, assigns them to you, and emails them to set a password (exactly like adding a client yourself) — or Decline, which quietly archives it and sends them nothing. You stay fully in control of who becomes a client. (Taking payment through the link is a planned follow-up; for now you arrange payment your usual way after accepting.)" },
+    ],
+  },
   {
     date: "September 27, 2026",
     items: [

@@ -43,10 +43,12 @@ export async function updateSession(request: NextRequest) {
 
   // Public routes that don't require auth
   const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password', '/set-password', '/auth/callback', '/terms', '/faq', '/features']
-  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/'))
+  // Public coach application links: /join/<slug> (prospects apply without an account)
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/')) || pathname.startsWith('/join/')
 
   // API routes that must be publicly accessible (webhooks, internal processing, etc.)
-  const isPublicApi = pathname.startsWith('/api/strava/webhook') || pathname.startsWith('/api/strava/activities') || pathname.startsWith('/api/inquiry') || pathname.startsWith('/api/beta-signup') || pathname.startsWith('/api/feedback/inbound') || pathname.startsWith('/api/reset-password')
+  // /api/apply/* backs the public coach application link (read page + submit application).
+  const isPublicApi = pathname.startsWith('/api/strava/webhook') || pathname.startsWith('/api/strava/activities') || pathname.startsWith('/api/inquiry') || pathname.startsWith('/api/beta-signup') || pathname.startsWith('/api/feedback/inbound') || pathname.startsWith('/api/reset-password') || pathname.startsWith('/api/apply/')
 
   // If not logged in and trying to access protected route, redirect to login
   if (!user && !isPublicRoute && !isPublicApi) {
