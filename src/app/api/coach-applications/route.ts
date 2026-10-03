@@ -1,17 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendClientInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
-import { hasCoachAccess } from '@/lib/roles'
+import { resolveCoachRequestScope } from '@/lib/coach-scope'
 
 // Authenticated COACH-facing endpoints for managing applications that came in
 // through their public /join/<slug> link.
 //   GET   /api/coach-applications          -> list the coach's applications
 //   PATCH /api/coach-applications          -> accept or decline an application
 //
+// Super-admin "view as coach" is honored: ?org=<id>&coach=<id> query params are
+// resolved via resolveCoachRequestScope (which only allows overrides for super
+// admins), so a super admin viewing a coach sees THAT coach's applications and
+// link — not their own. All scoping uses the resolved coachId, never the raw
+// logged-in user id.
+//
 // Accepting an application reuses the EXACT same invite machinery as
 // POST /api/clients: generateLink (invite) + sendClientInviteEmail + create
-// clients row + assign client_coaches. This keeps the two paths identical so
-// an accepted applicant is indistinguishable from a manually-invited client.
+// clients row + assign client_coaches.
 
 async function createAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -22,27 +27,27 @@ async function createAdminClient() {
   )
 }
 
-// GET: list applications for the authenticated coach.
-export async function GET() {
+// GET: list applications for the effective coach (self, or impersonated coach).
+export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, has_coach_access, is_super_admin')
-    .eq('id', user.id)
-    .single()
-
-  if (!hasCoachAccess(profile) && !profile?.is_super_admin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const { searchParams } = new URL(request.url)
+  const orgOverride = searchParams.get('org')
+  const coachOverride = searchParams.get('coach')
 
   const admin = await createAdminClient()
+  const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+  }
+  const { coachId } = scopeResult.scope
+
   const { data: applications, error } = await admin
     .from('coach_applications')
     .select('*')
-    .eq('coach_id', user.id)
+    .eq('coach_id', coachId)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -53,31 +58,36 @@ export async function GET() {
 }
 
 // PATCH: accept or decline an application.
-//   body: { id: string, action: 'accept' | 'decline' }
+//   body: { id, action: 'accept' | 'decline', org?, coach? }
 export async function PATCH(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('name, role, has_coach_access, is_super_admin, organization_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!hasCoachAccess(profile) && !profile?.is_super_admin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const body = await request.json()
-  const { id, action } = body || {}
+  const { id, action, org: orgOverride, coach: coachOverride } = body || {}
   if (!id || (action !== 'accept' && action !== 'decline')) {
     return NextResponse.json({ error: 'id and a valid action are required' }, { status: 400 })
   }
 
   const admin = await createAdminClient()
 
-  // Load the application and verify it belongs to this coach.
+  // Resolve the effective coach (honors super-admin "view as coach").
+  const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+  }
+  const { coachId, organizationId } = scopeResult.scope
+
+  // The effective coach's display name (for the invite email branding).
+  const { data: coachProfile } = await admin
+    .from('users')
+    .select('name')
+    .eq('id', coachId)
+    .single()
+  const coachName = coachProfile?.name || 'Your coach'
+
+  // Load the application and verify it belongs to the effective coach.
   const { data: application, error: loadErr } = await admin
     .from('coach_applications')
     .select('*')
@@ -87,7 +97,7 @@ export async function PATCH(request: Request) {
   if (loadErr || !application) {
     return NextResponse.json({ error: 'Application not found' }, { status: 404 })
   }
-  if (application.coach_id !== user.id) {
+  if (application.coach_id !== coachId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   if (application.status !== 'pending') {
@@ -106,8 +116,7 @@ export async function PATCH(request: Request) {
   // --- ACCEPT: create (or link) the client account + assign this coach. ---
   const email = String(application.email).trim().toLowerCase()
   const name = String(application.full_name).trim()
-  const coachId = user.id
-  const orgId = profile?.organization_id || application.organization_id || null
+  const orgId = organizationId || application.organization_id || null
 
   // Dual-role: if the email already has an account, don't re-invite — add a
   // client record (if missing) and assign this coach. (Mirrors /api/clients.)
@@ -171,7 +180,6 @@ export async function PATCH(request: Request) {
   // New user: generate invite link (no built-in email) + send branded email.
   const redirectDomain = 'www.firstmilecoach.com'
   const orgDomain = 'firstmilecoach.com'
-  const coachName = profile?.name || 'Your coach'
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: 'invite',
@@ -225,7 +233,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: clientError.message }, { status: 500 })
   }
 
-  // Assign this coach as default coach.
+  // Assign the effective coach as default coach.
   if (newClientRecord) {
     try {
       await admin
