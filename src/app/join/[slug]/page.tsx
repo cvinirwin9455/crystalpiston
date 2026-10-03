@@ -1,7 +1,12 @@
 import type { Metadata } from 'next'
 import ApplicationForm from './ApplicationForm'
 
+// Always render fresh from the DB — never serve a cached snapshot. Without
+// force-no-store the Supabase REST reads can be served from Next's data cache,
+// which showed stale (empty) intro/pricing after a coach edited their offer.
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 type PageData = {
   slug: string
@@ -27,7 +32,12 @@ async function fetchPage(slug: string): Promise<PageData | null> {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
+      {
+        auth: { autoRefreshToken: false, persistSession: false },
+        // Force every PostgREST read to bypass Next's fetch cache so edits to a
+        // coach's offer (intro/pricing) appear immediately.
+        global: { fetch: (url: any, options: any = {}) => fetch(url, { ...options, cache: 'no-store' }) },
+      }
     )
 
     const normalized = (slug || '').toLowerCase()
