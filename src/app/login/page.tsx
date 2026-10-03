@@ -245,10 +245,10 @@ function LoginContent() {
               className="mx-auto mb-4 rounded-xl"
             />
             <h1 className="text-3xl font-black" style={{ color: '#2d3436' }}>
-              {isClientLogin ? 'Client' : 'Coach'} <span style={{ color: '#f26522' }}>Login</span>
+              Welcome <span style={{ color: '#f26522' }}>back</span>
             </h1>
             <p className="mt-2" style={{ color: '#555b5e' }}>
-              {isClientLogin ? 'Log in to view your training plan' : 'Log in to manage your clients'}
+              Log in to your account
             </p>
           </div>
 
