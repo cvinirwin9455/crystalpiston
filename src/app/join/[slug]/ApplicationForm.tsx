@@ -98,20 +98,26 @@ export default function ApplicationForm({ page }: { page: Page }) {
   return (
     <main style={pageWrap}>
       <div style={card}>
-        {/* Header / coach offer */}
-        <div style={{ background: 'linear-gradient(145deg, #2d3436, #3d4447)', padding: '32px 28px', textAlign: 'center' }}>
-          <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" width={140} style={{ borderRadius: 8, marginBottom: page.coachAvatar ? 16 : 0 }} />
-          {page.coachAvatar && (
-            <div style={{ marginTop: 4 }}>
-              <img src={page.coachAvatar} alt={page.coachName} width={72} height={72} style={{ borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.2)' }} />
-            </div>
-          )}
+        {/* Small First Mile branding bar */}
+        <div style={{ background: 'linear-gradient(145deg, #2d3436, #3d4447)', padding: '14px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" height={26} style={{ display: 'block', height: 26, width: 'auto' }} />
         </div>
 
-        <div style={{ padding: '32px 28px' }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#2d3436', margin: '0 0 12px' }}>{page.headline}</h1>
+        {/* Coach hero: avatar + name centered */}
+        <div style={{ padding: '28px 28px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          {page.coachAvatar ? (
+            <img src={page.coachAvatar} alt={page.coachName} width={84} height={84} style={{ borderRadius: '50%', objectFit: 'cover', border: '3px solid #fff', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }} />
+          ) : (
+            <div style={{ width: 84, height: 84, borderRadius: '50%', background: '#f26522', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800 }}>
+              {(page.coachName || '?').trim().charAt(0).toUpperCase()}
+            </div>
+          )}
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2d3436', margin: '16px 0 0', lineHeight: 1.25 }}>{page.headline}</h1>
+        </div>
+
+        <div style={{ padding: '12px 28px 32px' }}>
           {page.intro && (
-            <p style={{ fontSize: 15, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '0 0 20px' }}>{page.intro}</p>
+            <p style={{ fontSize: 15, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '8px 0 20px', textAlign: 'center' }}>{page.intro}</p>
           )}
           {page.pricing && (
             <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
@@ -121,7 +127,7 @@ export default function ApplicationForm({ page }: { page: Page }) {
           )}
 
           <div style={{ height: 1, background: '#eef1f3', margin: '4px 0 24px' }} />
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#2d3436', margin: '0 0 4px' }}>Apply for coaching</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#2d3436', margin: '0 0 4px' }}>Your details</h2>
           <p style={{ fontSize: 13, color: '#9aa0a4', margin: '0 0 20px' }}>Tell {page.coachName.split(' ')[0]} about yourself. Fields marked * are required.</p>
 
           <form onSubmit={handleSubmit}>
