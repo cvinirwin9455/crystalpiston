@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
 import { sendClientInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
 import { hasCoachAccess } from '@/lib/roles'
+import { resolveCoachRequestScope } from '@/lib/coach-scope'
 
 // Helper: create admin client with service role key
 async function createAdminClient() {
@@ -24,31 +25,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, access_level, coach_level, is_super_admin, has_coach_access')
-    .eq('id', user.id)
-    .single()
+  const adminClient = await createAdminClient()
+  const { searchParams } = new URL(request.url)
+  const scopeResult = await resolveCoachRequestScope(
+    adminClient,
+    user.id,
+    searchParams.get('org'),
+    searchParams.get('coach')
+  )
 
-  if (!hasCoachAccess(profile)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
   }
+
+  const { organizationId: orgId, coachId, effectiveProfile } = scopeResult.scope
 
   // If coach_level is 'coach', always restrict to own clients regardless of access_level
-  const accessLevel = profile?.coach_level === 'coach' ? 'own_clients' : (profile?.access_level || 'all_clients')
-
-  const adminClient = await createAdminClient()
-
-  // Super admin org override: if ?org= param is passed and user is super admin, use that org
-  const { searchParams } = new URL(request.url)
-  const orgOverride = searchParams.get('org')
-  let orgId: string | null = null
-
-  if (orgOverride && profile?.is_super_admin) {
-    orgId = orgOverride
-  } else {
-    orgId = await getOrgIdForUser(adminClient, user.id)
-  }
+  const accessLevel = effectiveProfile.coach_level === 'coach'
+    ? 'own_clients'
+    : (effectiveProfile.access_level || 'all_clients')
   // Query users and clients separately to avoid join issues
   let clientQuery = adminClient
     .from('users')
@@ -219,7 +214,7 @@ export async function GET(request: Request) {
     // Find all client_ids this coach is assigned to
     const myClientIds = new Set(
       coachAssignments
-        .filter(ca => ca.coach_id === user.id)
+        .filter(ca => ca.coach_id === coachId)
         .map(ca => ca.client_id)
     )
     // Map client_ids back to user_ids
@@ -324,18 +319,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, has_coach_access')
-    .eq('id', user.id)
-    .single()
-
-  if (!hasCoachAccess(profile)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const body = await request.json()
-  const { name, email, gender, goal, startDate, planEnd, owed, birthday, trackCycle } = body
+  const { name, email, gender, goal, startDate, planEnd, owed, birthday, trackCycle, org: orgOverride, coach: coachOverride } = body
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -343,8 +328,14 @@ export async function POST(request: Request) {
 
   const adminClient = await createAdminClient()
 
-  // Get org scope for this coach
-  const orgId = await getOrgIdForUser(adminClient, user.id)
+  // Resolve the coach/org this client should belong to. When a super admin is
+  // creating a client while "viewing as" a coach, the override targets that
+  // coach's org — otherwise it's the authenticated coach's own org.
+  const scopeResult = await resolveCoachRequestScope(adminClient, user.id, orgOverride, coachOverride)
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+  }
+  const { organizationId: orgId, coachId } = scopeResult.scope
 
   // Dual-role support: if this email already belongs to an existing account
   // (e.g. a coach/admin), don't re-invite them — instead add a client record
@@ -395,7 +386,7 @@ export async function POST(request: Request) {
         .upsert(
           {
             client_id: clientId,
-            coach_id: user.id,
+            coach_id: coachId,
             is_default: !existingAssignments || existingAssignments.length === 0,
           },
           { onConflict: 'client_id,coach_id' }
@@ -425,11 +416,12 @@ export async function POST(request: Request) {
     })
   }
 
-  // Get the coach's name for the email
+  // Get the effective coach's name for the email (the coach the client is
+  // being assigned to — not necessarily the authenticated caller).
   const { data: coachProfile } = await adminClient
     .from('users')
     .select('name')
-    .eq('id', user.id)
+    .eq('id', coachId)
     .single()
   const coachName = coachProfile?.name || 'Your coach'
 
@@ -533,14 +525,14 @@ export async function POST(request: Request) {
       })
   }
 
-  // Auto-assign the creating coach (logged-in admin) as the default coach for this client
+  // Auto-assign the effective coach as the default coach for this client.
   if (newClientRecord) {
     try {
       await adminClient
         .from('client_coaches')
         .insert({
           client_id: newClientRecord.id,
-          coach_id: user.id,
+          coach_id: coachId,
           is_default: true,
         })
     } catch (err) {

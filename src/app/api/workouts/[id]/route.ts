@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { getWorkoutDistanceForDisplay, normalizeWorkoutDistance } from '@/lib/workout-distance'
 
 // PATCH /api/workouts/[id] - Update a workout
 export async function PATCH(
@@ -36,18 +37,55 @@ export async function PATCH(
   const { day, type, trainingType, title, miles, description, paceTarget, location, coachNotes, sortOrder, distanceUnit, structure } = body
 
   const updates: Record<string, any> = {}
+  let effectiveType = type
   if (day !== undefined) updates.day = day
   if (type !== undefined) updates.type = type
   if (trainingType !== undefined) updates.training_type = trainingType
   if (title !== undefined) updates.title = title
-  if (miles !== undefined) updates.miles = miles ? parseFloat(miles) : null
+  if (miles !== undefined || type !== undefined || distanceUnit !== undefined || structure !== undefined) {
+    const { data: currentWorkout, error: currentWorkoutError } = await adminClient
+      .from('workouts')
+      .select('type, miles, distance_unit, structure')
+      .eq('id', workoutId)
+      .single()
+
+    if (currentWorkoutError || !currentWorkout) {
+      return NextResponse.json({ error: 'Workout not found' }, { status: 404 })
+    }
+
+    effectiveType = type ?? currentWorkout.type
+    const typeChanged = type !== undefined && type !== currentWorkout.type
+    const effectiveMiles = miles !== undefined
+      ? miles
+      : (typeChanged ? null : getWorkoutDistanceForDisplay(currentWorkout))
+    const effectiveStructure = structure !== undefined
+      ? structure
+      : (typeChanged ? null : currentWorkout.structure)
+
+    const normalizedDistance = normalizeWorkoutDistance({
+      type: effectiveType,
+      miles: effectiveMiles,
+      distanceUnit: distanceUnit ?? currentWorkout.distance_unit,
+      structure: effectiveStructure,
+    })
+    if (normalizedDistance.error) {
+      return NextResponse.json(
+        { error: `This workout ${normalizedDistance.error}. Correct the distance and try again.` },
+        { status: 400 }
+      )
+    }
+    updates.miles = normalizedDistance.miles
+    updates.distance_unit = normalizedDistance.distanceUnit
+    if (effectiveType === 'swimming') updates.structure = normalizedDistance.structure
+    if (typeChanged && structure === undefined && effectiveType !== 'swimming') updates.structure = null
+  }
   if (description !== undefined) updates.description = description
   if (paceTarget !== undefined) updates.pace_target = paceTarget
   if (location !== undefined) updates.location = location
   if (coachNotes !== undefined) updates.coach_notes = coachNotes
   if (sortOrder !== undefined) updates.sort_order = sortOrder
-  if (distanceUnit !== undefined) updates.distance_unit = distanceUnit
-  if (structure !== undefined) updates.structure = structure
+  if (distanceUnit !== undefined && effectiveType !== 'swimming') updates.distance_unit = distanceUnit
+  if (structure !== undefined && effectiveType !== 'swimming') updates.structure = structure
 
   const { error } = await adminClient
     .from('workouts')

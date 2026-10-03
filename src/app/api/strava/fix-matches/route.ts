@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { findBestMatch } from '@/lib/strava-matching'
 import type { MatchCandidate } from '@/lib/strava-matching'
 import { hasCoachAccess } from '@/lib/roles'
+import { getWorkoutDistanceInMiles } from '@/lib/workout-distance'
 
 // POST /api/strava/fix-matches - Admin-only: re-run matching on all unmatched Strava activities
 // and auto-confirm high-confidence matches (>= 80)
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     // Get programmed workouts for this week
     const { data: programmedWorkouts } = await adminClient
       .from('workouts')
-      .select('id, day, type, training_type, title, miles')
+      .select('id, day, type, training_type, title, miles, distance_unit, structure')
       .eq('week_id', weekId)
 
     if (!programmedWorkouts || programmedWorkouts.length === 0) continue
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
           day: w.day,
           workoutType: w.type,
           trainingType: w.training_type || null,
-          miles: w.miles ? parseFloat(w.miles) : null,
+          miles: getWorkoutDistanceInMiles(w),
           title: w.title || null,
           completed: completedIds.includes(w.id),
         }))

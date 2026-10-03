@@ -24,7 +24,7 @@ type ClientWorkout = { id: string; day: string; type: string; trainingType: stri
 type WeekData = { weekId: string; label: string; dateRange: string; focus: string; coachMessage: string; status: "published" | "draft"; workouts: WorkoutDay[]; clientWorkouts: ClientWorkout[]; };
 // Editable Create-Week form shapes. Kept permissive (fields optional / index signature)
 // because workouts carry optional structure data and are built from several sources.
-type WeekPlanWorkout = { type: string; trainingType: string; title: string; miles: string; description: string; paceTarget: string; location: string; coachNotes: string; distanceUnit: string; structure?: any; crossTrainingStructure?: any; [key: string]: any };
+type WeekPlanWorkout = { type: string; trainingType: string; title: string; miles: string; description: string; paceTarget: string; location: string; coachNotes: string; distanceUnit?: "mi" | "km"; structure?: any; crossTrainingStructure?: any; [key: string]: any };
 type WeekPlanDay = { day: string; sessionType: "remote" | "in_person"; sessionConflict: boolean; workouts: WeekPlanWorkout[] };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
@@ -92,6 +92,9 @@ export default function AdminPage() {
   const [pendingRequests, setPendingRequests] = useState<{ id: string; session_id: string; client_id: string; request_type: string; note: string | null; preferred_datetime: string | null; created_at: string; clientName?: string; sessionScheduledAt?: string | null }[]>([]);
   // Upcoming sessions next 7 days (dashboard widget)
   const [upcomingSessions, setUpcomingSessions] = useState<{ id: string; client_id: string; scheduled_at: string; duration_minutes: number; location: string | null; session_type: string | null; status: string; clientName?: string; clientAvatar?: string | null }[]>([]);
+  const clientsRequestIdRef = useRef(0);
+  const pendingRequestsRequestIdRef = useRef(0);
+  const upcomingSessionsRequestIdRef = useRef(0);
 
   // AI Coach Assistant state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -114,9 +117,11 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Detect super-admin impersonation mode
+  // Detect super-admin impersonation mode before tenant-scoped requests run.
   const [isSuperAdminViewing, setIsSuperAdminViewing] = useState(false);
   const [superAdminTargetOrgId, setSuperAdminTargetOrgId] = useState<string | null>(null);
+  const [superAdminTargetCoachId, setSuperAdminTargetCoachId] = useState<string | null>(null);
+  const [superAdminScopeReady, setSuperAdminScopeReady] = useState(false);
   const [superAdminTargetCoachName, setSuperAdminTargetCoachName] = useState<string | null>(null);
   const [superAdminTargetCoachAvatar, setSuperAdminTargetCoachAvatar] = useState<string | null>(null);
   useEffect(() => {
@@ -124,22 +129,36 @@ export default function AdminPage() {
     if (params.get('superadmin') === 'true') {
       setIsSuperAdminViewing(true);
       sessionStorage.setItem('superadmin_viewing', 'true');
-      // Store the target org if provided
+
       const targetOrg = params.get('org');
+      const targetCoach = params.get('coach');
       if (targetOrg) {
         setSuperAdminTargetOrgId(targetOrg);
         sessionStorage.setItem('superadmin_target_org', targetOrg);
+      } else {
+        sessionStorage.removeItem('superadmin_target_org');
       }
-      // Clean the URL params without reload
+      if (targetCoach) {
+        setSuperAdminTargetCoachId(targetCoach);
+        sessionStorage.setItem('superadmin_target_coach', targetCoach);
+      } else {
+        sessionStorage.removeItem('superadmin_target_coach');
+      }
+
+      // Clean the URL params without reload.
       const url = new URL(window.location.href);
       url.searchParams.delete('superadmin');
       url.searchParams.delete('org');
+      url.searchParams.delete('coach');
       window.history.replaceState({}, '', url.toString());
     } else if (sessionStorage.getItem('superadmin_viewing') === 'true') {
       setIsSuperAdminViewing(true);
       const storedOrg = sessionStorage.getItem('superadmin_target_org');
+      const storedCoach = sessionStorage.getItem('superadmin_target_coach');
       if (storedOrg) setSuperAdminTargetOrgId(storedOrg);
+      if (storedCoach) setSuperAdminTargetCoachId(storedCoach);
     }
+    setSuperAdminScopeReady(true);
   }, []);
 
   // Open the Applications view directly from a notification email link (/admin?view=applications)
@@ -162,16 +181,25 @@ export default function AdminPage() {
     if (!superAdminTargetOrgId) return;
     const fetchTargetCoach = async () => {
       try {
-        const res = await fetch(`/api/super-admin?action=org-owner&orgId=${superAdminTargetOrgId}`);
+        const coachParam = superAdminTargetCoachId ? `&coachId=${encodeURIComponent(superAdminTargetCoachId)}` : '';
+        const res = await fetch(`/api/super-admin?action=org-owner&orgId=${encodeURIComponent(superAdminTargetOrgId)}${coachParam}`);
         if (res.ok) {
           const data = await res.json();
+          if (data.id) {
+            setSuperAdminTargetCoachId(data.id);
+            sessionStorage.setItem('superadmin_target_coach', data.id);
+          }
           if (data.name) setSuperAdminTargetCoachName(data.name);
           if (data.avatarUrl) setSuperAdminTargetCoachAvatar(data.avatarUrl);
+          // Fully replicate the coach's account: show THEIR name and photo
+          // everywhere (only the red banner reveals a super admin is behind it).
+          setLoggedInUser(data.name || data.email || '');
+          setAdminAvatarUrl(data.avatarUrl || null);
         }
       } catch {}
     };
     fetchTargetCoach();
-  }, [superAdminTargetOrgId]);
+  }, [superAdminTargetOrgId, superAdminTargetCoachId]);
 
   const [notifEmail, setNotifEmail] = useState("");
   const [notifEmailSaved, setNotifEmailSaved] = useState(false);
@@ -348,6 +376,7 @@ export default function AdminPage() {
   const [pickerMonth, setPickerMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth()));
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [savingWeek, setSavingWeek] = useState(false);
   const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
   const [newClientForm, setNewClientForm] = useState({ name: "", email: "", gender: "female" as "female" | "male", birthday: "", trackCycle: false });
 
@@ -885,12 +914,19 @@ export default function AdminPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: profile } = await supabase.from('users').select('name, avatar_url, access_level, coach_level, is_super_admin').eq('id', user.id).single();
-          setLoggedInUser(profile?.name || user.email || '');
           setLoggedInUserId(user.id);
-          if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
           if (profile?.access_level) setMyAccessLevel(profile.access_level);
           if (profile?.coach_level) setMyCoachLevel(profile.coach_level);
           if (profile?.is_super_admin) setIsSuperAdmin(true);
+          // When impersonating a coach, the displayed identity (name, photo)
+          // belongs to that coach — the target-coach effect sets those. Only
+          // load the real user's identity when NOT impersonating.
+          const impersonating = sessionStorage.getItem('superadmin_viewing') === 'true'
+            && !!sessionStorage.getItem('superadmin_target_org');
+          if (!impersonating) {
+            setLoggedInUser(profile?.name || user.email || '');
+            if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
+          }
         }
       } catch (err) { console.error(err); }
     };
@@ -900,6 +936,8 @@ export default function AdminPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
+  const [copyLinkStatus, setCopyLinkStatus] = useState<'idle' | 'copied' | 'shown'>('idle');
   const [unreadByClient, setUnreadByClient] = useState<Record<string, number>>({});
   const [totalUnread, setTotalUnread] = useState(0);
   const [clientsWithComments, setClientsWithComments] = useState<Set<string>>(new Set());
@@ -1123,13 +1161,13 @@ export default function AdminPage() {
             paceTarget: wo.paceTarget || '',
             location: wo.location || '',
             coachNotes: wo.coachNotes || '',
-            distanceUnit: wo.distanceUnit || 'mi',
+            distanceUnit: wo.type === 'swimming' ? undefined : (wo.distanceUnit || 'mi'),
             ...(wo.structure ? { structure: wo.structure } : {}),
             ...(wo.crossTrainingStructure ? { crossTrainingStructure: wo.crossTrainingStructure } : {}),
           })),
         };
       }
-      return { day: d.day, workouts: [{ type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '', description: d.description || '', paceTarget: d.paceTarget || '', location: d.location || '', coachNotes: d.coachNotes || '', distanceUnit: d.distanceUnit || 'mi', ...(d.structure ? { structure: d.structure } : {}), ...(d.crossTrainingStructure ? { crossTrainingStructure: d.crossTrainingStructure } : {}) }] };
+      return { day: d.day, workouts: [{ type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '', description: d.description || '', paceTarget: d.paceTarget || '', location: d.location || '', coachNotes: d.coachNotes || '', distanceUnit: d.type === 'swimming' ? undefined : (d.distanceUnit || 'mi'), ...(d.structure ? { structure: d.structure } : {}), ...(d.crossTrainingStructure ? { crossTrainingStructure: d.crossTrainingStructure } : {}) }] };
     });
     // Templates don't carry a schedule; default to remote and reconcile rest days.
     const normalizedDays: WeekPlanDay[] = days.map((d: any) => reconcileRestInPerson({
@@ -1150,7 +1188,7 @@ export default function AdminPage() {
     const data = template.data;
     const updated = [...weekPlan.days];
     // Replace the first workout with the template data (including structure/crossTrainingStructure)
-    const newWorkout = { type: data.type || 'run', trainingType: data.trainingType || '', title: data.title || '', miles: data.miles || '', description: data.description || '', paceTarget: data.paceTarget || '', location: data.location || '', coachNotes: data.coachNotes || '', distanceUnit: data.distanceUnit || 'mi', ...(data.structure ? { structure: data.structure } : {}), ...(data.crossTrainingStructure ? { crossTrainingStructure: data.crossTrainingStructure } : {}) };
+    const newWorkout = { type: data.type || 'run', trainingType: data.trainingType || '', title: data.title || '', miles: data.miles || '', description: data.description || '', paceTarget: data.paceTarget || '', location: data.location || '', coachNotes: data.coachNotes || '', distanceUnit: data.type === 'swimming' ? undefined : (data.distanceUnit || 'mi'), ...(data.structure ? { structure: data.structure } : {}), ...(data.crossTrainingStructure ? { crossTrainingStructure: data.crossTrainingStructure } : {}) };
     if (updated[dayIndex].workouts.length === 1 && !updated[dayIndex].workouts[0].title) {
       // Replace the empty default
       updated[dayIndex] = { ...updated[dayIndex], workouts: [newWorkout] };
@@ -1529,10 +1567,16 @@ export default function AdminPage() {
 
   // Fetch clients from API
   const fetchClients = useCallback(async () => {
+    if (!superAdminScopeReady) return;
+    const requestId = ++clientsRequestIdRef.current;
     try {
-      const orgParam = superAdminTargetOrgId ? `?org=${superAdminTargetOrgId}` : '';
-      const res = await fetch(`/api/clients${orgParam}`);
+      const scopeParams = new URLSearchParams();
+      if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+      if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+      const scopeQuery = scopeParams.toString();
+      const res = await fetch(`/api/clients${scopeQuery ? `?${scopeQuery}` : ''}`);
       const data = await res.json();
+      if (requestId !== clientsRequestIdRef.current) return;
       if (res.ok) {
         const mapped: Client[] = data.map((c: any) => ({
           id: c.userId,
@@ -1586,7 +1630,7 @@ export default function AdminPage() {
                         workouts: (w.workouts || []).map((wo: any) => ({
                           id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run',
                           trainingType: wo.trainingType || '', title: wo.title || '',
-                          miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi',
+                          miles: wo.miles, distanceUnit: wo.distanceUnit,
                           description: wo.description || '', paceTarget: wo.paceTarget || '',
                           location: wo.location || '', coachNotes: wo.coachNotes || '',
                           completed: wo.completed || false, stravaSynced: wo.stravaSynced || false,
@@ -1603,6 +1647,8 @@ export default function AdminPage() {
               return null;
             })
           );
+
+          if (requestId !== clientsRequestIdRef.current) return;
 
           // Apply all drafts in one state update
           const draftsMap = new Map<string, any[]>();
@@ -1623,9 +1669,9 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Failed to fetch clients:', err);
     } finally {
-      setLoadingClients(false);
+      if (requestId === clientsRequestIdRef.current) setLoadingClients(false);
     }
-  }, [superAdminTargetOrgId]);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
 
   useEffect(() => {
     fetchClients();
@@ -1633,28 +1679,38 @@ export default function AdminPage() {
 
   // Fetch pending session requests for the dashboard widget
   const fetchPendingRequests = useCallback(async () => {
+    if (!superAdminScopeReady) return;
+    const requestId = ++pendingRequestsRequestIdRef.current;
     try {
-      const res = await fetch('/api/session-requests?pending=true');
+      const scopeParams = new URLSearchParams({ pending: 'true' });
+      if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+      if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+      const res = await fetch(`/api/session-requests?${scopeParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setPendingRequests(data);
+        if (requestId === pendingRequestsRequestIdRef.current) setPendingRequests(data);
       }
     } catch {}
-  }, []);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
   useEffect(() => {
     fetchPendingRequests();
   }, [fetchPendingRequests]);
 
   // Fetch upcoming sessions (next 7 days) for the dashboard widget
   const fetchUpcomingSessions = useCallback(async () => {
+    if (!superAdminScopeReady) return;
+    const requestId = ++upcomingSessionsRequestIdRef.current;
     try {
-      const res = await fetch('/api/sessions?upcoming=true&days=7');
+      const scopeParams = new URLSearchParams({ upcoming: 'true', days: '7' });
+      if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+      if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+      const res = await fetch(`/api/sessions?${scopeParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setUpcomingSessions(data);
+        if (requestId === upcomingSessionsRequestIdRef.current) setUpcomingSessions(data);
       }
     } catch {}
-  }, []);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
   useEffect(() => {
     fetchUpcomingSessions();
   }, [fetchUpcomingSessions]);
@@ -1696,6 +1752,10 @@ export default function AdminPage() {
           gender: newClientForm.gender,
           birthday: newClientForm.birthday || null,
           trackCycle: newClientForm.gender === 'female' ? newClientForm.trackCycle : false,
+          // When a super admin is viewing as a coach, create the client under
+          // that coach's account, not the super admin's own.
+          ...(superAdminTargetOrgId ? { org: superAdminTargetOrgId } : {}),
+          ...(superAdminTargetCoachId ? { coach: superAdminTargetCoachId } : {}),
         }),
       });
       const data = await res.json();
@@ -1767,6 +1827,38 @@ export default function AdminPage() {
     }
   };
 
+  // Get the client's setup link to copy/share directly (bypasses email delivery).
+  const handleCopyInviteLink = async (userId: string) => {
+    setCopyingLink(true);
+    try {
+      const res = await fetch(`/api/clients/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkOnly: true }),
+      });
+      const data = await res.json();
+      if (res.ok && data.inviteUrl) {
+        try {
+          await navigator.clipboard.writeText(data.inviteUrl);
+          setCopyLinkStatus('copied');
+        } catch {
+          // Clipboard blocked (e.g. non-secure context) — show the link so the
+          // coach can copy it manually.
+          setCopyLinkStatus('shown');
+          window.prompt('Copy this one-time setup link and send it to your client:', data.inviteUrl);
+        }
+        setTimeout(() => setCopyLinkStatus('idle'), 5000);
+      } else {
+        alert(data.error || 'Failed to generate invite link');
+      }
+    } catch (err) {
+      console.error('Failed to generate invite link:', err);
+      alert('Failed to generate invite link');
+    } finally {
+      setCopyingLink(false);
+    }
+  };
+
   const selectedClientData = clients.find((c) => c.id === selectedClient);
 
   // Helper: select a client and mark their workout comments as viewed (clears purple dot)
@@ -1808,6 +1900,20 @@ export default function AdminPage() {
   };
   const distUnitLabel = adminDistanceUnit === "km" ? "KM" : "Miles";
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
+  const isMileageWorkout = (workout: { type?: string }) => workout.type === 'run' || workout.type === 'walk';
+  const formatProgrammedDistance = (workout: { type?: string; miles?: string | number | null; distanceUnit?: "mi" | "km" }) => {
+    if (workout.miles === null || workout.miles === undefined || workout.miles === '') return '';
+    const value = Number(workout.miles);
+    if (!Number.isFinite(value) || value <= 0) return '';
+    if (workout.type === 'swimming') return `${value}m`;
+    if (!isMileageWorkout(workout)) return '';
+    return `${convertDist(value, workout.distanceUnit)}${distUnitShort}`;
+  };
+  const sumProgrammedMileage = (workouts: { type?: string; miles?: string | number | null; distanceUnit?: "mi" | "km" }[]) =>
+    workouts.filter(isMileageWorkout).reduce((sum, workout) => {
+      const value = Number(workout.miles);
+      return sum + (Number.isFinite(value) && value > 0 ? convertDist(value, workout.distanceUnit) : 0);
+    }, 0);
 
   // Pace conversion helpers
   const convertPace = (pace: string | null | undefined): string => {
@@ -2333,10 +2439,11 @@ export default function AdminPage() {
       return {
         day: dayName,
         workouts: progDay.workouts.map((wo: any) => {
-          // Convert distance if program unit differs from admin preference
+          // Convert only run/walk distance when the program unit differs. Swimming
+          // is entered in meters, and non-distance workouts may contain legacy values.
           let miles = wo.miles || "";
           let distUnit = wo.distanceUnit || "mi";
-          if (miles && distUnit !== adminDistanceUnit) {
+          if ((wo.type === 'run' || wo.type === 'walk') && miles && distUnit !== adminDistanceUnit) {
             const val = parseFloat(miles);
             if (!isNaN(val) && val > 0) {
               if (distUnit === "mi" && adminDistanceUnit === "km") {
@@ -2356,7 +2463,7 @@ export default function AdminPage() {
             paceTarget: wo.paceTarget || "",
             location: wo.location || "",
             coachNotes: wo.coachNotes || "",
-            distanceUnit: distUnit,
+            distanceUnit: wo.type === 'swimming' ? undefined : distUnit,
             ...(wo.structure ? { structure: wo.structure } : {}),
             ...(wo.crossTrainingStructure ? { crossTrainingStructure: wo.crossTrainingStructure } : {}),
           };
@@ -2443,6 +2550,8 @@ export default function AdminPage() {
 
   // Save a new week plan (draft or published)
   const handleSaveWeek = async (publishStatus: "draft" | "published") => {
+    if (savingWeek) return;
+
     const client = clients.find(c => c.id === selectedClient);
     if (!client || !client.clientId) {
       alert("Error: No client record found. Please refresh and try again.");
@@ -2493,6 +2602,16 @@ export default function AdminPage() {
             return;
           }
         }
+        if (w.type === 'swimming') {
+          if (!w.trainingType) {
+            alert(`${day.day}: Swimming requires a subtype to be selected.`);
+            return;
+          }
+          if (!w.miles || Number(w.miles) <= 0) {
+            alert(`${day.day}: Swimming requires a distance in meters.`);
+            return;
+          }
+        }
         if (w.type === 'stretching' && !w.trainingType) {
           alert(`${day.day}: Stretching type requires a subtype to be selected (Foam Roll, Stretching, or Yoga).`);
           return;
@@ -2506,7 +2625,7 @@ export default function AdminPage() {
         type: w.type,
         trainingType: w.trainingType || null,
         title: w.title || null,
-        miles: w.miles || null,
+        miles: (w.type === 'run' || w.type === 'walk' || w.type === 'swimming') ? (w.miles || null) : null,
         description: w.description || null,
         paceTarget: w.paceTarget || null,
         location: w.location || null,
@@ -2522,10 +2641,15 @@ export default function AdminPage() {
       }))
     );
 
+    setSavingWeek(true);
     try {
       // If editing an existing draft, delete the old one first
       if (editingDraftId) {
-        await fetch(`/api/weeks/${editingDraftId}`, { method: 'DELETE' });
+        const deleteRes = await fetch(`/api/weeks/${editingDraftId}`, { method: 'DELETE' });
+        if (!deleteRes.ok) {
+          const deleteError = await deleteRes.json().catch(() => ({}));
+          throw new Error(deleteError.error || 'The existing draft could not be replaced.');
+        }
       }
 
       const res = await fetch('/api/weeks', {
@@ -2577,9 +2701,15 @@ export default function AdminPage() {
           setAdminMaxOffset(prev => Math.max(prev, targetOffset));
         }
         setClientTab(publishStatus === "draft" ? "drafts" : "plan");
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'The week could not be saved. Please try again.');
       }
     } catch (err) {
       console.error('Failed to save week:', err);
+      alert(err instanceof Error ? err.message : 'The week could not be saved. Please try again.');
+    } finally {
+      setSavingWeek(false);
     }
   };
 
@@ -2672,15 +2802,23 @@ export default function AdminPage() {
         alert(`${w.day}: Distance must be a number with up to 2 decimal places (e.g. 4.34).`);
         return;
       }
+      if (edited.type === 'swimming' && (!edited.trainingType || !edited.miles || Number(edited.miles) <= 0)) {
+        alert(`${w.day}: Swimming requires a subtype and a distance in meters.`);
+        return;
+      }
     }
     setSavingEdit(true);
     try {
       // Update the week's coach message
-      await fetch(`/api/weeks/${selectedWeek.weekId}`, {
+      const weekResponse = await fetch(`/api/weeks/${selectedWeek.weekId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coachMessage: editedCoachMessage }),
       });
+      if (!weekResponse.ok) {
+        const errorData = await weekResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'The coach message could not be saved.');
+      }
 
       // Update each workout
       const promises = selectedWeek.workouts.map((w) => {
@@ -2705,7 +2843,12 @@ export default function AdminPage() {
           }),
         });
       });
-      await Promise.all(promises);
+      const responses = await Promise.all(promises);
+      const failedResponse = responses.find((response) => response && !response.ok);
+      if (failedResponse) {
+        const errorData = await failedResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'One of the workouts could not be saved.');
+      }
 
       // Refresh weeks and exit edit mode
       const client = clients.find(c => c.id === selectedClient);
@@ -2718,6 +2861,7 @@ export default function AdminPage() {
       setEditRunStructures({});
     } catch (err) {
       console.error('Failed to save week edits:', err);
+      alert(err instanceof Error ? err.message : 'The week changes could not be saved. Please try again.');
     } finally {
       setSavingEdit(false);
     }
@@ -2937,13 +3081,27 @@ export default function AdminPage() {
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span className="text-sm font-bold">SUPER ADMIN VIEW</span>
-          <span className="text-xs opacity-90">— You are viewing this account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
+          <span className="text-sm font-bold whitespace-nowrap">SUPER ADMIN VIEW</span>
+          <span className="hidden md:inline text-xs opacity-90">— You are viewing {(isSuperAdminViewing && superAdminTargetCoachName) ? `${superAdminTargetCoachName}'s` : "this"} account as a super admin. Any messages sent, workouts edited, or changes made WILL be visible to the coach and their clients.</span>
+          <span className="md:hidden text-xs opacity-90 truncate">Viewing {(isSuperAdminViewing && superAdminTargetCoachName) ? superAdminTargetCoachName : "this coach"}</span>
           <button
-            onClick={() => { setIsSuperAdminViewing(false); setSuperAdminTargetOrgId(null); sessionStorage.removeItem('superadmin_viewing'); sessionStorage.removeItem('superadmin_target_org'); }}
-            className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0"
+            onClick={() => {
+              clientsRequestIdRef.current += 1;
+              pendingRequestsRequestIdRef.current += 1;
+              upcomingSessionsRequestIdRef.current += 1;
+              setIsSuperAdminViewing(false);
+              setSuperAdminTargetOrgId(null);
+              setSuperAdminTargetCoachId(null);
+              setSuperAdminTargetCoachName(null);
+              setSuperAdminTargetCoachAvatar(null);
+              sessionStorage.removeItem('superadmin_viewing');
+              sessionStorage.removeItem('superadmin_target_org');
+              sessionStorage.removeItem('superadmin_target_coach');
+            }}
+            title="Stop viewing as this coach and return to your own account"
+            className="ml-4 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition-colors flex-shrink-0 whitespace-nowrap"
           >
-            Dismiss
+            Exit Coach View
           </button>
         </div>
       )}
@@ -3288,7 +3446,7 @@ export default function AdminPage() {
       </button>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showApplications && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showApplications && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${isSuperAdminViewing ? "pt-10" : ""} ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -3520,13 +3678,23 @@ export default function AdminPage() {
                     </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleResendInvite(selectedClientData.id)} 
-                  disabled={resendingInvite}
-                  className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50 flex-shrink-0"
-                >
-                  {resendingInvite ? "Sending..." : resendSuccess ? "Sent ✓" : "Resend Invite"}
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleCopyInviteLink(selectedClientData.id)}
+                    disabled={copyingLink}
+                    title="Get a one-time setup link you can text or message to your client if the email isn't arriving"
+                    className="bg-secondary border border-white/15 hover:border-accent/40 text-gray-200 hover:text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50"
+                  >
+                    {copyingLink ? "Generating..." : copyLinkStatus === 'copied' ? "Link copied ✓" : copyLinkStatus === 'shown' ? "Link shown" : "Copy Invite Link"}
+                  </button>
+                  <button
+                    onClick={() => handleResendInvite(selectedClientData.id)}
+                    disabled={resendingInvite}
+                    className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50"
+                  >
+                    {resendingInvite ? "Sending..." : resendSuccess ? "Sent ✓" : "Resend Invite"}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -3548,7 +3716,7 @@ export default function AdminPage() {
                     <p className="font-heading text-lg uppercase text-white">{getAdminWeekLabel(adminWeekOffset)}</p>
                     <div className="flex items-center justify-center gap-2 mt-0.5">
                       {selectedWeek && <span className="text-gray-400 text-xs">{selectedWeek.focus}</span>}
-                      {selectedWeek && <span className="text-white text-xs font-medium bg-white/5 px-2 py-0.5 rounded">{selectedWeek.workouts.reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(1)} {distUnitShort}</span>}
+                      {selectedWeek && <span className="text-white text-xs font-medium bg-white/5 px-2 py-0.5 rounded">{selectedWeek.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(1)} {distUnitShort}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -3609,7 +3777,7 @@ export default function AdminPage() {
                     const isDayEmpty = !hasRealWorkout;
                     const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                     const daySummary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
-                    const dayMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, w.distanceUnit) : 0), 0);
+                    const dayMiles = dayWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, w.distanceUnit) : 0), 0);
                     const isAdminDayExpanded = adminExpandedDays[day] ?? adminDefaultExpanded;
                     const adminDayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
                     const adminWeekStart = getAdminMondayForOffset(adminWeekOffset);
@@ -3698,7 +3866,12 @@ export default function AdminPage() {
                               <p className="text-gray-300 text-sm mt-0.5">{(w as any).structure ? (((w as any).structure.exercises && Array.isArray((w as any).structure.exercises)) ? formatCrossTrainingForDisplay((w as any).structure) : formatStructureForDisplay((w as any).structure)).split('\n').map((line: string, li: number) => <span key={li}>{adminDistanceUnit === 'km' ? line.replace(/(\d+:\d+)(?:-(\d+:\d+))?\/mi/g, (match: string, p1: string, p2: string) => { const conv = (p: string) => { const [m, s] = p.split(':').map(Number); const totalSec = m * 60 + s; const kmSec = Math.round(totalSec / 1.60934); return `${Math.floor(kmSec / 60)}:${(kmSec % 60).toString().padStart(2, '0')}`; }; return p2 ? `${conv(p1)}-${conv(p2)}/km` : `${conv(p1)}/km`; }).replace(/(\d+(?:\.\d+)?)\s*(?:miles|mi)\b/g, (match: string, v: string) => `${(parseFloat(v) * 1.60934).toFixed(2).replace(/\.?0+$/, '')} km`) : adminDistanceUnit === 'mi' ? line.replace(/(\d+:\d+)(?:-(\d+:\d+))?\/km/g, (match: string, p1: string, p2: string) => { const conv = (p: string) => { const [m, s] = p.split(':').map(Number); const totalSec = m * 60 + s; const miSec = Math.round(totalSec * 1.60934); return `${Math.floor(miSec / 60)}:${(miSec % 60).toString().padStart(2, '0')}`; }; return p2 ? `${conv(p1)}-${conv(p2)}/mi` : `${conv(p1)}/mi`; }).replace(/(\d+(?:\.\d+)?)\s*km\b/g, (match: string, v: string) => `${(parseFloat(v) / 1.60934).toFixed(2).replace(/\.?0+$/, '')} mi`) : line}{li < (((w as any).structure.exercises && Array.isArray((w as any).structure.exercises)) ? formatCrossTrainingForDisplay((w as any).structure) : formatStructureForDisplay((w as any).structure)).split('\n').length - 1 ? <br /> : null}</span>) : `${w.title || ''}${w.description ? ` — ${w.description}` : ''}`}</p>
                               {w.paceTarget && <p className="text-accent text-xs mt-0.5">{convertPace(w.paceTarget)}</p>}
                             </div>
-                            {w.miles != null && w.miles > 0 && <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                            {w.type === 'swimming' && w.miles != null && w.miles > 0 && (
+                              <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                                <span className="text-white font-heading text-lg">{w.miles}<span className="text-gray-300 text-xs ml-0.5">m</span></span>
+                              </div>
+                            )}
+                            {(w.type === 'run' || w.type === 'walk') && w.miles != null && w.miles > 0 && <div className="flex items-baseline gap-1.5 flex-shrink-0">
                               {w.completed && w.log?.actualMiles ? (
                                 <>
                                   <span className="text-green-400 font-heading text-lg">{convertDist(Number(w.log.actualMiles))}</span>
@@ -3774,6 +3947,14 @@ export default function AdminPage() {
                                   <option value="" disabled>Walk Type *</option><option value="WalkPower">Walk Power</option><option value="WalkRecovery">Walk Recovery</option>
                                 </select>
                                 <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Dist *" /><button type="button" onClick={() => setEditDistanceUnits(prev => ({ ...prev, [w.id]: (prev[w.id] || "mi") === "km" ? "mi" : "km" }))} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-xs font-bold hover:border-accent"><span className={(editDistanceUnits[w.id] || "mi") === "km" ? "text-accent" : "text-white"}>{(editDistanceUnits[w.id] || "mi") === "km" ? "km" : "mi"}</span></button><input type="text" value={editedWorkouts[w.id]?.paceTarget || ''} onChange={(e) => updateEditedWorkout(w.id, 'paceTarget', e.target.value)} className="w-20 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder={`Pace /${(editDistanceUnits[w.id] || "mi")}`} /></div>
+                              </>
+                            )}
+                            {(editedWorkouts[w.id]?.type || w.type) === "swimming" && (
+                              <>
+                                <select value={editedWorkouts[w.id]?.trainingType || ''} onChange={(e) => updateEditedWorkout(w.id, 'trainingType', e.target.value)} className="bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent">
+                                  <option value="" disabled>Swim Type *</option><option value="Endurance">Endurance</option><option value="Sprint">Sprint</option><option value="Drills">Drills</option><option value="OpenWater">Open Water</option><option value="SwimRecovery">Recovery</option>
+                                </select>
+                                <div className="flex items-center gap-1"><input type="text" value={editedWorkouts[w.id]?.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) updateEditedWorkout(w.id, 'miles', v); }} className="w-16 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Meters *" /><span className="text-gray-400 text-xs">m</span></div>
                               </>
                             )}
                           </div>
@@ -3949,7 +4130,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2"><h4 className="text-white font-medium">{week.dateRange}</h4><span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Draft</span></div>
-                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{week.workouts.reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>
+                        <p className="text-gray-400 text-xs">{week.focus} &bull; {week.workouts.length} workouts &bull; <span className="text-white">{week.workouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => publishWeek(week.weekId)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs">Publish</button>
@@ -3962,7 +4143,7 @@ export default function AdminPage() {
                         <div key={w.id} className="bg-primary/50 rounded p-2 text-center">
                           <p className="text-gray-300 text-xs">{w.day.slice(0,3)}</p>
                           <p className="text-white text-xs font-medium truncate">{w.title || getTypeLabel(w.type)}</p>
-                          {w.miles != null && w.miles > 0 && <p className="text-accent text-xs">{convertDist(w.miles, w.distanceUnit)}{distUnitShort}</p>}
+                          {formatProgrammedDistance(w) && <p className="text-accent text-xs">{formatProgrammedDistance(w)}</p>}
                         </div>
                       ))}
                     </div>
@@ -4397,9 +4578,9 @@ export default function AdminPage() {
                 {/* Weekly Mileage Total */}
                 <div className="bg-primary/30 border border-white/5 rounded-lg p-3 flex items-center justify-between">
                   <span className="text-gray-400 text-sm">Weekly Mileage Total:</span>
-                  <span className="text-accent font-heading text-lg">{weekPlan.days.reduce((total, day) => total + day.workouts.reduce((dayTotal, wo) => dayTotal + (wo.miles && (wo.type === 'run' || wo.type === 'walk') ? parseFloat(wo.miles) || 0 : 0), 0), 0).toFixed(2)} {weekPlan.days.some(d => d.workouts.some(wo => wo.distanceUnit === 'km')) ? 'km' : 'mi'}</span>
+                  <span className="text-accent font-heading text-lg">{sumProgrammedMileage(weekPlan.days.flatMap(day => day.workouts)).toFixed(2)} {distUnitShort}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save as Draft</button><button onClick={() => handleSaveWeek("published")} disabled={!!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">Save & Publish</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
+                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save as Draft"}</button><button onClick={() => handleSaveWeek("published")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save & Publish"}</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
                 {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
@@ -5055,9 +5236,9 @@ export default function AdminPage() {
                         const normDays = (t.data.days || []).map((d: any) => {
                           if (d.workouts && d.workouts.length > 0) {
                             const wo = d.workouts[0];
-                            return { day: d.day, type: wo.type || 'rest', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles || '', workouts: d.workouts };
+                            return { day: d.day, type: wo.type || 'rest', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles || '', distanceUnit: wo.distanceUnit || 'mi', workouts: d.workouts };
                           }
-                          return { day: d.day, type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '' };
+                          return { day: d.day, type: d.type || 'rest', trainingType: d.trainingType || '', title: d.title || '', miles: d.miles || '', distanceUnit: d.distanceUnit || 'mi' };
                         });
                         const runCount = normDays.filter((d: any) => d.type === 'run').length;
                         const crossCount = normDays.filter((d: any) => d.type === 'cross').length;
@@ -5092,7 +5273,7 @@ export default function AdminPage() {
                                   <span className="text-white font-heading text-xs uppercase">{d.day}</span>
                                   <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getTypeBadge(d.type || 'rest')}`}>{getTypeLabel(d.type)}</span>
                                   {d.trainingType && d.trainingType !== 'Rest' && <span className="text-gray-400 text-xs">{getTrainingTypeLabel(d.trainingType)}</span>}
-                                  {d.miles && <span className="text-accent text-xs font-medium">{convertDist(Number(d.miles))}{distUnitShort}</span>}
+                                  {formatProgrammedDistance(d) && <span className="text-accent text-xs font-medium">{formatProgrammedDistance(d)}</span>}
                                 </div>
                                 {workouts.map((wo: any, wi: number) => (
                                   <div key={wi} className={`${wi > 0 ? 'mt-2 pt-2 border-t border-white/5' : ''}`}>
@@ -5448,7 +5629,7 @@ export default function AdminPage() {
                             <p className="text-gray-400">
                               <span className={`font-bold px-1.5 py-0.5 rounded ${getTypeBadge(t.data.type || 'rest')}`}>{getTypeLabel(t.data.type)}</span>
                               {t.data.trainingType && t.data.trainingType !== 'Rest' && <span> · {getTrainingTypeLabel(t.data.trainingType)}</span>}
-                              {t.data.miles && <span> · {convertDist(Number(t.data.miles))} {distUnitShort}</span>}
+                              {formatProgrammedDistance(t.data) && <span> · {formatProgrammedDistance(t.data)}</span>}
                             </p>
                             {t.data.title && <p className="text-white">{t.data.title}</p>}
                             {t.data.description && <p className="text-gray-400">{t.data.description}</p>}
@@ -5655,7 +5836,7 @@ export default function AdminPage() {
                           {programWeeks.map((week, wi) => {
                             const isExpanded = programExpandedWeek === wi;
                             const hasContent = week.days.some((d: any) => d.workouts.some((w: any) => w.type && w.type !== ""));
-                            const weekMiles = week.days.reduce((total: number, d: any) => total + d.workouts.reduce((dt: number, w: any) => dt + (parseFloat(w.miles) || 0), 0), 0);
+                            const weekMiles = sumProgrammedMileage(week.days.flatMap((d: any) => d.workouts));
                             const dayTypes = week.days.map((d: any) => d.workouts[0]?.type || "").map((t: string) => t === "run" ? "R" : t === "cross" ? "X" : t === "rest" ? "-" : t === "walk" ? "W" : t === "stretching" ? "S" : t === "cycling" ? "C" : "").join(" ");
                             return (
                               <div key={wi} className={`border rounded-lg transition-all ${isExpanded ? 'border-purple-500/30 bg-primary/50' : hasContent ? 'border-white/10 bg-primary/20' : 'border-white/5 bg-primary/10 opacity-60'}`}>
@@ -5666,7 +5847,7 @@ export default function AdminPage() {
                                     <span className="text-gray-500 text-xs font-mono">{dayTypes}</span>
                                   </div>
                                   <div className="flex items-center gap-3">
-                                    {weekMiles > 0 && <span className="text-accent text-xs">{weekMiles.toFixed(1)} {adminDistanceUnit}</span>}
+                                    {weekMiles > 0 && <span className="text-accent text-xs">{weekMiles.toFixed(1)} {distUnitShort}</span>}
                                     <svg className={`w-3 h-3 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                   </div>
                                 </button>
@@ -5683,7 +5864,7 @@ export default function AdminPage() {
                                           {day.workouts.map((wo: any, woi: number) => (
                                             <div key={woi}>
                                             <div className="flex items-center gap-2 flex-wrap">
-                                              <select value={wo.type || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], type: e.target.value, trainingType: e.target.value === 'rest' ? 'Rest' : '' }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-20">
+                                              <select value={wo.type || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], type: e.target.value, trainingType: e.target.value === 'rest' ? 'Rest' : '', miles: '', distanceUnit: e.target.value === 'swimming' ? undefined : adminDistanceUnit }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-20">
                                                 <option value="">—</option><option value="run">Run</option><option value="cross">Cross</option><option value="strength">Strength</option><option value="hiit">HIIT</option><option value="walk">Walk</option><option value="swimming">Swim</option><option value="rest">Rest</option><option value="stretching">Stretch</option><option value="cycling">Cycle</option>
                                               </select>
                                               {(wo.type === "run" || wo.type === "walk") && (
@@ -5692,7 +5873,16 @@ export default function AdminPage() {
                                                     <option value="">Subtype</option>
                                                     {wo.type === "run" ? <><option value="Easy">Easy</option><option value="LongRun">Long Run</option><option value="Intervals">Intervals</option><option value="Progressive">Progressive</option><option value="SpeedRoad">Speed Road</option><option value="SpeedTrack">Speed Track</option><option value="RacePace">Race Pace</option><option value="ClosePace">Close to Race Pace</option><option value="Trail">Trail</option></> : <><option value="WalkPower">Power</option><option value="WalkRecovery">Recovery</option></>}
                                                   </select>
-                                                  <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], miles: v }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); } }} className="w-12 bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder={adminDistanceUnit} />
+                                                  <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], miles: v, distanceUnit: adminDistanceUnit }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); } }} className="w-12 bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder={adminDistanceUnit} />
+                                                </>
+                                              )}
+                                              {wo.type === "swimming" && (
+                                                <>
+                                                  <select value={wo.trainingType || ""} onChange={(e) => { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], trainingType: e.target.value }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); }} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                                    <option value="">Subtype</option><option value="Endurance">Endurance</option><option value="Sprint">Sprint</option><option value="Drills">Drills</option><option value="OpenWater">Open Water</option><option value="SwimRecovery">Recovery</option>
+                                                  </select>
+                                                  <input type="text" value={wo.miles || ''} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) { const nw = [...programWeeks]; const nd = [...nw[wi].days]; const nwo = [...nd[di].workouts]; nwo[woi] = { ...nwo[woi], miles: v, distanceUnit: undefined }; nd[di] = { ...nd[di], workouts: nwo }; nw[wi] = { ...nw[wi], days: nd }; setProgramWeeks(nw); } }} className="w-16 bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="Meters" />
+                                                  <span className="text-gray-400 text-xs">m</span>
                                                 </>
                                               )}
                                               {wo.type === "stretching" && (
@@ -5796,7 +5986,7 @@ export default function AdminPage() {
                           {expandedTemplateItems.has(prog.id) && (
                           <div className="mt-3 space-y-1 max-h-[500px] overflow-y-auto">
                             {(prog.data.weeks || []).map((w: any, wi: number) => {
-                              const weekMiles = w.days?.reduce((t: number, d: any) => t + d.workouts.reduce((dt: number, wo: any) => dt + (parseFloat(wo.miles) || 0), 0), 0) || 0;
+                              const weekMiles = sumProgrammedMileage((w.days || []).flatMap((d: any) => d.workouts || []));
                               const weekItemId = `${prog.id}-w${wi}`;
                               return (
                                 <div key={wi} className="border border-white/5 rounded-lg">
@@ -5821,14 +6011,14 @@ export default function AdminPage() {
                                               <span className="text-white font-heading text-[10px] uppercase w-12">{d.day?.slice(0, 3)}</span>
                                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeBadge(wo.type || 'rest')}`}>{getTypeLabel(wo.type || 'rest')}</span>
                                               {wo.trainingType && wo.trainingType !== 'Rest' && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo.trainingType)}</span>}
-                                              {wo.miles != null && Number(wo.miles) > 0 && <span className="text-accent text-[10px] font-medium">{convertDist(Number(wo.miles))}{distUnitShort}</span>}
+                                              {formatProgrammedDistance(wo) && <span className="text-accent text-[10px] font-medium">{formatProgrammedDistance(wo)}</span>}
                                               {wo.title && <span className="text-white text-[10px] truncate">{wo.title}</span>}
                                             </div>
                                             {d.workouts?.length > 1 && d.workouts.slice(1).map((wo2: any, wi2: number) => (
                                               <div key={wi2} className="flex items-center gap-2 mt-1 ml-12">
                                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeBadge(wo2.type || 'rest')}`}>{getTypeLabel(wo2.type || 'rest')}</span>
                                                 {wo2.trainingType && <span className="text-gray-400 text-[10px]">{getTrainingTypeLabel(wo2.trainingType)}</span>}
-                                                {wo2.miles && <span className="text-accent text-[10px]">{convertDist(Number(wo2.miles))}{distUnitShort}</span>}
+                                                {formatProgrammedDistance(wo2) && <span className="text-accent text-[10px]">{formatProgrammedDistance(wo2)}</span>}
                                                 {wo2.title && <span className="text-white text-[10px] truncate">{wo2.title}</span>}
                                               </div>
                                             ))}
@@ -6185,7 +6375,7 @@ export default function AdminPage() {
                                 ) : null}
                                 <span className={`${(item.client.avatarUrl || item.client.stravaProfileUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>{item.client.name.charAt(0)}</span>
                               </div>
-                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{item.week.workouts.reduce((s: number, w: any) => s + (w.miles != null && w.miles > 0 ? convertDist(w.miles, w.distanceUnit) : 0), 0).toFixed(2)} {distUnitShort}</span></p></div>
+                              <div><p className="text-white text-sm">{item.client.name}</p><p className="text-gray-300 text-xs">{item.week.dateRange} &mdash; {item.week.focus} &bull; <span className="text-white">{sumProgrammedMileage(item.week.workouts).toFixed(2)} {distUnitShort}</span></p></div>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => { setSelectedClient(item.client.id); setClientTab("drafts"); }} className="text-gray-400 hover:text-white text-xs border border-white/10 px-3 py-1 rounded">View</button>

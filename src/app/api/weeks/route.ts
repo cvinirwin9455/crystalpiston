@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { getWorkoutDistanceForDisplay, getWorkoutDistanceUnitForDisplay, getWorkoutStructureForDisplay, normalizeWorkoutDistance } from '@/lib/workout-distance'
 
 // Helper: parse week date range ("Aug 25 - Aug 31") into Monday date
 function parseDateRange(dateRange: string): Date | null {
@@ -399,14 +400,14 @@ export async function GET(request: Request) {
           type: wo.type,
           trainingType: wo.training_type,
           title: wo.title,
-          miles: wo.miles ? parseFloat(wo.miles) : null,
-          distanceUnit: wo.distance_unit || 'mi',
+          miles: getWorkoutDistanceForDisplay(wo),
+          distanceUnit: getWorkoutDistanceUnitForDisplay(wo),
           description: wo.description,
           paceTarget: wo.pace_target,
           location: wo.location,
           coachNotes: wo.coach_notes,
           sortOrder: wo.sort_order,
-          structure: wo.structure || null,
+          structure: getWorkoutStructureForDisplay(wo),
           completed: !!log,
           stravaSynced: stravaMatchedWorkoutIds.has(wo.id) || !!(log?.avg_heartrate),
           stravaActivityName: stravaActivityNameByWorkoutId.get(wo.id) || (log?.avg_heartrate && log?.notes?.match?.(/(?:Auto-s|S)ynced from Strava: (.+)/)?.[1]) || null,
@@ -470,7 +471,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'clientId and dateRange are required' }, { status: 400 })
   }
 
-  // Create the week
+  if (!Array.isArray(workouts) || workouts.length === 0) {
+    return NextResponse.json({ error: 'At least one workout day is required. Nothing was saved.' }, { status: 400 })
+  }
+
+  const validDays = new Set(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+  const invalidWorkoutIndex = workouts.findIndex((w: any) => !w || !validDays.has(w.day))
+  if (invalidWorkoutIndex !== -1) {
+    return NextResponse.json(
+      { error: `Workout ${invalidWorkoutIndex + 1} is missing a valid day. Nothing was saved.` },
+      { status: 400 }
+    )
+  }
+
+  const normalizedDistances = workouts.map((workout: any) => normalizeWorkoutDistance(workout))
+  const invalidDistanceIndex = normalizedDistances.findIndex((distance: any) => distance.error)
+  if (invalidDistanceIndex !== -1) {
+    const workout = workouts[invalidDistanceIndex]
+    const label = `${workout.day} ${workout.type === 'swimming' ? 'swim' : workout.type || 'workout'}`
+    return NextResponse.json(
+      { error: `${label} ${normalizedDistances[invalidDistanceIndex].error}. Nothing was saved; correct that distance and try again.` },
+      { status: 400 }
+    )
+  }
+
+  // Create the week first, then roll it back if any workout cannot be saved.
+  // Supabase's REST client cannot wrap these two inserts in one transaction, so the
+  // explicit cleanup prevents an empty week from blocking every retry.
   const { data: week, error: weekError } = await adminClient
     .from('weeks')
     .insert({
@@ -485,41 +512,83 @@ export async function POST(request: Request) {
     .single()
 
   if (weekError) {
+    if (weekError.code === '23505') {
+      return NextResponse.json(
+        { error: `A week already exists for ${dateRange}. Delete or edit that week before trying again.` },
+        { status: 409 }
+      )
+    }
     return NextResponse.json({ error: weekError.message }, { status: 500 })
   }
 
-  // Create workouts if provided
-  if (workouts && workouts.length > 0) {
+  // Create workouts
+  {
     const workoutRows = workouts.map((w: any, index: number) => {
       // Blank/unselected type saves as 'rest' (was defaulting to 'run' — the phantom-run bug)
       const woType = w.type || 'rest'
       // A rest day can never be an in-person coached session — enforce it here so the
       // DB never stores a contradictory row, regardless of what the form sent.
-      const woSessionType = woType === 'rest' ? 'remote' : (w.sessionType || 'remote')
+      const woSessionType = woType !== 'rest' && w.sessionType === 'in_person' ? 'in_person' : 'remote'
+      const normalizedDistance = normalizedDistances[index]
+
       return {
         week_id: week.id,
         day: w.day,
         type: woType,
         training_type: w.trainingType || null,
         title: w.title || null,
-        miles: w.miles ? parseFloat(w.miles) : null,
+        miles: normalizedDistance.miles,
         description: w.description || null,
         pace_target: w.paceTarget || null,
         location: w.location || null,
         coach_notes: w.coachNotes || null,
         sort_order: index,
-        distance_unit: w.distanceUnit || 'mi',
-        structure: w.structure || null,
+        distance_unit: normalizedDistance.distanceUnit,
+        structure: normalizedDistance.structure,
         session_type: woSessionType,
       }
     })
 
-    const { error: workoutsError } = await adminClient
+    let { error: workoutsError } = await adminClient
       .from('workouts')
       .insert(workoutRows)
 
+    // Older environments may not have the session-management migration yet. A
+    // remote-only week can safely use the legacy schema; an in-person week must fail
+    // until the migration is applied because dropping that value would corrupt it.
+    const sessionTypeColumnMissing = workoutsError &&
+      (workoutsError.code === 'PGRST204' || workoutsError.code === '42703') &&
+      workoutsError.message.toLowerCase().includes('session_type')
+    const canUseLegacySchema = workoutRows.every((row: any) => row.session_type === 'remote')
+
+    if (sessionTypeColumnMissing && canUseLegacySchema) {
+      const legacyWorkoutRows = workoutRows.map(({ session_type: _sessionType, ...row }: any) => row)
+      const retryResult = await adminClient.from('workouts').insert(legacyWorkoutRows)
+      workoutsError = retryResult.error
+    }
+
     if (workoutsError) {
-      return NextResponse.json({ error: workoutsError.message }, { status: 500 })
+      console.error(`Failed to save workouts for week ${week.id}:`, workoutsError)
+      const { error: cleanupError } = await adminClient
+        .from('weeks')
+        .delete()
+        .eq('id', week.id)
+
+      if (cleanupError) {
+        console.error(`Failed to remove incomplete week ${week.id}:`, cleanupError)
+        return NextResponse.json(
+          {
+            error: `The workouts could not be saved, and an incomplete week remains for ${dateRange}. Delete that empty week before trying again.`,
+            incompleteWeekId: week.id,
+          },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(
+        { error: `The workouts could not be saved: ${workoutsError.message}. Nothing was saved; please try again.` },
+        { status: 500 }
+      )
     }
   }
 
@@ -578,10 +647,11 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single()
 
+          const { getOrgIdForUser } = await import('@/lib/org')
+          const orgId = await getOrgIdForUser(adminClient, user.id)
+
           if (clientUser?.email) {
             const { sendEmail, buildPlanPublishedEmail, getProductionUrl, getEmailBrandFromOrgId } = await import('@/lib/email')
-            const { getOrgIdForUser } = await import('@/lib/org')
-            const orgId = await getOrgIdForUser(adminClient, user.id)
             const brand = getEmailBrandFromOrgId(orgId)
             const siteUrl = getProductionUrl(request.url)
             const emailContent = buildPlanPublishedEmail(

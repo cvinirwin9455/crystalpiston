@@ -36,6 +36,15 @@ export async function POST(
   const userId = params.id
   const adminClient = await getAdminClient()
 
+  // Optional mode: return the setup link for the coach to copy/share directly
+  // (text, WhatsApp, their own email) instead of relying on our email being
+  // delivered. Useful when the client's mail server blocks our invites.
+  let linkOnly = false
+  try {
+    const body = await request.json()
+    linkOnly = body?.linkOnly === true
+  } catch { /* no body — normal resend */ }
+
   // Get the user's email
   const { data: clientUser } = await adminClient
     .from('users')
@@ -77,19 +86,43 @@ export async function POST(
   // Construct the invite URL using token_hash format
   const inviteUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
-  // Determine brand from admin's organization
+  // Link-only mode: return the URL without sending the email.
+  if (linkOnly) {
+    return NextResponse.json({ success: true, inviteUrl, email: clientUser.email })
+  }
+
   const { getOrgIdForUser } = await import('@/lib/org')
   const { getEmailBrandFromOrgId } = await import('@/lib/email')
   const { sendClientInviteEmail } = await import('@/lib/invite-emails')
 
-  const orgId = await getOrgIdForUser(adminClient, user.id)
+  // Resolve the client's actual assigned coach (default first) so the email is
+  // branded and named after that coach — not whoever triggered the resend
+  // (e.g. a super admin viewing as the coach).
+  const { data: clientRecord } = await adminClient
+    .from('clients')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  let effectiveCoachId = user.id
+  if (clientRecord) {
+    const { data: assignments } = await adminClient
+      .from('client_coaches')
+      .select('coach_id, is_default')
+      .eq('client_id', clientRecord.id)
+    if (assignments && assignments.length > 0) {
+      effectiveCoachId = (assignments.find((a: any) => a.is_default) || assignments[0]).coach_id
+    }
+  }
+
+  const orgId = await getOrgIdForUser(adminClient, effectiveCoachId)
   const brand = getEmailBrandFromOrgId(orgId)
 
   // Get the coach's name for the invite email
   const { data: coachProfile } = await adminClient
     .from('users')
     .select('name')
-    .eq('id', user.id)
+    .eq('id', effectiveCoachId)
     .single()
   const coachName = coachProfile?.name || 'Your coach'
 

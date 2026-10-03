@@ -55,8 +55,48 @@ export default function SuperAdminPage() {
   const [newSuperAdminEmail, setNewSuperAdminEmail] = useState("");
   const [addingSuperAdmin, setAddingSuperAdmin] = useState(false);
   const [removingSuperAdminId, setRemovingSuperAdminId] = useState<string | null>(null);
+  // Message-a-coach compose modal state
+  const [messageCoach, setMessageCoach] = useState<{ coachId: string; orgName: string } | null>(null);
+  const [messageSubject, setMessageSubject] = useState("");
+  const [messageBody, setMessageBody] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  function openMessageCoach(coachId: string, orgName: string) {
+    setMessageCoach({ coachId, orgName });
+    setMessageSubject("");
+    setMessageBody("");
+  }
+
+  async function sendCoachMessage() {
+    if (!messageCoach || !messageSubject.trim() || !messageBody.trim()) return;
+    setSendingMessage(true);
+    try {
+      const res = await fetch("/api/inbound-emails/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          coachId: messageCoach.coachId,
+          subject: messageSubject.trim(),
+          message: messageBody.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionMessage({ text: `Message sent to ${data.toName || data.to}. Their reply will appear in your Inbox.`, type: "success" });
+        setMessageCoach(null);
+        setMessageSubject("");
+        setMessageBody("");
+      } else {
+        setActionMessage({ text: data.error || "Failed to send message", type: "error" });
+      }
+    } catch {
+      setActionMessage({ text: "Network error sending message", type: "error" });
+    } finally {
+      setSendingMessage(false);
+    }
+  }
 
   useEffect(() => {
     fetchData();
@@ -129,6 +169,8 @@ export default function SuperAdminPage() {
     }
   }
 
+  // Removes ONLY the beta signup record. Never touches the person's login or
+  // client data. This is the safe default for clearing out leftover signups.
   async function deleteAccount(signupId: string) {
     setActionMessage(null);
     try {
@@ -136,6 +178,37 @@ export default function SuperAdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete_account", signupId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setActionMessage({ text: data.error || "Failed to delete", type: "error" });
+      } else {
+        setActionMessage({ text: data.message, type: "success" });
+        setDeletingId(null);
+        fetchData();
+      }
+    } catch {
+      setActionMessage({ text: "Network error", type: "error" });
+    }
+  }
+
+  // Fully deletes the person's ENTIRE account and all data. Heavily guarded:
+  // requires a typed confirmation, and the server still refuses if the account
+  // has client data unless force is set.
+  async function deleteEntireAccount(signupId: string, name: string, email: string) {
+    setActionMessage(null);
+    const typed = window.prompt(
+      `⚠️ DANGER: This permanently deletes the ENTIRE account and ALL data for ${name} (${email}) — login, client record, training plans, and logged workouts. This cannot be undone.\n\nTo confirm, type the email address exactly:`
+    );
+    if (typed !== email) {
+      setActionMessage({ text: "Cancelled — email did not match. Nothing was deleted.", type: "error" });
+      return;
+    }
+    try {
+      const res = await fetch("/api/super-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_account", signupId, deleteUserToo: true, force: true }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -324,13 +397,21 @@ export default function SuperAdminPage() {
                         </div>
                       </div>
                       {org.accountCoachId && (
-                        <button
-                          onClick={() => viewAsCoach(org.accountCoachId!)}
-                          disabled={impersonatingId === org.accountCoachId}
-                          className="w-full text-xs bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
-                        >
-                          {impersonatingId === org.accountCoachId ? "Opening..." : "View as Coach \u2192"}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => viewAsCoach(org.accountCoachId!)}
+                            disabled={impersonatingId === org.accountCoachId}
+                            className="flex-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50"
+                          >
+                            {impersonatingId === org.accountCoachId ? "Opening..." : "View as Coach \u2192"}
+                          </button>
+                          <button
+                            onClick={() => openMessageCoach(org.accountCoachId!, org.name)}
+                            className="flex-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition font-medium"
+                          >
+                            Message
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -507,16 +588,25 @@ export default function SuperAdminPage() {
                         )}
 
                         {deletingId === signup.id ? (
-                          <div className="flex gap-2 mt-1">
+                          <div className="flex flex-col gap-2 mt-1 bg-gray-50 border border-gray-200 rounded-lg p-3 max-w-md">
+                            <p className="text-xs text-gray-600">Choose what to remove:</p>
                             <button
                               onClick={() => deleteAccount(signup.id)}
-                              className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-medium"
+                              className="text-sm bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition font-medium text-left"
                             >
-                              Confirm Delete
+                              Remove beta signup only
+                              <span className="block text-[11px] font-normal text-gray-200">Clears this signup from the list. The person's login and any client data are kept. (Safe — use this for duplicate/unused signups.)</span>
+                            </button>
+                            <button
+                              onClick={() => deleteEntireAccount(signup.id, signup.full_name, signup.email)}
+                              className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-medium text-left"
+                            >
+                              Delete entire account &amp; all data
+                              <span className="block text-[11px] font-normal text-red-100">Permanently deletes their login, client record, plans, and logged workouts. Requires typing their email to confirm.</span>
                             </button>
                             <button
                               onClick={() => setDeletingId(null)}
-                              className="text-sm text-gray-500 px-3 py-2 hover:text-gray-800 transition"
+                              className="text-sm text-gray-500 px-3 py-1 hover:text-gray-800 transition self-start"
                             >
                               Cancel
                             </button>
@@ -795,6 +885,51 @@ export default function SuperAdminPage() {
           </div>
         )}
       </main>
+
+      {/* Message-a-coach compose modal */}
+      {messageCoach && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !sendingMessage && setMessageCoach(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-gray-900">Message {messageCoach.orgName}</h3>
+              <button onClick={() => setMessageCoach(null)} disabled={sendingMessage} className="text-gray-400 hover:text-gray-600 disabled:opacity-50">&times;</button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">Sends an email from hello@firstmilecoach.com. The coach can reply by email and it will land in your Inbox.</p>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+            <input
+              type="text"
+              value={messageSubject}
+              onChange={(e) => setMessageSubject(e.target.value)}
+              placeholder="e.g. Checking in on your First Mile Coach setup"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-orange-200"
+            />
+            <label className="block text-xs font-medium text-gray-700 mb-1">Message</label>
+            <textarea
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              rows={7}
+              placeholder="Write your message to the coach..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-orange-200 resize-y"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setMessageCoach(null)}
+                disabled={sendingMessage}
+                className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendCoachMessage}
+                disabled={sendingMessage || !messageSubject.trim() || !messageBody.trim()}
+                className="text-sm px-4 py-2 rounded-lg bg-orange-600 text-white font-medium hover:bg-orange-700 disabled:opacity-50"
+              >
+                {sendingMessage ? "Sending..." : "Send Message"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -49,15 +49,21 @@ export function getBrandFromDomain(domain: string | null | undefined): Brand {
   return 'first-mile'
 }
 
+// A monitored reply address improves deliverability at strict receivers (a
+// valid reply path signals a legitimate sender) and gives blocked recipients
+// a way to reach a real inbox.
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || 'hello@firstmilecoach.com'
+
 interface SendInviteEmailParams {
   to: string
   subject: string
   html: string
+  text: string
   senderName: string
   senderEmail: string
 }
 
-async function sendInviteEmail({ to, subject, html, senderName, senderEmail }: SendInviteEmailParams): Promise<boolean> {
+async function sendInviteEmail({ to, subject, html, text, senderName, senderEmail }: SendInviteEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     console.error('RESEND_API_KEY not configured')
@@ -74,8 +80,12 @@ async function sendInviteEmail({ to, subject, html, senderName, senderEmail }: S
       body: JSON.stringify({
         from: `${senderName} <${senderEmail}>`,
         to: [to],
+        reply_to: REPLY_TO_EMAIL,
         subject,
         html,
+        // A plain-text alternative alongside the HTML improves spam scoring at
+        // strict business mail servers.
+        text,
       }),
     })
 
@@ -153,10 +163,23 @@ export async function sendCoachInviteEmail(params: {
 </body>
 </html>`
 
+  const text = `Welcome to ${assets.name}, ${firstName}!
+
+Your coach account is ready. Set your password and start managing your clients here:
+
+${confirmationUrl}
+
+Once you're in, you'll be able to invite and manage clients, build and assign training plans, and track progress and communicate in one place.
+
+If you didn't expect this email, you can safely ignore it.
+
+${assets.name}`
+
   return sendInviteEmail({
     to,
     subject,
     html,
+    text,
     senderName: assets.senderName,
     senderEmail: assets.senderEmail,
   })
@@ -224,10 +247,23 @@ export async function sendClientInviteEmail(params: {
 </body>
 </html>`
 
+  const text = `Welcome to the team, ${firstName}!
+
+${coachName} has set up your training account. Set your password and access your training dashboard here:
+
+${confirmationUrl}
+
+Once you've set your password, you'll be able to view your weekly training plan, log your workouts and track progress, and message ${coachName} directly.
+
+If you didn't expect this email, you can safely ignore it.
+
+${assets.name}`
+
   return sendInviteEmail({
     to,
     subject,
     html,
+    text,
     senderName: coachName,
     senderEmail: assets.senderEmail,
   })

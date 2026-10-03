@@ -39,14 +39,26 @@ export async function GET(request: Request) {
     const orgId = searchParams.get('orgId')
     if (!orgId) return NextResponse.json({ error: 'orgId required' }, { status: 400 })
 
-    // Find the account_coach (owner) for this org
-    const { data: owner } = await adminClient
+    const coachId = searchParams.get('coachId')
+
+    // Prefer the specifically selected coach. Older links only carry an org,
+    // so they continue to fall back to that organization's account coach.
+    let ownerQuery = adminClient
       .from('users')
       .select('id, name, email, avatar_url')
       .eq('organization_id', orgId)
-      .eq('role', 'admin')
-      .eq('coach_level', 'account_coach')
-      .maybeSingle()
+
+    if (coachId) {
+      ownerQuery = ownerQuery.eq('id', coachId)
+    } else {
+      ownerQuery = ownerQuery.eq('role', 'admin').eq('coach_level', 'account_coach')
+    }
+
+    const { data: owner } = await ownerQuery.maybeSingle()
+
+    if (!owner && coachId) {
+      return NextResponse.json({ error: 'Target coach not found in organization' }, { status: 404 })
+    }
 
     if (!owner) {
       // Fallback: get any admin in that org
@@ -59,6 +71,7 @@ export async function GET(request: Request) {
         .single()
 
       return NextResponse.json({
+        id: anyAdmin?.id || null,
         name: anyAdmin?.name || 'Unknown Coach',
         email: anyAdmin?.email || '',
         avatarUrl: anyAdmin?.avatar_url || null,
@@ -66,6 +79,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
+      id: owner.id,
       name: owner.name || owner.email || 'Unknown Coach',
       email: owner.email || '',
       avatarUrl: owner.avatar_url || null,
@@ -190,15 +204,76 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Signup not found' }, { status: 404 })
     }
 
-    // Check if user already exists
+    // Check if user already exists (e.g. they're already a CLIENT of another
+    // coach). With dual-role accounts, we must NOT reject them and must NOT
+    // create a second auth identity — that corrupts their existing account.
+    // Instead, grant coach capability in place and give them their own new
+    // coaching organization, while leaving their client record + existing
+    // coach assignments untouched.
     const { data: existingUser } = await adminClient
       .from('users')
-      .select('id')
+      .select('id, role, has_coach_access')
       .eq('email', signup.email)
       .single()
 
     if (existingUser) {
-      return NextResponse.json({ error: 'A user with this email already exists' }, { status: 400 })
+      if (existingUser.role === 'admin' || existingUser.has_coach_access) {
+        return NextResponse.json({ error: 'This email is already a coach/admin in the system.' }, { status: 400 })
+      }
+
+      // Create the coach's own isolated organization.
+      const existingCoachSlug = signup.full_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const { data: existingNewOrg, error: existingOrgError } = await adminClient
+        .from('organizations')
+        .insert({
+          name: `${signup.full_name}`,
+          slug: `fmc-${existingCoachSlug}-${Date.now().toString(36)}`,
+          domain: 'firstmilecoach.com',
+        })
+        .select()
+        .single()
+
+      if (existingOrgError) {
+        return NextResponse.json({ error: `Failed to create organization: ${existingOrgError.message}` }, { status: 500 })
+      }
+
+      const existingNewOrgId = existingNewOrg.id
+
+      // Grant coach capability. Keep role='client' as their PRIMARY role so all
+      // existing client queries keep working; has_coach_access unlocks the coach
+      // side. Move their org to their OWN coaching org (their client capability
+      // is preserved via the clients + client_coaches rows, which are org-agnostic).
+      const { error: upgradeError } = await adminClient
+        .from('users')
+        .update({
+          has_coach_access: true,
+          organization_id: existingNewOrgId,
+          coach_level: 'account_coach',
+          access_level: 'all_clients',
+        })
+        .eq('id', existingUser.id)
+
+      if (upgradeError) {
+        return NextResponse.json({ error: upgradeError.message }, { status: 500 })
+      }
+
+      // Link the beta signup to the new org and seed the coach's exercise library.
+      await adminClient
+        .from('beta_signups')
+        .update({ organization_id: existingNewOrgId })
+        .eq('id', signupId)
+
+      const existingSeed = await seedExerciseLibrary(adminClient, existingNewOrgId)
+      if (!existingSeed.success) {
+        console.error(`Failed to seed exercise library for org ${existingNewOrgId}:`, existingSeed.error)
+      }
+
+      return NextResponse.json({
+        success: true,
+        userId: existingUser.id,
+        dualRole: true,
+        message: `${signup.full_name} already had an account and is now also a coach with their own organization. They can switch between their coaching and client views after logging in — no new invite email needed.`,
+      })
     }
 
     // Create a NEW organization for this coach (each beta coach is their own isolated account)
@@ -317,10 +392,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This user has not been activated yet. Use Activate Coach instead.' }, { status: 400 })
     }
 
-    // Delete the existing user and re-create to generate a fresh invite token
-    await adminClient.auth.admin.deleteUser(existingUser.id)
-
-    // Get the org for domain
+    // SAFETY: We do NOT delete-and-recreate the account to "resend" an invite —
+    // that would erase all their data (and previously did). Instead we generate
+    // a fresh recovery/setup link for the EXISTING account and email it.
     const { data: org } = await adminClient
       .from('organizations')
       .select('domain')
@@ -332,28 +406,24 @@ export async function POST(request: Request) {
     if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
     const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
 
-    // Generate a fresh invite link
+    // Generate a recovery link for the existing user (lets them set a password
+    // without destroying their account).
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-      type: 'invite',
+      type: 'recovery',
       email: signup.email,
       options: {
-        data: {
-          name: signup.full_name,
-          role: 'admin',
-        },
         redirectTo: redirectUrl,
       },
     })
 
     if (linkError) {
-      return NextResponse.json({ error: `Failed to generate invite link: ${linkError.message}` }, { status: 500 })
+      return NextResponse.json({ error: `Failed to generate setup link: ${linkError.message}` }, { status: 500 })
     }
 
-    const newUserId = linkData.user.id
     const hashedToken = linkData.properties.hashed_token
-    const confirmationUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+    const confirmationUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=recovery&next=/set-password`
 
-    // Send the invite email
+    // Send the invite/setup email
     await sendCoachInviteEmail({
       to: signup.email,
       coachName: signup.full_name,
@@ -361,26 +431,22 @@ export async function POST(request: Request) {
       brand: getBrandFromDomain(org?.domain),
     })
 
-    // Update the new users row with org, role, and coach settings
-    await adminClient
-      .from('users')
-      .update({
-        role: 'admin',
-        name: signup.full_name,
-        organization_id: signup.organization_id,
-        coach_level: 'account_coach',
-        access_level: 'all_clients',
-      })
-      .eq('id', newUserId)
-
     return NextResponse.json({
       success: true,
-      message: `Invite resent to ${signup.full_name} (${signup.email}).`,
+      message: `Setup link resent to ${signup.full_name} (${signup.email}). Their existing account and any data were left untouched.`,
     })
   }
 
   if (action === 'delete_account') {
-    const { signupId: deleteSignupId, deleteUserToo } = body
+    // SAFETY REWRITE (guards against wiping a live account when removing a
+    // leftover beta signup):
+    //   - By default, this deletes ONLY the beta_signups record.
+    //   - It deletes the actual user account ONLY when deleteUserToo === true.
+    //   - Even then, it REFUSES to delete a user who has a client record or
+    //     logged workout data, unless force === true is explicitly passed.
+    //     (This is exactly the case that destroyed a real client account when
+    //     a super admin deleted an unused duplicate beta signup.)
+    const { signupId: deleteSignupId, deleteUserToo, force } = body
     if (!deleteSignupId) {
       return NextResponse.json({ error: 'signupId is required' }, { status: 400 })
     }
@@ -396,35 +462,55 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Signup not found' }, { status: 404 })
     }
 
-    // If the user was activated, delete their auth account and users row
-    if (deleteUserToo !== false) {
+    // Only touch the user account when explicitly asked (deleteUserToo === true).
+    if (deleteUserToo === true) {
       const { data: existingUser } = await adminClient
         .from('users')
-        .select('id')
+        .select('id, role')
         .eq('email', signup.email)
         .single()
 
       if (existingUser) {
-        // Delete from clients table if they have any client records
+        // GUARD: does this account have a client record? If so, deleting it
+        // would destroy a real athlete's training history (their weeks,
+        // workouts and logs all cascade from the client row and the auth user).
+        // Refuse unless the caller explicitly confirms with force === true.
+        const { data: clientRow } = await adminClient
+          .from('clients')
+          .select('id')
+          .eq('user_id', existingUser.id)
+          .maybeSingle()
+
+        if (clientRow && force !== true) {
+          return NextResponse.json({
+            error: 'BLOCKED: This email belongs to an account that has a client record with training data. Deleting it would erase that athlete\'s history. Nothing was deleted. If you truly intend to delete the entire account and its data, resubmit with force = true.',
+            blocked: true,
+            hasClientRecord: true,
+          }, { status: 409 })
+        }
+
+        // Safe (or force-confirmed) full account deletion.
         await adminClient.from('clients').delete().eq('user_id', existingUser.id)
-        // Delete from client_coaches
         await adminClient.from('client_coaches').delete().eq('coach_id', existingUser.id)
-        // Delete templates belonging to this coach's org
         if (signup.organization_id) {
           await adminClient.from('templates').delete().eq('organization_id', signup.organization_id)
         }
-        // Delete from users table
         await adminClient.from('users').delete().eq('id', existingUser.id)
-        // Delete from Supabase Auth
         await adminClient.auth.admin.deleteUser(existingUser.id)
-        // Delete the coach's organization
         if (signup.organization_id) {
           await adminClient.from('organizations').delete().eq('id', signup.organization_id)
         }
       }
+
+      // Remove the beta signup record too and report full deletion.
+      await adminClient.from('beta_signups').delete().eq('id', deleteSignupId)
+      return NextResponse.json({
+        success: true,
+        message: `${signup.full_name} (${signup.email}) and their account have been completely deleted.`,
+      })
     }
 
-    // Delete the beta signup record
+    // DEFAULT: delete only the beta signup record — never the user account.
     await adminClient
       .from('beta_signups')
       .delete()
@@ -432,7 +518,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `${signup.full_name} (${signup.email}) has been completely deleted.`,
+      message: `Removed the beta signup for ${signup.full_name} (${signup.email}). Their login and any client data were left untouched.`,
     })
   }
 
@@ -457,13 +543,16 @@ export async function POST(request: Request) {
       .eq('id', targetUserId)
       .single()
 
-    // Return a direct URL to the admin page with superadmin + org params
-    // No magic link needed — the super admin is already authenticated and has is_super_admin=true
-    const impersonateUrl = `https://www.firstmilecoach.com/admin?superadmin=true&org=${targetOrgId}`
+    // Keep View As on the same deployment that initiated it, so preview
+    // testing does not silently jump to production.
+    const impersonateUrl = new URL('/admin', request.url)
+    impersonateUrl.searchParams.set('superadmin', 'true')
+    impersonateUrl.searchParams.set('org', targetOrgId)
+    impersonateUrl.searchParams.set('coach', targetUserId)
 
     return NextResponse.json({
       success: true,
-      url: impersonateUrl,
+      url: impersonateUrl.toString(),
       targetName: targetUser?.name || targetUser?.email || 'Unknown',
     })
   }

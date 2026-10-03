@@ -1864,7 +1864,7 @@ export default function DashboardPage() {
                 const isDayEmpty = !hasRealWorkout;
                 const totalWorkouts = dayWorkouts.filter(w => w.type !== 'rest').length + dayClientWorkouts.length;
                 const summary = dayWorkouts.map(w => w.title || getTypeLabel(w.type)).join(', ');
-                const totalMiles = dayWorkouts.reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0);
+                const totalMiles = dayWorkouts.filter(w => w.type === 'run' || w.type === 'walk').reduce((s, w) => s + (w.miles != null ? convertDist(w.miles, clientDistanceUnit, w.distanceUnit) : 0), 0);
                 const isExpanded = expandedDays[day] ?? defaultExpanded;
                 // Calculate date for this day
                 const dayIndex = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(day);
@@ -2032,7 +2032,10 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
-                        {workout.miles != null && workout.miles > 0 && <div className="flex items-baseline gap-2">
+                        {workout.type === 'swimming' && workout.miles != null && workout.miles > 0 && (
+                          <span className="font-heading text-xl text-white">{workout.miles} <span className="text-gray-400 text-xs font-normal">m</span></span>
+                        )}
+                        {(workout.type === 'run' || workout.type === 'walk') && workout.miles != null && workout.miles > 0 && <div className="flex items-baseline gap-2">
                           {workout.completed && workout.log?.actualMiles ? (
                             <>
                               <span className="font-heading text-xl text-green-400">{convertDist(Number(workout.log.actualMiles), getWorkoutUnit(workout.id), 'mi')}</span>

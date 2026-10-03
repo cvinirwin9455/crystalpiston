@@ -14,8 +14,44 @@ const updates = [
     ],
   },
   {
+    date: "September 27, 2026",
+    items: [
+      { area: "Admin", text: "Fixed (Super Admin — important safety fix): Deleting a beta signup can no longer wipe a real account. Previously, deleting a signup (or clicking 'Resend Invite') could delete the matching person's entire login and client data — including their training history. Now the Delete button offers two clear choices: 'Remove beta signup only' (safe — keeps their login and data) or 'Delete entire account & all data' (which now requires typing the email to confirm and is blocked automatically if the account has client data). 'Resend Invite' no longer deletes and recreates the account — it just sends a fresh setup link." },
+    ],
+  },
+  {
+    date: "September 26, 2026",
+    items: [
+      { area: "Admin", text: "New (Super Admin): You can now message a coach directly from the Coaches tab — even one who hasn't started anything yet. Click 'Message' on a coach, write a subject and note, and it emails them from hello@firstmilecoach.com. The coach can simply reply by email, and their reply lands in your Super Admin Inbox as a conversation." },
+      { area: "Admin", text: "New: On a client whose invite is still pending, there's now a 'Copy Invite Link' button next to 'Resend Invite'. It gives you a one-time setup link you can send the client directly (text, WhatsApp, your own email) — handy when their email provider is blocking our invite emails." },
+      { area: "All", text: "Improved: Account setup / invite emails now include a reply-to address (hello@firstmilecoach.com) and a plain-text version alongside the styled email. This helps them get through stricter business email servers that were silently filtering them." },
+      { area: "Admin", text: "Fixed: Activating a beta coach whose email is already a client account no longer errors or corrupts their account. Instead, that person is granted their own coaching organization while keeping their existing client account and coach — one login now works as both. Previously this required signing up with a different email address." },
+      { area: "Admin", text: "Improved: Super Admin 'View as' now fully replicates the coach's account — their name and profile photo are shown throughout the header and sidebar instead of the super admin's, so the view looks exactly like the coach's own account. Only the red banner at the top indicates a super admin is behind the scenes." },
+      { area: "Admin", text: "Fixed: When a super admin adds a new client (or resends an invite) while viewing as a coach, the client is now created under THAT coach's account and the invite email is sent from that coach's name — previously it was incorrectly attached to the super admin's own account. Resent invites are now always branded and named after the client's actual assigned coach." },
+      { area: "Admin", text: "Improved: The red 'Super Admin View' banner no longer covers the top of the dashboard while you're viewing a coach's account — the page content now sits below the banner so nothing is hidden. The banner also shows which coach you're viewing." },
+      { area: "Admin", text: "Improved: The banner's 'Dismiss' button is now labeled 'Exit Coach View' to make it clear that it stops viewing as the coach and returns you to your own account (it isn't just hiding the banner)." },
+      { area: "Admin", text: "Fixed: When a super admin chooses 'View as' for another coach, the dashboard now consistently shows that coach's own clients, drafts, payment totals, upcoming sessions, and pending session requests. Previously, the coach name could change while Crystal's account data remained on screen. Switching out of the super-admin view now also reloads the correct account cleanly." },
+    ],
+  },
+  {
+    date: "September 22, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: The coach dashboard's 'Drafts Ready to Publish' section now shows the correct running mileage when a draft includes swimming. Previously, a 5,000 m swim was accidentally added as 5,000 miles, making a 36.95-mile week appear as 5,036.95 miles. Dashboard totals now count only runs and walks, while swimming stays in meters." },
+    ],
+  },
+  {
+    date: "September 21, 2026",
+    items: [
+      { area: "All", text: "Fixed: Swimming distances now stay in meters everywhere. A swim entered as 5,000 m will show as 5,000 m in saved templates, Create Week, Drafts, Training & Logs, and the client's plan — it will no longer appear as 5,000 miles or 3,106.86 miles. Swimming also stays separate from running mileage totals, and program templates now include the correct swim subtype and meter controls." },
+      { area: "Admin", text: "Fixed: Training weeks containing swimming or other non-running workouts no longer fail with a 'numeric field overflow' message. Swimming distances entered in meters are now stored safely and still display in meters, hidden leftover distances are cleared from workouts that do not use mileage, and any genuinely invalid distance now identifies the affected day so it is easy to correct." },
+      { area: "Admin", text: "Fixed: When building a structured run, you can now erase the default recovery distance and type a new number normally. Previously, deleting the default '1' made the recovery field disappear and then reset back to '1', forcing you to work around it. This fix applies anywhere structured runs are built or edited, including client weeks and saved templates." },
+      { area: "Admin", text: "Fixed: Creating a client's training week no longer appears to do nothing or leaves behind an empty week that blocks you from trying again. If any part of the week cannot be saved, the incomplete copy is removed automatically and you'll see a clear message explaining what happened. The save buttons also show when they're working and prevent accidental double-clicks." },
+    ],
+  },
+  {
     date: "September 15, 2026",
     items: [
+      { area: "Marketing", text: "Simplified: The firstmilecoach.com pages (home, features, FAQ) now have a single 'Log In' button instead of separate 'Coach Login' and 'Client Login' buttons. Since one login can now be a coach, a client, or both, the app automatically sends you to the right place after you log in — so there's no need to pick which kind of login you are. Cleaner on mobile too." },
       { area: "All", text: "NEW: One login can now be BOTH a coach and a client. If someone you coach also wants their own coaching account (or a coach wants to be coached themselves), they no longer need two separate email addresses — the same login can carry both. After they log in, they pick which side they want to open — 'Coaching' (manage their clients) or 'My Training' (their own plan) — and a 'Switch to Coaching / Switch to My Training' option in the account menu lets them flip between the two anytime. People who only have one account see no change at all" },
       { area: "Admin", text: "NEW: Adding an existing account as a coach or client just works now. If you invite someone as a coach and that email is already a client in the system, they're simply granted coach access on their existing login (no duplicate account, no error). The same goes the other way: adding an existing coach as a client attaches a client account to their login and assigns you as their coach. They keep their password and can switch views after logging in" },
     ],

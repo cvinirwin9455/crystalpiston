@@ -34,6 +34,9 @@ export type WorkBlock = {
   intensity: string;
   pace?: string; // Target pace for this block (e.g. "7:00/mi", "5:30-6:00/km")
   recovery?: Recovery;
+  // Separate from the value so the field can temporarily be blank while editing.
+  // Older saved structures omit this and infer enabled state from a positive value.
+  recoveryEnabled?: boolean;
   // For progression runs: multiple segments
   segments?: { value: string; unit: DistanceUnit | TimeUnit; type: MeasureType; intensity: string; pace?: string }[];
   // For fartlek: work and rest alternate
@@ -491,6 +494,7 @@ function BlockEditor({ block, index, onChange, onRemove, canRemove, defaultDistU
 function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBlock; onChange: (b: WorkBlock) => void; defaultDistUnit: DistanceUnit }) {
   const mainUnitLabel = defaultDistUnit === "km" ? "km" : "mi";
   const paceUnitLabel = defaultDistUnit === "km" ? "/km" : "/mi";
+  const recoveryEnabled = block.recoveryEnabled ?? Boolean(block.recovery?.value && parseFloat(block.recovery.value) > 0);
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -525,22 +529,29 @@ function IntervalsEditor({ block, onChange, defaultDistUnit }: { block: WorkBloc
       {/* Recovery (optional) */}
       <div className="flex items-center gap-2 flex-wrap">
         <button type="button" onClick={() => {
-          const hasRecovery = block.recovery?.value && parseFloat(block.recovery.value) > 0;
-          if (hasRecovery) {
-            onChange({ ...block, recovery: { ...block.recovery!, value: "" } });
+          if (recoveryEnabled) {
+            onChange({
+              ...block,
+              recoveryEnabled: false,
+              recovery: block.recovery ? { ...block.recovery, value: "" } : undefined,
+            });
           } else {
-            onChange({ ...block, recovery: { type: "distance", value: defaultDistUnit === "meters" ? "200" : "1", unit: defaultDistUnit, recoveryType: "Jog" } });
+            onChange({
+              ...block,
+              recoveryEnabled: true,
+              recovery: { type: "distance", value: defaultDistUnit === "meters" ? "200" : "1", unit: defaultDistUnit, recoveryType: "Jog" },
+            });
           }
-        }} className={`text-xs px-2 py-0.5 rounded border transition-colors ${block.recovery?.value && parseFloat(block.recovery.value) > 0 ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/10 text-gray-500 hover:text-white'}`}>
-          Recovery {block.recovery?.value && parseFloat(block.recovery.value) > 0 ? '✓' : '(optional)'}
+        }} className={`text-xs px-2 py-0.5 rounded border transition-colors ${recoveryEnabled ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/10 text-gray-500 hover:text-white'}`}>
+          Recovery {recoveryEnabled ? '✓' : '(optional)'}
         </button>
-        {block.recovery?.value && parseFloat(block.recovery.value) > 0 && (
+        {recoveryEnabled && block.recovery && (
           <>
         <select value={block.recovery.type} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, type: e.target.value as MeasureType, unit: e.target.value === "time" ? "seconds" : defaultDistUnit } })} className="bg-primary/50 border border-white/10 rounded px-1.5 py-1 text-white text-xs">
           <option value="distance">Dist</option>
           <option value="time">Time</option>
         </select>
-        <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recovery: { ...block.recovery!, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
+        <input type="text" value={block.recovery.value} onChange={(e) => onChange({ ...block, recoveryEnabled: true, recovery: { ...block.recovery!, value: e.target.value } })} className="w-14 bg-primary/50 border border-white/10 rounded px-2 py-1 text-white text-xs text-center" placeholder="0" />
         {block.recovery.type === "distance" ? (
           <button type="button" onClick={() => {
             const newUnit = block.recovery!.unit === "meters" ? defaultDistUnit : "meters";
