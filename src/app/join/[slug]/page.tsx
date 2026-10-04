@@ -15,6 +15,8 @@ type PageData = {
   headline: string
   intro: string
   pricing: string
+  offerTypes: string[]
+  offerFormats: string[]
 }
 
 // Read the coach's public application page DIRECTLY from the database using the
@@ -43,7 +45,7 @@ async function fetchPage(slug: string): Promise<PageData | null> {
     const normalized = (slug || '').toLowerCase()
     const { data: page } = await supabase
       .from('coach_application_pages')
-      .select('coach_id, slug, is_enabled, headline, intro, pricing')
+      .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats')
       .eq('slug', normalized)
       .maybeSingle()
 
@@ -62,6 +64,8 @@ async function fetchPage(slug: string): Promise<PageData | null> {
       headline: page.headline || `Apply for coaching with ${coach?.name || 'me'}`,
       intro: page.intro || '',
       pricing: page.pricing || '',
+      offerTypes: Array.isArray(page.offer_types) && page.offer_types.length ? page.offer_types : ['running'],
+      offerFormats: Array.isArray(page.offer_formats) && page.offer_formats.length ? page.offer_formats : ['programming'],
     }
   } catch {
     return null

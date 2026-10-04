@@ -31,7 +31,7 @@ export async function GET(
 
   const { data: page, error } = await supabase
     .from('coach_application_pages')
-    .select('coach_id, slug, is_enabled, headline, intro, pricing')
+    .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -57,6 +57,8 @@ export async function GET(
     headline: page.headline || `Apply for coaching with ${coach?.name || 'me'}`,
     intro: page.intro || '',
     pricing: page.pricing || '',
+    offerTypes: Array.isArray(page.offer_types) && page.offer_types.length ? page.offer_types : ['running'],
+    offerFormats: Array.isArray(page.offer_formats) && page.offer_formats.length ? page.offer_formats : ['programming'],
   })
 }
 
@@ -76,6 +78,9 @@ export async function POST(
       full_name, email, phone, age, sex, running_experience, primary_goal,
       target_race, days_available, current_prs, injuries, why_coaching,
       plan_interest, consent_ip, consent_user_agent,
+      interested_types, interested_formats,
+      pt_goal, training_experience, equipment_access,
+      preferred_location, sessions_per_week,
     } = body || {}
 
     if (!full_name || !email) {
@@ -84,10 +89,10 @@ export async function POST(
 
     const supabase = await adminClient()
 
-    // Resolve the coach that owns this link.
+    // Resolve the coach that owns this link (and what they actually offer).
     const { data: page } = await supabase
       .from('coach_application_pages')
-      .select('coach_id, organization_id, is_enabled')
+      .select('coach_id, organization_id, is_enabled, offer_types, offer_formats')
       .eq('slug', slug)
       .maybeSingle()
 
@@ -96,6 +101,12 @@ export async function POST(
     }
 
     const ageInt = age != null && String(age).trim() !== '' ? parseInt(String(age), 10) : null
+
+    // Only keep selections the coach actually offers (defend against tampering).
+    const offeredTypes = Array.isArray(page.offer_types) ? page.offer_types : ['running']
+    const offeredFormats = Array.isArray(page.offer_formats) ? page.offer_formats : ['programming']
+    const pickedTypes = Array.isArray(interested_types) ? interested_types.filter((t: string) => offeredTypes.includes(t)) : []
+    const pickedFormats = Array.isArray(interested_formats) ? interested_formats.filter((f: string) => offeredFormats.includes(f)) : []
 
     const { error: insertError } = await supabase
       .from('coach_applications')
@@ -115,6 +126,13 @@ export async function POST(
         injuries: injuries || null,
         why_coaching: why_coaching || null,
         plan_interest: plan_interest || null,
+        interested_types: pickedTypes,
+        interested_formats: pickedFormats,
+        pt_goal: pt_goal || null,
+        training_experience: training_experience || null,
+        equipment_access: equipment_access || null,
+        preferred_location: preferred_location || null,
+        sessions_per_week: sessions_per_week || null,
         status: 'pending',
         consent_ip: consent_ip || 'unknown',
         consent_user_agent: consent_user_agent || 'unknown',
