@@ -9,9 +9,20 @@ type Page = {
   headline: string
   intro: string
   pricing: string
+  offerTypes: string[]
+  offerFormats: string[]
 }
 
 const ORANGE = '#f26522'
+
+const TYPE_LABELS: Record<string, string> = {
+  running: 'Running coaching',
+  personal_training: 'Personal training',
+}
+const FORMAT_LABELS: Record<string, string> = {
+  programming: 'Programming only (remote — I follow a plan on my own)',
+  in_person: 'In-person training (sessions with you)',
+}
 
 export default function ApplicationForm({ page }: { page: Page }) {
   const [form, setForm] = useState({
@@ -28,7 +39,17 @@ export default function ApplicationForm({ page }: { page: Page }) {
     injuries: '',
     plan_interest: '',
     why_coaching: '',
+    // Personal-training-specific
+    pt_goal: '',
+    training_experience: '',
+    equipment_access: '',
+    // In-person-specific
+    preferred_location: '',
+    sessions_per_week: '',
   })
+  // Prospect's selections (subset of what the coach offers)
+  const [interestedTypes, setInterestedTypes] = useState<string[]>([])
+  const [interestedFormats, setInterestedFormats] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,8 +57,32 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }))
 
+  const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
+    setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
+
+  // The coach may offer only one type/format — if so, auto-apply it and hide
+  // that selector (nothing to choose).
+  const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
+  const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
+  const effectiveTypes = singleType ? [singleType] : interestedTypes
+  const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
+  const showRunning = effectiveTypes.includes('running')
+  const showPT = effectiveTypes.includes('personal_training')
+  const showInPerson = effectiveFormats.includes('in_person')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // Require a choice when the coach offers more than one option.
+    if (!singleType && interestedTypes.length === 0) {
+      setError('Please choose what you’re interested in.')
+      return
+    }
+    if (!singleFormat && interestedFormats.length === 0) {
+      setError('Please choose how you’d like to train.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -55,6 +100,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          interested_types: effectiveTypes,
+          interested_formats: effectiveFormats,
           consent_ip: userIp,
           consent_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         }),
@@ -158,26 +205,107 @@ export default function ApplicationForm({ page }: { page: Page }) {
                 <option value="other">Other</option>
               </select>
             </div>
-            <div style={groupStyle}>
-              <label style={labelStyle}>Running experience &amp; current weekly mileage</label>
-              <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} value={form.running_experience} onChange={set('running_experience')} placeholder="e.g. Running 3 years, ~25 miles/week" />
-            </div>
+
+            {/* --- What are you interested in? (only if coach offers 2+ types) --- */}
+            {!singleType && page.offerTypes.length > 1 && (
+              <div style={{ ...groupStyle, marginTop: 22 }}>
+                <label style={labelStyle}>What are you interested in? *</label>
+                {page.offerTypes.map((t) => (
+                  <label key={t} style={checkRow}>
+                    <input type="checkbox" checked={interestedTypes.includes(t)} onChange={() => toggle(interestedTypes, setInterestedTypes, t)} />
+                    <span>{TYPE_LABELS[t] || t}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {/* --- How would you like to train? (only if coach offers 2+ formats) --- */}
+            {!singleFormat && page.offerFormats.length > 1 && (
+              <div style={groupStyle}>
+                <label style={labelStyle}>How would you like to train? *</label>
+                {page.offerFormats.map((f) => (
+                  <label key={f} style={checkRow}>
+                    <input type="checkbox" checked={interestedFormats.includes(f)} onChange={() => toggle(interestedFormats, setInterestedFormats, f)} />
+                    <span>{FORMAT_LABELS[f] || f}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
             <div style={groupStyle}>
               <label style={labelStyle}>Primary goal</label>
-              <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} placeholder="e.g. First marathon, 5K PR" />
-            </div>
-            <div style={groupStyle}>
-              <label style={labelStyle}>Target race / date</label>
-              <input style={inputStyle} value={form.target_race} onChange={set('target_race')} placeholder="e.g. NYC Marathon, Nov 2027" />
+              <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} placeholder="What are you hoping to achieve?" />
             </div>
             <div style={groupStyle}>
               <label style={labelStyle}>Days available to train</label>
               <input style={inputStyle} value={form.days_available} onChange={set('days_available')} placeholder="e.g. Mon/Wed/Fri + weekends" />
             </div>
-            <div style={groupStyle}>
-              <label style={labelStyle}>Current PRs (if any)</label>
-              <input style={inputStyle} value={form.current_prs} onChange={set('current_prs')} placeholder="e.g. 5K 22:30, half 1:45" />
-            </div>
+
+            {/* --- Running block --- */}
+            {showRunning && (
+              <div style={sectionBox}>
+                <p style={sectionTitle}>About your running</p>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Running experience &amp; current weekly mileage</label>
+                  <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} value={form.running_experience} onChange={set('running_experience')} placeholder="e.g. Running 3 years, ~25 miles/week" />
+                </div>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Target race / date</label>
+                  <input style={inputStyle} value={form.target_race} onChange={set('target_race')} placeholder="e.g. NYC Marathon, Nov 2027" />
+                </div>
+                <div style={{ ...groupStyle, marginBottom: 0 }}>
+                  <label style={labelStyle}>Current PRs (if any)</label>
+                  <input style={inputStyle} value={form.current_prs} onChange={set('current_prs')} placeholder="e.g. 5K 22:30, half 1:45" />
+                </div>
+              </div>
+            )}
+
+            {/* --- Personal training block --- */}
+            {showPT && (
+              <div style={sectionBox}>
+                <p style={sectionTitle}>About your training</p>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Main goal</label>
+                  <select style={inputStyle} value={form.pt_goal} onChange={set('pt_goal')}>
+                    <option value="">Select…</option>
+                    <option value="build_strength">Build strength</option>
+                    <option value="lose_weight">Lose weight</option>
+                    <option value="general_fitness">General fitness</option>
+                    <option value="muscle_gain">Muscle gain</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Training experience</label>
+                  <select style={inputStyle} value={form.training_experience} onChange={set('training_experience')}>
+                    <option value="">Select…</option>
+                    <option value="new">New to training</option>
+                    <option value="some">Some experience</option>
+                    <option value="experienced">Experienced</option>
+                  </select>
+                </div>
+                <div style={{ ...groupStyle, marginBottom: 0 }}>
+                  <label style={labelStyle}>Where will you train &amp; what equipment do you have?</label>
+                  <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={form.equipment_access} onChange={set('equipment_access')} placeholder="e.g. Full gym membership / home with dumbbells + bands" />
+                </div>
+              </div>
+            )}
+
+            {/* --- In-person block --- */}
+            {showInPerson && (
+              <div style={sectionBox}>
+                <p style={sectionTitle}>In-person sessions</p>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Preferred location / area</label>
+                  <input style={inputStyle} value={form.preferred_location} onChange={set('preferred_location')} placeholder="e.g. Downtown gym, your area, etc." />
+                </div>
+                <div style={{ ...groupStyle, marginBottom: 0 }}>
+                  <label style={labelStyle}>How many sessions per week are you after?</label>
+                  <input style={inputStyle} value={form.sessions_per_week} onChange={set('sessions_per_week')} placeholder="e.g. 2 per week" />
+                </div>
+              </div>
+            )}
+
             <div style={groupStyle}>
               <label style={labelStyle}>Injuries / limitations</label>
               <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={form.injuries} onChange={set('injuries')} placeholder="Anything your coach should know" />
@@ -229,4 +357,14 @@ const pageWrap: React.CSSProperties = {
 const card: React.CSSProperties = {
   width: '100%', maxWidth: 520, background: '#fff', borderRadius: 16,
   border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', boxShadow: '0 4px 30px rgba(0,0,0,0.06)',
+}
+const checkRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginBottom: 8,
+  border: '1px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer', lineHeight: 1.4,
+}
+const sectionBox: React.CSSProperties = {
+  margin: '0 0 16px', padding: 16, background: '#fafbfc', border: '1px solid #eef1f3', borderRadius: 12,
+}
+const sectionTitle: React.CSSProperties = {
+  margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4,
 }

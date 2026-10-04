@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-09-30T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-01T12:00:00Z";
 
 const updates = [
+  {
+    date: "October 1, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Your application page now works for any kind of coaching, not just running. In 'Edit page & link' you choose what you offer — Running coaching, Personal training, or both — and whether you offer Programming only (remote), In-person training, or both. Applicants only ever see the options you actually offer." },
+      { area: "Admin", text: "NEW: The application form adapts to what the applicant picks. When someone chooses what they're interested in and how they'd like to train, the form reveals the right questions for that: running questions (mileage, target race, PRs) for running, training questions (goal, experience, equipment/gym access) for personal training, and location + sessions-per-week for in-person. Everyone still answers the shared questions (goals, availability, injuries, why they want coaching). You'll see all of their selections and answers in the application details." },
+    ],
+  },
   {
     date: "September 30, 2026",
     items: [
