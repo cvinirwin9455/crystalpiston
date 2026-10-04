@@ -87,10 +87,14 @@ export default async function JoinPage({ params }: { params: { slug: string } })
   if (!page) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafbfc', padding: 24, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-        <div style={{ maxWidth: 420, textAlign: 'center' }}>
-          <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" width={150} style={{ marginBottom: 24 }} />
-          <h1 style={{ fontSize: 22, color: '#2d3436', marginBottom: 8 }}>This link isn&apos;t active</h1>
-          <p style={{ color: '#777', fontSize: 15 }}>This coaching application link is unavailable. Please check the link or contact your coach.</p>
+        <div style={{ width: '100%', maxWidth: 440, background: '#fff', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 30px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div style={{ background: '#ffffff', borderBottom: '1px solid #eef1f3', padding: '22px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" style={{ display: 'block', height: 72, width: 'auto' }} />
+          </div>
+          <div style={{ padding: '32px 28px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2d3436', margin: '0 0 10px' }}>Not accepting applications</h1>
+            <p style={{ color: '#555b5e', fontSize: 15, lineHeight: 1.7, margin: 0 }}>This coach currently isn&apos;t accepting applications. Please check back later or reach out to them directly.</p>
+          </div>
         </div>
       </main>
     )
