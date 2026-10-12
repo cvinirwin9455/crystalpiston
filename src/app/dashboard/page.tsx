@@ -221,6 +221,7 @@ export default function DashboardPage() {
   const [moveModal, setMoveModal] = useState<{ workoutId: string; workoutType: "programmed" | "client"; title: string; currentDay: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info"; visible: boolean }>({ message: "", type: "success", visible: false });
   const [hasMovedWorkouts, setHasMovedWorkouts] = useState(false);
+  const [unlinkingWorkout, setUnlinkingWorkout] = useState<string | null>(null);
 
   // In-person session request (cancel / reschedule) state
   const [sessionRequestModal, setSessionRequestModal] = useState<{ sessionId: string; sessionLabel: string; requestType: 'cancel' | 'reschedule'; note: string; slots: { date: string; time: string }[] } | null>(null);
@@ -937,6 +938,46 @@ export default function DashboardPage() {
       setToast({ message: 'Failed to reset week', type: 'error', visible: true });
     }
   }, [weeks, weekOffset]);
+
+  // Handler: un-complete a workout and unlink any Strava activity from it, so it
+  // can be moved/edited again. Used when a Strava run matched the wrong workout.
+  const handleUnlinkWorkout = useCallback(async (workoutId: string) => {
+    if (typeof window !== 'undefined' && !window.confirm("Mark this workout as NOT done and unlink your Strava activity from it? Your Strava run won't be deleted — it'll come back as an activity you can match to the right workout.")) return;
+    setUnlinkingWorkout(workoutId);
+    try {
+      const res = await fetch('/api/workout-unlink', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId }),
+      });
+      if (res.ok) {
+        // Refresh week data from server so the card reverts to "not done".
+        const refreshRes = await fetch('/api/my-weeks');
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          const mapped: WeekData[] = refreshData.map((w: any) => ({
+            weekId: w.weekId,
+            label: w.dateRange,
+            dateRange: w.dateRange,
+            focus: w.focus || '',
+            coachMessage: w.coachMessage || '',
+            stravaActivities: (w.stravaActivities || []).map((sa: any) => ({ id: sa.id, day: sa.day, type: sa.type, miles: sa.miles, duration: sa.duration, averagePace: sa.averagePace, activityName: sa.activityName, matchStatus: sa.matchStatus, suggestedMatchId: sa.suggestedMatchId || null, suggestedClientMatchId: sa.suggestedClientMatchId || null })),
+            clientWorkouts: (w.clientWorkouts || []).map((cw: any) => ({ id: cw.id, day: cw.day, type: cw.type, trainingType: cw.trainingType || null, miles: cw.miles, notes: cw.notes, createdAt: cw.createdAt, isClientAdded: true as const, completed: cw.completed || false, completedNotes: cw.completedNotes || cw.completed_notes || null, source: cw.source || 'manual', stravaActivityId: cw.stravaActivityId || null, duration: cw.duration || null, averagePace: cw.averagePace || null, activityName: cw.activityName || null, avgHeartrate: cw.avgHeartrate || null, maxHeartrate: cw.maxHeartrate || null })),
+            workouts: (w.workouts || []).map((wo: any) => ({ id: wo.id, day: wo.day || '', date: '', type: wo.type || 'run', trainingType: wo.trainingType || '', title: wo.title || '', miles: wo.miles, distanceUnit: wo.distanceUnit || 'mi', description: wo.description || '', paceTarget: wo.paceTarget || '', location: wo.location || '', coachNotes: wo.coachNotes || '', completed: wo.completed || false, stravaSynced: wo.stravaSynced || false, stravaActivityName: wo.stravaActivityName || null, structure: wo.structure || null, sessionType: wo.sessionType || 'remote', sessionId: wo.sessionId || null, sessionScheduledAt: wo.sessionScheduledAt || null, status: wo.status || undefined, skipReason: wo.skipReason || undefined, log: wo.log || undefined })),
+          }));
+          setWeeks(mapped);
+        }
+        setToast({ message: 'Marked as not done — you can move it now', type: 'success', visible: true });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToast({ message: data.error || 'Could not unlink workout', type: 'error', visible: true });
+      }
+    } catch (err) {
+      setToast({ message: 'Network error — workout not unlinked', type: 'error', visible: true });
+    } finally {
+      setUnlinkingWorkout(null);
+    }
+  }, []);
 
   // Helper: format a date range for a given offset
   const getWeekLabel = (offset: number) => {
@@ -2101,6 +2142,7 @@ export default function DashboardPage() {
                           {workout.log.stress && <span className="text-xs bg-primary/50 rounded px-2 py-1"><span className="text-gray-400">Stress</span> <span className="text-white font-medium">{workout.log.stress}</span></span>}
                           {workout.log.onPeriod === "yes" && <span className="text-xs bg-accent/10 rounded px-2 py-1 text-accent font-medium">On Period</span>}
                           {editingWorkoutLog !== workout.id && <button onClick={() => setEditingWorkoutLog(workout.id)} className="text-xs bg-primary/50 rounded px-2 py-1 text-gray-400 hover:text-accent transition-colors cursor-pointer flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>Edit</button>}
+                          {editingWorkoutLog !== workout.id && weekOffset >= 0 && <button onClick={() => handleUnlinkWorkout(workout.id)} disabled={unlinkingWorkout === workout.id} className="text-xs bg-primary/50 rounded px-2 py-1 text-gray-400 hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50" title="Mark as not done and unlink any Strava activity so you can move or re-log this workout">{unlinkingWorkout === workout.id ? 'Unlinking…' : (workout.stravaSynced ? '↩ Unlink & undo' : '↩ Mark not done')}</button>}
                         </div>
                         {workout.log.notes && !workout.log.notes.startsWith('Synced from Strava:') && !workout.log.notes.startsWith('Auto-synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{workout.log.notes}</p>}
                       </div>

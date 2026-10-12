@@ -3,9 +3,17 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-01T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-12T12:00:00Z";
 
 const updates = [
+  {
+    date: "October 12, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: A single Strava run could show up as 'completed' on TWO workouts on the same day — for example a 13-mile run appearing on both the planned Long Run AND an Easy Run that day, with the 4-mile Easy Run suddenly reading 13 miles. The app now makes sure one Strava activity is only ever counted toward one workout, so your clients' days no longer double-up." },
+      { area: "Admin", text: "NEW: You can now undo a completed/Strava-synced workout. On any completed workout in a client's Training & Logs, there's a small '↩ Mark not done' button (it says '↩ Unlink Strava & mark not done' when a Strava run is attached). It clears the completion and unlinks the Strava run so the workout can be moved or edited again. The Strava run itself isn't deleted — it comes back as an unmatched activity you can re-match to the right workout or dismiss. Handy when a run got matched to the wrong day/workout." },
+      { area: "Client", text: "NEW: Clients can undo a completed workout themselves. On a completed workout in their plan, there's a small '↩ Mark not done' button ('↩ Unlink & undo' when Strava synced it). It un-marks the workout and detaches the Strava run (the run isn't lost — it returns as an activity to re-match), so the client can then move it to the correct day or re-log it." },
+    ],
+  },
   {
     date: "October 1, 2026",
     items: [
