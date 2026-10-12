@@ -9,8 +9,6 @@ type PackageData = {
   priceCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
-  packageType: 'running' | 'personal_training' | 'hybrid'
-  deliveryFormat: 'programming' | 'in_person' | 'both'
 }
 
 type Page = {
@@ -86,55 +84,31 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
 
-  // Get the selected package (if any)
-  const selectedPackage = hasPackages && selectedPackageId
-    ? page.packages!.find(p => p.id === selectedPackageId)
-    : null
-
-  // Determine which question blocks to show based on package or offer types
-  let showRunning = false
-  let showPT = false
-  let showInPerson = false
-
-  if (hasPackages && selectedPackage) {
-    // Package-based: use the selected package's type and format
-    showRunning = selectedPackage.packageType === 'running' || selectedPackage.packageType === 'hybrid'
-    showPT = selectedPackage.packageType === 'personal_training' || selectedPackage.packageType === 'hybrid'
-    showInPerson = selectedPackage.deliveryFormat === 'in_person' || selectedPackage.deliveryFormat === 'both'
-  } else if (!hasPackages) {
-    // Legacy offer types/formats (no packages)
-    const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
-    const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
-    const effectiveTypes = singleType ? [singleType] : interestedTypes
-    const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
-    showRunning = effectiveTypes.includes('running')
-    showPT = effectiveTypes.includes('personal_training')
-    showInPerson = effectiveFormats.includes('in_person')
-  }
-
-  // For legacy mode (no packages), check if type/format selection is needed
-  const singleType = !hasPackages && page.offerTypes.length === 1 ? page.offerTypes[0] : null
-  const singleFormat = !hasPackages && page.offerFormats.length === 1 ? page.offerFormats[0] : null
+  // Offer types/formats ALWAYS control which questions show (from coach settings)
+  const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
+  const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
+  const effectiveTypes = singleType ? [singleType] : interestedTypes
+  const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
+  const showRunning = effectiveTypes.includes('running')
+  const showPT = effectiveTypes.includes('personal_training')
+  const showInPerson = effectiveFormats.includes('in_person')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    // When packages exist, only require package selection
-    if (hasPackages) {
-      if (!selectedPackageId) {
-        setError('Please select a coaching package.')
-        return
-      }
-    } else {
-      // Legacy: require type/format choice when coach offers more than one option
-      if (!singleType && interestedTypes.length === 0) {
-        setError("Please choose what you're interested in.")
-        return
-      }
-      if (!singleFormat && interestedFormats.length === 0) {
-        setError("Please choose how you'd like to train.")
-        return
-      }
+    // Require type/format choice when coach offers more than one option
+    if (!singleType && interestedTypes.length === 0) {
+      setError("Please choose what you're interested in.")
+      return
+    }
+    if (!singleFormat && interestedFormats.length === 0) {
+      setError("Please choose how you'd like to train.")
+      return
+    }
+    // Require package selection when coach has packages
+    if (hasPackages && !selectedPackageId) {
+      setError('Please select a coaching package.')
+      return
     }
 
     setLoading(true)
@@ -149,25 +123,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
     }
 
     try {
-      // Compute effective types/formats from package or legacy selections
-      let effectiveTypes: string[] = []
-      let effectiveFormats: string[] = []
-      
-      if (hasPackages && selectedPackage) {
-        // Infer from package
-        if (selectedPackage.packageType === 'running') effectiveTypes = ['running']
-        else if (selectedPackage.packageType === 'personal_training') effectiveTypes = ['personal_training']
-        else if (selectedPackage.packageType === 'hybrid') effectiveTypes = ['running', 'personal_training']
-        
-        if (selectedPackage.deliveryFormat === 'programming') effectiveFormats = ['programming']
-        else if (selectedPackage.deliveryFormat === 'in_person') effectiveFormats = ['in_person']
-        else if (selectedPackage.deliveryFormat === 'both') effectiveFormats = ['programming', 'in_person']
-      } else {
-        // Legacy mode
-        effectiveTypes = singleType ? [singleType] : interestedTypes
-        effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
-      }
-
       const res = await fetch(`/api/apply/${encodeURIComponent(page.slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -281,6 +236,32 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </select>
             </div>
 
+            {/* --- What are you interested in? (only if coach offers 2+ types) --- */}
+            {!singleType && page.offerTypes.length > 1 && (
+              <div style={{ ...groupStyle, marginTop: 22 }}>
+                <label style={labelStyle}>What are you interested in? *</label>
+                {page.offerTypes.map((t) => (
+                  <label key={t} style={checkRow}>
+                    <input type="checkbox" checked={interestedTypes.includes(t)} onChange={() => toggle(interestedTypes, setInterestedTypes, t)} />
+                    <span>{TYPE_LABELS[t] || t}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {/* --- How would you like to train? (only if coach offers 2+ formats) --- */}
+            {!singleFormat && page.offerFormats.length > 1 && (
+              <div style={groupStyle}>
+                <label style={labelStyle}>How would you like to train? *</label>
+                {page.offerFormats.map((f) => (
+                  <label key={f} style={checkRow}>
+                    <input type="checkbox" checked={interestedFormats.includes(f)} onChange={() => toggle(interestedFormats, setInterestedFormats, f)} />
+                    <span>{FORMAT_LABELS[f] || f}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
             {/* --- Package selection (when coach has packages) --- */}
             {hasPackages && (
               <div style={{ ...groupStyle, marginTop: 22 }}>
@@ -313,32 +294,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
                     </label>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* --- What are you interested in? (only if NO packages AND coach offers 2+ types) --- */}
-            {!hasPackages && !singleType && page.offerTypes.length > 1 && (
-              <div style={{ ...groupStyle, marginTop: 22 }}>
-                <label style={labelStyle}>What are you interested in? *</label>
-                {page.offerTypes.map((t) => (
-                  <label key={t} style={checkRow}>
-                    <input type="checkbox" checked={interestedTypes.includes(t)} onChange={() => toggle(interestedTypes, setInterestedTypes, t)} />
-                    <span>{TYPE_LABELS[t] || t}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {/* --- How would you like to train? (only if NO packages AND coach offers 2+ formats) --- */}
-            {!hasPackages && !singleFormat && page.offerFormats.length > 1 && (
-              <div style={groupStyle}>
-                <label style={labelStyle}>How would you like to train? *</label>
-                {page.offerFormats.map((f) => (
-                  <label key={f} style={checkRow}>
-                    <input type="checkbox" checked={interestedFormats.includes(f)} onChange={() => toggle(interestedFormats, setInterestedFormats, f)} />
-                    <span>{FORMAT_LABELS[f] || f}</span>
-                  </label>
-                ))}
               </div>
             )}
 

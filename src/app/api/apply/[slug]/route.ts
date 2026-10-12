@@ -67,7 +67,7 @@ export async function GET(
     try {
       const { data: pkgRows } = await supabase
         .from('coach_packages')
-        .select('id, name, description, price_cents, currency, billing_interval, package_type, delivery_format, is_active, sort_order')
+        .select('id, name, description, price_cents, currency, billing_interval, is_active, sort_order')
         .eq('coach_id', page.coach_id)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
@@ -79,8 +79,6 @@ export async function GET(
         priceCents: p.price_cents,
         currency: p.currency || 'usd',
         billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
-        packageType: p.package_type || 'running',
-        deliveryFormat: p.delivery_format || 'programming',
       }))
     } catch { /* table not present yet */ }
   }

@@ -14,8 +14,6 @@ export type CoachPackage = {
   price_cents: number;
   currency: string;
   billing_interval: "monthly" | "one_time";
-  package_type: "running" | "personal_training" | "hybrid";
-  delivery_format: "programming" | "in_person" | "both";
   client_cap: number | null;
   is_active: boolean;
   sort_order: number;
@@ -58,8 +56,6 @@ type DraftForm = {
   description: string;
   price: string;
   billing_interval: "monthly" | "one_time";
-  package_type: "running" | "personal_training" | "hybrid";
-  delivery_format: "programming" | "in_person" | "both";
   client_cap: string;
   is_active: boolean;
 };
@@ -70,8 +66,6 @@ const EMPTY_FORM: DraftForm = {
   description: "",
   price: "",
   billing_interval: "monthly",
-  package_type: "running",
-  delivery_format: "programming",
   client_cap: "",
   is_active: true,
 };
@@ -111,8 +105,6 @@ export default function PackagesManager() {
       description: p.description || "",
       price: (p.price_cents / 100).toString(),
       billing_interval: p.billing_interval,
-      package_type: p.package_type || "running",
-      delivery_format: p.delivery_format || "programming",
       client_cap: p.client_cap != null ? String(p.client_cap) : "",
       is_active: p.is_active,
     });
@@ -137,8 +129,6 @@ export default function PackagesManager() {
       description: form.description.trim() || null,
       price: form.price,
       billing_interval: form.billing_interval,
-      package_type: form.package_type,
-      delivery_format: form.delivery_format,
       client_cap: capNum && capNum > 0 ? capNum : null,
       is_active: form.is_active,
       ...scopeBody(),
