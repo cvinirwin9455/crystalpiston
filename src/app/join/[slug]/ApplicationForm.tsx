@@ -9,7 +9,10 @@ type PackageData = {
   priceCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
-  deliveryFormat: 'programming' | 'in_person' | 'hybrid'
+  includesRunning: boolean
+  includesStrength: boolean
+  includesInPerson: boolean
+  includesProgramming: boolean
 }
 
 type Page = {
@@ -96,14 +99,11 @@ export default function ApplicationForm({ page }: { page: Page }) {
   let showInPerson = false
 
   if (hasPackages) {
-    // PACKAGES FLOW: questions depend on selected package's deliveryFormat
+    // PACKAGES FLOW: questions depend on selected package's includes_* flags
     if (selectedPackage) {
-      const fmt = selectedPackage.deliveryFormat
-      // Show running/PT questions based on coach's offer types (all packages share these)
-      showRunning = page.offerTypes.includes('running')
-      showPT = page.offerTypes.includes('personal_training')
-      // In-person questions show if delivery is in_person or hybrid
-      showInPerson = fmt === 'in_person' || fmt === 'hybrid'
+      showRunning = selectedPackage.includesRunning
+      showPT = selectedPackage.includesStrength
+      showInPerson = selectedPackage.includesInPerson
     }
   } else {
     // NO PACKAGES FLOW: questions depend on tickbox selections
@@ -154,15 +154,14 @@ export default function ApplicationForm({ page }: { page: Page }) {
     let submitFormats: string[]
 
     if (hasPackages && selectedPackage) {
-      // Use all coach's offer types
-      submitTypes = page.offerTypes
-      // Map delivery format to interested_formats
-      const fmt = selectedPackage.deliveryFormat
-      if (fmt === 'hybrid') {
-        submitFormats = ['programming', 'in_person']
-      } else {
-        submitFormats = [fmt]
-      }
+      // Map package includes to types/formats
+      submitTypes = []
+      if (selectedPackage.includesRunning) submitTypes.push('running')
+      if (selectedPackage.includesStrength) submitTypes.push('personal_training')
+      
+      submitFormats = []
+      if (selectedPackage.includesProgramming) submitFormats.push('programming')
+      if (selectedPackage.includesInPerson) submitFormats.push('in_person')
     } else {
       submitTypes = singleType ? [singleType] : interestedTypes
       submitFormats = singleFormat ? [singleFormat] : interestedFormats
@@ -315,9 +314,13 @@ export default function ApplicationForm({ page }: { page: Page }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {page.packages!.map((pkg) => {
                     const isSelected = selectedPackageId === pkg.id
-                    const fmtLabel = pkg.deliveryFormat === 'programming' ? '📱 Remote'
-                      : pkg.deliveryFormat === 'in_person' ? '📍 In-person'
-                      : '📱📍 Hybrid'
+                    // Build badges for what's included
+                    const badges: string[] = []
+                    if (pkg.includesRunning) badges.push('🏃 Running')
+                    if (pkg.includesStrength) badges.push('💪 Strength')
+                    if (pkg.includesInPerson) badges.push('📍 In-person')
+                    if (pkg.includesProgramming) badges.push('📱 Remote')
+                    
                     return (
                       <label
                         key={pkg.id}
@@ -333,18 +336,22 @@ export default function ApplicationForm({ page }: { page: Page }) {
                           value={pkg.id}
                           checked={isSelected}
                           onChange={() => setSelectedPackageId(pkg.id)}
-                          style={{ marginRight: 12, accentColor: ORANGE }}
+                          style={{ marginRight: 12, accentColor: ORANGE, alignSelf: 'flex-start', marginTop: 4 }}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 700, color: '#2d3436' }}>{pkg.name}</span>
-                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f0f2f4', color: '#555b5e' }}>{fmtLabel}</span>
+                            <span style={{ fontWeight: 800, color: ORANGE, whiteSpace: 'nowrap' }}>
+                              {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
+                            </span>
                           </div>
-                          {pkg.description && <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 2 }}>{pkg.description}</span>}
+                          {pkg.description && <p style={{ fontSize: 13, color: '#555b5e', margin: '4px 0 0', lineHeight: 1.4 }}>{pkg.description}</p>}
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                            {badges.map((badge, i) => (
+                              <span key={i} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f0f2f4', color: '#555b5e' }}>{badge}</span>
+                            ))}
+                          </div>
                         </div>
-                        <span style={{ fontWeight: 800, color: ORANGE, marginLeft: 12, whiteSpace: 'nowrap' }}>
-                          {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
-                        </span>
                       </label>
                     )
                   })}

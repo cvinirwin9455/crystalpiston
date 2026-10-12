@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 // Coach-facing manager for their packages (the offerings they charge for).
-// Standalone card used inside the Applications tab. Reads/writes
-// /api/coach-packages. Honors super-admin "view as coach" via sessionStorage
-// scope (same convention as ApplicationsTab).
+// Each package defines what's included via checkboxes, which controls
+// what questions applicants see when they select that package.
 
 export type CoachPackage = {
   id: string;
@@ -14,7 +13,11 @@ export type CoachPackage = {
   price_cents: number;
   currency: string;
   billing_interval: "monthly" | "one_time";
-  delivery_format: "programming" | "in_person" | "hybrid";
+  // What's included in this package (controls applicant questions)
+  includes_running: boolean;
+  includes_strength: boolean;
+  includes_in_person: boolean;
+  includes_programming: boolean;
   client_cap: number | null;
   is_active: boolean;
   sort_order: number;
@@ -51,11 +54,27 @@ function formatPrice(cents: number, currency: string, interval: string): string 
   return interval === "monthly" ? `${amount}/mo` : `${amount} one-time`;
 }
 
-const DELIVERY_LABELS: Record<string, { label: string; emoji: string }> = {
-  programming: { label: "Programming only (remote)", emoji: "📱" },
-  in_person: { label: "In-person sessions", emoji: "📍" },
-  hybrid: { label: "Hybrid (programming + in-person)", emoji: "📱📍" },
-};
+// Generate a suggested name based on what's included
+function suggestName(includes: { running: boolean; strength: boolean; in_person: boolean; programming: boolean }): string {
+  const parts: string[] = [];
+  if (includes.running && includes.strength) {
+    parts.push("Run + Strength");
+  } else if (includes.running) {
+    parts.push("Running");
+  } else if (includes.strength) {
+    parts.push("Strength");
+  }
+  
+  if (includes.in_person && includes.programming) {
+    parts.push("Hybrid");
+  } else if (includes.in_person) {
+    parts.push("In-Person");
+  } else if (includes.programming) {
+    parts.push("Remote");
+  }
+  
+  return parts.join(" - ") || "Coaching Package";
+}
 
 type DraftForm = {
   id: string | null;
@@ -63,7 +82,10 @@ type DraftForm = {
   description: string;
   price: string;
   billing_interval: "monthly" | "one_time";
-  delivery_format: "programming" | "in_person" | "hybrid";
+  includes_running: boolean;
+  includes_strength: boolean;
+  includes_in_person: boolean;
+  includes_programming: boolean;
   client_cap: string;
   is_active: boolean;
 };
@@ -74,7 +96,10 @@ const EMPTY_FORM: DraftForm = {
   description: "",
   price: "",
   billing_interval: "monthly",
-  delivery_format: "programming",
+  includes_running: true,
+  includes_strength: false,
+  includes_in_person: false,
+  includes_programming: true,
   client_cap: "",
   is_active: true,
 };
@@ -108,21 +133,59 @@ export default function PackagesManager() {
   }
 
   function startEdit(p: CoachPackage) {
-    setForm({
+    console.log("startEdit called with:", p);
+    const newForm: DraftForm = {
       id: p.id,
       name: p.name,
       description: p.description || "",
       price: (p.price_cents / 100).toString(),
       billing_interval: p.billing_interval,
-      delivery_format: p.delivery_format || "programming",
+      includes_running: p.includes_running ?? true,
+      includes_strength: p.includes_strength ?? false,
+      includes_in_person: p.includes_in_person ?? false,
+      includes_programming: p.includes_programming ?? true,
       client_cap: p.client_cap != null ? String(p.client_cap) : "",
       is_active: p.is_active,
-    });
+    };
+    console.log("Setting form to:", newForm);
+    setForm(newForm);
     setShowForm(true);
     setMsg(null);
   }
 
+  // Auto-suggest name when checkboxes change (only if name is empty or was auto-generated)
+  function handleIncludesChange(key: keyof DraftForm, value: boolean) {
+    setForm((f) => {
+      const updated = { ...f, [key]: value };
+      // Auto-suggest name if it's empty or matches a previous suggestion
+      const oldSuggestion = suggestName({
+        running: f.includes_running,
+        strength: f.includes_strength,
+        in_person: f.includes_in_person,
+        programming: f.includes_programming,
+      });
+      if (!f.name || f.name === oldSuggestion) {
+        updated.name = suggestName({
+          running: key === "includes_running" ? value : f.includes_running,
+          strength: key === "includes_strength" ? value : f.includes_strength,
+          in_person: key === "includes_in_person" ? value : f.includes_in_person,
+          programming: key === "includes_programming" ? value : f.includes_programming,
+        });
+      }
+      return updated;
+    });
+  }
+
   async function save() {
+    // Validate at least one type selected
+    if (!form.includes_running && !form.includes_strength) {
+      setMsg({ text: "Select at least Running or Strength.", type: "error" });
+      return;
+    }
+    if (!form.includes_in_person && !form.includes_programming) {
+      setMsg({ text: "Select at least In-person or Programming.", type: "error" });
+      return;
+    }
     if (!form.name.trim()) {
       setMsg({ text: "Give the package a name.", type: "error" });
       return;
@@ -139,7 +202,10 @@ export default function PackagesManager() {
       description: form.description.trim() || null,
       price: form.price,
       billing_interval: form.billing_interval,
-      delivery_format: form.delivery_format,
+      includes_running: form.includes_running,
+      includes_strength: form.includes_strength,
+      includes_in_person: form.includes_in_person,
+      includes_programming: form.includes_programming,
       client_cap: capNum && capNum > 0 ? capNum : null,
       is_active: form.is_active,
       ...scopeBody(),
@@ -199,13 +265,23 @@ export default function PackagesManager() {
     }
   }
 
+  // Build badge text for package includes
+  function getIncludesBadges(p: CoachPackage) {
+    const badges: { text: string; color: string }[] = [];
+    if (p.includes_running) badges.push({ text: "🏃 Running", color: "bg-green-500/15 text-green-300" });
+    if (p.includes_strength) badges.push({ text: "💪 Strength", color: "bg-purple-500/15 text-purple-300" });
+    if (p.includes_in_person) badges.push({ text: "📍 In-person", color: "bg-blue-500/15 text-blue-300" });
+    if (p.includes_programming) badges.push({ text: "📱 Remote", color: "bg-cyan-500/15 text-cyan-300" });
+    return badges;
+  }
+
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h3 className="text-white font-heading uppercase tracking-wider text-sm">Your Packages</h3>
           <p className="text-gray-400 text-xs mt-1">
-            The offerings you charge for. Add your common ones here so they&apos;re ready to request payment for — you can still charge a custom one-off amount anytime.
+            Define your coaching packages. What you include in each package controls what questions applicants see.
           </p>
         </div>
         {!showForm && (
@@ -223,11 +299,55 @@ export default function PackagesManager() {
 
       {/* Add / edit form */}
       {showForm && (
-        <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+        <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
+          {/* What's included checkboxes */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-2">What&apos;s included in this package?</label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+                <input
+                  type="checkbox"
+                  checked={form.includes_running}
+                  onChange={(e) => handleIncludesChange("includes_running", e.target.checked)}
+                  className="accent-accent"
+                />
+                <span>🏃 Running</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+                <input
+                  type="checkbox"
+                  checked={form.includes_strength}
+                  onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)}
+                  className="accent-accent"
+                />
+                <span>💪 Strength / PT</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+                <input
+                  type="checkbox"
+                  checked={form.includes_programming}
+                  onChange={(e) => handleIncludesChange("includes_programming", e.target.checked)}
+                  className="accent-accent"
+                />
+                <span>📱 Programming (remote)</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+                <input
+                  type="checkbox"
+                  checked={form.includes_in_person}
+                  onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)}
+                  className="accent-accent"
+                />
+                <span>📍 In-person sessions</span>
+              </label>
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">These control which questions applicants see when they select this package</p>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Name</label>
-              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength" />
+              <label className="block text-xs text-gray-400 mb-1">Package name</label>
+              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength - Hybrid" />
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Price</label>
@@ -251,18 +371,9 @@ export default function PackagesManager() {
               <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
             </div>
           </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">How is this package delivered?</label>
-            <select value={form.delivery_format} onChange={(e) => setForm((f) => ({ ...f, delivery_format: e.target.value as "programming" | "in_person" | "hybrid" }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
-              <option value="programming">📱 Programming only (remote plans)</option>
-              <option value="in_person">📍 In-person sessions</option>
-              <option value="hybrid">📱📍 Hybrid (programming + in-person)</option>
-            </select>
-            <p className="text-[10px] text-gray-500 mt-1">This controls which questions applicants see when they select this package</p>
-          </div>
           <label className="flex items-center gap-2 text-sm text-gray-300">
-            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
-            Active (shown to prospects &amp; available to request)
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="accent-accent" />
+            Active (shown to applicants)
           </label>
           <div className="flex gap-2">
             <button onClick={save} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
@@ -278,29 +389,31 @@ export default function PackagesManager() {
         {loading ? (
           <p className="text-gray-400 text-sm">Loading packages…</p>
         ) : packages.length === 0 ? (
-          !showForm && <p className="text-gray-400 text-sm">No packages yet. Add your common offerings to get started.</p>
+          !showForm && <p className="text-gray-400 text-sm">No packages yet. Add your coaching packages to get started.</p>
         ) : (
           <div className="space-y-2">
             {packages.map((p) => (
-              <div key={p.id} className={`flex items-center justify-between gap-3 flex-wrap border rounded-lg px-3 py-2.5 ${p.is_active ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white text-sm font-medium">{p.name}</span>
-                    <span className="text-accent text-sm font-heading">{formatPrice(p.price_cents, p.currency, p.billing_interval)}</span>
-                    {p.client_cap != null && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300">cap {p.client_cap}</span>}
-                    {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/20 text-gray-400">off</span>}
+              <div key={p.id} className={`border rounded-lg px-3 py-2.5 ${p.is_active ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white text-sm font-medium">{p.name}</span>
+                      <span className="text-accent text-sm font-heading">{formatPrice(p.price_cents, p.currency, p.billing_interval)}</span>
+                      {p.client_cap != null && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300">cap {p.client_cap}</span>}
+                      {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/20 text-gray-400">off</span>}
+                    </div>
+                    {p.description && <p className="text-gray-400 text-xs mt-1 truncate">{p.description}</p>}
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300">
-                      {DELIVERY_LABELS[p.delivery_format]?.emoji || "📱"} {p.delivery_format === 'programming' ? 'Remote' : p.delivery_format === 'in_person' ? 'In-person' : 'Hybrid'}
-                    </span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => startEdit(p)} disabled={busyId === p.id} className="text-xs text-gray-300 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-2.5 py-1 disabled:opacity-50">Edit</button>
+                    <button onClick={() => toggleActive(p)} disabled={busyId === p.id} className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-2.5 py-1 disabled:opacity-50">{p.is_active ? "Turn off" : "Turn on"}</button>
+                    <button onClick={() => remove(p)} disabled={busyId === p.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-2.5 py-1 disabled:opacity-50">Delete</button>
                   </div>
-                  {p.description && <p className="text-gray-400 text-xs mt-1 truncate">{p.description}</p>}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => startEdit(p)} disabled={busyId === p.id} className="text-xs text-gray-300 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-2.5 py-1 disabled:opacity-50">Edit</button>
-                  <button onClick={() => toggleActive(p)} disabled={busyId === p.id} className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-2.5 py-1 disabled:opacity-50">{p.is_active ? "Turn off" : "Turn on"}</button>
-                  <button onClick={() => remove(p)} disabled={busyId === p.id} className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-2.5 py-1 disabled:opacity-50">Delete</button>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {getIncludesBadges(p).map((badge, i) => (
+                    <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded-full ${badge.color}`}>{badge.text}</span>
+                  ))}
                 </div>
               </div>
             ))}
