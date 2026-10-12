@@ -114,6 +114,7 @@ export async function POST(
       target_race, days_available, current_prs, injuries, why_coaching,
       plan_interest, consent_ip, consent_user_agent,
       interested_types, interested_formats,
+      selected_package_id,
       pt_goal, training_experience, equipment_access,
       preferred_location, sessions_per_week,
     } = body || {}
@@ -161,6 +162,7 @@ export async function POST(
         injuries: injuries || null,
         why_coaching: why_coaching || null,
         plan_interest: plan_interest || null,
+        selected_package_id: selected_package_id || null,
         interested_types: pickedTypes,
         interested_formats: pickedFormats,
         pt_goal: pt_goal || null,

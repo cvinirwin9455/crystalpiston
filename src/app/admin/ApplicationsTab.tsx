@@ -22,6 +22,10 @@ type Application = {
   injuries: string | null;
   why_coaching: string | null;
   plan_interest: string | null;
+  selected_package_id: string | null;
+  selected_package_name: string | null;
+  selected_package_price_cents: number | null;
+  selected_package_billing_interval: string | null;
   interested_types: string[] | null;
   interested_formats: string[] | null;
   pt_goal: string | null;
@@ -46,6 +50,15 @@ type Page = {
 
 const TYPE_LABELS: Record<string, string> = { running: "Running coaching", personal_training: "Personal training" };
 const FORMAT_LABELS: Record<string, string> = { programming: "Programming only (remote)", in_person: "In-person training" };
+
+function formatPrice(cents: number, interval: string | null): string {
+  const amount = (cents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  });
+  return interval === 'monthly' ? `${amount}/mo` : amount;
+}
 
 const SITE = typeof window !== "undefined" ? window.location.origin : "https://www.firstmilecoach.com";
 
@@ -374,7 +387,14 @@ export default function ApplicationsTab() {
                     <Detail label="Days available" value={a.days_available} />
                     <Detail label="Current PRs" value={a.current_prs} />
                     <Detail label="Injuries / limitations" value={a.injuries} />
-                    <Detail label="Plan interested in" value={a.plan_interest} />
+                    {a.selected_package_name ? (
+                      <Detail 
+                        label="Package selected" 
+                        value={`${a.selected_package_name}${a.selected_package_price_cents ? ` — ${formatPrice(a.selected_package_price_cents, a.selected_package_billing_interval)}` : ''}`} 
+                      />
+                    ) : (
+                      <Detail label="Plan interested in" value={a.plan_interest} />
+                    )}
                     <div className="sm:col-span-2">
                       <Detail label="Why coaching?" value={a.why_coaching} />
                     </div>

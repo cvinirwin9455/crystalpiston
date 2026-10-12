@@ -45,6 +45,8 @@ const FORMAT_LABELS: Record<string, string> = {
 }
 
 export default function ApplicationForm({ page }: { page: Page }) {
+  const hasPackages = page.showPackages !== false && page.packages && page.packages.length > 0
+
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -67,6 +69,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
     preferred_location: '',
     sessions_per_week: '',
   })
+  // Package selection (when coach has packages)
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('')
   // Prospect's selections (subset of what the coach offers)
   const [interestedTypes, setInterestedTypes] = useState<string[]>([])
   const [interestedFormats, setInterestedFormats] = useState<string[]>([])
@@ -95,11 +99,16 @@ export default function ApplicationForm({ page }: { page: Page }) {
 
     // Require a choice when the coach offers more than one option.
     if (!singleType && interestedTypes.length === 0) {
-      setError('Please choose what you’re interested in.')
+      setError("Please choose what you're interested in.")
       return
     }
     if (!singleFormat && interestedFormats.length === 0) {
-      setError('Please choose how you’d like to train.')
+      setError("Please choose how you'd like to train.")
+      return
+    }
+    // Require package selection when coach has packages
+    if (hasPackages && !selectedPackageId) {
+      setError('Please select a coaching package.')
       return
     }
 
@@ -120,6 +129,7 @@ export default function ApplicationForm({ page }: { page: Page }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          selected_package_id: hasPackages ? selectedPackageId : null,
           interested_types: effectiveTypes,
           interested_formats: effectiveFormats,
           consent_ip: userIp,
@@ -186,11 +196,12 @@ export default function ApplicationForm({ page }: { page: Page }) {
           {page.intro && (
             <p style={{ fontSize: 15, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '8px 0 20px', textAlign: 'center' }}>{page.intro}</p>
           )}
-          {page.showPackages !== false && page.packages && page.packages.length > 0 ? (
+          {/* Show packages as info display (not selector - that's in the form) */}
+          {hasPackages ? (
             <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
               <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4 }}>Coaching Packages</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {page.packages.map((pkg) => (
+                {page.packages!.map((pkg) => (
                   <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, paddingBottom: 10, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#2d3436' }}>{pkg.name}</p>
@@ -203,7 +214,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
                   </div>
                 ))}
               </div>
-              <p style={{ margin: '12px 0 0', fontSize: 12, color: '#8a8f93', lineHeight: 1.5 }}>Not sure which fits? Apply below and {page.coachName} will help you choose.</p>
             </div>
           ) : page.pricing ? (
             <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
@@ -244,6 +254,41 @@ export default function ApplicationForm({ page }: { page: Page }) {
                 <option value="other">Other</option>
               </select>
             </div>
+
+            {/* --- Package selection (when coach has packages) --- */}
+            {hasPackages && (
+              <div style={{ ...groupStyle, marginTop: 22 }}>
+                <label style={labelStyle}>Which package are you interested in? *</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {page.packages!.map((pkg) => (
+                    <label
+                      key={pkg.id}
+                      style={{
+                        ...packageOption,
+                        borderColor: selectedPackageId === pkg.id ? ORANGE : '#dfe3e6',
+                        background: selectedPackageId === pkg.id ? '#fff8f4' : '#fff',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="selected_package"
+                        value={pkg.id}
+                        checked={selectedPackageId === pkg.id}
+                        onChange={() => setSelectedPackageId(pkg.id)}
+                        style={{ marginRight: 12, accentColor: ORANGE }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontWeight: 700, color: '#2d3436' }}>{pkg.name}</span>
+                        {pkg.description && <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 2 }}>{pkg.description}</span>}
+                      </div>
+                      <span style={{ fontWeight: 800, color: ORANGE, marginLeft: 12, whiteSpace: 'nowrap' }}>
+                        {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* --- What are you interested in? (only if coach offers 2+ types) --- */}
             {!singleType && page.offerTypes.length > 1 && (
@@ -349,9 +394,10 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <label style={labelStyle}>Injuries / limitations</label>
               <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={form.injuries} onChange={set('injuries')} placeholder="Anything your coach should know" />
             </div>
-            {(page.pricing || (page.packages && page.packages.length > 0)) && (
+            {/* Only show free-text plan interest if coach has NO packages (legacy/fallback) */}
+            {!hasPackages && page.pricing && (
               <div style={groupStyle}>
-                <label style={labelStyle}>Which {page.packages && page.packages.length > 0 ? 'package' : 'plan'} are you interested in?</label>
+                <label style={labelStyle}>Which plan are you interested in?</label>
                 <input style={inputStyle} value={form.plan_interest} onChange={set('plan_interest')} placeholder="Name the one from above, or 'not sure yet'" />
               </div>
             )}
@@ -400,6 +446,11 @@ const card: React.CSSProperties = {
 const checkRow: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginBottom: 8,
   border: '1px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer', lineHeight: 1.4,
+}
+const packageOption: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', padding: '12px 14px',
+  border: '2px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer',
+  transition: 'border-color 0.15s, background 0.15s',
 }
 const sectionBox: React.CSSProperties = {
   margin: '0 0 16px', padding: 16, background: '#fafbfc', border: '1px solid #eef1f3', borderRadius: 12,

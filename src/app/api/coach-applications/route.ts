@@ -44,9 +44,18 @@ export async function GET(request: Request) {
   }
   const { coachId } = scopeResult.scope
 
+  // Fetch applications with their selected package info (if any)
   const { data: applications, error } = await admin
     .from('coach_applications')
-    .select('*')
+    .select(`
+      *,
+      selected_package:coach_packages!selected_package_id (
+        id,
+        name,
+        price_cents,
+        billing_interval
+      )
+    `)
     .eq('coach_id', coachId)
     .order('created_at', { ascending: false })
 
@@ -54,7 +63,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ applications: applications || [] })
+  // Flatten the package info for easier frontend consumption
+  const flatApplications = (applications || []).map((app: any) => ({
+    ...app,
+    selected_package_name: app.selected_package?.name || null,
+    selected_package_price_cents: app.selected_package?.price_cents || null,
+    selected_package_billing_interval: app.selected_package?.billing_interval || null,
+  }))
+
+  return NextResponse.json({ applications: flatApplications })
 }
 
 // PATCH: accept or decline an application.
