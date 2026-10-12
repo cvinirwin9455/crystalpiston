@@ -1902,6 +1902,8 @@ export default function AdminPage() {
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
   const isMileageWorkout = (workout: { type?: string }) => workout.type === 'run' || workout.type === 'walk';
   const formatProgrammedDistance = (workout: { type?: string; miles?: string | number | null; distanceUnit?: "mi" | "km" }) => {
+    // Only show distance for run/walk workouts — other types (strength, cross, etc.) don't use mileage
+    if (!isMileageWorkout(workout)) return '';
     if (workout.miles === null || workout.miles === undefined || workout.miles === '') return '';
     const value = Number(workout.miles);
     if (!Number.isFinite(value) || value <= 0) return '';
