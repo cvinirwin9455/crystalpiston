@@ -14,6 +14,8 @@ export type CoachPackage = {
   price_cents: number;
   currency: string;
   billing_interval: "monthly" | "one_time";
+  package_type: "running" | "personal_training" | "hybrid";
+  delivery_format: "programming" | "in_person" | "both";
   client_cap: number | null;
   is_active: boolean;
   sort_order: number;
@@ -56,6 +58,8 @@ type DraftForm = {
   description: string;
   price: string;
   billing_interval: "monthly" | "one_time";
+  package_type: "running" | "personal_training" | "hybrid";
+  delivery_format: "programming" | "in_person" | "both";
   client_cap: string;
   is_active: boolean;
 };
@@ -66,6 +70,8 @@ const EMPTY_FORM: DraftForm = {
   description: "",
   price: "",
   billing_interval: "monthly",
+  package_type: "running",
+  delivery_format: "programming",
   client_cap: "",
   is_active: true,
 };
@@ -105,6 +111,8 @@ export default function PackagesManager() {
       description: p.description || "",
       price: (p.price_cents / 100).toString(),
       billing_interval: p.billing_interval,
+      package_type: p.package_type || "running",
+      delivery_format: p.delivery_format || "programming",
       client_cap: p.client_cap != null ? String(p.client_cap) : "",
       is_active: p.is_active,
     });
@@ -129,6 +137,8 @@ export default function PackagesManager() {
       description: form.description.trim() || null,
       price: form.price,
       billing_interval: form.billing_interval,
+      package_type: form.package_type,
+      delivery_format: form.delivery_format,
       client_cap: capNum && capNum > 0 ? capNum : null,
       is_active: form.is_active,
       ...scopeBody(),
@@ -240,6 +250,26 @@ export default function PackagesManager() {
               <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
             </div>
           </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Coaching type</label>
+              <select value={form.package_type} onChange={(e) => setForm((f) => ({ ...f, package_type: e.target.value as "running" | "personal_training" | "hybrid" }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
+                <option value="running">Running</option>
+                <option value="personal_training">Personal Training / Strength</option>
+                <option value="hybrid">Hybrid (Running + PT)</option>
+              </select>
+              <p className="text-[10px] text-gray-500 mt-1">Controls which questions applicants see</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Delivery format</label>
+              <select value={form.delivery_format} onChange={(e) => setForm((f) => ({ ...f, delivery_format: e.target.value as "programming" | "in_person" | "both" }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
+                <option value="programming">Programming only (remote)</option>
+                <option value="in_person">In-person sessions</option>
+                <option value="both">Both / Either</option>
+              </select>
+              <p className="text-[10px] text-gray-500 mt-1">In-person shows location questions</p>
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-sm text-gray-300">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
             Active (shown to prospects &amp; available to request)
@@ -270,7 +300,15 @@ export default function PackagesManager() {
                     {p.client_cap != null && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300">cap {p.client_cap}</span>}
                     {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/20 text-gray-400">off</span>}
                   </div>
-                  {p.description && <p className="text-gray-400 text-xs mt-0.5 truncate">{p.description}</p>}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+                      {p.package_type === 'running' ? '🏃 Running' : p.package_type === 'personal_training' ? '💪 PT' : '🏃💪 Hybrid'}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300">
+                      {p.delivery_format === 'programming' ? '📱 Remote' : p.delivery_format === 'in_person' ? '📍 In-person' : '📱📍 Both'}
+                    </span>
+                  </div>
+                  {p.description && <p className="text-gray-400 text-xs mt-1 truncate">{p.description}</p>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button onClick={() => startEdit(p)} disabled={busyId === p.id} className="text-xs text-gray-300 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-2.5 py-1 disabled:opacity-50">Edit</button>

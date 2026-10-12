@@ -9,6 +9,8 @@ type PackageData = {
   priceCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
+  packageType: 'running' | 'personal_training' | 'hybrid'
+  deliveryFormat: 'programming' | 'in_person' | 'both'
 }
 
 type Page = {
@@ -84,32 +86,55 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
 
-  // The coach may offer only one type/format — if so, auto-apply it and hide
-  // that selector (nothing to choose).
-  const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
-  const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
-  const effectiveTypes = singleType ? [singleType] : interestedTypes
-  const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
-  const showRunning = effectiveTypes.includes('running')
-  const showPT = effectiveTypes.includes('personal_training')
-  const showInPerson = effectiveFormats.includes('in_person')
+  // Get the selected package (if any)
+  const selectedPackage = hasPackages && selectedPackageId
+    ? page.packages!.find(p => p.id === selectedPackageId)
+    : null
+
+  // Determine which question blocks to show based on package or offer types
+  let showRunning = false
+  let showPT = false
+  let showInPerson = false
+
+  if (hasPackages && selectedPackage) {
+    // Package-based: use the selected package's type and format
+    showRunning = selectedPackage.packageType === 'running' || selectedPackage.packageType === 'hybrid'
+    showPT = selectedPackage.packageType === 'personal_training' || selectedPackage.packageType === 'hybrid'
+    showInPerson = selectedPackage.deliveryFormat === 'in_person' || selectedPackage.deliveryFormat === 'both'
+  } else if (!hasPackages) {
+    // Legacy offer types/formats (no packages)
+    const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
+    const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
+    const effectiveTypes = singleType ? [singleType] : interestedTypes
+    const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
+    showRunning = effectiveTypes.includes('running')
+    showPT = effectiveTypes.includes('personal_training')
+    showInPerson = effectiveFormats.includes('in_person')
+  }
+
+  // For legacy mode (no packages), check if type/format selection is needed
+  const singleType = !hasPackages && page.offerTypes.length === 1 ? page.offerTypes[0] : null
+  const singleFormat = !hasPackages && page.offerFormats.length === 1 ? page.offerFormats[0] : null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    // Require a choice when the coach offers more than one option.
-    if (!singleType && interestedTypes.length === 0) {
-      setError("Please choose what you're interested in.")
-      return
-    }
-    if (!singleFormat && interestedFormats.length === 0) {
-      setError("Please choose how you'd like to train.")
-      return
-    }
-    // Require package selection when coach has packages
-    if (hasPackages && !selectedPackageId) {
-      setError('Please select a coaching package.')
-      return
+    // When packages exist, only require package selection
+    if (hasPackages) {
+      if (!selectedPackageId) {
+        setError('Please select a coaching package.')
+        return
+      }
+    } else {
+      // Legacy: require type/format choice when coach offers more than one option
+      if (!singleType && interestedTypes.length === 0) {
+        setError("Please choose what you're interested in.")
+        return
+      }
+      if (!singleFormat && interestedFormats.length === 0) {
+        setError("Please choose how you'd like to train.")
+        return
+      }
     }
 
     setLoading(true)
@@ -124,6 +149,25 @@ export default function ApplicationForm({ page }: { page: Page }) {
     }
 
     try {
+      // Compute effective types/formats from package or legacy selections
+      let effectiveTypes: string[] = []
+      let effectiveFormats: string[] = []
+      
+      if (hasPackages && selectedPackage) {
+        // Infer from package
+        if (selectedPackage.packageType === 'running') effectiveTypes = ['running']
+        else if (selectedPackage.packageType === 'personal_training') effectiveTypes = ['personal_training']
+        else if (selectedPackage.packageType === 'hybrid') effectiveTypes = ['running', 'personal_training']
+        
+        if (selectedPackage.deliveryFormat === 'programming') effectiveFormats = ['programming']
+        else if (selectedPackage.deliveryFormat === 'in_person') effectiveFormats = ['in_person']
+        else if (selectedPackage.deliveryFormat === 'both') effectiveFormats = ['programming', 'in_person']
+      } else {
+        // Legacy mode
+        effectiveTypes = singleType ? [singleType] : interestedTypes
+        effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
+      }
+
       const res = await fetch(`/api/apply/${encodeURIComponent(page.slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,31 +240,13 @@ export default function ApplicationForm({ page }: { page: Page }) {
           {page.intro && (
             <p style={{ fontSize: 15, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '8px 0 20px', textAlign: 'center' }}>{page.intro}</p>
           )}
-          {/* Show packages as info display (not selector - that's in the form) */}
-          {hasPackages ? (
-            <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
-              <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4 }}>Coaching Packages</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {page.packages!.map((pkg) => (
-                  <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, paddingBottom: 10, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#2d3436' }}>{pkg.name}</p>
-                      {pkg.description && <p style={{ margin: '2px 0 0', fontSize: 13, color: '#555b5e', lineHeight: 1.5 }}>{pkg.description}</p>}
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <span style={{ fontSize: 15, fontWeight: 800, color: ORANGE }}>{formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}</span>
-                      {pkg.billingInterval === 'one_time' && <span style={{ display: 'block', fontSize: 11, color: '#8a8f93' }}>one-time</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : page.pricing ? (
+          {/* Show legacy pricing text only if coach has NO packages */}
+          {!hasPackages && page.pricing && (
             <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4 }}>Coaching Plans</p>
               <p style={{ margin: 0, fontSize: 14, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{page.pricing}</p>
             </div>
-          ) : null}
+          )}
 
           <div style={{ height: 1, background: '#eef1f3', margin: '4px 0 24px' }} />
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#2d3436', margin: '0 0 4px' }}>Your details</h2>
@@ -290,8 +316,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- What are you interested in? (only if coach offers 2+ types) --- */}
-            {!singleType && page.offerTypes.length > 1 && (
+            {/* --- What are you interested in? (only if NO packages AND coach offers 2+ types) --- */}
+            {!hasPackages && !singleType && page.offerTypes.length > 1 && (
               <div style={{ ...groupStyle, marginTop: 22 }}>
                 <label style={labelStyle}>What are you interested in? *</label>
                 {page.offerTypes.map((t) => (
@@ -303,8 +329,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- How would you like to train? (only if coach offers 2+ formats) --- */}
-            {!singleFormat && page.offerFormats.length > 1 && (
+            {/* --- How would you like to train? (only if NO packages AND coach offers 2+ formats) --- */}
+            {!hasPackages && !singleFormat && page.offerFormats.length > 1 && (
               <div style={groupStyle}>
                 <label style={labelStyle}>How would you like to train? *</label>
                 {page.offerFormats.map((f) => (
