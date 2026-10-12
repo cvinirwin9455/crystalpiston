@@ -39,9 +39,12 @@ const TYPE_LABELS: Record<string, string> = {
   running: 'Running coaching',
   personal_training: 'Personal training',
 }
-const FORMAT_LABELS: Record<string, string> = {
-  programming: 'Programming only (remote — I follow a plan on my own)',
-  in_person: 'In-person training (sessions with you)',
+
+// Delivery format labels shown when a package is selected
+const DELIVERY_FORMAT_LABELS: Record<string, { label: string; desc: string }> = {
+  programming: { label: 'Programming only', desc: 'Remote training plans you follow on your own' },
+  in_person: { label: 'In-person sessions', desc: 'Train together with your coach' },
+  hybrid: { label: 'Hybrid', desc: 'Combination of programming and in-person sessions' },
 }
 
 export default function ApplicationForm({ page }: { page: Page }) {
@@ -71,7 +74,9 @@ export default function ApplicationForm({ page }: { page: Page }) {
   })
   // Package selection (when coach has packages)
   const [selectedPackageId, setSelectedPackageId] = useState<string>('')
-  // Prospect's selections (subset of what the coach offers)
+  // Delivery format selection (shown after package is selected)
+  const [selectedDeliveryFormat, setSelectedDeliveryFormat] = useState<string>('')
+  // Prospect's selections for NO-packages flow (subset of what the coach offers)
   const [interestedTypes, setInterestedTypes] = useState<string[]>([])
   const [interestedFormats, setInterestedFormats] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,31 +89,72 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
 
-  // Offer types/formats ALWAYS control which questions show (from coach settings)
+  // --- Determine what delivery formats the coach offers (for the package flow) ---
+  // Map offer_formats to the simplified delivery options
+  const availableDeliveryFormats: string[] = []
+  if (page.offerFormats.includes('programming')) availableDeliveryFormats.push('programming')
+  if (page.offerFormats.includes('in_person')) availableDeliveryFormats.push('in_person')
+  // If coach offers both programming AND in_person, also offer "hybrid" as an option
+  if (page.offerFormats.includes('programming') && page.offerFormats.includes('in_person')) {
+    availableDeliveryFormats.push('hybrid')
+  }
+  const singleDeliveryFormat = availableDeliveryFormats.length === 1 ? availableDeliveryFormats[0] : null
+
+  // --- NO PACKAGES FLOW: use the tickbox approach ---
   const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
   const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
-  const effectiveTypes = singleType ? [singleType] : interestedTypes
-  const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
-  const showRunning = effectiveTypes.includes('running')
-  const showPT = effectiveTypes.includes('personal_training')
-  const showInPerson = effectiveFormats.includes('in_person')
+
+  // --- Determine which question sections to show ---
+  let showRunning = false
+  let showPT = false
+  let showInPerson = false
+
+  if (hasPackages) {
+    // PACKAGES FLOW: questions depend on selectedDeliveryFormat (or auto if only one option)
+    const effectiveDelivery = singleDeliveryFormat || selectedDeliveryFormat
+    // For offer types, if coach only offers one type, use that; otherwise show both running + PT sections
+    // (we could refine this later, but for now if coach offers PT they likely want those questions)
+    showRunning = page.offerTypes.includes('running')
+    showPT = page.offerTypes.includes('personal_training')
+    // In-person questions show if delivery is in_person or hybrid
+    showInPerson = effectiveDelivery === 'in_person' || effectiveDelivery === 'hybrid'
+  } else {
+    // NO PACKAGES FLOW: questions depend on tickbox selections
+    const effectiveTypes = singleType ? [singleType] : interestedTypes
+    const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
+    showRunning = effectiveTypes.includes('running')
+    showPT = effectiveTypes.includes('personal_training')
+    showInPerson = effectiveFormats.includes('in_person')
+  }
+
+  // Should we show the questions section? (need delivery format selected in packages flow, or tickboxes in no-packages flow)
+  const showQuestions = hasPackages
+    ? !!(singleDeliveryFormat || selectedDeliveryFormat)
+    : true // no-packages flow always shows questions based on tickboxes
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    // Require type/format choice when coach offers more than one option
-    if (!singleType && interestedTypes.length === 0) {
-      setError("Please choose what you're interested in.")
-      return
-    }
-    if (!singleFormat && interestedFormats.length === 0) {
-      setError("Please choose how you'd like to train.")
-      return
-    }
-    // Require package selection when coach has packages
-    if (hasPackages && !selectedPackageId) {
-      setError('Please select a coaching package.')
-      return
+    if (hasPackages) {
+      // PACKAGES FLOW validation
+      if (!selectedPackageId) {
+        setError('Please select a coaching package.')
+        return
+      }
+      if (!singleDeliveryFormat && !selectedDeliveryFormat) {
+        setError('Please choose how you\'d like to train.')
+        return
+      }
+    } else {
+      // NO PACKAGES FLOW validation
+      if (!singleType && interestedTypes.length === 0) {
+        setError("Please choose what you're interested in.")
+        return
+      }
+      if (!singleFormat && interestedFormats.length === 0) {
+        setError("Please choose how you'd like to train.")
+        return
+      }
     }
 
     setLoading(true)
@@ -122,6 +168,25 @@ export default function ApplicationForm({ page }: { page: Page }) {
       /* non-blocking */
     }
 
+    // Build interested_types and interested_formats for the submission
+    let submitTypes: string[]
+    let submitFormats: string[]
+
+    if (hasPackages) {
+      // Use all coach's offer types (they apply regardless of delivery format)
+      submitTypes = page.offerTypes
+      // Map delivery format back to interested_formats
+      const delivery = singleDeliveryFormat || selectedDeliveryFormat
+      if (delivery === 'hybrid') {
+        submitFormats = ['programming', 'in_person']
+      } else {
+        submitFormats = [delivery]
+      }
+    } else {
+      submitTypes = singleType ? [singleType] : interestedTypes
+      submitFormats = singleFormat ? [singleFormat] : interestedFormats
+    }
+
     try {
       const res = await fetch(`/api/apply/${encodeURIComponent(page.slug)}`, {
         method: 'POST',
@@ -129,8 +194,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
         body: JSON.stringify({
           ...form,
           selected_package_id: hasPackages ? selectedPackageId : null,
-          interested_types: effectiveTypes,
-          interested_formats: effectiveFormats,
+          interested_types: submitTypes,
+          interested_formats: submitFormats,
           consent_ip: userIp,
           consent_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         }),
@@ -236,8 +301,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </select>
             </div>
 
-            {/* --- What are you interested in? (only if coach offers 2+ types) --- */}
-            {!singleType && page.offerTypes.length > 1 && (
+            {/* --- NO PACKAGES FLOW: What are you interested in? (only if coach offers 2+ types) --- */}
+            {!hasPackages && !singleType && page.offerTypes.length > 1 && (
               <div style={{ ...groupStyle, marginTop: 22 }}>
                 <label style={labelStyle}>What are you interested in? *</label>
                 {page.offerTypes.map((t) => (
@@ -249,50 +314,92 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- How would you like to train? (only if coach offers 2+ formats) --- */}
-            {!singleFormat && page.offerFormats.length > 1 && (
+            {/* --- NO PACKAGES FLOW: How would you like to train? (only if coach offers 2+ formats) --- */}
+            {!hasPackages && !singleFormat && page.offerFormats.length > 1 && (
               <div style={groupStyle}>
                 <label style={labelStyle}>How would you like to train? *</label>
                 {page.offerFormats.map((f) => (
                   <label key={f} style={checkRow}>
                     <input type="checkbox" checked={interestedFormats.includes(f)} onChange={() => toggle(interestedFormats, setInterestedFormats, f)} />
-                    <span>{FORMAT_LABELS[f] || f}</span>
+                    <span>{f === 'programming' ? 'Programming only (remote — I follow a plan on my own)' : f === 'in_person' ? 'In-person training (sessions with you)' : f}</span>
                   </label>
                 ))}
               </div>
             )}
 
-            {/* --- Package selection (when coach has packages) --- */}
+            {/* --- PACKAGES FLOW: Package selection with delivery format picker --- */}
             {hasPackages && (
               <div style={{ ...groupStyle, marginTop: 22 }}>
                 <label style={labelStyle}>Which package are you interested in? *</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {page.packages!.map((pkg) => (
-                    <label
-                      key={pkg.id}
-                      style={{
-                        ...packageOption,
-                        borderColor: selectedPackageId === pkg.id ? ORANGE : '#dfe3e6',
-                        background: selectedPackageId === pkg.id ? '#fff8f4' : '#fff',
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="selected_package"
-                        value={pkg.id}
-                        checked={selectedPackageId === pkg.id}
-                        onChange={() => setSelectedPackageId(pkg.id)}
-                        style={{ marginRight: 12, accentColor: ORANGE }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontWeight: 700, color: '#2d3436' }}>{pkg.name}</span>
-                        {pkg.description && <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 2 }}>{pkg.description}</span>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {page.packages!.map((pkg) => {
+                    const isSelected = selectedPackageId === pkg.id
+                    return (
+                      <div key={pkg.id}>
+                        <label
+                          style={{
+                            ...packageOption,
+                            borderColor: isSelected ? ORANGE : '#dfe3e6',
+                            background: isSelected ? '#fff8f4' : '#fff',
+                            borderBottomLeftRadius: isSelected && !singleDeliveryFormat ? 0 : 10,
+                            borderBottomRightRadius: isSelected && !singleDeliveryFormat ? 0 : 10,
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="selected_package"
+                            value={pkg.id}
+                            checked={isSelected}
+                            onChange={() => {
+                              setSelectedPackageId(pkg.id)
+                              // Reset delivery format when changing package
+                              if (!singleDeliveryFormat) setSelectedDeliveryFormat('')
+                            }}
+                            style={{ marginRight: 12, accentColor: ORANGE }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, color: '#2d3436' }}>{pkg.name}</span>
+                            {pkg.description && <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 2 }}>{pkg.description}</span>}
+                          </div>
+                          <span style={{ fontWeight: 800, color: ORANGE, marginLeft: 12, whiteSpace: 'nowrap' }}>
+                            {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
+                          </span>
+                        </label>
+
+                        {/* Delivery format picker - expands under selected package */}
+                        {isSelected && !singleDeliveryFormat && (
+                          <div style={deliveryFormatBox}>
+                            <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: '#2d3436' }}>
+                              How would you like to work with {page.coachName.split(' ')[0]}?
+                            </p>
+                            {availableDeliveryFormats.map((fmt) => (
+                              <label
+                                key={fmt}
+                                style={{
+                                  ...deliveryOption,
+                                  borderColor: selectedDeliveryFormat === fmt ? ORANGE : '#e8eaec',
+                                  background: selectedDeliveryFormat === fmt ? '#fff' : '#fafbfc',
+                                }}
+                              >
+                                <input
+                                  type="radio"
+                                  name="delivery_format"
+                                  value={fmt}
+                                  checked={selectedDeliveryFormat === fmt}
+                                  onChange={() => setSelectedDeliveryFormat(fmt)}
+                                  style={{ marginRight: 10, accentColor: ORANGE }}
+                                />
+                                <div>
+                                  <span style={{ fontWeight: 600, color: '#2d3436' }}>{DELIVERY_FORMAT_LABELS[fmt]?.label || fmt}</span>
+                                  <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 1 }}>{DELIVERY_FORMAT_LABELS[fmt]?.desc || ''}</span>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <span style={{ fontWeight: 800, color: ORANGE, marginLeft: 12, whiteSpace: 'nowrap' }}>
-                        {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
-                      </span>
-                    </label>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -306,8 +413,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <input style={inputStyle} value={form.days_available} onChange={set('days_available')} placeholder="e.g. Mon/Wed/Fri + weekends" />
             </div>
 
-            {/* --- Running block --- */}
-            {showRunning && (
+            {/* --- Running block (only show when questions should be visible) --- */}
+            {showQuestions && showRunning && (
               <div style={sectionBox}>
                 <p style={sectionTitle}>About your running</p>
                 <div style={groupStyle}>
@@ -325,8 +432,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- Personal training block --- */}
-            {showPT && (
+            {/* --- Personal training block (only show when questions should be visible) --- */}
+            {showQuestions && showPT && (
               <div style={sectionBox}>
                 <p style={sectionTitle}>About your training</p>
                 <div style={groupStyle}>
@@ -356,8 +463,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- In-person block --- */}
-            {showInPerson && (
+            {/* --- In-person block (only show when questions should be visible) --- */}
+            {showQuestions && showInPerson && (
               <div style={sectionBox}>
                 <p style={sectionTitle}>In-person sessions</p>
                 <div style={groupStyle}>
@@ -431,6 +538,15 @@ const checkRow: React.CSSProperties = {
 const packageOption: React.CSSProperties = {
   display: 'flex', alignItems: 'center', padding: '12px 14px',
   border: '2px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer',
+  transition: 'border-color 0.15s, background 0.15s',
+}
+const deliveryFormatBox: React.CSSProperties = {
+  padding: '14px 16px', background: '#fff8f4', border: '2px solid #f26522', borderTop: 'none',
+  borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
+}
+const deliveryOption: React.CSSProperties = {
+  display: 'flex', alignItems: 'flex-start', gap: 6, padding: '10px 12px', marginBottom: 8,
+  border: '1px solid #e8eaec', borderRadius: 8, fontSize: 14, cursor: 'pointer',
   transition: 'border-color 0.15s, background 0.15s',
 }
 const sectionBox: React.CSSProperties = {
