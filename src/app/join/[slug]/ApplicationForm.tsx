@@ -9,6 +9,7 @@ type PackageData = {
   priceCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
+  deliveryFormat: 'programming' | 'in_person' | 'hybrid'
 }
 
 type Page = {
@@ -40,13 +41,6 @@ const TYPE_LABELS: Record<string, string> = {
   personal_training: 'Personal training',
 }
 
-// Delivery format labels shown when a package is selected
-const DELIVERY_FORMAT_LABELS: Record<string, { label: string; desc: string }> = {
-  programming: { label: 'Programming only', desc: 'Remote training plans you follow on your own' },
-  in_person: { label: 'In-person sessions', desc: 'Train together with your coach' },
-  hybrid: { label: 'Hybrid', desc: 'Combination of programming and in-person sessions' },
-}
-
 export default function ApplicationForm({ page }: { page: Page }) {
   const hasPackages = page.showPackages !== false && page.packages && page.packages.length > 0
 
@@ -74,8 +68,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
   })
   // Package selection (when coach has packages)
   const [selectedPackageId, setSelectedPackageId] = useState<string>('')
-  // Delivery format selection (shown after package is selected)
-  const [selectedDeliveryFormat, setSelectedDeliveryFormat] = useState<string>('')
   // Prospect's selections for NO-packages flow (subset of what the coach offers)
   const [interestedTypes, setInterestedTypes] = useState<string[]>([])
   const [interestedFormats, setInterestedFormats] = useState<string[]>([])
@@ -89,16 +81,10 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
 
-  // --- Determine what delivery formats the coach offers (for the package flow) ---
-  // Map offer_formats to the simplified delivery options
-  const availableDeliveryFormats: string[] = []
-  if (page.offerFormats.includes('programming')) availableDeliveryFormats.push('programming')
-  if (page.offerFormats.includes('in_person')) availableDeliveryFormats.push('in_person')
-  // If coach offers both programming AND in_person, also offer "hybrid" as an option
-  if (page.offerFormats.includes('programming') && page.offerFormats.includes('in_person')) {
-    availableDeliveryFormats.push('hybrid')
-  }
-  const singleDeliveryFormat = availableDeliveryFormats.length === 1 ? availableDeliveryFormats[0] : null
+  // Get the selected package (if any)
+  const selectedPackage = hasPackages && selectedPackageId
+    ? page.packages!.find(p => p.id === selectedPackageId)
+    : null
 
   // --- NO PACKAGES FLOW: use the tickbox approach ---
   const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
@@ -110,14 +96,15 @@ export default function ApplicationForm({ page }: { page: Page }) {
   let showInPerson = false
 
   if (hasPackages) {
-    // PACKAGES FLOW: questions depend on selectedDeliveryFormat (or auto if only one option)
-    const effectiveDelivery = singleDeliveryFormat || selectedDeliveryFormat
-    // For offer types, if coach only offers one type, use that; otherwise show both running + PT sections
-    // (we could refine this later, but for now if coach offers PT they likely want those questions)
-    showRunning = page.offerTypes.includes('running')
-    showPT = page.offerTypes.includes('personal_training')
-    // In-person questions show if delivery is in_person or hybrid
-    showInPerson = effectiveDelivery === 'in_person' || effectiveDelivery === 'hybrid'
+    // PACKAGES FLOW: questions depend on selected package's deliveryFormat
+    if (selectedPackage) {
+      const fmt = selectedPackage.deliveryFormat
+      // Show running/PT questions based on coach's offer types (all packages share these)
+      showRunning = page.offerTypes.includes('running')
+      showPT = page.offerTypes.includes('personal_training')
+      // In-person questions show if delivery is in_person or hybrid
+      showInPerson = fmt === 'in_person' || fmt === 'hybrid'
+    }
   } else {
     // NO PACKAGES FLOW: questions depend on tickbox selections
     const effectiveTypes = singleType ? [singleType] : interestedTypes
@@ -127,10 +114,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
     showInPerson = effectiveFormats.includes('in_person')
   }
 
-  // Should we show the questions section? (need delivery format selected in packages flow, or tickboxes in no-packages flow)
-  const showQuestions = hasPackages
-    ? !!(singleDeliveryFormat || selectedDeliveryFormat)
-    : true // no-packages flow always shows questions based on tickboxes
+  // Should we show the questions section?
+  const showQuestions = hasPackages ? !!selectedPackage : true
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -139,10 +124,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
       // PACKAGES FLOW validation
       if (!selectedPackageId) {
         setError('Please select a coaching package.')
-        return
-      }
-      if (!singleDeliveryFormat && !selectedDeliveryFormat) {
-        setError('Please choose how you\'d like to train.')
         return
       }
     } else {
@@ -172,15 +153,15 @@ export default function ApplicationForm({ page }: { page: Page }) {
     let submitTypes: string[]
     let submitFormats: string[]
 
-    if (hasPackages) {
-      // Use all coach's offer types (they apply regardless of delivery format)
+    if (hasPackages && selectedPackage) {
+      // Use all coach's offer types
       submitTypes = page.offerTypes
-      // Map delivery format back to interested_formats
-      const delivery = singleDeliveryFormat || selectedDeliveryFormat
-      if (delivery === 'hybrid') {
+      // Map delivery format to interested_formats
+      const fmt = selectedPackage.deliveryFormat
+      if (fmt === 'hybrid') {
         submitFormats = ['programming', 'in_person']
       } else {
-        submitFormats = [delivery]
+        submitFormats = [fmt]
       }
     } else {
       submitTypes = singleType ? [singleType] : interestedTypes
@@ -327,77 +308,44 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- PACKAGES FLOW: Package selection with delivery format picker --- */}
+            {/* --- PACKAGES FLOW: Simple package selection --- */}
             {hasPackages && (
               <div style={{ ...groupStyle, marginTop: 22 }}>
                 <label style={labelStyle}>Which package are you interested in? *</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {page.packages!.map((pkg) => {
                     const isSelected = selectedPackageId === pkg.id
+                    const fmtLabel = pkg.deliveryFormat === 'programming' ? '📱 Remote'
+                      : pkg.deliveryFormat === 'in_person' ? '📍 In-person'
+                      : '📱📍 Hybrid'
                     return (
-                      <div key={pkg.id}>
-                        <label
-                          style={{
-                            ...packageOption,
-                            borderColor: isSelected ? ORANGE : '#dfe3e6',
-                            background: isSelected ? '#fff8f4' : '#fff',
-                            borderBottomLeftRadius: isSelected && !singleDeliveryFormat ? 0 : 10,
-                            borderBottomRightRadius: isSelected && !singleDeliveryFormat ? 0 : 10,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="selected_package"
-                            value={pkg.id}
-                            checked={isSelected}
-                            onChange={() => {
-                              setSelectedPackageId(pkg.id)
-                              // Reset delivery format when changing package
-                              if (!singleDeliveryFormat) setSelectedDeliveryFormat('')
-                            }}
-                            style={{ marginRight: 12, accentColor: ORANGE }}
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
+                      <label
+                        key={pkg.id}
+                        style={{
+                          ...packageOption,
+                          borderColor: isSelected ? ORANGE : '#dfe3e6',
+                          background: isSelected ? '#fff8f4' : '#fff',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="selected_package"
+                          value={pkg.id}
+                          checked={isSelected}
+                          onChange={() => setSelectedPackageId(pkg.id)}
+                          style={{ marginRight: 12, accentColor: ORANGE }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 700, color: '#2d3436' }}>{pkg.name}</span>
-                            {pkg.description && <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 2 }}>{pkg.description}</span>}
+                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f0f2f4', color: '#555b5e' }}>{fmtLabel}</span>
                           </div>
-                          <span style={{ fontWeight: 800, color: ORANGE, marginLeft: 12, whiteSpace: 'nowrap' }}>
-                            {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
-                          </span>
-                        </label>
-
-                        {/* Delivery format picker - expands under selected package */}
-                        {isSelected && !singleDeliveryFormat && (
-                          <div style={deliveryFormatBox}>
-                            <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: '#2d3436' }}>
-                              How would you like to work with {page.coachName.split(' ')[0]}?
-                            </p>
-                            {availableDeliveryFormats.map((fmt) => (
-                              <label
-                                key={fmt}
-                                style={{
-                                  ...deliveryOption,
-                                  borderColor: selectedDeliveryFormat === fmt ? ORANGE : '#e8eaec',
-                                  background: selectedDeliveryFormat === fmt ? '#fff' : '#fafbfc',
-                                }}
-                              >
-                                <input
-                                  type="radio"
-                                  name="delivery_format"
-                                  value={fmt}
-                                  checked={selectedDeliveryFormat === fmt}
-                                  onChange={() => setSelectedDeliveryFormat(fmt)}
-                                  style={{ marginRight: 10, accentColor: ORANGE }}
-                                />
-                                <div>
-                                  <span style={{ fontWeight: 600, color: '#2d3436' }}>{DELIVERY_FORMAT_LABELS[fmt]?.label || fmt}</span>
-                                  <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 1 }}>{DELIVERY_FORMAT_LABELS[fmt]?.desc || ''}</span>
-                                </div>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                          {pkg.description && <span style={{ display: 'block', fontSize: 12, color: '#8a8f93', marginTop: 2 }}>{pkg.description}</span>}
+                        </div>
+                        <span style={{ fontWeight: 800, color: ORANGE, marginLeft: 12, whiteSpace: 'nowrap' }}>
+                          {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
+                        </span>
+                      </label>
                     )
                   })}
                 </div>
@@ -538,15 +486,6 @@ const checkRow: React.CSSProperties = {
 const packageOption: React.CSSProperties = {
   display: 'flex', alignItems: 'center', padding: '12px 14px',
   border: '2px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer',
-  transition: 'border-color 0.15s, background 0.15s',
-}
-const deliveryFormatBox: React.CSSProperties = {
-  padding: '14px 16px', background: '#fff8f4', border: '2px solid #f26522', borderTop: 'none',
-  borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
-}
-const deliveryOption: React.CSSProperties = {
-  display: 'flex', alignItems: 'flex-start', gap: 6, padding: '10px 12px', marginBottom: 8,
-  border: '1px solid #e8eaec', borderRadius: 8, fontSize: 14, cursor: 'pointer',
   transition: 'border-color 0.15s, background 0.15s',
 }
 const sectionBox: React.CSSProperties = {

@@ -23,6 +23,7 @@ async function createAdminClient() {
 }
 
 const VALID_INTERVALS = ['monthly', 'one_time']
+const VALID_DELIVERY_FORMATS = ['programming', 'in_person', 'hybrid']
 
 // Parse a user-entered price (e.g. "125", "125.00", "$1,250.50") into integer
 // cents. Returns null if it can't be parsed to a non-negative amount.
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const {
     name, description, price, currency, billing_interval,
+    delivery_format,
     client_cap, is_active, sort_order,
     org: orgOverride, coach: coachOverride,
   } = body || {}
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid price is required' }, { status: 400 })
   }
   const interval = VALID_INTERVALS.includes(billing_interval) ? billing_interval : 'monthly'
+  const deliveryFmt = VALID_DELIVERY_FORMATS.includes(delivery_format) ? delivery_format : 'programming'
 
   const admin = await createAdminClient()
   const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
@@ -98,6 +101,7 @@ export async function POST(request: Request) {
     price_cents: priceCents,
     currency: currency ? String(currency).toLowerCase() : 'usd',
     billing_interval: interval,
+    delivery_format: deliveryFmt,
     client_cap: Number.isInteger(client_cap) && client_cap > 0 ? client_cap : null,
     is_active: is_active === undefined ? true : !!is_active,
     sort_order: Number.isInteger(sort_order) ? sort_order : 0,
@@ -121,6 +125,7 @@ export async function PATCH(request: Request) {
   const body = await request.json().catch(() => ({}))
   const {
     id, name, description, price, currency, billing_interval,
+    delivery_format,
     client_cap, is_active, sort_order,
     org: orgOverride, coach: coachOverride,
   } = body || {}
@@ -151,6 +156,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'billing_interval must be "monthly" or "one_time"' }, { status: 400 })
     }
     updates.billing_interval = billing_interval
+  }
+  if (delivery_format !== undefined) {
+    if (!VALID_DELIVERY_FORMATS.includes(delivery_format)) {
+      return NextResponse.json({ error: 'delivery_format must be "programming", "in_person", or "hybrid"' }, { status: 400 })
+    }
+    updates.delivery_format = delivery_format
   }
   if (client_cap !== undefined) {
     updates.client_cap = Number.isInteger(client_cap) && client_cap > 0 ? client_cap : null
