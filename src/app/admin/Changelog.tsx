@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-12T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-13T12:00:00Z";
 
 const updates = [
+  {
+    date: "October 13, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Packages. On your Applications tab there's now a 'Your Packages' section where you set up the things you charge for — give each a name, price, and whether it's a monthly (recurring) or one-time charge. You can add a short description, cap how many clients can be on a package (e.g. limit a premium plan to 5), and turn packages on/off without deleting them. This replaces the old free-text pricing box with a proper list. (This is step 1 of adding real payments to signups — collecting money comes in a later update.)" },
+      { area: "Marketing", text: "NEW: Your packages now show on your public application page (firstmilecoach.com/join/your-link) so people can see your pricing before they apply. Each package shows its name, description, and price. If you haven't added packages yet, your existing pricing text still shows as before." },
+    ],
+  },
   {
     date: "October 12, 2026",
     items: [

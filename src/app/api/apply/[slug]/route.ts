@@ -50,6 +50,39 @@ export async function GET(
     .eq('id', page.coach_id)
     .maybeSingle()
 
+  // show_packages flag (read separately so a missing column can't break this).
+  let showPackages = true
+  try {
+    const { data: flagRow } = await supabase
+      .from('coach_application_pages')
+      .select('show_packages')
+      .eq('slug', slug)
+      .maybeSingle()
+    if (flagRow && typeof flagRow.show_packages === 'boolean') showPackages = flagRow.show_packages
+  } catch { /* column not present yet */ }
+
+  // Active packages for this coach (safe if the table doesn't exist yet).
+  let packages: any[] = []
+  if (showPackages) {
+    try {
+      const { data: pkgRows } = await supabase
+        .from('coach_packages')
+        .select('id, name, description, price_cents, currency, billing_interval, is_active, sort_order')
+        .eq('coach_id', page.coach_id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+      packages = (pkgRows || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description || null,
+        priceCents: p.price_cents,
+        currency: p.currency || 'usd',
+        billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+      }))
+    } catch { /* table not present yet */ }
+  }
+
   return NextResponse.json({
     slug: page.slug,
     coachName: coach?.name || 'Your coach',
@@ -59,6 +92,8 @@ export async function GET(
     pricing: page.pricing || '',
     offerTypes: Array.isArray(page.offer_types) && page.offer_types.length ? page.offer_types : ['running'],
     offerFormats: Array.isArray(page.offer_formats) && page.offer_formats.length ? page.offer_formats : ['programming'],
+    showPackages,
+    packages,
   })
 }
 

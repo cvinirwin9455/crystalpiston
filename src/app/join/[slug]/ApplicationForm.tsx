@@ -2,6 +2,15 @@
 
 import { useState } from 'react'
 
+type PackageData = {
+  id: string
+  name: string
+  description: string | null
+  priceCents: number
+  currency: string
+  billingInterval: 'monthly' | 'one_time'
+}
+
 type Page = {
   slug: string
   coachName: string
@@ -11,6 +20,17 @@ type Page = {
   pricing: string
   offerTypes: string[]
   offerFormats: string[]
+  showPackages?: boolean
+  packages?: PackageData[]
+}
+
+function formatPkgPrice(cents: number, currency: string, interval: string): string {
+  const amount = (cents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: (currency || 'usd').toUpperCase(),
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  })
+  return interval === 'monthly' ? `${amount}/mo` : `${amount}`
 }
 
 const ORANGE = '#f26522'
@@ -166,12 +186,31 @@ export default function ApplicationForm({ page }: { page: Page }) {
           {page.intro && (
             <p style={{ fontSize: 15, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '8px 0 20px', textAlign: 'center' }}>{page.intro}</p>
           )}
-          {page.pricing && (
+          {page.showPackages !== false && page.packages && page.packages.length > 0 ? (
+            <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
+              <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4 }}>Coaching Packages</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {page.packages.map((pkg) => (
+                  <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, paddingBottom: 10, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#2d3436' }}>{pkg.name}</p>
+                      {pkg.description && <p style={{ margin: '2px 0 0', fontSize: 13, color: '#555b5e', lineHeight: 1.5 }}>{pkg.description}</p>}
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: ORANGE }}>{formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}</span>
+                      {pkg.billingInterval === 'one_time' && <span style={{ display: 'block', fontSize: 11, color: '#8a8f93' }}>one-time</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: '12px 0 0', fontSize: 12, color: '#8a8f93', lineHeight: 1.5 }}>Not sure which fits? Apply below and {page.coachName} will help you choose.</p>
+            </div>
+          ) : page.pricing ? (
             <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4 }}>Coaching Plans</p>
               <p style={{ margin: 0, fontSize: 14, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{page.pricing}</p>
             </div>
-          )}
+          ) : null}
 
           <div style={{ height: 1, background: '#eef1f3', margin: '4px 0 24px' }} />
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#2d3436', margin: '0 0 4px' }}>Your details</h2>
@@ -310,10 +349,10 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <label style={labelStyle}>Injuries / limitations</label>
               <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={form.injuries} onChange={set('injuries')} placeholder="Anything your coach should know" />
             </div>
-            {page.pricing && (
+            {(page.pricing || (page.packages && page.packages.length > 0)) && (
               <div style={groupStyle}>
-                <label style={labelStyle}>Which plan are you interested in?</label>
-                <input style={inputStyle} value={form.plan_interest} onChange={set('plan_interest')} placeholder="Name the plan from above, or 'not sure yet'" />
+                <label style={labelStyle}>Which {page.packages && page.packages.length > 0 ? 'package' : 'plan'} are you interested in?</label>
+                <input style={inputStyle} value={form.plan_interest} onChange={set('plan_interest')} placeholder="Name the one from above, or 'not sure yet'" />
               </div>
             )}
             <div style={groupStyle}>
