@@ -65,26 +65,56 @@ export async function GET(
   let packages: any[] = []
   if (showPackages) {
     try {
-      const { data: pkgRows } = await supabase
+      // First try with new includes_* columns
+      const { data: pkgRows, error: pkgError } = await supabase
         .from('coach_packages')
         .select('id, name, description, price_cents, currency, billing_interval, includes_running, includes_strength, includes_in_person, includes_programming, is_active, sort_order')
         .eq('coach_id', page.coach_id)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
-      packages = (pkgRows || []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description || null,
-        priceCents: p.price_cents,
-        currency: p.currency || 'usd',
-        billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
-        includesRunning: p.includes_running ?? true,
-        includesStrength: p.includes_strength ?? false,
-        includesInPerson: p.includes_in_person ?? false,
-        includesProgramming: p.includes_programming ?? true,
-      }))
-    } catch { /* table not present yet */ }
+      
+      if (pkgError) {
+        // Columns might not exist yet - try without them
+        console.log('Packages query with includes columns failed, trying without:', pkgError.message)
+        const { data: fallbackRows } = await supabase
+          .from('coach_packages')
+          .select('id, name, description, price_cents, currency, billing_interval, is_active, sort_order')
+          .eq('coach_id', page.coach_id)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true })
+        packages = (fallbackRows || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || null,
+          priceCents: p.price_cents,
+          currency: p.currency || 'usd',
+          billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+          // Default to running + programming if columns don't exist
+          includesRunning: true,
+          includesStrength: false,
+          includesInPerson: false,
+          includesProgramming: true,
+        }))
+      } else {
+        packages = (pkgRows || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || null,
+          priceCents: p.price_cents,
+          currency: p.currency || 'usd',
+          billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+          includesRunning: p.includes_running ?? true,
+          includesStrength: p.includes_strength ?? false,
+          includesInPerson: p.includes_in_person ?? false,
+          includesProgramming: p.includes_programming ?? true,
+        }))
+      }
+    } catch (e) {
+      console.log('Packages query failed entirely:', e)
+      /* table not present yet */
+    }
   }
 
   return NextResponse.json({
