@@ -2011,6 +2011,7 @@ export default function AdminPage() {
   const [workoutComments, setWorkoutComments] = useState<Record<string, {id: string; workoutId: string; userId: string; userName: string; message: string; createdAt: string; isCoach: boolean}[]>>({});
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [sendingComment, setSendingComment] = useState<string | null>(null);
+  const [unlinkingWorkout, setUnlinkingWorkout] = useState<string | null>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -2200,6 +2201,32 @@ export default function AdminPage() {
       }
     } catch (err) { console.error('Failed to send comment:', err); }
     finally { setSendingComment(null); }
+  };
+
+  // Un-complete a programmed workout and clear any Strava match pointing at it,
+  // so it can be edited/moved again. Used to fix mis-synced Strava activities
+  // (e.g. one run showing "complete" on two workouts the same day).
+  const handleUnlinkWorkout = async (workoutId: string) => {
+    if (!window.confirm("Mark this workout as NOT done and unlink any Strava activity from it? The Strava run won't be deleted — it will reappear as an unmatched activity you can re-match or dismiss.")) return;
+    setUnlinkingWorkout(workoutId);
+    try {
+      const res = await fetch('/api/workout-unlink', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId }),
+      });
+      if (res.ok) {
+        if (selectedClient) await fetchWeeks(selectedClient, false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        window.alert(data.error || 'Failed to unlink workout.');
+      }
+    } catch (err) {
+      console.error('Failed to unlink workout:', err);
+      window.alert('Network error — workout not unlinked.');
+    } finally {
+      setUnlinkingWorkout(null);
+    }
   };
 
   // Fetch weeks for a client from the API
@@ -3897,6 +3924,19 @@ export default function AdminPage() {
                               </div>
                               {w.log.notes && !w.log.notes.startsWith('Synced from Strava:') && <p className="text-gray-400 text-xs mt-1.5">{w.log.notes}</p>}
                               {w.skipReason && <p className="text-yellow-400 text-xs mt-1.5"><span className="font-medium">{w.status === "skipped" ? "Skipped:" : "Partial:"}</span> {w.skipReason}</p>}
+                            </div>
+                          )}
+                          {w.completed && (
+                            <div className="mt-2 ml-10">
+                              <button
+                                type="button"
+                                onClick={() => handleUnlinkWorkout(w.id)}
+                                disabled={unlinkingWorkout === w.id}
+                                className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-50"
+                                title="Mark as not done and unlink any Strava activity so this workout can be moved or edited"
+                              >
+                                {unlinkingWorkout === w.id ? 'Unlinking…' : (w.stravaSynced ? '↩ Unlink Strava & mark not done' : '↩ Mark not done')}
+                              </button>
                             </div>
                           )}
                           {editingWeek && w.completed && (

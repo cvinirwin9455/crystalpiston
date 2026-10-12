@@ -212,6 +212,19 @@ export async function GET(request: Request) {
     for (const sa of allStravaActivities) {
       if (stravaMatchedActivityIds.has(sa.id)) continue // already handled
       if (sa.match_status === 'dismissed') continue
+      // Guard: if there is ALREADY a confirmed/suggested match for a workout on
+      // this same day + type, this leftover activity is almost certainly a
+      // duplicate of that same run. Do NOT let it bleed its stats onto a sibling
+      // workout (e.g. a 13mi run's stats landing on a 4mi Easy Run the same day).
+      const dayTypeAlreadyMatched = allStravaActivities.some((other: any) =>
+        other.id !== sa.id &&
+        (other.match_status === 'matched' || other.match_status === 'suggested') &&
+        other.matched_workout_id &&
+        other.week_id === sa.week_id &&
+        other.day === sa.day &&
+        other.type === sa.type
+      )
+      if (dayTypeAlreadyMatched) continue
       // Skip 0-mile distance-based activities (accidental start/stop) but allow stretching/strength/cross
       const distanceTypes = ['run', 'walk', 'cycling']
       if (distanceTypes.includes(sa.type) && !sa.miles && !sa.distance_meters) continue
