@@ -96,10 +96,10 @@ const EMPTY_FORM: DraftForm = {
   description: "",
   price: "",
   billing_interval: "monthly",
-  includes_running: true,
+  includes_running: false,
   includes_strength: false,
   includes_in_person: false,
-  includes_programming: true,
+  includes_programming: false,
   client_cap: "",
   is_active: true,
 };
@@ -177,9 +177,9 @@ export default function PackagesManager() {
   }
 
   async function save() {
-    // Validate at least one type selected
+    // Validate at least one from each group
     if (!form.includes_running && !form.includes_strength) {
-      setMsg({ text: "Select at least Running or Strength.", type: "error" });
+      setMsg({ text: "Select at least Running or Strength/PT.", type: "error" });
       return;
     }
     if (!form.includes_in_person && !form.includes_programming) {
@@ -300,10 +300,10 @@ export default function PackagesManager() {
       {/* Add / edit form */}
       {showForm && (
         <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
-          {/* What's included checkboxes */}
+          {/* What's included checkboxes - two groups */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2">What&apos;s included in this package?</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs text-gray-400 mb-2">What type of coaching? (select at least one)</label>
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
                 <input
                   type="checkbox"
@@ -322,6 +322,10 @@ export default function PackagesManager() {
                 />
                 <span>💪 Strength / PT</span>
               </label>
+            </div>
+            
+            <label className="block text-xs text-gray-400 mb-2">How is it delivered? (select at least one)</label>
+            <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
                 <input
                   type="checkbox"
@@ -341,7 +345,6 @@ export default function PackagesManager() {
                 <span>📍 In-person sessions</span>
               </label>
             </div>
-            <p className="text-[10px] text-gray-500 mt-1">These control which questions applicants see when they select this package</p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
