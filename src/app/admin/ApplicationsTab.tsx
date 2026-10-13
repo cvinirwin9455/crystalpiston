@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import PackagesManager from "./PackagesManager";
+import StripeConnectCard from "./StripeConnectCard";
 
 // Coach-facing "Applications" inbox + public application-page settings.
 // Shows prospects who applied through the coach's /join/<slug> link, lets the
@@ -311,6 +312,9 @@ export default function ApplicationsTab() {
           </div>
         )}
       </div>
+
+      {/* ---- Get paid: connect Stripe ---- */}
+      <StripeConnectCard />
 
       {/* ---- Packages (offerings the coach charges for) ---- */}
       <PackagesManager />
