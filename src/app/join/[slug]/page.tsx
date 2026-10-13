@@ -15,6 +15,10 @@ type PackageData = {
   priceCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
+  includesRunning: boolean
+  includesStrength: boolean
+  includesInPerson: boolean
+  includesProgramming: boolean
 }
 
 type PageData = {
@@ -84,14 +88,37 @@ async function fetchPage(slug: string): Promise<PageData | null> {
     // Active packages for this coach (safe if the table doesn't exist yet).
     let packages: PackageData[] = []
     if (showPackages) {
-      try {
-        const { data: pkgRows } = await supabase
+      // Try with the new includes_* columns first; fall back if they don't exist yet.
+      const { data: pkgRows, error: pkgError } = await supabase
+        .from('coach_packages')
+        .select('id, name, description, price_cents, currency, billing_interval, includes_running, includes_strength, includes_in_person, includes_programming, is_active, sort_order')
+        .eq('coach_id', page.coach_id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+
+      if (pkgError) {
+        // Columns likely don't exist yet — query without them and default sensibly.
+        const { data: fallbackRows } = await supabase
           .from('coach_packages')
           .select('id, name, description, price_cents, currency, billing_interval, is_active, sort_order')
           .eq('coach_id', page.coach_id)
           .eq('is_active', true)
           .order('sort_order', { ascending: true })
           .order('created_at', { ascending: true })
+        packages = (fallbackRows || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || null,
+          priceCents: p.price_cents,
+          currency: p.currency || 'usd',
+          billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+          includesRunning: true,
+          includesStrength: false,
+          includesInPerson: false,
+          includesProgramming: true,
+        }))
+      } else {
         packages = (pkgRows || []).map((p: any) => ({
           id: p.id,
           name: p.name,
@@ -99,8 +126,12 @@ async function fetchPage(slug: string): Promise<PageData | null> {
           priceCents: p.price_cents,
           currency: p.currency || 'usd',
           billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+          includesRunning: p.includes_running ?? true,
+          includesStrength: p.includes_strength ?? false,
+          includesInPerson: p.includes_in_person ?? false,
+          includesProgramming: p.includes_programming ?? true,
         }))
-      } catch { /* table not present yet — no packages */ }
+      }
     }
 
     return {
