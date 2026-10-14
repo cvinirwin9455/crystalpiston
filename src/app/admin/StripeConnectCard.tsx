@@ -56,14 +56,17 @@ export default function StripeConnectCard() {
 
   useEffect(() => {
     load();
-    // If we just came back from Stripe onboarding, show a note and refresh.
+    // If we just came back from the Stripe connect flow, show a note and refresh.
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const stripeParam = params.get("stripe");
+      const stripeMsg = params.get("stripe_msg");
       if (stripeParam === "return") {
-        setMsg({ text: "Welcome back! We're checking your Stripe status…", type: "success" });
+        setMsg({ text: "Welcome back! We're checking your Stripe connection…", type: "success" });
       } else if (stripeParam === "refresh") {
-        setMsg({ text: "Your onboarding link expired — click Connect to continue.", type: "error" });
+        setMsg({ text: "That connection link expired — click Connect to try again.", type: "error" });
+      } else if (stripeParam === "error") {
+        setMsg({ text: stripeMsg || "The Stripe connection didn't complete. Please try again.", type: "error" });
       }
     }
   }, [load]);

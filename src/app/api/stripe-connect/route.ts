@@ -1,23 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { resolveCoachRequestScope } from '@/lib/coach-scope'
-import { getStripe, isStripeConfigured } from '@/lib/stripe'
+import { getStripe, isStripeConfigured, getConnectClientId } from '@/lib/stripe'
 
-// Stripe Connect onboarding for a coach — STANDARD connected accounts.
+// Stripe Connect for a coach — STANDARD accounts via the OAuth connect flow.
 //   GET  /api/stripe-connect   -> current connection status (refreshed from Stripe)
-//   POST /api/stripe-connect   -> create/reuse the coach's Standard account and
-//                                 return a hosted onboarding link to redirect to
+//   POST /api/stripe-connect   -> build a Stripe OAuth authorize URL to redirect
+//                                 the coach to (connect existing / create new)
 //
-// We use STANDARD accounts on purpose: each coach gets a FULL, independent
-// Stripe account that THEY own and control (their own dashboard, their own
-// support, their own disputes/refunds). The coach is the merchant of record and
-// is solely responsible for everything financial. First Mile's platform account
-// only facilitates the connection — it never holds the coach's money, never
-// takes a fee, and bears no financial liability for the coach's charges.
+// We use STANDARD accounts connected via OAuth on purpose:
+//   * A coach who ALREADY has a Stripe account signs in and authorizes First
+//     Mile — their existing account becomes the connected account.
+//   * A coach WITHOUT a Stripe account can create one in the same flow.
+// Either way the coach owns a FULL, independent Stripe account (their own
+// dashboard, support, refunds, disputes). The coach is the merchant of record
+// and is SOLELY responsible for everything financial. First Mile's platform
+// account only facilitates the connection — it never holds the coach's money,
+// takes no fee, and bears no financial liability.
 //
-// Standard uses direct charges with the coach as merchant of record, so the v1
-// readiness fields (charges_enabled / details_submitted / payouts_enabled) are
-// the correct signals here.
+// The OAuth code exchange happens in ./callback. Here we only start the flow
+// and report status.
 //
 // Super-admin "view as coach" is honored via ?org=&coach= (GET) or org/coach in
 // the body (POST), resolved through resolveCoachRequestScope.
@@ -31,10 +33,9 @@ async function createAdminClient() {
   )
 }
 
-// Absolute base URL for Stripe return/refresh links.
+// Absolute base URL for the OAuth redirect_uri.
 // Prefer the origin of the actual request so a PREVIEW deployment returns the
-// coach to the preview (not production) — important for testing. Fall back to
-// NEXT_PUBLIC_SITE_URL / the production URL helper if the origin is missing.
+// coach to the preview (not production). Fall back to the production URL helper.
 async function siteUrl(request: Request): Promise<string> {
   try {
     const origin = new URL(request.url).origin
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
   const accountId: string | null = coach?.stripe_account_id || null
 
   // Not configured on the server yet — report so the UI can explain.
-  if (!isStripeConfigured()) {
+  if (!isStripeConfigured() || !getConnectClientId()) {
     return NextResponse.json({
       configured: false,
       connected: !!accountId,
@@ -90,7 +91,6 @@ export async function GET(request: Request) {
       const detailsSubmitted = !!acct.details_submitted
       const payoutsEnabled = !!acct.payouts_enabled
 
-      // Persist any change so other reads (and later the webhook) stay in sync.
       if (
         chargesEnabled !== !!coach?.stripe_charges_enabled ||
         detailsSubmitted !== !!coach?.stripe_details_submitted ||
@@ -114,7 +114,6 @@ export async function GET(request: Request) {
         payoutsEnabled,
       })
     } catch (err: any) {
-      // Account may have been deleted on Stripe's side, or key mismatch.
       console.error('Stripe account retrieve failed:', err?.message)
       return NextResponse.json({
         configured: true,
@@ -136,7 +135,7 @@ export async function GET(request: Request) {
   })
 }
 
-// --- POST: create/reuse the Standard account and return an onboarding link ---
+// --- POST: start the OAuth connect flow — return an authorize URL ---
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -145,6 +144,13 @@ export async function POST(request: Request) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
       { error: 'Stripe is not configured on the server yet. Add STRIPE_SECRET_KEY in Vercel.' },
+      { status: 503 }
+    )
+  }
+  const clientId = getConnectClientId()
+  if (!clientId) {
+    return NextResponse.json(
+      { error: 'Stripe Connect is not configured yet. Add STRIPE_CONNECT_CLIENT_ID in Vercel.' },
       { status: 503 }
     )
   }
@@ -161,74 +167,35 @@ export async function POST(request: Request) {
 
   const { data: coach } = await admin
     .from('users')
-    .select('id, email, name, stripe_account_id')
+    .select('id, email, name')
     .eq('id', coachId)
     .maybeSingle()
 
   if (!coach) return NextResponse.json({ error: 'Coach not found' }, { status: 404 })
 
+  // Generate a random state token for CSRF protection and to identify which
+  // coach is connecting when Stripe redirects back to the callback.
+  const state = `${coachId}.${crypto.randomUUID()}`
+  await admin.from('users').update({ stripe_oauth_state: state }).eq('id', coachId)
+
   const stripe = getStripe()
-  let accountId: string | null = coach.stripe_account_id || null
+  const base = await siteUrl(request)
 
-  try {
-    // Create a STANDARD connected account on first connect. The coach owns this
-    // account fully: their own Stripe login/dashboard, their own support, and
-    // sole responsibility for charges, refunds, disputes and liability. First
-    // Mile's platform account never holds their funds or takes a fee.
-    //
-    // During Stripe's hosted flow a coach who already has a Stripe account can
-    // sign in and use it; a coach without one creates it right there.
-    if (!accountId) {
-      // Use controller properties (Stripe's recommended way) to create a
-      // Standard-equivalent account rather than the legacy `type: 'standard'`:
-      //   stripe_dashboard.type 'full'  -> coach gets the FULL Stripe dashboard
-      //                                    and fully owns/controls the account
-      //   fees.payer 'account'          -> the COACH's account pays Stripe fees
-      //   losses.payments 'stripe'      -> STRIPE absorbs payment losses, not us
-      //   requirement_collection 'stripe' -> Stripe (not First Mile) collects
-      //                                       and manages onboarding requirements
-      // Net effect: the coach is the merchant of record and solely responsible
-      // for charges, refunds, disputes and liability. First Mile bears none.
-      const account = await stripe.accounts.create({
-        email: coach.email || undefined,
-        controller: {
-          stripe_dashboard: { type: 'full' },
-          fees: { payer: 'account' },
-          losses: { payments: 'stripe' },
-          requirement_collection: 'stripe',
-        },
-        metadata: {
-          coach_id: coachId,
-          platform: 'first-mile-coach',
-        },
-      })
-      accountId = account.id
+  // Build the Stripe OAuth authorize URL. scope=read_write grants the platform
+  // the ability to create charges on the connected (Standard) account.
+  // stripe_user prefills the coach's details to speed up sign-up/sign-in.
+  const url = stripe.oauth.authorizeUrl({
+    client_id: clientId,
+    response_type: 'code',
+    scope: 'read_write',
+    redirect_uri: `${base}/api/stripe-connect/callback`,
+    state,
+    stripe_user: {
+      email: coach.email || undefined,
+      // business name hint; coach can change it in the flow
+      business_name: coach.name || undefined,
+    },
+  } as any)
 
-      await admin
-        .from('users')
-        .update({
-          stripe_account_id: accountId,
-          stripe_connected_at: new Date().toISOString(),
-        })
-        .eq('id', coachId)
-    }
-
-    // Build the hosted onboarding link. return_url / refresh_url must be
-    // absolute and land the coach back on the Applications view.
-    const base = await siteUrl(request)
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      type: 'account_onboarding',
-      return_url: `${base}/admin?view=applications&stripe=return`,
-      refresh_url: `${base}/admin?view=applications&stripe=refresh`,
-    })
-
-    return NextResponse.json({ url: accountLink.url })
-  } catch (err: any) {
-    console.error('Stripe Connect onboarding failed:', err?.message)
-    return NextResponse.json(
-      { error: err?.message || 'Could not start Stripe onboarding.' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({ url })
 }
