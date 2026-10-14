@@ -45,6 +45,18 @@ async function siteUrl(request: Request): Promise<string> {
   return getProductionUrl(request.url)
 }
 
+// Base URL used for the OAuth redirect_uri. This MUST exactly match one of the
+// redirect URIs registered in the Stripe Connect settings, so we prefer an
+// explicit, STABLE value (STRIPE_CONNECT_REDIRECT_BASE) over the per-deployment
+// request origin. Per-deployment preview URLs (random hash) are never
+// registered in Stripe, so relying on the request origin breaks OAuth there.
+// Falls back to the request origin only if the env var isn't set.
+async function oauthRedirectBase(request: Request): Promise<string> {
+  const explicit = process.env.STRIPE_CONNECT_REDIRECT_BASE || process.env.NEXT_PUBLIC_SITE_URL
+  if (explicit) return explicit.replace(/\/$/, '')
+  return siteUrl(request)
+}
+
 // --- GET: current connection status for the resolved coach ---
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -191,7 +203,9 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripe()
-    const base = await siteUrl(request)
+    // Use the STABLE redirect base so the redirect_uri matches what's registered
+    // in Stripe, even when testing on a per-deployment preview URL.
+    const base = await oauthRedirectBase(request)
 
     // Build the Stripe OAuth authorize URL. scope=read_write grants the platform
     // the ability to create charges on the connected (Standard) account.
