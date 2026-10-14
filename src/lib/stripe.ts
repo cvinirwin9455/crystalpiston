@@ -30,12 +30,11 @@ export function getStripe(): Stripe {
     // Intentionally do NOT pin apiVersion — let the installed SDK use its own
     // default so the request shapes we send always match the types the SDK was
     // built against.
+    // Note: do NOT pass `clientId` here — it is not a valid Stripe config key
+    // in current SDK versions and causes a "Config object may only contain..."
+    // error. We pass client_id explicitly on the OAuth authorizeUrl call instead.
     _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
       appInfo: { name: 'First Mile Coach', url: 'https://www.firstmilecoach.com' },
-      // Platform Connect client id, used by the OAuth connect/deauthorize flow.
-      ...(process.env.STRIPE_CONNECT_CLIENT_ID
-        ? { clientId: process.env.STRIPE_CONNECT_CLIENT_ID }
-        : {}),
     })
   }
   return _stripe
