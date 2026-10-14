@@ -1,10 +1,12 @@
 -- ============================================================
 -- Stripe Connect (Stripe Payments — Step B)
 -- ============================================================
--- Each coach connects their OWN Stripe account via Stripe Connect (Express).
--- Payments go directly to the coach's connected account (no First Mile
--- platform fee). We store the connected account id + onboarding status on the
--- coach's `users` row (a coach IS an auth identity — see coach_packages notes).
+-- Each coach connects their OWN full Stripe account via Stripe Connect
+-- (Standard — the coach owns the account, dashboard, support, refunds and
+-- disputes; First Mile takes no fee and bears no financial liability).
+-- Payments go directly to the coach's connected account. We store the
+-- connected account id + onboarding status on the coach's `users` row (a coach
+-- IS an auth identity — see coach_packages notes).
 --
 --   stripe_account_id         : the connected Express account id (acct_...)
 --   stripe_charges_enabled    : Stripe says this account can accept charges

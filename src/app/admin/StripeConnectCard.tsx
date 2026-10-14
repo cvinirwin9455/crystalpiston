@@ -101,7 +101,7 @@ export default function StripeConnectCard() {
         <div className="min-w-0">
           <h3 className="text-white font-heading uppercase tracking-wider text-sm">Get Paid — Stripe</h3>
           <p className="text-gray-400 text-xs mt-1">
-            Connect your Stripe account so clients can pay you directly for your packages. First Mile takes <span className="text-gray-300 font-medium">no fee</span> — the full amount goes to you.
+            Connect your own Stripe account so clients can pay you directly for your packages. You get your own full Stripe account and dashboard — payments, payouts, refunds and receipts are all yours. First Mile takes <span className="text-gray-300 font-medium">no fee</span>.
           </p>
         </div>
         {/* Status pill */}
@@ -163,7 +163,7 @@ export default function StripeConnectCard() {
         ) : (
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-gray-300 text-sm">
-              Connect Stripe to start charging clients for your packages.
+              Connect Stripe to start charging clients. You&apos;ll sign in to your own Stripe account (or create one in a couple of minutes if you don&apos;t have one).
             </p>
             <button
               onClick={startOnboarding}
