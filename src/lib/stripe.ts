@@ -20,9 +20,11 @@ export function getStripe(): Stripe {
     throw new Error('STRIPE_SECRET_KEY is not configured')
   }
   if (!_stripe) {
+    // Intentionally do NOT pin apiVersion — let the installed SDK use its own
+    // default so the request shapes we send (Accounts v2) always match the
+    // types the SDK was built against. Pinning an older version here can cause
+    // v2 request shapes to be rejected.
     _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      // Pin an API version for predictable behaviour across SDK upgrades.
-      apiVersion: '2025-09-30.clover',
       appInfo: { name: 'First Mile Coach', url: 'https://www.firstmilecoach.com' },
     })
   }

@@ -3,14 +3,22 @@ import { NextResponse } from 'next/server'
 import { resolveCoachRequestScope } from '@/lib/coach-scope'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
 
-// Stripe Connect (Express) onboarding for a coach.
+// Stripe Connect onboarding for a coach (Accounts v2 API).
 //   GET  /api/stripe-connect   -> current connection status (refreshed from Stripe)
-//   POST /api/stripe-connect   -> create/reuse the coach's Express account and
+//   POST /api/stripe-connect   -> create/reuse the coach's connected account and
 //                                 return a hosted onboarding link to redirect to
 //
-// Per-coach: money goes directly to the coach's connected account, no platform
-// fee. Super-admin "view as coach" is honored via ?org=&coach= (GET) or
-// org/coach in the body (POST), resolved through resolveCoachRequestScope.
+// First Mile is a SaaS platform: each coach runs their own coaching business,
+// owns their clients, and is the merchant of record (direct charges). Money
+// goes directly to the coach's connected account — no platform fee.
+//
+// We use the v2 "merchant" configuration with the full Stripe Dashboard,
+// Stripe as fees + losses collector (recommended SaaS defaults). Readiness is
+// read from configuration.merchant.capabilities.card_payments.status === 'active'
+// (NOT the deprecated v1 charges_enabled field).
+//
+// Super-admin "view as coach" is honored via ?org=&coach= (GET) or org/coach in
+// the body (POST), resolved through resolveCoachRequestScope.
 
 async function createAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -32,6 +40,44 @@ async function siteUrl(request: Request): Promise<string> {
   } catch { /* fall through */ }
   const { getProductionUrl } = await import('@/lib/email')
   return getProductionUrl(request.url)
+}
+
+// Pull the three readiness signals out of a v2 Account object. We map them onto
+// the same column names we already store (charges/payouts/details) so the rest
+// of the app and the DB schema stay stable.
+function readV2Status(acct: any): {
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  detailsSubmitted: boolean
+} {
+  const merchant = acct?.configuration?.merchant
+  const cardStatus = merchant?.capabilities?.card_payments?.status
+  const chargesEnabled = cardStatus === 'active'
+
+  // v2 payouts/transfers live under the recipient configuration (if requested)
+  // or are implied by an active merchant for direct-charge SaaS. We treat an
+  // active merchant as "payouts enabled" for display purposes.
+  const payoutsEnabled = chargesEnabled
+
+  // "details submitted" ~ the account has no outstanding onboarding
+  // requirements that are currently due.
+  const dueNow = acct?.requirements?.entries?.filter?.(
+    (e: any) => e?.minimum_deadline?.status === 'currently_due' || e?.minimum_deadline?.status === 'past_due'
+  )
+  const detailsSubmitted = Array.isArray(dueNow) ? dueNow.length === 0 : chargesEnabled
+
+  return { chargesEnabled, payoutsEnabled, detailsSubmitted }
+}
+
+// Retrieve a v2 account including the fields we need to judge readiness.
+async function retrieveV2Account(stripe: any, accountId: string) {
+  return stripe.v2.core.accounts.retrieve(accountId, {
+    include: [
+      'configuration.merchant',
+      'requirements',
+      'identity',
+    ],
+  })
 }
 
 // --- GET: current connection status for the resolved coach ---
@@ -75,10 +121,8 @@ export async function GET(request: Request) {
   if (accountId) {
     try {
       const stripe = getStripe()
-      const acct = await stripe.accounts.retrieve(accountId)
-      const chargesEnabled = !!acct.charges_enabled
-      const detailsSubmitted = !!acct.details_submitted
-      const payoutsEnabled = !!acct.payouts_enabled
+      const acct = await retrieveV2Account(stripe, accountId)
+      const { chargesEnabled, detailsSubmitted, payoutsEnabled } = readV2Status(acct)
 
       // Persist any change so other reads (and later the webhook) stay in sync.
       if (
@@ -126,7 +170,7 @@ export async function GET(request: Request) {
   })
 }
 
-// --- POST: create/reuse the Express account and return an onboarding link ---
+// --- POST: create/reuse the connected account and return an onboarding link ---
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -161,17 +205,31 @@ export async function POST(request: Request) {
   let accountId: string | null = coach.stripe_account_id || null
 
   try {
-    // Create the Express account on first connect.
+    // Create the connected account on first connect (Accounts v2 API).
+    // SaaS / direct-charge defaults: full dashboard, Stripe collects fees and
+    // owns losses, merchant configuration requesting card_payments.
     if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: 'express',
-        email: coach.email || undefined,
-        business_profile: {
-          name: coach.name || undefined,
+      const account = await stripe.v2.core.accounts.create({
+        contact_email: coach.email || undefined,
+        display_name: coach.name || undefined,
+        dashboard: 'full',
+        identity: {
+          // Coach's business country. Default to GB (First Mile's home market);
+          // Stripe collects/corrects this during onboarding.
+          country: 'gb',
         },
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
+        defaults: {
+          responsibilities: {
+            fees_collector: 'stripe',
+            losses_collector: 'stripe',
+          },
+        },
+        configuration: {
+          merchant: {
+            capabilities: {
+              card_payments: { requested: true },
+            },
+          },
         },
         metadata: {
           coach_id: coachId,
@@ -189,14 +247,19 @@ export async function POST(request: Request) {
         .eq('id', coachId)
     }
 
-    // Build the hosted onboarding link. return_url / refresh_url must be
-    // absolute and land the coach back on the Applications view.
+    // Build the hosted onboarding link (Accounts v2 Account Links).
+    // return_url / refresh_url must be absolute and land the coach back on the
+    // Applications view.
     const base = await siteUrl(request)
-    const accountLink = await stripe.accountLinks.create({
+    const accountLink = await stripe.v2.core.accountLinks.create({
       account: accountId,
-      type: 'account_onboarding',
-      return_url: `${base}/admin?view=applications&stripe=return`,
-      refresh_url: `${base}/admin?view=applications&stripe=refresh`,
+      use_case: {
+        type: 'account_onboarding',
+        account_onboarding: {
+          return_url: `${base}/admin?view=applications&stripe=return`,
+          refresh_url: `${base}/admin?view=applications&stripe=refresh`,
+        },
+      },
     })
 
     return NextResponse.json({ url: accountLink.url })
