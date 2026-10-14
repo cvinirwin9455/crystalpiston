@@ -151,6 +151,40 @@ export default function ApplicationsTab() {
     }
   }
 
+  async function requestPayment(a: Application) {
+    const hasPkg = !!a.selected_package_id;
+    const msgConfirm = hasPkg
+      ? `Send ${a.full_name} a payment request for "${a.selected_package_name}"? They'll get an email with a secure Stripe link, and their account is created once they pay.`
+      : `This applicant didn't select a package. Accept them and set up a package first, or send a request from their application once a package is chosen.`;
+    if (!hasPkg) {
+      setMsg({ text: "This applicant didn't select a package, so there's nothing to charge yet.", type: "error" });
+      return;
+    }
+    if (!confirm(msgConfirm)) return;
+    setActingId(a.id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: a.id, package_id: a.selected_package_id, ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({ text: data.error || "Could not create payment request.", type: "error" });
+      } else {
+        setMsg({
+          text: `Payment request sent to ${a.email}. They'll receive an email to pay. Link: ${data.payUrl}`,
+          type: "success",
+        });
+      }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
   async function act(id: string, action: "accept" | "decline") {
     if (action === "decline" && !confirm("Decline this application? The applicant will not be notified and no account is created.")) return;
     setActingId(id);
@@ -366,8 +400,13 @@ export default function ApplicationsTab() {
                     </button>
                     {a.status === "pending" && (
                       <>
-                        <button onClick={() => act(a.id, "accept")} disabled={actingId === a.id} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
-                          {actingId === a.id ? "…" : "Accept"}
+                        {a.selected_package_id && (
+                          <button onClick={() => requestPayment(a)} disabled={actingId === a.id} title="Email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                            {actingId === a.id ? "…" : "Request payment"}
+                          </button>
+                        )}
+                        <button onClick={() => act(a.id, "accept")} disabled={actingId === a.id} title="Create the client's account now without taking payment." className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                          {actingId === a.id ? "…" : "Accept (no payment)"}
                         </button>
                         <button onClick={() => act(a.id, "decline")} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
                           Decline
