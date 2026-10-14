@@ -82,14 +82,34 @@ export default function StripeConnectCard() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
-        setMsg({ text: data.error || "Could not start Stripe onboarding.", type: "error" });
+        setMsg({ text: data.error || "Could not start the Stripe connection.", type: "error" });
         setStarting(false);
         return;
       }
-      // Redirect the coach to Stripe's hosted onboarding.
+      // Redirect the coach to Stripe's OAuth connect flow.
       window.location.href = data.url;
     } catch {
-      setMsg({ text: "Network error starting Stripe onboarding.", type: "error" });
+      setMsg({ text: "Network error starting the Stripe connection.", type: "error" });
+      setStarting(false);
+    }
+  }
+
+  async function disconnect() {
+    if (!confirm("Disconnect your Stripe account from First Mile? This only removes the link here — it does NOT delete your Stripe account. You can reconnect anytime.")) return;
+    setStarting(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/stripe-connect${scopeQuery()}`, { method: "DELETE" });
+      if (res.ok) {
+        setMsg({ text: "Disconnected. You can connect again below.", type: "success" });
+        await load();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMsg({ text: data.error || "Could not disconnect.", type: "error" });
+      }
+    } catch {
+      setMsg({ text: "Network error.", type: "error" });
+    } finally {
       setStarting(false);
     }
   }
@@ -143,25 +163,34 @@ export default function StripeConnectCard() {
               You&apos;re all set — your Stripe account is connected and can accept payments.
             </p>
             <button
-              onClick={startOnboarding}
+              onClick={disconnect}
               disabled={starting}
-              className="text-xs text-gray-300 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5 disabled:opacity-50"
+              className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-3 py-1.5 disabled:opacity-50"
             >
-              {starting ? "Opening…" : "Update Stripe details"}
+              Disconnect
             </button>
           </div>
         ) : connectedButIncomplete ? (
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-yellow-300 text-sm">
-              Almost there — finish your Stripe onboarding to start accepting payments.
+              Almost there — finish connecting your Stripe account to start accepting payments.
             </p>
-            <button
-              onClick={startOnboarding}
-              disabled={starting}
-              className="text-xs bg-accent hover:bg-orange-700 text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              {starting ? "Opening…" : "Finish setup"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={disconnect}
+                disabled={starting}
+                className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-3 py-2 disabled:opacity-50"
+              >
+                Start over
+              </button>
+              <button
+                onClick={startOnboarding}
+                disabled={starting}
+                className="text-xs bg-accent hover:bg-orange-700 text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
+              >
+                {starting ? "Opening…" : "Finish connecting"}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3 flex-wrap">

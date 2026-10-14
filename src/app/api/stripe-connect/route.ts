@@ -173,29 +173,82 @@ export async function POST(request: Request) {
 
   if (!coach) return NextResponse.json({ error: 'Coach not found' }, { status: 404 })
 
-  // Generate a random state token for CSRF protection and to identify which
-  // coach is connecting when Stripe redirects back to the callback.
-  const state = `${coachId}.${crypto.randomUUID()}`
-  await admin.from('users').update({ stripe_oauth_state: state }).eq('id', coachId)
+  try {
+    // Generate a random state token for CSRF protection and to identify which
+    // coach is connecting when Stripe redirects back to the callback.
+    const nonce = (globalThis.crypto?.randomUUID?.() as string) || `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const state = `${coachId}.${nonce}`
+    const { error: stateErr } = await admin
+      .from('users')
+      .update({ stripe_oauth_state: state })
+      .eq('id', coachId)
+    if (stateErr) {
+      // Most likely the stripe_oauth_state column doesn't exist yet.
+      return NextResponse.json(
+        { error: `Could not save connect state: ${stateErr.message}. Has the stripe_oauth_state migration been run?` },
+        { status: 500 }
+      )
+    }
 
-  const stripe = getStripe()
-  const base = await siteUrl(request)
+    const stripe = getStripe()
+    const base = await siteUrl(request)
 
-  // Build the Stripe OAuth authorize URL. scope=read_write grants the platform
-  // the ability to create charges on the connected (Standard) account.
-  // stripe_user prefills the coach's details to speed up sign-up/sign-in.
-  const url = stripe.oauth.authorizeUrl({
-    client_id: clientId,
-    response_type: 'code',
-    scope: 'read_write',
-    redirect_uri: `${base}/api/stripe-connect/callback`,
-    state,
-    stripe_user: {
-      email: coach.email || undefined,
-      // business name hint; coach can change it in the flow
-      business_name: coach.name || undefined,
-    },
-  } as any)
+    // Build the Stripe OAuth authorize URL. scope=read_write grants the platform
+    // the ability to create charges on the connected (Standard) account.
+    // stripe_user prefills the coach's details to speed up sign-up/sign-in.
+    const url = stripe.oauth.authorizeUrl({
+      client_id: clientId,
+      response_type: 'code',
+      scope: 'read_write',
+      redirect_uri: `${base}/api/stripe-connect/callback`,
+      state,
+      stripe_user: {
+        email: coach.email || undefined,
+        business_name: coach.name || undefined,
+      },
+    } as any)
 
-  return NextResponse.json({ url })
+    return NextResponse.json({ url })
+  } catch (err: any) {
+    console.error('Stripe Connect start failed:', err?.message, err)
+    return NextResponse.json(
+      { error: err?.message || 'Could not start the Stripe connection.' },
+      { status: 500 }
+    )
+  }
+}
+
+// --- DELETE: disconnect / clear the coach's stored Stripe account ---
+// Clears the stale/half-connected account so the coach can start the OAuth
+// connect flow cleanly. Does NOT delete the coach's actual Stripe account
+// (that belongs to them) — it only removes the link stored in First Mile.
+export async function DELETE(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(request.url)
+  const orgOverride = searchParams.get('org')
+  const coachOverride = searchParams.get('coach')
+
+  const admin = await createAdminClient()
+  const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+  }
+  const { coachId } = scopeResult.scope
+
+  const { error } = await admin
+    .from('users')
+    .update({
+      stripe_account_id: null,
+      stripe_charges_enabled: false,
+      stripe_details_submitted: false,
+      stripe_payouts_enabled: false,
+      stripe_oauth_state: null,
+    })
+    .eq('id', coachId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
 }
