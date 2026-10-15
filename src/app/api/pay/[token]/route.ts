@@ -106,7 +106,9 @@ export async function POST(
     const session = await stripe.checkout.sessions.create(
       {
         mode: 'payment',
-        payment_method_types: ['card'],
+        // NOTE: do NOT set payment_method_types — Stripe now auto-manages the
+        // available payment methods from the connected account's Dashboard
+        // settings. Passing it is rejected by current API versions.
         customer_email: pr.client_email || undefined,
         line_items: [
           {
