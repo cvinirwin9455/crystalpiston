@@ -102,8 +102,12 @@ type DraftForm = {
   billing_mode: "programming_only" | "per_session" | "hybrid";
   duration_weeks: string;
   session_count: string;
-  session_cost: string;
+  // Coach enters COST PER SESSION; we store the computed total (count × per)
+  // as session_cost in the payload (Option A — no schema change).
+  session_cost_per: string;
   programming_cost: string;
+  // Whether the coach has manually overridden the auto-filled description.
+  description_touched: boolean;
 };
 
 const EMPTY_FORM: DraftForm = {
@@ -122,9 +126,56 @@ const EMPTY_FORM: DraftForm = {
   billing_mode: "programming_only",
   duration_weeks: "",
   session_count: "",
-  session_cost: "",
+  session_cost_per: "",
   programming_cost: "",
+  description_touched: false,
 };
+
+// --- Auto-calculation helpers (Option A: top price = sum of the parts) ---
+
+function num(v: string): number {
+  const n = parseFloat(String(v ?? "").replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Total value of the in-person component = # sessions × cost per session.
+function sessionsTotal(f: DraftForm): number {
+  if (f.billing_mode !== "per_session" && f.billing_mode !== "hybrid") return 0;
+  return num(f.session_count) * num(f.session_cost_per);
+}
+
+// Programming component of the package.
+function programmingTotal(f: DraftForm): number {
+  if (f.billing_mode === "per_session") return 0;
+  return num(f.programming_cost);
+}
+
+// Top price = programming + in-person total (the whole-package total).
+function packageTotal(f: DraftForm): number {
+  return programmingTotal(f) + sessionsTotal(f);
+}
+
+// Format a number as a plain price string for the read-only Price field.
+function fmtMoney(n: number): string {
+  return n.toLocaleString(undefined, { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+}
+
+// Build the auto description from the current selections, e.g.:
+//   "12-week program • 10 in-person sessions ($30/session)"
+function autoDescription(f: DraftForm): string {
+  const parts: string[] = [];
+  const weeks = num(f.duration_weeks);
+  if (f.billing_mode !== "per_session" && weeks > 0) {
+    parts.push(`${weeks}-week program`);
+  }
+  const count = num(f.session_count);
+  const per = num(f.session_cost_per);
+  if ((f.billing_mode === "per_session" || f.billing_mode === "hybrid") && count > 0) {
+    const perStr = per > 0 ? ` ($${fmtMoney(per)}/session)` : "";
+    parts.push(`${count} in-person session${count === 1 ? "" : "s"}${perStr}`);
+  }
+  return parts.join(" • ");
+}
 
 // Suggest a billing mode from the "what's included" checkboxes:
 //   in-person only           -> per_session
@@ -171,6 +222,28 @@ export default function PackagesManager() {
 
   useEffect(() => { load(); loadProgramTemplates(); }, [load, loadProgramTemplates]);
 
+  // Keep the top Price (read-only) and the auto description in sync with the
+  // plan-detail selections. Price is always the computed total; the
+  // description auto-fills unless the coach has edited it themselves.
+  useEffect(() => {
+    if (!showForm) return;
+    setForm((f) => {
+      const computedPrice = fmtMoney(packageTotal(f));
+      const auto = autoDescription(f);
+      const nextDescription = f.description_touched ? f.description : auto;
+      if (f.price === computedPrice && f.description === nextDescription) return f;
+      return { ...f, price: computedPrice, description: nextDescription };
+    });
+  }, [
+    showForm,
+    form.billing_mode,
+    form.duration_weeks,
+    form.session_count,
+    form.session_cost_per,
+    form.programming_cost,
+    form.description_touched,
+  ]);
+
   function startAdd() {
     setForm(EMPTY_FORM);
     setShowForm(true);
@@ -195,8 +268,14 @@ export default function PackagesManager() {
       billing_mode: p.billing_mode || "programming_only",
       duration_weeks: p.duration_weeks != null ? String(p.duration_weeks) : "",
       session_count: p.session_count != null ? String(p.session_count) : "",
-      session_cost: p.session_cost != null ? String(p.session_cost) : "",
+      // Stored session_cost is the TOTAL; derive cost-per-session for the form.
+      session_cost_per:
+        p.session_cost != null && p.session_count && p.session_count > 0
+          ? String(Math.round((Number(p.session_cost) / p.session_count) * 100) / 100)
+          : "",
       programming_cost: p.programming_cost != null ? String(p.programming_cost) : "",
+      // Existing packages keep their saved description — don't auto-overwrite it.
+      description_touched: !!(p.description && p.description.trim()),
     };
     console.log("Setting form to:", newForm);
     setForm(newForm);
@@ -248,17 +327,26 @@ export default function PackagesManager() {
       setMsg({ text: "Give the package a name.", type: "error" });
       return;
     }
-    if (!form.price.trim() || isNaN(Number(form.price.replace(/[^0-9.]/g, "")))) {
-      setMsg({ text: "Enter a valid price.", type: "error" });
+    if (packageTotal(form) <= 0) {
+      setMsg({
+        text: form.billing_mode === "per_session"
+          ? "Enter the number of sessions and cost per session."
+          : "Enter a programming cost (and session details for hybrid).",
+        type: "error",
+      });
       return;
     }
     setSaving(true);
     setMsg(null);
     const capNum = form.client_cap.trim() ? parseInt(form.client_cap, 10) : null;
+    // Option A: store the COMPUTED totals (the form captures per-session + the
+    // parts; the price and session_cost sent to the API are the sums).
+    const computedTotal = packageTotal(form);
+    const computedSessionTotal = sessionsTotal(form);
     const payload: Record<string, any> = {
       name: form.name.trim(),
       description: form.description.trim() || null,
-      price: form.price,
+      price: String(computedTotal),
       billing_interval: form.billing_interval,
       includes_running: form.includes_running,
       includes_strength: form.includes_strength,
@@ -271,7 +359,8 @@ export default function PackagesManager() {
       billing_mode: form.billing_mode,
       duration_weeks: form.duration_weeks.trim() || null,
       session_count: form.session_count.trim() || null,
-      session_cost: form.session_cost.trim() || null,
+      // Stored as the TOTAL (count × per-session).
+      session_cost: computedSessionTotal > 0 ? String(computedSessionTotal) : null,
       programming_cost: form.programming_cost.trim() || null,
       ...scopeBody(),
     };
@@ -418,13 +507,32 @@ export default function PackagesManager() {
               <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength - Hybrid" />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Price</label>
-              <input value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="200" inputMode="decimal" />
+              <label className="block text-xs text-gray-400 mb-1">Total price</label>
+              <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
+                <span className="font-heading">${form.price || "0"}</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1">Sum of programming + in-person below.</p>
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 resize-y" placeholder="What's included…" />
+            <label className="block text-xs text-gray-400 mb-1">Description (auto-filled — you can edit)</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value, description_touched: true }))}
+              rows={2}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 resize-y"
+              placeholder="What's included…"
+            />
+            {form.description_touched && (
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, description_touched: false, description: autoDescription(f) }))}
+                className="text-[10px] text-cyan-300/80 hover:text-cyan-200 mt-1"
+              >
+                ↻ Reset to auto description
+              </button>
+            )}
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
@@ -481,32 +589,40 @@ export default function PackagesManager() {
               </p>
             )}
 
-            <div className="grid sm:grid-cols-3 gap-3 mt-3">
-              {form.billing_mode !== "per_session" && (
-                <>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Duration (weeks)</label>
-                    <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
+            {/* Programming component (programming_only + hybrid) */}
+            {form.billing_mode !== "per_session" && (
+              <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
+                  <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Programming cost</label>
+                  <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 200" inputMode="decimal" />
+                </div>
+              </div>
+            )}
+
+            {/* In-person component (per_session + hybrid): # sessions × cost per session */}
+            {(form.billing_mode === "per_session" || form.billing_mode === "hybrid") && (
+              <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1"># In-person sessions</label>
+                  <input value={form.session_count} onChange={(e) => setForm((f) => ({ ...f, session_count: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 10" inputMode="numeric" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Cost per session</label>
+                  <input value={form.session_cost_per} onChange={(e) => setForm((f) => ({ ...f, session_cost_per: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 30" inputMode="decimal" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">In-person total</label>
+                  <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
+                    <span className="font-heading">${fmtMoney(sessionsTotal(form))}</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Programming cost</label>
-                    <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="blank = use price" inputMode="decimal" />
-                  </div>
-                </>
-              )}
-              {(form.billing_mode === "per_session" || form.billing_mode === "hybrid") && (
-                <>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1"># Sessions</label>
-                    <input value={form.session_count} onChange={(e) => setForm((f) => ({ ...f, session_count: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 10" inputMode="numeric" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Sessions cost</label>
-                    <input value={form.session_cost} onChange={(e) => setForm((f) => ({ ...f, session_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="total for sessions" inputMode="decimal" />
-                  </div>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-300">
