@@ -58,8 +58,13 @@ export async function POST(
 
   try {
     const stripe = getStripe()
+    // NOTE: retrieve(id, params, options) — the connected-account header is the
+    // THIRD arg (options). Passing { stripeAccount } as the 2nd arg sends it as
+    // a query param and Stripe rejects it ("unknown parameter: stripeAccount"),
+    // which previously made confirm throw and fulfillment never run.
     const session = await stripe.checkout.sessions.retrieve(
       pr.stripe_checkout_session_id,
+      undefined,
       { stripeAccount: coach.stripe_account_id }
     )
 

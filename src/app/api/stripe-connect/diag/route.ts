@@ -109,6 +109,7 @@ export async function GET(request: Request) {
         const stripe = getStripe()
         const session = await stripe.checkout.sessions.retrieve(
           latestWithSession.stripe_checkout_session_id,
+          undefined,
           { stripeAccount: coachRow.stripe_account_id }
         )
         out.sessionCheck.payment_status = session.payment_status
