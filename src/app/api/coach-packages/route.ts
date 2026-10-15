@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     name, description, price, currency, billing_interval,
     includes_running, includes_strength, includes_in_person, includes_programming,
     client_cap, is_active, sort_order,
-    program_template_id, billing_mode, duration_weeks, session_count, session_cost, programming_cost,
+    program_template_id, billing_mode, duration_weeks, session_count, session_cost, programming_cost, recur_months,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -132,6 +132,8 @@ export async function POST(request: Request) {
     session_count: parsePositiveInt(session_count) ?? 0,
     session_cost: parseAmount(session_cost),
     programming_cost: parseAmount(programming_cost),
+    // Recurring duration: only for monthly packages; null = until cancelled.
+    recur_months: interval === 'monthly' ? parsePositiveInt(recur_months) : null,
   }
 
   let { data, error } = await admin
@@ -149,6 +151,7 @@ export async function POST(request: Request) {
     delete base.session_count
     delete base.session_cost
     delete base.programming_cost
+    delete base.recur_months
     const retry = await admin.from('coach_packages').insert(base).select('*').single()
     data = retry.data
     error = retry.error
@@ -168,7 +171,7 @@ export async function PATCH(request: Request) {
     id, name, description, price, currency, billing_interval,
     includes_running, includes_strength, includes_in_person, includes_programming,
     client_cap, is_active, sort_order,
-    program_template_id, billing_mode, duration_weeks, session_count, session_cost, programming_cost,
+    program_template_id, billing_mode, duration_weeks, session_count, session_cost, programming_cost, recur_months,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -220,10 +223,11 @@ export async function PATCH(request: Request) {
   if (session_count !== undefined) updates.session_count = parsePositiveInt(session_count) ?? 0
   if (session_cost !== undefined) updates.session_cost = parseAmount(session_cost)
   if (programming_cost !== undefined) updates.programming_cost = parseAmount(programming_cost)
+  if (recur_months !== undefined) updates.recur_months = parsePositiveInt(recur_months)
 
   // Scope the update to the coach so a super admin can't edit another coach's row.
   // The new plan-recipe columns may not exist yet — retry without them on failure.
-  const planRecipeKeys = ['program_template_id', 'billing_mode', 'duration_weeks', 'session_count', 'session_cost', 'programming_cost']
+  const planRecipeKeys = ['program_template_id', 'billing_mode', 'duration_weeks', 'session_count', 'session_cost', 'programming_cost', 'recur_months']
   let { data, error } = await admin
     .from('coach_packages')
     .update(updates)

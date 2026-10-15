@@ -29,9 +29,42 @@ export type CoachPackage = {
   session_count: number | null;
   session_cost: number | null;
   programming_cost: number | null;
+  recur_months: number | null;
 };
 
-type ProgramTemplateOption = { id: string; name: string };
+// A program template, enriched with what we can derive from its content:
+// total weeks (duration) and whether it contains running / strength work.
+type ProgramTemplateOption = {
+  id: string;
+  name: string;
+  totalWeeks: number | null;
+  hasRunning: boolean;
+  hasStrength: boolean;
+};
+
+// Inspect a program template's JSONB `data` to infer duration + type.
+// Templates store weeks -> days -> workouts, each workout tagged with a `type`
+// (run / walk / cross / cycling / strength / stretching / rest …).
+function deriveTemplateMeta(data: any): { totalWeeks: number | null; hasRunning: boolean; hasStrength: boolean } {
+  const totalWeeks = Number.isFinite(Number(data?.totalWeeks)) ? Number(data.totalWeeks) : null;
+  let hasRunning = false;
+  let hasStrength = false;
+  const weeks = Array.isArray(data?.weeks) ? data.weeks : [];
+  for (const wk of weeks) {
+    for (const day of wk?.days || []) {
+      for (const w of day?.workouts || []) {
+        const t = String(w?.type || "").toLowerCase();
+        const tt = String(w?.trainingType || "").toLowerCase();
+        if (t === "run" || t === "walk" || tt.includes("run")) hasRunning = true;
+        // "cross" / "cycling" / explicit strength/mobility all count as strength-side work.
+        if (t === "cross" || t === "cycling" || t === "strength" || t === "stretching" || tt.includes("strength") || tt.includes("mobility")) {
+          hasStrength = true;
+        }
+      }
+    }
+  }
+  return { totalWeeks, hasRunning, hasStrength };
+}
 
 function scopeQuery(): string {
   if (typeof window === "undefined") return "";
@@ -106,8 +139,12 @@ type DraftForm = {
   // as session_cost in the payload (Option A — no schema change).
   session_cost_per: string;
   programming_cost: string;
+  // Recurring (monthly) packages: number of months to bill. "" = until cancelled.
+  recur_months: string;
   // Whether the coach has manually overridden the auto-filled description.
   description_touched: boolean;
+  // Whether the coach has manually overridden the auto-filled name.
+  name_touched: boolean;
 };
 
 const EMPTY_FORM: DraftForm = {
@@ -128,7 +165,9 @@ const EMPTY_FORM: DraftForm = {
   session_count: "",
   session_cost_per: "",
   programming_cost: "",
+  recur_months: "",
   description_touched: false,
+  name_touched: false,
 };
 
 // --- Auto-calculation helpers (Option A: top price = sum of the parts) ---
@@ -161,8 +200,19 @@ function fmtMoney(n: number): string {
 }
 
 // Build the auto description from the current selections, e.g.:
-//   "12-week program • 10 in-person sessions ($30/session)"
+//   one-time: "12-week program • 10 in-person sessions ($30/session)"
+//   monthly:  "$125/month, recurring"  /  "$125/month for 3 months"
 function autoDescription(f: DraftForm): string {
+  // Recurring (monthly) membership: describe the billing cadence, not weeks.
+  if (f.billing_interval === "monthly") {
+    const monthly = num(f.programming_cost);
+    if (monthly <= 0) return "";
+    const months = num(f.recur_months);
+    return months > 0
+      ? `$${fmtMoney(monthly)}/month for ${months} month${months === 1 ? "" : "s"}`
+      : `$${fmtMoney(monthly)}/month, recurring until cancelled`;
+  }
+
   const parts: string[] = [];
   const weeks = num(f.duration_weeks);
   if (f.billing_mode !== "per_session" && weeks > 0) {
@@ -214,13 +264,50 @@ export default function PackagesManager() {
       const data = await res.json().catch(() => ({}));
       // The route returns an array (or {templates}); handle both shapes.
       const list = Array.isArray(data) ? data : data.templates || [];
-      setProgramTemplates(list.map((t: any) => ({ id: t.id, name: t.name })));
+      setProgramTemplates(
+        list.map((t: any) => {
+          const meta = deriveTemplateMeta(t.data);
+          return { id: t.id, name: t.name, ...meta };
+        })
+      );
     } catch {
       /* non-fatal — the picker just shows no options */
     }
   }, []);
 
   useEffect(() => { load(); loadProgramTemplates(); }, [load, loadProgramTemplates]);
+
+  // The currently selected program template (one-time packages only).
+  const selectedTemplate = programTemplates.find((t) => t.id === form.program_template_id) || null;
+  // When a template is chosen on a one-time package, duration + type are LOCKED
+  // to the template (so the package can't drift out of sync with the program).
+  const templateLocked = form.billing_interval === "one_time" && !!selectedTemplate;
+
+  // Pick / clear a program template. Selecting one auto-fills + locks duration
+  // and the running/strength type, and defaults the name (unless the coach has
+  // already typed their own).
+  function handleSelectTemplate(templateId: string) {
+    const tmpl = programTemplates.find((t) => t.id === templateId) || null;
+    setForm((f) => {
+      if (!tmpl) {
+        // Cleared — unlock fields, keep whatever values were there.
+        return { ...f, program_template_id: "" };
+      }
+      return {
+        ...f,
+        program_template_id: templateId,
+        duration_weeks: tmpl.totalWeeks != null ? String(tmpl.totalWeeks) : f.duration_weeks,
+        includes_running: tmpl.hasRunning,
+        includes_strength: tmpl.hasStrength,
+        // Template packages are programming (not in-person).
+        includes_programming: true,
+        includes_in_person: false,
+        billing_mode: "programming_only",
+        // Default the name to the template name unless the coach customised it.
+        name: f.name_touched && f.name.trim() ? f.name : tmpl.name,
+      };
+    });
+  }
 
   // Keep the top Price (read-only) and the auto description in sync with the
   // plan-detail selections. Price is always the computed total; the
@@ -236,11 +323,13 @@ export default function PackagesManager() {
     });
   }, [
     showForm,
+    form.billing_interval,
     form.billing_mode,
     form.duration_weeks,
     form.session_count,
     form.session_cost_per,
     form.programming_cost,
+    form.recur_months,
     form.description_touched,
   ]);
 
@@ -274,8 +363,10 @@ export default function PackagesManager() {
           ? String(Math.round((Number(p.session_cost) / p.session_count) * 100) / 100)
           : "",
       programming_cost: p.programming_cost != null ? String(p.programming_cost) : "",
-      // Existing packages keep their saved description — don't auto-overwrite it.
+      recur_months: p.recur_months != null ? String(p.recur_months) : "",
+      // Existing packages keep their saved description/name — don't auto-overwrite.
       description_touched: !!(p.description && p.description.trim()),
+      name_touched: !!(p.name && p.name.trim()),
     };
     console.log("Setting form to:", newForm);
     setForm(newForm);
@@ -362,6 +453,8 @@ export default function PackagesManager() {
       // Stored as the TOTAL (count × per-session).
       session_cost: computedSessionTotal > 0 ? String(computedSessionTotal) : null,
       programming_cost: form.programming_cost.trim() || null,
+      // Recurring duration: only meaningful for monthly packages; "" = forever.
+      recur_months: form.billing_interval === "monthly" ? (form.recur_months.trim() || null) : null,
       ...scopeBody(),
     };
     try {
@@ -456,21 +549,26 @@ export default function PackagesManager() {
         <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
           {/* What's included checkboxes - two groups */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2">What type of coaching? (select at least one)</label>
+            <label className="block text-xs text-gray-400 mb-2">
+              What type of coaching? (select at least one)
+              {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+            </label>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
                 <input
                   type="checkbox"
                   checked={form.includes_running}
+                  disabled={templateLocked}
                   onChange={(e) => handleIncludesChange("includes_running", e.target.checked)}
                   className="accent-accent"
                 />
                 <span>🏃 Running</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
                 <input
                   type="checkbox"
                   checked={form.includes_strength}
+                  disabled={templateLocked}
                   onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)}
                   className="accent-accent"
                 />
@@ -504,15 +602,19 @@ export default function PackagesManager() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Package name</label>
-              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength - Hybrid" />
+              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value, name_touched: true }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength - Hybrid" />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Total price</label>
+              <label className="block text-xs text-gray-400 mb-1">
+                {form.billing_interval === "monthly" ? "Price / month" : "Total price"}
+              </label>
               <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
-                <span className="font-heading">${form.price || "0"}</span>
+                <span className="font-heading">${form.price || "0"}{form.billing_interval === "monthly" ? "/mo" : ""}</span>
                 <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
               </div>
-              <p className="text-[10px] text-gray-500 mt-1">Sum of programming + in-person below.</p>
+              <p className="text-[10px] text-gray-500 mt-1">
+                {form.billing_interval === "monthly" ? "The monthly billing amount below." : "Sum of programming + in-person below."}
+              </p>
             </div>
           </div>
           <div>
@@ -537,15 +639,47 @@ export default function PackagesManager() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Billing</label>
-              <select value={form.billing_interval} onChange={(e) => setForm((f) => ({ ...f, billing_interval: e.target.value as "monthly" | "one_time" }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
+              <select
+                value={form.billing_interval}
+                onChange={(e) => {
+                  const interval = e.target.value as "monthly" | "one_time";
+                  setForm((f) =>
+                    interval === "monthly"
+                      ? {
+                          // Recurring = open-ended programming membership: no template,
+                          // no fixed weeks, no in-person. Keep the monthly cost.
+                          ...f,
+                          billing_interval: interval,
+                          program_template_id: "",
+                          billing_mode: "programming_only",
+                          duration_weeks: "",
+                          includes_in_person: false,
+                          includes_programming: true,
+                          session_count: "",
+                          session_cost_per: "",
+                        }
+                      : { ...f, billing_interval: interval, recur_months: "" }
+                  );
+                }}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+              >
                 <option value="monthly">Recurring (monthly)</option>
                 <option value="one_time">One-time charge</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Client cap (optional)</label>
-              <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
-            </div>
+            {/* Recurring duration: how many months to bill (blank = until cancelled) */}
+            {form.billing_interval === "monthly" ? (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Bill for how many months?</label>
+                <input value={form.recur_months} onChange={(e) => setForm((f) => ({ ...f, recur_months: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="blank = until cancelled" inputMode="numeric" />
+                <p className="text-[10px] text-gray-500 mt-1">Leave blank to bill every month until you (or the client) cancel.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Client cap (optional)</label>
+                <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
+              </div>
+            )}
           </div>
 
           {/* ---- Plan details: a package stamps out a client plan on acceptance ---- */}
@@ -555,21 +689,35 @@ export default function PackagesManager() {
               When a client is accepted (or pays), these create their plan on the Account page — just like a plan you set up by hand.
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Program template (optional)</label>
+            {/* Program template picker — one-time packages only. Selecting one
+                auto-fills + locks the duration and running/strength type. */}
+            {form.billing_interval === "one_time" && (
+              <div className="mb-3">
+                <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
                 <select
                   value={form.program_template_id}
-                  onChange={(e) => setForm((f) => ({ ...f, program_template_id: e.target.value }))}
+                  onChange={(e) => handleSelectTemplate(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
                 >
-                  <option value="">— None —</option>
+                  <option value="">— None (enter details manually) —</option>
                   {programTemplates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                    <option key={t.id} value={t.id}>
+                      {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
+                    </option>
                   ))}
                 </select>
+                {templateLocked && (
+                  <p className="text-[11px] text-cyan-300/80 mt-1">
+                    📋 Duration and type are set by this program. It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
+                  </p>
+                )}
               </div>
-              <div>
+            )}
+
+            {/* Billing mode — hidden/locked for recurring (always programming) and
+                for template-based packages (template is programming_only). */}
+            {form.billing_interval === "one_time" && !templateLocked && (
+              <div className="mb-3">
                 <label className="block text-xs text-gray-400 mb-1">Billing mode</label>
                 <select
                   value={form.billing_mode}
@@ -581,24 +729,30 @@ export default function PackagesManager() {
                   <option value="hybrid">Hybrid (programming + sessions)</option>
                 </select>
               </div>
-            </div>
-
-            {form.program_template_id && (
-              <p className="text-[11px] text-cyan-300/80 mt-2">
-                📋 This program will be flagged on the client&apos;s plan for you to load once they&apos;re set up.
-              </p>
             )}
 
-            {/* Programming component (programming_only + hybrid) */}
+            {/* Programming component. For recurring, there's no fixed duration —
+                just the monthly cost. For one-time, show weeks + cost. */}
             {form.billing_mode !== "per_session" && (
-              <div className="grid sm:grid-cols-2 gap-3 mt-3">
+              <div className="grid sm:grid-cols-2 gap-3 mt-1">
+                {form.billing_interval === "one_time" && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
+                    <input
+                      value={form.duration_weeks}
+                      onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))}
+                      disabled={templateLocked}
+                      className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 ${templateLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+                      placeholder="e.g. 12"
+                      inputMode="numeric"
+                    />
+                  </div>
+                )}
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
-                  <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Programming cost</label>
-                  <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 200" inputMode="decimal" />
+                  <label className="block text-xs text-gray-400 mb-1">
+                    {form.billing_interval === "monthly" ? "Monthly cost" : "Programming cost"}
+                  </label>
+                  <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder={form.billing_interval === "monthly" ? "e.g. 125" : "e.g. 200"} inputMode="decimal" />
                 </div>
               </div>
             )}
