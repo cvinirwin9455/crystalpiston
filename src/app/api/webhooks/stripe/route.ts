@@ -13,6 +13,9 @@ import { fulfillPaymentRequest } from '@/lib/fulfill-payment'
 //
 // Requires STRIPE_WEBHOOK_SECRET (the signing secret from the Stripe webhook
 // endpoint config) in Vercel.
+//
+// Connect webhook endpoint configured in the Stripe sandbox (Connected
+// accounts scope, checkout.session.completed) — redeploy to apply the secret.
 
 // We need the raw body for signature verification — disable body parsing.
 export const dynamic = 'force-dynamic'
