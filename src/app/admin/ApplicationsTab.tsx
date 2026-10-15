@@ -37,6 +37,9 @@ type Application = {
   status: "pending" | "accepted" | "declined";
   created_at: string;
   reviewed_at: string | null;
+  payment_status: "pending" | "paid" | "cancelled" | "expired" | null;
+  payment_token: string | null;
+  payment_amount_cents: number | null;
 };
 
 type Page = {
@@ -151,6 +154,17 @@ export default function ApplicationsTab() {
     }
   }
 
+  async function copyPayLink(a: Application) {
+    if (!a.payment_token) return;
+    const url = `${SITE}/pay/${a.payment_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setMsg({ text: "Payment link copied to clipboard.", type: "success" });
+    } catch {
+      setMsg({ text: `Payment link: ${url}`, type: "success" });
+    }
+  }
+
   async function requestPayment(a: Application) {
     const hasPkg = !!a.selected_package_id;
     const msgConfirm = hasPkg
@@ -174,9 +188,10 @@ export default function ApplicationsTab() {
         setMsg({ text: data.error || "Could not create payment request.", type: "error" });
       } else {
         setMsg({
-          text: `Payment request sent to ${a.email}. They'll receive an email to pay. Link: ${data.payUrl}`,
+          text: `Payment request sent to ${a.email}. They'll receive an email to pay.`,
           type: "success",
         });
+        await load(); // refresh so the "Awaiting payment" badge appears
       }
     } catch {
       setMsg({ text: "Network error", type: "error" });
@@ -400,18 +415,36 @@ export default function ApplicationsTab() {
                     </button>
                     {a.status === "pending" && (
                       <>
-                        {a.selected_package_id && (
-                          <button onClick={() => requestPayment(a)} disabled={actingId === a.id} title="Email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
-                            {actingId === a.id ? "…" : "Request payment"}
-                          </button>
+                        {a.payment_status === "pending" ? (
+                          // A payment request is out — awaiting payment.
+                          <>
+                            <span className="text-[11px] px-2 py-1 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 whitespace-nowrap">💳 Awaiting payment</span>
+                            <button onClick={() => copyPayLink(a)} className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg">
+                              Copy pay link
+                            </button>
+                            <button onClick={() => requestPayment(a)} disabled={actingId === a.id} title="Re-send the payment email." className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              {actingId === a.id ? "…" : "Resend"}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {a.selected_package_id && (
+                              <button onClick={() => requestPayment(a)} disabled={actingId === a.id} title="Email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                                {actingId === a.id ? "…" : "Request payment"}
+                              </button>
+                            )}
+                            <button onClick={() => act(a.id, "accept")} disabled={actingId === a.id} title="Create the client's account now without taking payment." className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              {actingId === a.id ? "…" : "Accept (no payment)"}
+                            </button>
+                            <button onClick={() => act(a.id, "decline")} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              Decline
+                            </button>
+                          </>
                         )}
-                        <button onClick={() => act(a.id, "accept")} disabled={actingId === a.id} title="Create the client's account now without taking payment." className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
-                          {actingId === a.id ? "…" : "Accept (no payment)"}
-                        </button>
-                        <button onClick={() => act(a.id, "decline")} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
-                          Decline
-                        </button>
                       </>
+                    )}
+                    {a.status === "accepted" && a.payment_status === "paid" && (
+                      <span className="text-[11px] px-2 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-500/20 whitespace-nowrap">✓ Paid</span>
                     )}
                   </div>
                 </div>

@@ -63,13 +63,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Pull this coach's payment requests so each application can show its payment
+  // status (requested / paid). Safe if the table doesn't exist yet.
+  const latestPrByApp = new Map<string, any>()
+  try {
+    const { data: prs } = await admin
+      .from('payment_requests')
+      .select('id, application_id, status, amount_cents, currency, token, created_at')
+      .eq('coach_id', coachId)
+      .order('created_at', { ascending: false })
+    for (const pr of prs || []) {
+      // Keep the most recent request per application (list is already desc).
+      if (pr.application_id && !latestPrByApp.has(pr.application_id)) {
+        latestPrByApp.set(pr.application_id, pr)
+      }
+    }
+  } catch { /* payment_requests not present yet */ }
+
   // Flatten the package info for easier frontend consumption
-  const flatApplications = (applications || []).map((app: any) => ({
-    ...app,
-    selected_package_name: app.selected_package?.name || null,
-    selected_package_price_cents: app.selected_package?.price_cents || null,
-    selected_package_billing_interval: app.selected_package?.billing_interval || null,
-  }))
+  const flatApplications = (applications || []).map((app: any) => {
+    const pr = latestPrByApp.get(app.id) || null
+    return {
+      ...app,
+      selected_package_name: app.selected_package?.name || null,
+      selected_package_price_cents: app.selected_package?.price_cents || null,
+      selected_package_billing_interval: app.selected_package?.billing_interval || null,
+      payment_status: pr?.status || null,       // null | 'pending' | 'paid' | 'cancelled' | 'expired'
+      payment_token: pr?.token || null,
+      payment_amount_cents: pr?.amount_cents || null,
+    }
+  })
 
   return NextResponse.json({ applications: flatApplications })
 }
