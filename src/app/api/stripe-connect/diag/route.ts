@@ -78,16 +78,46 @@ export async function GET(request: Request) {
 
   // 4. Dump recent payment_requests so we can see exactly what's stored
   //    (status, whether a checkout session id was saved, paid_at, provisioned).
+  let latestWithSession: any = null
   try {
     const admin = await createAdminClient()
     const { data: prs } = await admin
       .from('payment_requests')
-      .select('id, client_email, status, amount_cents, stripe_checkout_session_id, stripe_payment_intent_id, paid_at, provisioned_user_id, application_id, created_at')
+      .select('id, coach_id, client_email, status, amount_cents, stripe_checkout_session_id, stripe_payment_intent_id, paid_at, provisioned_user_id, application_id, created_at')
       .order('created_at', { ascending: false })
       .limit(10)
     out.recentPaymentRequests = prs || []
+    latestWithSession = (prs || []).find((p: any) => p.stripe_checkout_session_id) || null
   } catch (err: any) {
     out.paymentRequestsError = err?.message || String(err)
+  }
+
+  // 5. For the latest request that has a Checkout Session, ask Stripe what the
+  //    actual payment_status is (on the coach's connected account). This tells
+  //    us whether the money was really taken and why confirm didn't fulfill.
+  if (latestWithSession) {
+    try {
+      const admin = await createAdminClient()
+      const { data: coachRow } = await admin
+        .from('users')
+        .select('stripe_account_id')
+        .eq('id', latestWithSession.coach_id)
+        .maybeSingle()
+      out.sessionCheck = { paymentRequestId: latestWithSession.id, coachStripeAccount: coachRow?.stripe_account_id || null }
+      if (coachRow?.stripe_account_id) {
+        const { getStripe } = await import('@/lib/stripe')
+        const stripe = getStripe()
+        const session = await stripe.checkout.sessions.retrieve(
+          latestWithSession.stripe_checkout_session_id,
+          { stripeAccount: coachRow.stripe_account_id }
+        )
+        out.sessionCheck.payment_status = session.payment_status
+        out.sessionCheck.status = session.status
+        out.sessionCheck.amount_total = session.amount_total
+      }
+    } catch (err: any) {
+      out.sessionCheckError = err?.message || String(err)
+    }
   }
 
   return NextResponse.json(out)
