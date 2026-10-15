@@ -162,15 +162,20 @@ export async function provisionClientFromApplication(
   }
 
   // --- New user: invite link (no built-in email) + branded email ---
-  const redirectDomain = 'www.firstmilecoach.com'
+  // The invite must send the client back to THIS environment to set their
+  // password. On staging/preview, STRIPE_CONNECT_REDIRECT_BASE (or
+  // NEXT_PUBLIC_SITE_URL) points at the staging URL; otherwise default to
+  // production. (This runs server-side with no request origin available.)
   const orgDomain = 'firstmilecoach.com'
+  const explicitBase = process.env.STRIPE_CONNECT_REDIRECT_BASE || process.env.NEXT_PUBLIC_SITE_URL
+  const baseUrl = (explicitBase ? explicitBase.replace(/\/$/, '') : 'https://www.firstmilecoach.com')
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: 'invite',
     email,
     options: {
       data: { name, role: 'client' },
-      redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
+      redirectTo: `${baseUrl}/auth/callback?next=/set-password`,
     },
   })
 
@@ -180,7 +185,7 @@ export async function provisionClientFromApplication(
 
   const newUserId = linkData.user.id
   const hashedToken = linkData.properties.hashed_token
-  const confirmationUrl = `https://${redirectDomain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+  const confirmationUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
   let emailSent = false
   try {
