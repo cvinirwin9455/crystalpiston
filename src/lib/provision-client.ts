@@ -1,4 +1,5 @@
 import { sendClientInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
+import { loadPackage, createPlanFromPackage } from '@/lib/plan-from-package'
 
 // Shared "create (or link) a client account and assign a coach" logic.
 //
@@ -22,10 +23,50 @@ export type ProvisionResult = {
   ok: boolean
   status: 'accepted' | 'already_accepted' | 'error'
   userId?: string
+  clientId?: string
+  planId?: string
   dualRole?: boolean
   emailSent?: boolean
   message?: string
   error?: string
+}
+
+// Create a plan (from the application's selected package) on a freshly
+// provisioned client, so an application-based client lands with the same
+// Plans & Payments structure as a manually-created one. Best-effort: never
+// fails provisioning — if there's no package or the plan can't be created, the
+// coach can still set up the plan manually. Returns the created plan id (if any).
+async function createPlanForProvisionedClient(
+  admin: any,
+  params: { application: any; clientId: string; coachId: string; organizationId?: string | null }
+): Promise<string | undefined> {
+  const packageId = params.application?.selected_package_id
+  if (!packageId) return undefined // no package selected -> coach sets up the plan manually
+
+  // Don't create a second plan if this client already has an active one.
+  const { data: existingPlan } = await admin
+    .from('plans')
+    .select('id')
+    .eq('client_id', params.clientId)
+    .eq('status', 'active')
+    .maybeSingle()
+  if (existingPlan) return existingPlan.id
+
+  try {
+    const pkg = await loadPackage(admin, packageId)
+    if (!pkg) return undefined
+    const result = await createPlanFromPackage(admin, {
+      clientId: params.clientId,
+      coachId: params.coachId,
+      organizationId: params.organizationId,
+      pkg,
+      application: params.application,
+    })
+    return result.ok ? result.planId : undefined
+  } catch (err) {
+    console.error('[provision] createPlanFromPackage failed (non-fatal):', err)
+    return undefined
+  }
 }
 
 export async function provisionClientFromApplication(
@@ -100,10 +141,21 @@ export async function provisionClientFromApplication(
       .update({ status: 'accepted', reviewed_at: new Date().toISOString(), accepted_user_id: existingUser.id })
       .eq('id', application.id)
 
+    // Stamp out a plan from the selected package (if any) so the client's
+    // Account page shows the purchased plan + what they owe immediately.
+    const planId = await createPlanForProvisionedClient(admin, {
+      application,
+      clientId,
+      coachId,
+      organizationId: orgId,
+    })
+
     return {
       ok: true,
       status: 'accepted',
       userId: existingUser.id,
+      clientId,
+      planId,
       dualRole: true,
       message: `${name} already had an account and has been added as a client.`,
     }
@@ -185,10 +237,23 @@ export async function provisionClientFromApplication(
     .update({ status: 'accepted', reviewed_at: new Date().toISOString(), accepted_user_id: newUserId })
     .eq('id', application.id)
 
+  // Stamp out a plan from the selected package (if any) so the client's
+  // Account page shows the purchased plan + what they owe immediately.
+  const planId = newClientRecord
+    ? await createPlanForProvisionedClient(admin, {
+        application,
+        clientId: newClientRecord.id,
+        coachId,
+        organizationId: orgId,
+      })
+    : undefined
+
   return {
     ok: true,
     status: 'accepted',
     userId: newUserId,
+    clientId: newClientRecord?.id,
+    planId,
     emailSent,
     message: emailSent
       ? `Invite email sent to ${email}. ${name} is now a client.`

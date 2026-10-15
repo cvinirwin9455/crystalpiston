@@ -18,6 +18,7 @@ type Plan = {
   goalPace: string;
   injuryNotes: string;
   programTemplateId?: string;
+  programLoaded?: boolean;
   raceDateSameAsEnd?: boolean;
   billingMode?: 'programming_only' | 'per_session' | 'hybrid';
 };
@@ -142,6 +143,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             goalPace: p.goal_pace || '',
             injuryNotes: p.injury_notes || '',
             programTemplateId: p.program_template_id || '',
+            programLoaded: p.program_loaded !== false,
             raceDateSameAsEnd: p.race_date_same_as_end !== false,
             billingMode: p.billing_mode || 'programming_only',
           })));
@@ -783,6 +785,31 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
 
   const hasOutstandingBalance = (plan.owed - plan.paid) > 0;
 
+  // "Program not loaded" indicator — set when a plan was created from a package
+  // that assigned a program template, but the training weeks haven't been built
+  // onto the client yet.
+  const [programDismissed, setProgramDismissed] = useState(false);
+  const [markingLoaded, setMarkingLoaded] = useState(false);
+  const showProgramToLoad = !!plan.programTemplateId && plan.programLoaded === false && !programDismissed;
+  const programTemplateName =
+    (programTemplates || []).find((t) => t.id === plan.programTemplateId)?.name || "a program";
+
+  const handleMarkProgramLoaded = async () => {
+    setMarkingLoaded(true);
+    try {
+      const res = await fetch("/api/plans", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id, programLoaded: true }),
+      });
+      if (res.ok) setProgramDismissed(true);
+    } catch (err) {
+      console.error("Failed to mark program as loaded:", err);
+    } finally {
+      setMarkingLoaded(false);
+    }
+  };
+
   // Fetch payments from API on mount
   useEffect(() => {
     const fetchPayments = async () => {
@@ -980,6 +1007,32 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           )}
         </div>
       </div>
+
+      {/* Program-not-loaded indicator — plan came from a package with a program
+          template that still needs its training weeks built onto the client. */}
+      {showProgramToLoad && (
+        <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg px-3 py-2.5 mb-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 min-w-0">
+              <span className="text-base leading-none mt-0.5">📋</span>
+              <div className="min-w-0">
+                <p className="text-cyan-200 text-xs font-medium">Program not loaded yet</p>
+                <p className="text-cyan-300/70 text-[11px] mt-0.5">
+                  This plan includes <span className="font-medium">{programTemplateName}</span>. Build the client&apos;s
+                  training weeks from this program (Training tab → add a week → load from program), then mark it loaded.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleMarkProgramLoaded}
+              disabled={markingLoaded}
+              className="flex-shrink-0 text-[11px] bg-cyan-600/80 hover:bg-cyan-600 text-white font-medium px-2.5 py-1 rounded-lg disabled:opacity-50"
+            >
+              {markingLoaded ? "Saving…" : "Mark loaded"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Plan Form */}
       {editingPlan && plan.status === "active" && (

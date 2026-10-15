@@ -22,7 +22,16 @@ export type CoachPackage = {
   is_active: boolean;
   sort_order: number;
   stripe_price_id: string | null;
+  // Plan-recipe fields — a package stamps out a client plan on acceptance.
+  program_template_id: string | null;
+  billing_mode: "programming_only" | "per_session" | "hybrid";
+  duration_weeks: number | null;
+  session_count: number | null;
+  session_cost: number | null;
+  programming_cost: number | null;
 };
+
+type ProgramTemplateOption = { id: string; name: string };
 
 function scopeQuery(): string {
   if (typeof window === "undefined") return "";
@@ -88,6 +97,13 @@ type DraftForm = {
   includes_programming: boolean;
   client_cap: string;
   is_active: boolean;
+  // Plan-recipe fields
+  program_template_id: string;
+  billing_mode: "programming_only" | "per_session" | "hybrid";
+  duration_weeks: string;
+  session_count: string;
+  session_cost: string;
+  programming_cost: string;
 };
 
 const EMPTY_FORM: DraftForm = {
@@ -102,10 +118,27 @@ const EMPTY_FORM: DraftForm = {
   includes_programming: false,
   client_cap: "",
   is_active: true,
+  program_template_id: "",
+  billing_mode: "programming_only",
+  duration_weeks: "",
+  session_count: "",
+  session_cost: "",
+  programming_cost: "",
 };
+
+// Suggest a billing mode from the "what's included" checkboxes:
+//   in-person only           -> per_session
+//   in-person + programming  -> hybrid
+//   otherwise                -> programming_only
+function billingModeFromIncludes(inc: { in_person: boolean; programming: boolean }): DraftForm["billing_mode"] {
+  if (inc.in_person && inc.programming) return "hybrid";
+  if (inc.in_person) return "per_session";
+  return "programming_only";
+}
 
 export default function PackagesManager() {
   const [packages, setPackages] = useState<CoachPackage[]>([]);
+  const [programTemplates, setProgramTemplates] = useState<ProgramTemplateOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<DraftForm>(EMPTY_FORM);
@@ -124,7 +157,19 @@ export default function PackagesManager() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadProgramTemplates = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/program-templates`);
+      const data = await res.json().catch(() => ({}));
+      // The route returns an array (or {templates}); handle both shapes.
+      const list = Array.isArray(data) ? data : data.templates || [];
+      setProgramTemplates(list.map((t: any) => ({ id: t.id, name: t.name })));
+    } catch {
+      /* non-fatal — the picker just shows no options */
+    }
+  }, []);
+
+  useEffect(() => { load(); loadProgramTemplates(); }, [load, loadProgramTemplates]);
 
   function startAdd() {
     setForm(EMPTY_FORM);
@@ -146,6 +191,12 @@ export default function PackagesManager() {
       includes_programming: p.includes_programming ?? true,
       client_cap: p.client_cap != null ? String(p.client_cap) : "",
       is_active: p.is_active,
+      program_template_id: p.program_template_id || "",
+      billing_mode: p.billing_mode || "programming_only",
+      duration_weeks: p.duration_weeks != null ? String(p.duration_weeks) : "",
+      session_count: p.session_count != null ? String(p.session_count) : "",
+      session_cost: p.session_cost != null ? String(p.session_cost) : "",
+      programming_cost: p.programming_cost != null ? String(p.programming_cost) : "",
     };
     console.log("Setting form to:", newForm);
     setForm(newForm);
@@ -164,13 +215,20 @@ export default function PackagesManager() {
         in_person: f.includes_in_person,
         programming: f.includes_programming,
       });
+      const nextIncludes = {
+        running: key === "includes_running" ? value : f.includes_running,
+        strength: key === "includes_strength" ? value : f.includes_strength,
+        in_person: key === "includes_in_person" ? value : f.includes_in_person,
+        programming: key === "includes_programming" ? value : f.includes_programming,
+      };
       if (!f.name || f.name === oldSuggestion) {
-        updated.name = suggestName({
-          running: key === "includes_running" ? value : f.includes_running,
-          strength: key === "includes_strength" ? value : f.includes_strength,
-          in_person: key === "includes_in_person" ? value : f.includes_in_person,
-          programming: key === "includes_programming" ? value : f.includes_programming,
-        });
+        updated.name = suggestName(nextIncludes);
+      }
+      // Auto-suggest billing mode from the delivery checkboxes (only if the
+      // coach hasn't diverged from what the previous checkboxes implied).
+      const oldModeSuggestion = billingModeFromIncludes({ in_person: f.includes_in_person, programming: f.includes_programming });
+      if (f.billing_mode === oldModeSuggestion) {
+        updated.billing_mode = billingModeFromIncludes({ in_person: nextIncludes.in_person, programming: nextIncludes.programming });
       }
       return updated;
     });
@@ -208,6 +266,13 @@ export default function PackagesManager() {
       includes_programming: form.includes_programming,
       client_cap: capNum && capNum > 0 ? capNum : null,
       is_active: form.is_active,
+      // Plan-recipe fields
+      program_template_id: form.program_template_id || null,
+      billing_mode: form.billing_mode,
+      duration_weeks: form.duration_weeks.trim() || null,
+      session_count: form.session_count.trim() || null,
+      session_cost: form.session_cost.trim() || null,
+      programming_cost: form.programming_cost.trim() || null,
       ...scopeBody(),
     };
     try {
@@ -374,6 +439,76 @@ export default function PackagesManager() {
               <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
             </div>
           </div>
+
+          {/* ---- Plan details: a package stamps out a client plan on acceptance ---- */}
+          <div className="border-t border-white/10 pt-4">
+            <label className="block text-xs text-gray-400 mb-1">Plan details</label>
+            <p className="text-[11px] text-gray-500 mb-3">
+              When a client is accepted (or pays), these create their plan on the Account page — just like a plan you set up by hand.
+            </p>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Program template (optional)</label>
+                <select
+                  value={form.program_template_id}
+                  onChange={(e) => setForm((f) => ({ ...f, program_template_id: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                >
+                  <option value="">— None —</option>
+                  {programTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Billing mode</label>
+                <select
+                  value={form.billing_mode}
+                  onChange={(e) => setForm((f) => ({ ...f, billing_mode: e.target.value as DraftForm["billing_mode"] }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                >
+                  <option value="programming_only">Programming only</option>
+                  <option value="per_session">Per session (in-person)</option>
+                  <option value="hybrid">Hybrid (programming + sessions)</option>
+                </select>
+              </div>
+            </div>
+
+            {form.program_template_id && (
+              <p className="text-[11px] text-cyan-300/80 mt-2">
+                📋 This program will be flagged on the client&apos;s plan for you to load once they&apos;re set up.
+              </p>
+            )}
+
+            <div className="grid sm:grid-cols-3 gap-3 mt-3">
+              {form.billing_mode !== "per_session" && (
+                <>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Duration (weeks)</label>
+                    <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Programming cost</label>
+                    <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="blank = use price" inputMode="decimal" />
+                  </div>
+                </>
+              )}
+              {(form.billing_mode === "per_session" || form.billing_mode === "hybrid") && (
+                <>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1"># Sessions</label>
+                    <input value={form.session_count} onChange={(e) => setForm((f) => ({ ...f, session_count: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 10" inputMode="numeric" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Sessions cost</label>
+                    <input value={form.session_cost} onChange={(e) => setForm((f) => ({ ...f, session_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="total for sessions" inputMode="decimal" />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
           <label className="flex items-center gap-2 text-sm text-gray-300">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="accent-accent" />
             Active (shown to applicants)
