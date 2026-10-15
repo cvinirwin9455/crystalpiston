@@ -46,18 +46,27 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function confirmPayment() {
+  async function confirmPayment(attempt = 1) {
     try {
       const res = await fetch(`/api/pay/${encodeURIComponent(pay.token)}/confirm`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.status === 'paid') {
         setView('paid')
-      } else {
-        // Not yet marked paid — the webhook may still be processing. Keep a
-        // gentle message and let them refresh.
-        setView('paid')
+        return
       }
+      // Stripe may not have finalized the session yet — retry a few times.
+      if (attempt < 4) {
+        setTimeout(() => confirmPayment(attempt + 1), 1500)
+        return
+      }
+      // Still not confirmed after retries — show paid (their card WAS charged)
+      // but we couldn't finalize provisioning. The webhook is the backstop.
+      setView('paid')
     } catch {
+      if (attempt < 4) {
+        setTimeout(() => confirmPayment(attempt + 1), 1500)
+        return
+      }
       setView('paid')
     }
   }

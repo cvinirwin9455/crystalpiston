@@ -76,5 +76,19 @@ export async function GET(request: Request) {
     out.generateLinkThrew = err?.message || String(err)
   }
 
+  // 4. Dump recent payment_requests so we can see exactly what's stored
+  //    (status, whether a checkout session id was saved, paid_at, provisioned).
+  try {
+    const admin = await createAdminClient()
+    const { data: prs } = await admin
+      .from('payment_requests')
+      .select('id, client_email, status, amount_cents, stripe_checkout_session_id, stripe_payment_intent_id, paid_at, provisioned_user_id, application_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10)
+    out.recentPaymentRequests = prs || []
+  } catch (err: any) {
+    out.paymentRequestsError = err?.message || String(err)
+  }
+
   return NextResponse.json(out)
 }
