@@ -22,6 +22,16 @@ async function createAdminClient() {
 }
 
 async function siteUrl(request: Request): Promise<string> {
+  // The pay link in the email must point to an environment that actually has
+  // the /pay page + payment_requests data. Prefer an explicit stable base
+  // (STRIPE_CONNECT_REDIRECT_BASE / NEXT_PUBLIC_SITE_URL), else the request
+  // origin (so a preview links back to the preview), else production.
+  const explicit = process.env.STRIPE_CONNECT_REDIRECT_BASE || process.env.NEXT_PUBLIC_SITE_URL
+  if (explicit) return explicit.replace(/\/$/, '')
+  try {
+    const origin = new URL(request.url).origin
+    if (origin && !origin.includes('localhost')) return origin.replace(/\/$/, '')
+  } catch { /* fall through */ }
   const { getProductionUrl } = await import('@/lib/email')
   return getProductionUrl(request.url)
 }
