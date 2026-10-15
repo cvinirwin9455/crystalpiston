@@ -23,6 +23,7 @@ export type ProvisionResult = {
   status: 'accepted' | 'already_accepted' | 'error'
   userId?: string
   dualRole?: boolean
+  emailSent?: boolean
   message?: string
   error?: string
 }
@@ -129,15 +130,22 @@ export async function provisionClientFromApplication(
   const hashedToken = linkData.properties.hashed_token
   const confirmationUrl = `https://${redirectDomain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
-  const emailSent = await sendClientInviteEmail({
-    to: email,
-    clientName: name,
-    coachName,
-    confirmationUrl,
-    brand: getBrandFromDomain(orgDomain),
-  })
+  let emailSent = false
+  try {
+    emailSent = await sendClientInviteEmail({
+      to: email,
+      clientName: name,
+      coachName,
+      confirmationUrl,
+      brand: getBrandFromDomain(orgDomain),
+    })
+  } catch (err) {
+    console.error(`[provision] invite email threw for ${email}:`, err)
+  }
   if (!emailSent) {
-    console.error(`Failed to send invite email to ${email}, but user was created`)
+    console.error(`[provision] Failed to send invite email to ${email}, but user ${newUserId} was created`)
+  } else {
+    console.log(`[provision] invite email sent to ${email}`)
   }
 
   const userUpdates: Record<string, any> = {}
@@ -181,6 +189,9 @@ export async function provisionClientFromApplication(
     ok: true,
     status: 'accepted',
     userId: newUserId,
-    message: `Invite email sent to ${email}. ${name} is now a client.`,
+    emailSent,
+    message: emailSent
+      ? `Invite email sent to ${email}. ${name} is now a client.`
+      : `${name} is now a client, but the invite email could not be sent.`,
   }
 }
