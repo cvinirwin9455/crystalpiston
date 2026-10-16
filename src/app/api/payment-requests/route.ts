@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}))
   const {
-    application_id, package_id, amount, custom_name,
+    application_id, package_id, amount, custom_name, custom_duration_weeks,
     start_date, request_assessment, request_cycle_tracking,
     org: orgOverride, coach: coachOverride,
   } = body || {}
@@ -179,10 +179,14 @@ export async function POST(request: Request) {
     status: 'pending',
   }
   // start_date + setup flags are newer columns — try with them, fall back without.
+  const customWeeksInt = custom_duration_weeks != null && String(custom_duration_weeks).trim() !== ''
+    ? parseInt(String(custom_duration_weeks).replace(/[^0-9]/g, ''), 10)
+    : null
   const setupCols = {
     start_date: start_date && /^\d{4}-\d{2}-\d{2}$/.test(start_date) ? start_date : null,
     request_assessment: !!request_assessment,
     request_cycle_tracking: !!request_cycle_tracking,
+    custom_duration_weeks: useCustomAmount && customWeeksInt && customWeeksInt > 0 ? customWeeksInt : null,
   }
   let { data: created, error: insertErr } = await admin
     .from('payment_requests')

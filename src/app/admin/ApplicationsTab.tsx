@@ -119,6 +119,7 @@ export default function ApplicationsTab() {
   const [setupPackageId, setSetupPackageId] = useState<string>("");
   const [setupCustomName, setSetupCustomName] = useState<string>("");
   const [setupCustomAmount, setSetupCustomAmount] = useState<string>("");
+  const [setupCustomWeeks, setSetupCustomWeeks] = useState<string>("");
 
   function openSetup(app: Application, mode: "accept" | "request_payment") {
     setSetupFor({ app, mode });
@@ -128,6 +129,7 @@ export default function ApplicationsTab() {
     setSetupPackageId(app.selected_package_id || "");
     setSetupCustomName("");
     setSetupCustomAmount("");
+    setSetupCustomWeeks("");
     setMsg(null);
   }
 
@@ -208,6 +210,7 @@ export default function ApplicationsTab() {
     packageId: string; // "" | "__custom__" | <package id>
     customName: string;
     customAmount: string;
+    customWeeks: string;
   };
 
   async function requestPayment(a: Application, opts: SetupOpts) {
@@ -218,8 +221,10 @@ export default function ApplicationsTab() {
     }
     if (isCustom) {
       const amt = parseFloat(opts.customAmount.replace(/[^0-9.]/g, ""));
+      const wks = parseInt(opts.customWeeks.replace(/[^0-9]/g, ""), 10);
       if (!opts.customName.trim()) { setMsg({ text: "Give the custom charge a name (e.g. 'Custom coaching').", type: "error" }); return; }
       if (!(amt > 0)) { setMsg({ text: "Enter a valid custom amount.", type: "error" }); return; }
+      if (!(wks > 0)) { setMsg({ text: "Enter the program length in weeks.", type: "error" }); return; }
     }
     setActingId(a.id);
     setMsg(null);
@@ -232,7 +237,7 @@ export default function ApplicationsTab() {
           // Custom one-time charge sends amount + name (no package_id);
           // otherwise the chosen package id.
           ...(isCustom
-            ? { amount: opts.customAmount, custom_name: opts.customName.trim() }
+            ? { amount: opts.customAmount, custom_name: opts.customName.trim(), custom_duration_weeks: opts.customWeeks }
             : { package_id: opts.packageId }),
           start_date: opts.startDate || null,
           request_assessment: opts.requestAssessment,
@@ -363,6 +368,7 @@ export default function ApplicationsTab() {
       packageId: setupPackageId,
       customName: setupCustomName,
       customAmount: setupCustomAmount,
+      customWeeks: setupCustomWeeks,
     };
     setSetupFor(null);
     if (mode === "accept") await acceptApp(app, opts);
@@ -668,7 +674,7 @@ export default function ApplicationsTab() {
 
               {/* Custom one-time charge (request-payment path only) */}
               {setupFor.mode === "request_payment" && setupPackageId === "__custom__" && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">What&apos;s it for?</label>
                     <input value={setupCustomName} onChange={(e) => setSetupCustomName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Custom coaching" />
@@ -676,6 +682,10 @@ export default function ApplicationsTab() {
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Amount (one-time)</label>
                     <input value={setupCustomAmount} onChange={(e) => setSetupCustomAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 250" inputMode="decimal" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Program length (weeks)</label>
+                    <input value={setupCustomWeeks} onChange={(e) => setSetupCustomWeeks(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
                   </div>
                 </div>
               )}

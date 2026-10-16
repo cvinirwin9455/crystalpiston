@@ -55,6 +55,11 @@ export async function fulfillPaymentRequest(
       startDate: pr.start_date || null,
       requestAssessment: !!pr.request_assessment,
       requestCycleTracking: !!pr.request_cycle_tracking,
+      // The payment request is the source of truth for what the client paid for.
+      // Use ITS package (the coach's choice at request time), NOT the applicant's
+      // original selected_package_id. null here = custom charge (no package) →
+      // provisioning skips plan creation and we build a minimal plan below.
+      overridePackageId: pr.package_id || null,
     })
     if (!result.ok) {
       // Still mark the payment as paid (money changed hands); surface the error
@@ -89,7 +94,10 @@ export async function fulfillPaymentRequest(
       clientId = c?.id
     }
 
-    const packageId = pr.package_id || application?.selected_package_id || null
+    // The payment request's package is authoritative — do NOT fall back to the
+    // applicant's original selected_package_id (the coach may have changed it,
+    // or chosen a custom amount with no package).
+    const packageId = pr.package_id || null
 
     if (!planId && clientId) {
       // Reuse an existing active plan if present, else create one from the package.
@@ -116,16 +124,20 @@ export async function fulfillPaymentRequest(
         }
       } else {
         // Custom one-time charge (no package): create a MINIMAL programming-only
-        // plan so the client's Account shows what they paid. The coach fleshes
-        // out the program / dates afterward.
+        // plan so the client's Account shows what they paid, spanning the
+        // coach-chosen program length. The coach fleshes out the program after.
         const start = (pr.start_date && /^\d{4}-\d{2}-\d{2}$/.test(pr.start_date))
           ? pr.start_date
           : new Date().toISOString().split('T')[0]
+        const weeks = Number(pr.custom_duration_weeks) > 0 ? Number(pr.custom_duration_weeks) : 1
+        const endObj = new Date(start + 'T00:00:00')
+        endObj.setDate(endObj.getDate() + weeks * 7)
+        const end = endObj.toISOString().split('T')[0]
         const owed = (Number(pr.amount_cents) || 0) / 100
         const minimal: Record<string, any> = {
           client_id: clientId,
           start_date: start,
-          end_date: start,
+          end_date: end,
           goal: application?.primary_goal || pr.package_name || null,
           owed,
           paid: 0,
@@ -136,7 +148,7 @@ export async function fulfillPaymentRequest(
         let created = await admin.from('plans').insert(minimal).select('id').single()
         if (created.error) {
           // Retry without newer columns for older schemas.
-          const base = { client_id: clientId, start_date: start, end_date: start, goal: minimal.goal, owed, paid: 0, status: 'active' }
+          const base = { client_id: clientId, start_date: start, end_date: end, goal: minimal.goal, owed, paid: 0, status: 'active' }
           created = await admin.from('plans').insert(base).select('id').single()
         }
         if (!created.error) planId = created.data.id
