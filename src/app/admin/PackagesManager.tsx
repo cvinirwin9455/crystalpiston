@@ -145,6 +145,9 @@ type DraftForm = {
   description_touched: boolean;
   // Whether the coach has manually overridden the auto-filled name.
   name_touched: boolean;
+  // Progressive reveal: the coach picks Billing first; the rest of the form only
+  // appears once a billing type has been chosen.
+  billing_chosen: boolean;
 };
 
 const EMPTY_FORM: DraftForm = {
@@ -168,6 +171,7 @@ const EMPTY_FORM: DraftForm = {
   recur_months: "",
   description_touched: false,
   name_touched: false,
+  billing_chosen: false,
 };
 
 // --- Auto-calculation helpers (Option A: top price = sum of the parts) ---
@@ -367,6 +371,8 @@ export default function PackagesManager() {
       // Existing packages keep their saved description/name — don't auto-overwrite.
       description_touched: !!(p.description && p.description.trim()),
       name_touched: !!(p.name && p.name.trim()),
+      // Editing an existing package: billing is already set, show the full form.
+      billing_chosen: true,
     };
     console.log("Setting form to:", newForm);
     setForm(newForm);
@@ -547,7 +553,71 @@ export default function PackagesManager() {
       {/* Add / edit form */}
       {showForm && (
         <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
-          {/* What's included checkboxes - two groups */}
+          {/* STEP 1 — Billing is the first choice; it shapes the whole form. */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">How do you want to bill this package?</label>
+            <select
+              value={form.billing_chosen ? form.billing_interval : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") { setForm((f) => ({ ...f, billing_chosen: false })); return; }
+                const interval = v as "monthly" | "one_time";
+                setForm((f) =>
+                  interval === "monthly"
+                    ? {
+                        // Recurring = open-ended programming membership: no template,
+                        // no fixed weeks, no in-person. Keep the monthly cost.
+                        ...f,
+                        billing_chosen: true,
+                        billing_interval: interval,
+                        program_template_id: "",
+                        billing_mode: "programming_only",
+                        duration_weeks: "",
+                        includes_in_person: false,
+                        includes_programming: true,
+                        session_count: "",
+                        session_cost_per: "",
+                      }
+                    : { ...f, billing_chosen: true, billing_interval: interval, recur_months: "" }
+                );
+              }}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+            >
+              <option value="">— Choose billing to begin —</option>
+              <option value="monthly">Recurring (monthly) — ongoing membership</option>
+              <option value="one_time">One-time charge — a fixed program</option>
+            </select>
+          </div>
+
+          {/* STEP 2 — Everything else only appears once billing is chosen. For a
+              one-time package, the program template picker leads the way. */}
+          {form.billing_chosen && (<>
+
+          {/* One-time only: start from a program template (optional). */}
+          {form.billing_interval === "one_time" && (
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
+              <select
+                value={form.program_template_id}
+                onChange={(e) => handleSelectTemplate(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+              >
+                <option value="">— None (enter details manually) —</option>
+                {programTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
+                  </option>
+                ))}
+              </select>
+              {templateLocked && (
+                <p className="text-[11px] text-cyan-300/80 mt-1">
+                  📋 This program sets the type, delivery and duration below. It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* What's included checkboxes - two groups (locked when a template drives them) */}
           <div>
             <label className="block text-xs text-gray-400 mb-2">
               What type of coaching? (select at least one)
@@ -575,22 +645,27 @@ export default function PackagesManager() {
                 <span>💪 Strength / PT</span>
               </label>
             </div>
-            
-            <label className="block text-xs text-gray-400 mb-2">How is it delivered? (select at least one)</label>
+
+            <label className="block text-xs text-gray-400 mb-2">
+              How is it delivered? (select at least one)
+              {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+            </label>
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
                 <input
                   type="checkbox"
                   checked={form.includes_programming}
+                  disabled={templateLocked}
                   onChange={(e) => handleIncludesChange("includes_programming", e.target.checked)}
                   className="accent-accent"
                 />
                 <span>📱 Programming (remote)</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
                 <input
                   type="checkbox"
                   checked={form.includes_in_person}
+                  disabled={templateLocked}
                   onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)}
                   className="accent-accent"
                 />
@@ -636,38 +711,8 @@ export default function PackagesManager() {
               </button>
             )}
           </div>
+          {/* Recurring: # months (blank = until cancelled). One-time: client cap. */}
           <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Billing</label>
-              <select
-                value={form.billing_interval}
-                onChange={(e) => {
-                  const interval = e.target.value as "monthly" | "one_time";
-                  setForm((f) =>
-                    interval === "monthly"
-                      ? {
-                          // Recurring = open-ended programming membership: no template,
-                          // no fixed weeks, no in-person. Keep the monthly cost.
-                          ...f,
-                          billing_interval: interval,
-                          program_template_id: "",
-                          billing_mode: "programming_only",
-                          duration_weeks: "",
-                          includes_in_person: false,
-                          includes_programming: true,
-                          session_count: "",
-                          session_cost_per: "",
-                        }
-                      : { ...f, billing_interval: interval, recur_months: "" }
-                  );
-                }}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-              >
-                <option value="monthly">Recurring (monthly)</option>
-                <option value="one_time">One-time charge</option>
-              </select>
-            </div>
-            {/* Recurring duration: how many months to bill (blank = until cancelled) */}
             {form.billing_interval === "monthly" ? (
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Bill for how many months?</label>
@@ -689,33 +734,8 @@ export default function PackagesManager() {
               When a client is accepted (or pays), these create their plan on the Account page — just like a plan you set up by hand.
             </p>
 
-            {/* Program template picker — one-time packages only. Selecting one
-                auto-fills + locks the duration and running/strength type. */}
-            {form.billing_interval === "one_time" && (
-              <div className="mb-3">
-                <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
-                <select
-                  value={form.program_template_id}
-                  onChange={(e) => handleSelectTemplate(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-                >
-                  <option value="">— None (enter details manually) —</option>
-                  {programTemplates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
-                    </option>
-                  ))}
-                </select>
-                {templateLocked && (
-                  <p className="text-[11px] text-cyan-300/80 mt-1">
-                    📋 Duration and type are set by this program. It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Billing mode — hidden/locked for recurring (always programming) and
-                for template-based packages (template is programming_only). */}
+            {/* Billing mode — only for one-time packages without a template
+                (recurring is always programming; a template is programming_only). */}
             {form.billing_interval === "one_time" && !templateLocked && (
               <div className="mb-3">
                 <label className="block text-xs text-gray-400 mb-1">Billing mode</label>
@@ -783,8 +803,11 @@ export default function PackagesManager() {
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="accent-accent" />
             Active (shown to applicants)
           </label>
+
+          </>)}
+
           <div className="flex gap-2">
-            <button onClick={save} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
+            <button onClick={save} disabled={saving || !form.billing_chosen} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
               {saving ? "Saving…" : form.id ? "Save changes" : "Add package"}
             </button>
             <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
