@@ -95,6 +95,7 @@ export default function ApplicationsTab() {
   const [apps, setApps] = useState<Application[]>([]);
   const [page, setPage] = useState<Page | null>(null);
   const [packages, setPackages] = useState<{ id: string; name: string; price_cents: number; currency: string; billing_interval: string; is_active: boolean }[]>([]);
+  const [stripeReady, setStripeReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "accepted" | "declined" | "all">("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -111,9 +112,13 @@ export default function ApplicationsTab() {
   const [setupStartDate, setSetupStartDate] = useState(todayStr);
   const [setupRequestAssessment, setSetupRequestAssessment] = useState(false);
   const [setupRequestCycle, setSetupRequestCycle] = useState(false);
-  // The package the coach will actually use for this client (defaults to the
-  // applicant's choice, but the coach can change it or pick "none/custom").
+  // The package the coach will actually use for this client. Values:
+  //   "" (no package / custom plan the coach builds by hand),
+  //   "__custom__" (a custom one-time charge — amount typed below), or
+  //   a real package id.
   const [setupPackageId, setSetupPackageId] = useState<string>("");
+  const [setupCustomName, setSetupCustomName] = useState<string>("");
+  const [setupCustomAmount, setSetupCustomAmount] = useState<string>("");
 
   function openSetup(app: Application, mode: "accept" | "request_payment") {
     setSetupFor({ app, mode });
@@ -121,6 +126,8 @@ export default function ApplicationsTab() {
     setSetupRequestAssessment(false);
     setSetupRequestCycle(false);
     setSetupPackageId(app.selected_package_id || "");
+    setSetupCustomName("");
+    setSetupCustomAmount("");
     setMsg(null);
   }
 
@@ -141,16 +148,19 @@ export default function ApplicationsTab() {
     setLoading(true);
     try {
       const sq = scopeQuery();
-      const [appsRes, pageRes, pkgRes] = await Promise.all([
+      const [appsRes, pageRes, pkgRes, stripeRes] = await Promise.all([
         fetch(`/api/coach-applications${sq}`),
         fetch(`/api/application-page${sq}`),
         fetch(`/api/coach-packages${sq}`),
+        fetch(`/api/stripe-connect${sq}`),
       ]);
       const appsData = await appsRes.json().catch(() => ({}));
       const pageData = await pageRes.json().catch(() => ({}));
       const pkgData = await pkgRes.json().catch(() => ({}));
+      const stripeData = await stripeRes.json().catch(() => ({}));
       if (appsRes.ok) setApps(appsData.applications || []);
       if (pkgRes.ok) setPackages((pkgData.packages || []).filter((p: any) => p.is_active));
+      if (stripeRes.ok) setStripeReady(!!stripeData.chargesEnabled);
       if (pageRes.ok && pageData.page) {
         setPage(pageData.page);
         setEditSlug(pageData.page.slug || "");
@@ -191,12 +201,25 @@ export default function ApplicationsTab() {
     }
   }
 
-  type SetupOpts = { startDate: string; requestAssessment: boolean; requestCycleTracking: boolean; packageId: string };
+  type SetupOpts = {
+    startDate: string;
+    requestAssessment: boolean;
+    requestCycleTracking: boolean;
+    packageId: string; // "" | "__custom__" | <package id>
+    customName: string;
+    customAmount: string;
+  };
 
   async function requestPayment(a: Application, opts: SetupOpts) {
+    const isCustom = opts.packageId === "__custom__";
     if (!opts.packageId) {
-      setMsg({ text: "Choose a package to charge for (payment requests need a package). To take no payment, use 'Accept' instead.", type: "error" });
+      setMsg({ text: "Choose a package or a custom amount to charge. To take no payment, use 'Accept' instead.", type: "error" });
       return;
+    }
+    if (isCustom) {
+      const amt = parseFloat(opts.customAmount.replace(/[^0-9.]/g, ""));
+      if (!opts.customName.trim()) { setMsg({ text: "Give the custom charge a name (e.g. 'Custom coaching').", type: "error" }); return; }
+      if (!(amt > 0)) { setMsg({ text: "Enter a valid custom amount.", type: "error" }); return; }
     }
     setActingId(a.id);
     setMsg(null);
@@ -206,7 +229,11 @@ export default function ApplicationsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           application_id: a.id,
-          package_id: opts.packageId,
+          // Custom one-time charge sends amount + name (no package_id);
+          // otherwise the chosen package id.
+          ...(isCustom
+            ? { amount: opts.customAmount, custom_name: opts.customName.trim() }
+            : { package_id: opts.packageId }),
           start_date: opts.startDate || null,
           request_assessment: opts.requestAssessment,
           request_cycle_tracking: opts.requestCycleTracking,
@@ -285,8 +312,9 @@ export default function ApplicationsTab() {
           start_date: opts.startDate || null,
           request_assessment: opts.requestAssessment,
           request_cycle_tracking: opts.requestCycleTracking,
-          // "" means no package → coach builds a custom plan manually.
-          package_id: opts.packageId || null,
+          // "" or "__custom__" on the no-payment accept path means no package →
+          // coach builds a custom plan manually (custom *charges* go via Stripe).
+          package_id: opts.packageId && opts.packageId !== "__custom__" ? opts.packageId : null,
           ...scopeBody(),
         }),
       });
@@ -333,6 +361,8 @@ export default function ApplicationsTab() {
       requestAssessment: setupRequestAssessment,
       requestCycleTracking: setupRequestCycle,
       packageId: setupPackageId,
+      customName: setupCustomName,
+      customAmount: setupCustomAmount,
     };
     setSetupFor(null);
     if (mode === "accept") await acceptApp(app, opts);
@@ -541,8 +571,8 @@ export default function ApplicationsTab() {
                           </>
                         ) : (
                           <>
-                            {a.selected_package_id && (
-                              <button onClick={() => openSetup(a, "request_payment")} disabled={actingId === a.id} title="Set a start date, then email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                            {stripeReady && (
+                              <button onClick={() => openSetup(a, "request_payment")} disabled={actingId === a.id} title="Choose a package or custom amount, then email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
                                 {actingId === a.id ? "…" : "Request payment"}
                               </button>
                             )}
@@ -625,13 +655,30 @@ export default function ApplicationsTab() {
                       {p.name} — {formatPrice(p.price_cents, p.billing_interval)}{p.id === setupFor.app.selected_package_id ? " (their choice)" : ""}
                     </option>
                   ))}
+                  {setupFor.mode === "request_payment" && (
+                    <option value="__custom__">Custom amount (one-time)…</option>
+                  )}
                 </select>
                 <p className="text-[11px] text-gray-500 mt-1">
                   {setupFor.mode === "request_payment"
-                    ? "The client is charged for this package. Change it if you agreed on something different."
+                    ? "The client is charged for this. Change it if you agreed on something different, or choose a custom one-time amount."
                     : "Creates the plan from this package. Choose \u201CNo package\u201D to build a custom plan by hand on their Account page."}
                 </p>
               </div>
+
+              {/* Custom one-time charge (request-payment path only) */}
+              {setupFor.mode === "request_payment" && setupPackageId === "__custom__" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">What&apos;s it for?</label>
+                    <input value={setupCustomName} onChange={(e) => setSetupCustomName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Custom coaching" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Amount (one-time)</label>
+                    <input value={setupCustomAmount} onChange={(e) => setSetupCustomAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 250" inputMode="decimal" />
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Program start date</label>
                 <input

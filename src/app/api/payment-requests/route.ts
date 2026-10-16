@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}))
   const {
-    application_id, package_id, amount,
+    application_id, package_id, amount, custom_name,
     start_date, request_assessment, request_cycle_tracking,
     org: orgOverride, coach: coachOverride,
   } = body || {}
@@ -129,7 +129,11 @@ export async function POST(request: Request) {
   let packageName: string | null = null
   let resolvedPackageId: string | null = null
 
-  const pkgId = package_id || application.selected_package_id || null
+  // A custom amount is used when `amount` is provided AND no explicit package_id
+  // was chosen. (Don't fall back to the applicant's selected_package_id in that
+  // case — the coach deliberately chose a custom charge.)
+  const useCustomAmount = amount != null && String(amount).trim() !== '' && !package_id
+  const pkgId = useCustomAmount ? null : (package_id || application.selected_package_id || null)
   if (pkgId) {
     const { data: pkg } = await admin
       .from('coach_packages')
@@ -144,12 +148,14 @@ export async function POST(request: Request) {
     billingInterval = pkg.billing_interval === 'monthly' ? 'monthly' : 'one_time'
     packageName = pkg.name
     resolvedPackageId = pkg.id
-  } else if (amount != null) {
+  } else if (useCustomAmount) {
     const cents = Math.round(Number(String(amount).replace(/[^0-9.]/g, '')) * 100)
     if (!Number.isFinite(cents) || cents <= 0) {
       return NextResponse.json({ error: 'A valid amount is required' }, { status: 400 })
     }
     amountCents = cents
+    billingInterval = 'one_time' // custom charges are always one-time for now
+    packageName = (custom_name && String(custom_name).trim()) || 'Custom coaching'
   } else {
     return NextResponse.json({ error: 'Provide a package or an amount' }, { status: 400 })
   }

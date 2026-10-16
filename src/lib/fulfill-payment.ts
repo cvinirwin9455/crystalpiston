@@ -114,6 +114,32 @@ export async function fulfillPaymentRequest(
           })
           if (created.ok) planId = created.planId
         }
+      } else {
+        // Custom one-time charge (no package): create a MINIMAL programming-only
+        // plan so the client's Account shows what they paid. The coach fleshes
+        // out the program / dates afterward.
+        const start = (pr.start_date && /^\d{4}-\d{2}-\d{2}$/.test(pr.start_date))
+          ? pr.start_date
+          : new Date().toISOString().split('T')[0]
+        const owed = (Number(pr.amount_cents) || 0) / 100
+        const minimal: Record<string, any> = {
+          client_id: clientId,
+          start_date: start,
+          end_date: start,
+          goal: application?.primary_goal || pr.package_name || null,
+          owed,
+          paid: 0,
+          status: 'active',
+          billing_mode: 'programming_only',
+          program_loaded: true,
+        }
+        let created = await admin.from('plans').insert(minimal).select('id').single()
+        if (created.error) {
+          // Retry without newer columns for older schemas.
+          const base = { client_id: clientId, start_date: start, end_date: start, goal: minimal.goal, owed, paid: 0, status: 'active' }
+          created = await admin.from('plans').insert(base).select('id').single()
+        }
+        if (!created.error) planId = created.data.id
       }
     }
 
