@@ -425,9 +425,10 @@ export async function POST(request: Request) {
     .single()
   const coachName = coachProfile?.name || 'Your coach'
 
-  // All invites now redirect to First Mile Coach platform
-  const redirectDomain = 'www.firstmilecoach.com'
+  // Resolve the link base so invites from staging stay on staging (not prod).
   const orgDomain = 'firstmilecoach.com'
+  const { getProductionUrl } = await import('@/lib/email')
+  const baseUrl = getProductionUrl(request.url)
 
   // Generate the invite link without sending Supabase's built-in email
   const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
@@ -438,7 +439,7 @@ export async function POST(request: Request) {
         name,
         role: 'client',
       },
-      redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
+      redirectTo: `${baseUrl}/auth/callback?next=/set-password`,
     },
   })
 
@@ -449,7 +450,7 @@ export async function POST(request: Request) {
   const newUserId = linkData.user.id
   // Build the confirmation URL using hashed_token pointing to our app's auth callback
   const hashedToken = linkData.properties.hashed_token
-  const confirmationUrl = `https://${redirectDomain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+  const confirmationUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
   // Send our custom client invite email via Resend
   const emailSent = await sendClientInviteEmail({

@@ -300,9 +300,10 @@ export async function POST(request: Request) {
       .update({ organization_id: newOrgId })
       .eq('id', signupId)
 
-    // Use firstmilecoach.com for the redirect
-    const domain = 'www.firstmilecoach.com'
-    const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
+    // Resolve the link base so invites from staging stay on staging (not prod).
+    const { getProductionUrl } = await import('@/lib/email')
+    const baseUrl = getProductionUrl(request.url)
+    const redirectUrl = `${baseUrl}/auth/callback?next=/set-password`
 
     // Generate the invite link without sending Supabase's built-in email
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
@@ -325,7 +326,7 @@ export async function POST(request: Request) {
 
     // Build the confirmation URL using hashed_token pointing to our app's auth callback
     const hashedToken = linkData.properties.hashed_token
-    const confirmationUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+    const confirmationUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
     // Send our custom coach invite email via Resend
     const emailSent = await sendCoachInviteEmail({
@@ -401,10 +402,10 @@ export async function POST(request: Request) {
       .eq('id', signup.organization_id)
       .single()
 
-    let domain = org?.domain || 'www.firstmilecoach.com'
-    if (domain === 'firstmilecoach.com') domain = 'www.firstmilecoach.com'
-    if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
-    const redirectUrl = `https://${domain}/auth/callback?next=/set-password`
+    // Resolve the link base so links from staging stay on staging (not prod).
+    const { getProductionUrl: getBaseUrl2 } = await import('@/lib/email')
+    const baseUrl2 = getBaseUrl2(request.url)
+    const redirectUrl = `${baseUrl2}/auth/callback?next=/set-password`
 
     // Generate a recovery link for the existing user (lets them set a password
     // without destroying their account).
@@ -421,7 +422,7 @@ export async function POST(request: Request) {
     }
 
     const hashedToken = linkData.properties.hashed_token
-    const confirmationUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=recovery&next=/set-password`
+    const confirmationUrl = `${baseUrl2}/auth/callback?token_hash=${hashedToken}&type=recovery&next=/set-password`
 
     // Send the invite/setup email
     await sendCoachInviteEmail({
