@@ -456,10 +456,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <label style={labelStyle}>Primary goal *</label>
               <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} required placeholder="What are you hoping to achieve?" />
             </div>
-            <div style={groupStyle}>
-              <label style={labelStyle}>Days available to train</label>
-              <input style={inputStyle} value={form.days_available} onChange={set('days_available')} placeholder="e.g. Mon/Wed/Fri + weekends" />
-            </div>
 
             {/* --- Running block (only show when questions should be visible) --- */}
             {showQuestions && showRunning && (
@@ -537,10 +533,6 @@ export default function ApplicationForm({ page }: { page: Page }) {
                 <input style={inputStyle} value={form.plan_interest} onChange={set('plan_interest')} placeholder="Name the one from above, or 'not sure yet'" />
               </div>
             )}
-            <div style={groupStyle}>
-              <label style={labelStyle}>Why are you looking for coaching?</label>
-              <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={form.why_coaching} onChange={set('why_coaching')} placeholder="A sentence or two about what you're after" />
-            </div>
 
             {error && (
               <div style={{ margin: '0 0 16px', padding: '12px 14px', borderRadius: 10, background: '#fdecea', color: '#b3261e', fontSize: 14 }}>

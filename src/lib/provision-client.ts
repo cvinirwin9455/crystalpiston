@@ -38,10 +38,11 @@ export type ProvisionResult = {
 // coach can still set up the plan manually. Returns the created plan id (if any).
 async function createPlanForProvisionedClient(
   admin: any,
-  params: { application: any; clientId: string; coachId: string; organizationId?: string | null; startDate?: string | null }
+  params: { application: any; clientId: string; coachId: string; organizationId?: string | null; startDate?: string | null; packageId?: string | null }
 ): Promise<string | undefined> {
-  const packageId = params.application?.selected_package_id
-  if (!packageId) return undefined // no package selected -> coach sets up the plan manually
+  // Use the coach's explicit choice when provided; else the applicant's pick.
+  const packageId = params.packageId !== undefined ? params.packageId : params.application?.selected_package_id
+  if (!packageId) return undefined // no package -> coach sets up the plan manually
 
   // Don't create a second plan if this client already has an active one.
   const { data: existingPlan } = await admin
@@ -110,6 +111,10 @@ export async function provisionClientFromApplication(
     startDate?: string | null
     requestAssessment?: boolean
     requestCycleTracking?: boolean
+    // Coach's package choice at accept time. undefined = use the applicant's
+    // selected_package_id; a string = use that package; null = no package
+    // (coach will build a custom plan manually).
+    overridePackageId?: string | null
   }
 ): Promise<ProvisionResult> {
   const { application, coachId } = params
@@ -124,6 +129,17 @@ export async function provisionClientFromApplication(
   const email = String(application.email).trim().toLowerCase()
   const name = String(application.full_name).trim()
   const orgId = organizationId || application.organization_id || null
+
+  // Synthesize a birthday (YYYY-MM-01) from the application's birth month/year.
+  // The form collects month + year only (no day), while the Account page stores a
+  // full DATE on clients.birthday — default the day to the 1st so the DOB flows
+  // through and age is computed correctly. null if the application lacks it.
+  const bMonth = Number(application.birth_month)
+  const bYear = Number(application.birth_year)
+  const birthday =
+    Number.isFinite(bMonth) && bMonth >= 1 && bMonth <= 12 && Number.isFinite(bYear) && bYear > 1900
+      ? `${bYear}-${String(bMonth).padStart(2, '0')}-01`
+      : null
 
   // --- Existing user (dual-role): link, don't re-invite ---
   const { data: existingUser } = await admin
@@ -155,6 +171,15 @@ export async function provisionClientFromApplication(
       clientId = created.id
     }
 
+    // Set the birthday from the application (best-effort; only fill if empty so
+    // we don't overwrite a DOB an existing client already has).
+    if (birthday) {
+      try {
+        const { data: cur } = await admin.from('clients').select('birthday').eq('id', clientId).maybeSingle()
+        if (!cur?.birthday) await admin.from('clients').update({ birthday }).eq('id', clientId)
+      } catch { /* column may not exist */ }
+    }
+
     try {
       const { data: existingAssignments } = await admin
         .from('client_coaches')
@@ -183,6 +208,7 @@ export async function provisionClientFromApplication(
       coachId,
       organizationId: orgId,
       startDate: params.startDate || null,
+      packageId: params.overridePackageId,
     })
 
     // Apply the coach's setup choices (assessment / cycle tracking).
@@ -254,16 +280,29 @@ export async function provisionClientFromApplication(
     await admin.from('users').update(userUpdates).eq('id', newUserId)
   }
 
-  const { data: newClientRecord, error: clientError } = await admin
+  const clientRow: Record<string, any> = {
+    user_id: newUserId,
+    goal: application.primary_goal || null,
+    owed: 0,
+    paid: 0,
+  }
+  if (birthday) clientRow.birthday = birthday
+  let { data: newClientRecord, error: clientError } = await admin
     .from('clients')
-    .insert({
-      user_id: newUserId,
-      goal: application.primary_goal || null,
-      owed: 0,
-      paid: 0,
-    })
+    .insert(clientRow)
     .select('id')
     .single()
+
+  // birthday column may not exist on older schemas — retry without it.
+  if (clientError && birthday) {
+    const retry = await admin
+      .from('clients')
+      .insert({ user_id: newUserId, goal: application.primary_goal || null, owed: 0, paid: 0 })
+      .select('id')
+      .single()
+    newClientRecord = retry.data
+    clientError = retry.error
+  }
 
   if (clientError) {
     return { ok: false, status: 'error', error: clientError.message }
@@ -293,6 +332,7 @@ export async function provisionClientFromApplication(
         coachId,
         organizationId: orgId,
         startDate: params.startDate || null,
+        packageId: params.overridePackageId,
       })
     : undefined
 

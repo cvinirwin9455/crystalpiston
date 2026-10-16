@@ -94,6 +94,7 @@ function scopeBody(): Record<string, string> {
 export default function ApplicationsTab() {
   const [apps, setApps] = useState<Application[]>([]);
   const [page, setPage] = useState<Page | null>(null);
+  const [packages, setPackages] = useState<{ id: string; name: string; price_cents: number; currency: string; billing_interval: string; is_active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "accepted" | "declined" | "all">("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -110,12 +111,16 @@ export default function ApplicationsTab() {
   const [setupStartDate, setSetupStartDate] = useState(todayStr);
   const [setupRequestAssessment, setSetupRequestAssessment] = useState(false);
   const [setupRequestCycle, setSetupRequestCycle] = useState(false);
+  // The package the coach will actually use for this client (defaults to the
+  // applicant's choice, but the coach can change it or pick "none/custom").
+  const [setupPackageId, setSetupPackageId] = useState<string>("");
 
   function openSetup(app: Application, mode: "accept" | "request_payment") {
     setSetupFor({ app, mode });
     setSetupStartDate(todayStr);
     setSetupRequestAssessment(false);
     setSetupRequestCycle(false);
+    setSetupPackageId(app.selected_package_id || "");
     setMsg(null);
   }
 
@@ -136,13 +141,16 @@ export default function ApplicationsTab() {
     setLoading(true);
     try {
       const sq = scopeQuery();
-      const [appsRes, pageRes] = await Promise.all([
+      const [appsRes, pageRes, pkgRes] = await Promise.all([
         fetch(`/api/coach-applications${sq}`),
         fetch(`/api/application-page${sq}`),
+        fetch(`/api/coach-packages${sq}`),
       ]);
       const appsData = await appsRes.json().catch(() => ({}));
       const pageData = await pageRes.json().catch(() => ({}));
+      const pkgData = await pkgRes.json().catch(() => ({}));
       if (appsRes.ok) setApps(appsData.applications || []);
+      if (pkgRes.ok) setPackages((pkgData.packages || []).filter((p: any) => p.is_active));
       if (pageRes.ok && pageData.page) {
         setPage(pageData.page);
         setEditSlug(pageData.page.slug || "");
@@ -183,11 +191,11 @@ export default function ApplicationsTab() {
     }
   }
 
-  type SetupOpts = { startDate: string; requestAssessment: boolean; requestCycleTracking: boolean };
+  type SetupOpts = { startDate: string; requestAssessment: boolean; requestCycleTracking: boolean; packageId: string };
 
   async function requestPayment(a: Application, opts: SetupOpts) {
-    if (!a.selected_package_id) {
-      setMsg({ text: "This applicant didn't select a package, so there's nothing to charge yet.", type: "error" });
+    if (!opts.packageId) {
+      setMsg({ text: "Choose a package to charge for (payment requests need a package). To take no payment, use 'Accept' instead.", type: "error" });
       return;
     }
     setActingId(a.id);
@@ -198,7 +206,7 @@ export default function ApplicationsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           application_id: a.id,
-          package_id: a.selected_package_id,
+          package_id: opts.packageId,
           start_date: opts.startDate || null,
           request_assessment: opts.requestAssessment,
           request_cycle_tracking: opts.requestCycleTracking,
@@ -277,6 +285,8 @@ export default function ApplicationsTab() {
           start_date: opts.startDate || null,
           request_assessment: opts.requestAssessment,
           request_cycle_tracking: opts.requestCycleTracking,
+          // "" means no package → coach builds a custom plan manually.
+          package_id: opts.packageId || null,
           ...scopeBody(),
         }),
       });
@@ -322,6 +332,7 @@ export default function ApplicationsTab() {
       startDate: setupStartDate,
       requestAssessment: setupRequestAssessment,
       requestCycleTracking: setupRequestCycle,
+      packageId: setupPackageId,
     };
     setSetupFor(null);
     if (mode === "accept") await acceptApp(app, opts);
@@ -601,6 +612,26 @@ export default function ApplicationsTab() {
             </p>
 
             <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Package</label>
+                <select
+                  value={setupPackageId}
+                  onChange={(e) => setSetupPackageId(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                >
+                  <option value="">No package — I&apos;ll set up a custom plan</option>
+                  {packages.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {formatPrice(p.price_cents, p.billing_interval)}{p.id === setupFor.app.selected_package_id ? " (their choice)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {setupFor.mode === "request_payment"
+                    ? "The client is charged for this package. Change it if you agreed on something different."
+                    : "Creates the plan from this package. Choose \u201CNo package\u201D to build a custom plan by hand on their Account page."}
+                </p>
+              </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Program start date</label>
                 <input

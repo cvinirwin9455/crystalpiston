@@ -108,7 +108,7 @@ export async function PATCH(request: Request) {
   const body = await request.json()
   const {
     id, action, org: orgOverride, coach: coachOverride,
-    start_date, request_assessment, request_cycle_tracking,
+    start_date, request_assessment, request_cycle_tracking, package_id,
   } = body || {}
   if (!id || (action !== 'accept' && action !== 'decline')) {
     return NextResponse.json({ error: 'id and a valid action are required' }, { status: 400 })
@@ -167,6 +167,10 @@ export async function PATCH(request: Request) {
     startDate: start_date || null,
     requestAssessment: !!request_assessment,
     requestCycleTracking: !!request_cycle_tracking,
+    // The coach may override the applicant's package at accept time. The body
+    // always carries package_id ('' / null = no package → custom plan). Only
+    // treat it as an override when the key is present in the request.
+    overridePackageId: 'package_id' in (body || {}) ? (package_id || null) : undefined,
   })
 
   if (!result.ok) {
