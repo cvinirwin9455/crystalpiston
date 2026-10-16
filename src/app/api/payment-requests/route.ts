@@ -83,6 +83,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const {
     application_id, package_id, amount,
+    start_date, request_assessment, request_cycle_tracking,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -157,24 +158,37 @@ export async function POST(request: Request) {
   // single payment for now; recurring subscriptions come in a later step.
   const token = randomToken()
 
-  const { data: created, error: insertErr } = await admin
+  const baseRow: Record<string, any> = {
+    coach_id: coachId,
+    organization_id: organizationId || application.organization_id || null,
+    application_id,
+    package_id: resolvedPackageId,
+    amount_cents: amountCents,
+    currency,
+    billing_interval: billingInterval,
+    package_name: packageName,
+    client_email: String(application.email).trim().toLowerCase(),
+    client_name: String(application.full_name).trim(),
+    token,
+    status: 'pending',
+  }
+  // start_date + setup flags are newer columns — try with them, fall back without.
+  const setupCols = {
+    start_date: start_date && /^\d{4}-\d{2}-\d{2}$/.test(start_date) ? start_date : null,
+    request_assessment: !!request_assessment,
+    request_cycle_tracking: !!request_cycle_tracking,
+  }
+  let { data: created, error: insertErr } = await admin
     .from('payment_requests')
-    .insert({
-      coach_id: coachId,
-      organization_id: organizationId || application.organization_id || null,
-      application_id,
-      package_id: resolvedPackageId,
-      amount_cents: amountCents,
-      currency,
-      billing_interval: billingInterval,
-      package_name: packageName,
-      client_email: String(application.email).trim().toLowerCase(),
-      client_name: String(application.full_name).trim(),
-      token,
-      status: 'pending',
-    })
+    .insert({ ...baseRow, ...setupCols })
     .select('*')
     .single()
+
+  if (insertErr) {
+    const retry = await admin.from('payment_requests').insert(baseRow).select('*').single()
+    created = retry.data
+    insertErr = retry.error
+  }
 
   if (insertErr) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 })

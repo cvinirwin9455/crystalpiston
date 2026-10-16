@@ -101,6 +101,23 @@ export default function ApplicationsTab() {
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Setup modal shown before accepting / requesting payment. Collects the
+  // program start date + whether to request the assessment and (for women)
+  // menstrual cycle tracking.
+  const [setupFor, setSetupFor] = useState<{ app: Application; mode: "accept" | "request_payment" } | null>(null);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [setupStartDate, setSetupStartDate] = useState(todayStr);
+  const [setupRequestAssessment, setSetupRequestAssessment] = useState(false);
+  const [setupRequestCycle, setSetupRequestCycle] = useState(false);
+
+  function openSetup(app: Application, mode: "accept" | "request_payment") {
+    setSetupFor({ app, mode });
+    setSetupStartDate(todayStr);
+    setSetupRequestAssessment(false);
+    setSetupRequestCycle(false);
+    setMsg(null);
+  }
+
   // Editable settings form state
   const [editSlug, setEditSlug] = useState("");
   const [editHeadline, setEditHeadline] = useState("");
@@ -165,23 +182,27 @@ export default function ApplicationsTab() {
     }
   }
 
-  async function requestPayment(a: Application) {
-    const hasPkg = !!a.selected_package_id;
-    const msgConfirm = hasPkg
-      ? `Send ${a.full_name} a payment request for "${a.selected_package_name}"? They'll get an email with a secure Stripe link, and their account is created once they pay.`
-      : `This applicant didn't select a package. Accept them and set up a package first, or send a request from their application once a package is chosen.`;
-    if (!hasPkg) {
+  type SetupOpts = { startDate: string; requestAssessment: boolean; requestCycleTracking: boolean };
+
+  async function requestPayment(a: Application, opts: SetupOpts) {
+    if (!a.selected_package_id) {
       setMsg({ text: "This applicant didn't select a package, so there's nothing to charge yet.", type: "error" });
       return;
     }
-    if (!confirm(msgConfirm)) return;
     setActingId(a.id);
     setMsg(null);
     try {
       const res = await fetch("/api/payment-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ application_id: a.id, package_id: a.selected_package_id, ...scopeBody() }),
+        body: JSON.stringify({
+          application_id: a.id,
+          package_id: a.selected_package_id,
+          start_date: opts.startDate || null,
+          request_assessment: opts.requestAssessment,
+          request_cycle_tracking: opts.requestCycleTracking,
+          ...scopeBody(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -200,33 +221,89 @@ export default function ApplicationsTab() {
     }
   }
 
-  async function act(id: string, action: "accept" | "decline") {
-    if (action === "decline" && !confirm("Decline this application? The applicant will not be notified and no account is created.")) return;
-    setActingId(id);
+  // Re-send an existing payment request's email (no setup modal needed).
+  async function resendPayment(a: Application) {
+    if (!a.selected_package_id) return;
+    setActingId(a.id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: a.id, package_id: a.selected_package_id, ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg({ text: data.error || "Could not resend.", type: "error" });
+      else { setMsg({ text: `Payment email re-sent to ${a.email}.`, type: "success" }); await load(); }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function acceptApp(a: Application, opts: SetupOpts) {
+    setActingId(a.id);
     setMsg(null);
     try {
       const res = await fetch("/api/coach-applications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action, ...scopeBody() }),
+        body: JSON.stringify({
+          id: a.id,
+          action: "accept",
+          start_date: opts.startDate || null,
+          request_assessment: opts.requestAssessment,
+          request_cycle_tracking: opts.requestCycleTracking,
+          ...scopeBody(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setMsg({ text: data.error || "Action failed", type: "error" });
       } else {
-        setMsg({
-          text: action === "accept"
-            ? (data.message || "Application accepted — client account created.")
-            : "Application declined.",
-          type: "success",
-        });
-        setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status: data.status } : a)));
+        setMsg({ text: data.message || "Application accepted — client account created.", type: "success" });
+        setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status: data.status } : x)));
       }
     } catch {
       setMsg({ text: "Network error", type: "error" });
     } finally {
       setActingId(null);
     }
+  }
+
+  async function decline(id: string) {
+    if (!confirm("Decline this application? The applicant will not be notified and no account is created.")) return;
+    setActingId(id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/coach-applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "decline", ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg({ text: data.error || "Action failed", type: "error" });
+      else { setMsg({ text: "Application declined.", type: "success" }); setApps((prev) => prev.map((x) => (x.id === id ? { ...x, status: data.status } : x))); }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  // Confirm the setup modal → run the right action with the chosen options.
+  async function confirmSetup() {
+    if (!setupFor) return;
+    const { app, mode } = setupFor;
+    const opts: SetupOpts = {
+      startDate: setupStartDate,
+      requestAssessment: setupRequestAssessment,
+      requestCycleTracking: setupRequestCycle,
+    };
+    setSetupFor(null);
+    if (mode === "accept") await acceptApp(app, opts);
+    else await requestPayment(app, opts);
   }
 
   async function saveSettings() {
@@ -422,21 +499,21 @@ export default function ApplicationsTab() {
                             <button onClick={() => copyPayLink(a)} className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg">
                               Copy pay link
                             </button>
-                            <button onClick={() => requestPayment(a)} disabled={actingId === a.id} title="Re-send the payment email." className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg disabled:opacity-50">
+                            <button onClick={() => resendPayment(a)} disabled={actingId === a.id} title="Re-send the payment email." className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg disabled:opacity-50">
                               {actingId === a.id ? "…" : "Resend"}
                             </button>
                           </>
                         ) : (
                           <>
                             {a.selected_package_id && (
-                              <button onClick={() => requestPayment(a)} disabled={actingId === a.id} title="Email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              <button onClick={() => openSetup(a, "request_payment")} disabled={actingId === a.id} title="Set a start date, then email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
                                 {actingId === a.id ? "…" : "Request payment"}
                               </button>
                             )}
-                            <button onClick={() => act(a.id, "accept")} disabled={actingId === a.id} title="Create the client's account now without taking payment." className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                            <button onClick={() => openSetup(a, "accept")} disabled={actingId === a.id} title="Create the client's account now without taking payment." className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
                               {actingId === a.id ? "…" : "Accept (no payment)"}
                             </button>
-                            <button onClick={() => act(a.id, "decline")} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
+                            <button onClick={() => decline(a.id)} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
                               Decline
                             </button>
                           </>
@@ -482,6 +559,56 @@ export default function ApplicationsTab() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ---- Setup modal (shown before Accept / Request payment) ---- */}
+      {setupFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSetupFor(null)}>
+          <div className="bg-secondary border border-white/10 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-white font-heading uppercase tracking-wider text-sm">
+              {setupFor.mode === "accept" ? "Accept & set up" : "Request payment & set up"}
+            </h3>
+            <p className="text-gray-400 text-xs mt-1">
+              {setupFor.mode === "accept"
+                ? `Create ${setupFor.app.full_name}'s account now (no payment).`
+                : `Email ${setupFor.app.full_name} a secure Stripe link. Their account is created once they pay.`}
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Program start date</label>
+                <input
+                  type="date"
+                  value={setupStartDate}
+                  onChange={(e) => setSetupStartDate(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  This is the date the plan starts on the client&apos;s Account page.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={setupRequestAssessment} onChange={(e) => setSetupRequestAssessment(e.target.checked)} className="accent-accent mt-0.5" />
+                <span>Request the health assessment from the client</span>
+              </label>
+
+              {setupFor.app.sex === "female" && (
+                <label className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+                  <input type="checkbox" checked={setupRequestCycle} onChange={(e) => setSetupRequestCycle(e.target.checked)} className="accent-accent mt-0.5" />
+                  <span>Request menstrual cycle tracking (client will be asked to consent)</span>
+                </label>
+              )}
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button onClick={confirmSetup} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm">
+                {setupFor.mode === "accept" ? "Accept client" : "Send payment request"}
+              </button>
+              <button onClick={() => setSetupFor(null)} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

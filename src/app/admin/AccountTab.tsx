@@ -796,6 +796,15 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const programTemplateName =
     (programTemplates || []).find((t) => t.id === plan.programTemplateId)?.name || "a program";
 
+  // "Start date has passed" — an active plan whose start date is in the past
+  // (e.g. a client paid late). Nudge the coach to adjust it via Edit Plan.
+  const startPassed = (() => {
+    if (plan.status !== "active" || !plan.startDate) return false;
+    const start = new Date(plan.startDate + "T00:00:00");
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return start.getTime() < today.getTime();
+  })();
+
   const handleMarkProgramLoaded = async () => {
     setMarkingLoaded(true);
     try {
@@ -1042,6 +1051,30 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
               className="flex-shrink-0 text-[11px] bg-cyan-600/80 hover:bg-cyan-600 text-white font-medium px-2.5 py-1 rounded-lg disabled:opacity-50"
             >
               {markingLoaded ? "Saving…" : "Mark loaded"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Start-date-has-passed indicator — the plan's start date is in the past
+          (e.g. a late payment). Prompt the coach to adjust it via Edit Plan. */}
+      {startPassed && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2.5 mb-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 min-w-0">
+              <span className="text-base leading-none mt-0.5">⚠️</span>
+              <div className="min-w-0">
+                <p className="text-amber-200 text-xs font-medium">Start date has passed</p>
+                <p className="text-amber-300/70 text-[11px] mt-0.5">
+                  This plan was set to start {formatDate(plan.startDate)}. If the client started late, update the start date.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setEditingPlan(true)}
+              className="flex-shrink-0 text-[11px] bg-amber-600/80 hover:bg-amber-600 text-white font-medium px-2.5 py-1 rounded-lg"
+            >
+              Adjust dates
             </button>
           </div>
         </div>

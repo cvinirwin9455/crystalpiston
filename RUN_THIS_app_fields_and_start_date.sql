@@ -12,9 +12,12 @@ ALTER TABLE coach_applications
   ADD COLUMN IF NOT EXISTS birth_year  INTEGER CHECK (birth_year IS NULL OR (birth_year BETWEEN 1900 AND 2100));
 
 -- Payment requests: the coach-chosen program start date (Option A — set when
--- requesting payment, flows onto the client's plan as start_date on payment).
+-- requesting payment, flows onto the client's plan as start_date on payment),
+-- plus the setup choices to apply when the client pays.
 ALTER TABLE payment_requests
-  ADD COLUMN IF NOT EXISTS start_date DATE;
+  ADD COLUMN IF NOT EXISTS start_date DATE,
+  ADD COLUMN IF NOT EXISTS request_assessment BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS request_cycle_tracking BOOLEAN NOT NULL DEFAULT false;
 
 -- Sanity check: all should return 1.
 SELECT

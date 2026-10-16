@@ -105,7 +105,10 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, action, org: orgOverride, coach: coachOverride } = body || {}
+  const {
+    id, action, org: orgOverride, coach: coachOverride,
+    start_date, request_assessment, request_cycle_tracking,
+  } = body || {}
   if (!id || (action !== 'accept' && action !== 'decline')) {
     return NextResponse.json({ error: 'id and a valid action are required' }, { status: 400 })
   }
@@ -160,6 +163,9 @@ export async function PATCH(request: Request) {
     coachId,
     organizationId,
     coachName,
+    startDate: start_date || null,
+    requestAssessment: !!request_assessment,
+    requestCycleTracking: !!request_cycle_tracking,
   })
 
   if (!result.ok) {

@@ -79,20 +79,24 @@ export async function createPlanFromPackage(
     organizationId?: string | null
     pkg: Package
     application?: any // optional coach_applications row for goal/race fields
+    startDate?: string | null // coach-chosen program start date (defaults to today)
   }
 ): Promise<PlanFromPackageResult> {
   const { clientId, coachId, pkg, application } = params
   const organizationId = params.organizationId ?? pkg.organization_id ?? null
   const billingMode = pkg.billing_mode || 'programming_only'
 
-  // Dates: start today; end today + duration_weeks (default 1 week so the
-  // required NOT NULL end_date is always populated). per_session has no span.
-  const today = new Date()
-  const startDate = today.toISOString().split('T')[0]
+  // Dates: start on the coach-chosen date (default today); end = start +
+  // duration_weeks (default 1 week so the NOT NULL end_date is always set).
+  // per_session has no span.
+  const startDate =
+    params.startDate && /^\d{4}-\d{2}-\d{2}$/.test(params.startDate)
+      ? params.startDate
+      : new Date().toISOString().split('T')[0]
   let endDate = startDate
   if (billingMode !== 'per_session') {
     const weeks = pkg.duration_weeks && pkg.duration_weeks > 0 ? pkg.duration_weeks : 1
-    const end = new Date(today)
+    const end = new Date(startDate + 'T00:00:00')
     end.setDate(end.getDate() + weeks * 7)
     endDate = end.toISOString().split('T')[0]
   }

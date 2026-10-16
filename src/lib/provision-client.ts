@@ -38,7 +38,7 @@ export type ProvisionResult = {
 // coach can still set up the plan manually. Returns the created plan id (if any).
 async function createPlanForProvisionedClient(
   admin: any,
-  params: { application: any; clientId: string; coachId: string; organizationId?: string | null }
+  params: { application: any; clientId: string; coachId: string; organizationId?: string | null; startDate?: string | null }
 ): Promise<string | undefined> {
   const packageId = params.application?.selected_package_id
   if (!packageId) return undefined // no package selected -> coach sets up the plan manually
@@ -61,11 +61,41 @@ async function createPlanForProvisionedClient(
       organizationId: params.organizationId,
       pkg,
       application: params.application,
+      startDate: params.startDate || null,
     })
     return result.ok ? result.planId : undefined
   } catch (err) {
     console.error('[provision] createPlanFromPackage failed (non-fatal):', err)
     return undefined
+  }
+}
+
+// Apply the coach's setup choices to a client once it exists:
+//   * request_assessment    -> set client_assessments.status = 'review_requested'
+//   * request_cycle_tracking -> set clients.cycle_tracking_requested = true (women)
+// Best-effort — never fails provisioning.
+async function applyClientSetup(
+  admin: any,
+  params: { clientId: string; requestAssessment?: boolean; requestCycleTracking?: boolean }
+): Promise<void> {
+  if (params.requestAssessment) {
+    try {
+      await admin
+        .from('client_assessments')
+        .upsert(
+          { client_id: params.clientId, status: 'review_requested', review_requested_at: new Date().toISOString() },
+          { onConflict: 'client_id' }
+        )
+    } catch (err) {
+      console.error('[provision] request assessment failed (non-fatal):', err)
+    }
+  }
+  if (params.requestCycleTracking) {
+    try {
+      await admin.from('clients').update({ cycle_tracking_requested: true }).eq('id', params.clientId)
+    } catch (err) {
+      console.error('[provision] request cycle tracking failed (non-fatal):', err)
+    }
   }
 }
 
@@ -76,6 +106,10 @@ export async function provisionClientFromApplication(
     coachId: string
     organizationId?: string | null
     coachName?: string
+    // Coach setup choices (from the Accept / Request-payment modal):
+    startDate?: string | null
+    requestAssessment?: boolean
+    requestCycleTracking?: boolean
   }
 ): Promise<ProvisionResult> {
   const { application, coachId } = params
@@ -148,6 +182,14 @@ export async function provisionClientFromApplication(
       clientId,
       coachId,
       organizationId: orgId,
+      startDate: params.startDate || null,
+    })
+
+    // Apply the coach's setup choices (assessment / cycle tracking).
+    await applyClientSetup(admin, {
+      clientId,
+      requestAssessment: params.requestAssessment,
+      requestCycleTracking: params.requestCycleTracking,
     })
 
     return {
@@ -250,8 +292,18 @@ export async function provisionClientFromApplication(
         clientId: newClientRecord.id,
         coachId,
         organizationId: orgId,
+        startDate: params.startDate || null,
       })
     : undefined
+
+  // Apply the coach's setup choices (assessment / cycle tracking).
+  if (newClientRecord) {
+    await applyClientSetup(admin, {
+      clientId: newClientRecord.id,
+      requestAssessment: params.requestAssessment,
+      requestCycleTracking: params.requestCycleTracking,
+    })
+  }
 
   return {
     ok: true,

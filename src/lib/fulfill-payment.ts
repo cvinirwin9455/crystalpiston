@@ -51,6 +51,10 @@ export async function fulfillPaymentRequest(
       coachId: pr.coach_id,
       organizationId: pr.organization_id,
       coachName: coach?.name || 'Your coach',
+      // Setup choices the coach made when requesting payment.
+      startDate: pr.start_date || null,
+      requestAssessment: !!pr.request_assessment,
+      requestCycleTracking: !!pr.request_cycle_tracking,
     })
     if (!result.ok) {
       // Still mark the payment as paid (money changed hands); surface the error
@@ -106,6 +110,7 @@ export async function fulfillPaymentRequest(
             organizationId: pr.organization_id,
             pkg,
             application,
+            startDate: pr.start_date || null,
           })
           if (created.ok) planId = created.planId
         }
