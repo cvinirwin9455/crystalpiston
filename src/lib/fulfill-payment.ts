@@ -117,11 +117,12 @@ export async function fulfillPaymentRequest(
     let paymentId: string | undefined
     if (planId && clientId) {
       const amount = (Number(pr.amount_cents) || 0) / 100
+      const paidDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
       const rec = await recordProgrammingPayment(admin, {
         planId,
         clientId,
         amount,
-        notes: `Online payment — ${pr.package_name || 'coaching'}`,
+        notes: `Paid on ${paidDate} via Stripe`,
         packageId,
         paymentRequestId: pr.id,
       })

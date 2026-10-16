@@ -67,7 +67,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json(plans || [])
+  // Attach the source package name (if any) so the UI can label the plan with
+  // the package the client purchased. Best-effort — never fails the request.
+  const planList = plans || []
+  try {
+    const pkgIds = Array.from(
+      new Set(planList.map((p: any) => p.source_package_id).filter(Boolean))
+    )
+    if (pkgIds.length > 0) {
+      const { data: pkgs } = await adminClient
+        .from('coach_packages')
+        .select('id, name')
+        .in('id', pkgIds)
+      const nameById = new Map((pkgs || []).map((p: any) => [p.id, p.name]))
+      for (const p of planList) {
+        p.package_name = p.source_package_id ? nameById.get(p.source_package_id) || null : null
+      }
+    }
+  } catch {
+    /* source_package_id column or packages table missing — skip labeling */
+  }
+
+  return NextResponse.json(planList)
 }
 
 // POST /api/plans - Create a new plan for a client

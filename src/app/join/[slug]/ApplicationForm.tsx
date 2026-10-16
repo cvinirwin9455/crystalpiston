@@ -44,6 +44,27 @@ const TYPE_LABELS: Record<string, string> = {
   personal_training: 'Personal training',
 }
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+// Years for the birth-year dropdown (this year back ~100 years).
+const CURRENT_YEAR = new Date().getFullYear()
+const BIRTH_YEARS = Array.from({ length: 100 }, (_, i) => CURRENT_YEAR - i)
+
+// Derive an age (integer) from a birth month (1-12) + year.
+function deriveAge(birthMonth: string, birthYear: string): number | null {
+  const m = parseInt(birthMonth, 10)
+  const y = parseInt(birthYear, 10)
+  if (!Number.isFinite(m) || !Number.isFinite(y)) return null
+  const now = new Date()
+  let age = now.getFullYear() - y
+  // Not yet had this year's birthday month? subtract one.
+  if (now.getMonth() + 1 < m) age -= 1
+  return age >= 0 && age < 130 ? age : null
+}
+
 export default function ApplicationForm({ page }: { page: Page }) {
   const hasPackages = page.showPackages !== false && page.packages && page.packages.length > 0
 
@@ -51,7 +72,9 @@ export default function ApplicationForm({ page }: { page: Page }) {
     full_name: '',
     email: '',
     phone: '',
-    age: '',
+    // Birth month/year (day not collected). We also derive an age integer.
+    birth_month: '',
+    birth_year: '',
     sex: '',
     running_experience: '',
     primary_goal: '',
@@ -120,6 +143,20 @@ export default function ApplicationForm({ page }: { page: Page }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
+    // Required: date of birth (month + year), sex, primary goal.
+    if (!form.birth_month || !form.birth_year) {
+      setError('Please enter your date of birth (month and year).')
+      return
+    }
+    if (!form.sex) {
+      setError('Please select your sex.')
+      return
+    }
+    if (!form.primary_goal.trim()) {
+      setError('Please tell us your primary goal.')
+      return
+    }
+
     if (hasPackages) {
       // PACKAGES FLOW validation
       if (!selectedPackageId) {
@@ -173,6 +210,10 @@ export default function ApplicationForm({ page }: { page: Page }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          // Derive age from birth month/year (day not collected).
+          age: deriveAge(form.birth_month, form.birth_year),
+          birth_month: form.birth_month ? parseInt(form.birth_month, 10) : null,
+          birth_year: form.birth_year ? parseInt(form.birth_year, 10) : null,
           selected_package_id: hasPackages ? selectedPackageId : null,
           interested_types: submitTypes,
           interested_formats: submitFormats,
@@ -261,23 +302,33 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <label style={labelStyle}>Email *</label>
               <input style={inputStyle} type="email" value={form.email} onChange={set('email')} required placeholder="you@example.com" />
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ ...groupStyle, flex: 1 }}>
-                <label style={labelStyle}>Phone</label>
-                <input style={inputStyle} value={form.phone} onChange={set('phone')} placeholder="(555) 123-4567" />
-              </div>
-              <div style={{ ...groupStyle, width: 90 }}>
-                <label style={labelStyle}>Age</label>
-                <input style={inputStyle} type="number" min="0" value={form.age} onChange={set('age')} placeholder="30" />
+            <div style={groupStyle}>
+              <label style={labelStyle}>Phone</label>
+              <input style={inputStyle} value={form.phone} onChange={set('phone')} placeholder="(555) 123-4567" />
+            </div>
+            <div style={groupStyle}>
+              <label style={labelStyle}>Date of birth *</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <select style={{ ...inputStyle, flex: 1 }} value={form.birth_month} onChange={set('birth_month')} required aria-label="Birth month">
+                  <option value="">Month</option>
+                  {MONTHS.map((label, i) => (
+                    <option key={i} value={String(i + 1)}>{label}</option>
+                  ))}
+                </select>
+                <select style={{ ...inputStyle, flex: 1 }} value={form.birth_year} onChange={set('birth_year')} required aria-label="Birth year">
+                  <option value="">Year</option>
+                  {BIRTH_YEARS.map((y) => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div style={groupStyle}>
-              <label style={labelStyle}>Sex</label>
-              <select style={inputStyle} value={form.sex} onChange={set('sex')}>
-                <option value="">Prefer not to say</option>
+              <label style={labelStyle}>Sex *</label>
+              <select style={inputStyle} value={form.sex} onChange={set('sex')} required>
+                <option value="">Select…</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
-                <option value="other">Other</option>
               </select>
             </div>
 
@@ -360,8 +411,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
             )}
 
             <div style={groupStyle}>
-              <label style={labelStyle}>Primary goal</label>
-              <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} placeholder="What are you hoping to achieve?" />
+              <label style={labelStyle}>Primary goal *</label>
+              <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} required placeholder="What are you hoping to achieve?" />
             </div>
             <div style={groupStyle}>
               <label style={labelStyle}>Days available to train</label>

@@ -21,6 +21,7 @@ type Plan = {
   programLoaded?: boolean;
   raceDateSameAsEnd?: boolean;
   billingMode?: 'programming_only' | 'per_session' | 'hybrid';
+  packageName?: string | null;
 };
 
 type ClientData = {
@@ -146,6 +147,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             programLoaded: p.program_loaded !== false,
             raceDateSameAsEnd: p.race_date_same_as_end !== false,
             billingMode: p.billing_mode || 'programming_only',
+            packageName: p.package_name || null,
           })));
         }
       } catch (err) {
@@ -737,7 +739,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [openPaymentForm, setOpenPaymentForm] = useState<null | 'programming' | 'session'>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string; type?: string}[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string; type?: string; notes?: string | null}[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loggingPayment, setLoggingPayment] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -828,6 +830,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             amount: parseFloat(p.amount),
             date: p.payment_date,
             type: p.payment_type || 'programming',
+            notes: p.notes || null,
           })));
         }
       } catch (err) {
@@ -938,11 +941,14 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
 
   const renderPaymentHistory = (payments: typeof paymentHistory) => (
     payments.length > 0 ? (
-      <div className="mt-2 space-y-1">
+      <div className="mt-2 space-y-1.5">
         {payments.map((p) => (
-          <div key={p.id} className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">{formatDate(p.date)}</span>
-            <span className="text-green-400 font-medium">+${p.amount.toFixed(2)}</span>
+          <div key={p.id} className="flex items-start justify-between text-xs gap-3">
+            <div className="min-w-0">
+              <span className="text-gray-400">{formatDate(p.date)}</span>
+              {p.notes && <span className="block text-gray-500 text-[11px] truncate">{p.notes}</span>}
+            </div>
+            <span className="text-green-400 font-medium flex-shrink-0">+${p.amount.toFixed(2)}</span>
           </div>
         ))}
       </div>
@@ -988,9 +994,16 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5"}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 flex-wrap">
-          {plan.goal && <span className="text-white text-sm font-medium">{plan.goal}</span>}
-          {!plan.goal && <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
-          {plan.goal && <span className="text-gray-400 text-xs">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
+          {/* Prefer the purchased package name as the plan's title; fall back to
+              the goal, then to the date range. */}
+          {plan.packageName
+            ? <span className="text-white text-sm font-medium">{plan.packageName}</span>
+            : plan.goal
+              ? <span className="text-white text-sm font-medium">{plan.goal}</span>
+              : <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
+          {/* Secondary: goal (if the title is the package name) then the dates. */}
+          {plan.packageName && plan.goal && <span className="text-gray-400 text-xs">{plan.goal}</span>}
+          {(plan.packageName || plan.goal) && <span className="text-gray-400 text-xs">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
           <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
             {plan.status}
           </span>
