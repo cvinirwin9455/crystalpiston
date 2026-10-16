@@ -39,6 +39,7 @@ type Application = {
   reviewed_at: string | null;
   payment_status: "pending" | "paid" | "cancelled" | "expired" | null;
   payment_token: string | null;
+  payment_request_id: string | null;
   payment_amount_cents: number | null;
 };
 
@@ -214,6 +215,27 @@ export default function ApplicationsTab() {
         });
         await load(); // refresh so the "Awaiting payment" badge appears
       }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  // Cancel a pending payment request (client decided not to proceed).
+  async function cancelPaymentRequest(a: Application) {
+    if (!confirm(`Cancel the payment request for ${a.full_name}? Their pay link will stop working. You can send a new request later if they change their mind.`)) return;
+    setActingId(a.id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: a.payment_request_id, action: "cancel", ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg({ text: data.error || "Could not cancel the request.", type: "error" });
+      else { setMsg({ text: `Payment request for ${a.full_name} cancelled.`, type: "success" }); await load(); }
     } catch {
       setMsg({ text: "Network error", type: "error" });
     } finally {
@@ -501,6 +523,9 @@ export default function ApplicationsTab() {
                             </button>
                             <button onClick={() => resendPayment(a)} disabled={actingId === a.id} title="Re-send the payment email." className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg disabled:opacity-50">
                               {actingId === a.id ? "…" : "Resend"}
+                            </button>
+                            <button onClick={() => cancelPaymentRequest(a)} disabled={actingId === a.id} title="Cancel this payment request — the pay link will stop working." className="text-xs border border-red-500/30 text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              {actingId === a.id ? "…" : "Cancel request"}
                             </button>
                           </>
                         ) : (

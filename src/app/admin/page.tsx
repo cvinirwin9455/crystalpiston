@@ -712,8 +712,8 @@ export default function AdminPage() {
     if (activePlan?.billingMode === 'per_session') {
       setWeekDateWarning("");
     } else if (activePlan && activePlan.startDate && activePlan.endDate) {
-      const planStart = new Date(activePlan.startDate);
-      const planEnd = new Date(activePlan.endDate);
+      const planStart = new Date(activePlan.startDate + 'T00:00:00');
+      const planEnd = new Date(activePlan.endDate + 'T00:00:00');
       planStart.setHours(0, 0, 0, 0);
       planEnd.setHours(23, 59, 59, 999);
       const weekStart = new Date(monday);
@@ -2325,7 +2325,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Active plan for the selected client
-  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; packageName?: string | null; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
@@ -2346,6 +2346,7 @@ export default function AdminPage() {
               startDate: active.start_date,
               endDate: active.end_date,
               goal: active.goal || '',
+              packageName: active.package_name || null,
               owed: parseFloat(active.owed) || 0,
               paid: parseFloat(active.paid) || 0,
               status: active.status,
@@ -2530,8 +2531,8 @@ export default function AdminPage() {
   // Filter workouts by active plan date range for "Current Plan" stats
   const planFilteredWorkouts = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientWorkouts;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
+    const planStart = new Date(activePlan.startDate + 'T00:00:00');
+    const planEnd = new Date(activePlan.endDate + 'T00:00:00');
     planStart.setHours(0, 0, 0, 0);
     planEnd.setHours(23, 59, 59, 999);
     const planWeeks = publishedWeeks.filter(w => {
@@ -2553,8 +2554,8 @@ export default function AdminPage() {
   const allClientAddedMiles = publishedWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0);
   const planClientAddedMiles = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientAddedMiles;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
+    const planStart = new Date(activePlan.startDate + 'T00:00:00');
+    const planEnd = new Date(activePlan.endDate + 'T00:00:00');
     planStart.setHours(0, 0, 0, 0);
     planEnd.setHours(23, 59, 59, 999);
     const planWeeks = publishedWeeks.filter(w => {
@@ -2600,8 +2601,8 @@ export default function AdminPage() {
       const weekEndStr = weekPlan.dateRange.split(' - ')[1];
       const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());
       const weekEnd = new Date(weekEndStr + ', ' + new Date().getFullYear());
-      const planStart = new Date(activePlan.startDate);
-      const planEnd = new Date(activePlan.endDate);
+      const planStart = new Date(activePlan.startDate + 'T00:00:00');
+      const planEnd = new Date(activePlan.endDate + 'T00:00:00');
       
       // Allow 1 day buffer for timezone differences
       planStart.setHours(0, 0, 0, 0);
@@ -4216,8 +4217,8 @@ export default function AdminPage() {
                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
-                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
+                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.packageName || activePlan.goal || 'No goal set'}</p>
+                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}{activePlan.packageName && activePlan.goal ? ` · ${activePlan.goal}` : ''}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {activePlan.billingMode && activePlan.billingMode !== 'programming_only' && (

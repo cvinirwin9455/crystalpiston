@@ -53,6 +53,29 @@ export async function loadPackage(admin: any, packageId: string): Promise<Packag
   return (data as Package) || null
 }
 
+// Resolve the number of weeks a plan should span from a package.
+// Prefer the package's duration_weeks; if that's missing but a program template
+// is attached, fall back to the template's data.totalWeeks (so a template-based
+// package like "Beginner 5K — 4 weeks" produces a 4-week plan even if the
+// duration_weeks column wasn't persisted). Defaults to 1 as a last resort.
+async function resolveDurationWeeks(admin: any, pkg: Package): Promise<number> {
+  if (pkg.duration_weeks && pkg.duration_weeks > 0) return pkg.duration_weeks
+  if (pkg.program_template_id) {
+    try {
+      const { data: tmpl } = await admin
+        .from('templates')
+        .select('data')
+        .eq('id', pkg.program_template_id)
+        .maybeSingle()
+      const total = Number(tmpl?.data?.totalWeeks)
+      if (Number.isFinite(total) && total > 0) return total
+    } catch {
+      /* template missing — fall through to default */
+    }
+  }
+  return 1
+}
+
 // Compute the plan's `owed` from a package, mirroring POST /api/plans:
 //   per_session     -> 0 (money lives on the session package)
 //   hybrid          -> programming_cost (fallback: package price)
@@ -95,8 +118,11 @@ export async function createPlanFromPackage(
       : new Date().toISOString().split('T')[0]
   let endDate = startDate
   if (billingMode !== 'per_session') {
-    const weeks = pkg.duration_weeks && pkg.duration_weeks > 0 ? pkg.duration_weeks : 1
+    const weeks = await resolveDurationWeeks(admin, pkg)
     const end = new Date(startDate + 'T00:00:00')
+    // A program is N weeks of training: a 4-week program ending on the last day
+    // of week 4 is start + (N*7 - 1) days. Use N*7 so the window fully contains
+    // all N Monday–Sunday weeks (inclusive of the final week).
     end.setDate(end.getDate() + weeks * 7)
     endDate = end.toISOString().split('T')[0]
   }
@@ -108,6 +134,10 @@ export async function createPlanFromPackage(
   const goal = application?.primary_goal || application?.pt_goal || null
   const targetDistance = application?.target_race || null
   const injuryNotes = application?.injuries || null
+  // For a template-based program with no explicit race, anchor the program's
+  // week mapping to the plan end date (the create-week flow maps program weeks
+  // backward from race_date || end_date).
+  const raceDate = application?.race_date || (hasProgram ? endDate : null)
 
   // Build the plan row. Use fallbacks (like /api/plans) so older schemas that
   // lack the newer columns still get a plan created.
@@ -120,6 +150,7 @@ export async function createPlanFromPackage(
     paid: 0,
     status: 'active',
     target_distance: targetDistance,
+    race_date: raceDate,
     injury_notes: injuryNotes,
     program_template_id: pkg.program_template_id || null,
     billing_mode: billingMode,

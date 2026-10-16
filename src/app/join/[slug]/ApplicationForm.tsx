@@ -107,8 +107,9 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
 
-  // Get the selected package (if any)
-  const selectedPackage = hasPackages && selectedPackageId
+  const otherSelected = selectedPackageId === '__other__'
+  // Get the selected package (if any — not the "other" sentinel)
+  const selectedPackage = hasPackages && selectedPackageId && !otherSelected
     ? page.packages!.find(p => p.id === selectedPackageId)
     : null
 
@@ -137,8 +138,9 @@ export default function ApplicationForm({ page }: { page: Page }) {
     showInPerson = effectiveFormats.includes('in_person')
   }
 
-  // Should we show the questions section?
-  const showQuestions = hasPackages ? !!selectedPackage : true
+  // Should we show the questions section? (A real package shows its matching
+  // questions; "other" has no package-driven questions but still submits.)
+  const showQuestions = hasPackages ? (!!selectedPackage || otherSelected) : true
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -161,6 +163,10 @@ export default function ApplicationForm({ page }: { page: Page }) {
       // PACKAGES FLOW validation
       if (!selectedPackageId) {
         setError('Please select a coaching package.')
+        return
+      }
+      if (otherSelected && !form.plan_interest.trim()) {
+        setError('Please describe what you\'re looking for.')
         return
       }
     } else {
@@ -214,7 +220,7 @@ export default function ApplicationForm({ page }: { page: Page }) {
           age: deriveAge(form.birth_month, form.birth_year),
           birth_month: form.birth_month ? parseInt(form.birth_month, 10) : null,
           birth_year: form.birth_year ? parseInt(form.birth_year, 10) : null,
-          selected_package_id: hasPackages ? selectedPackageId : null,
+          selected_package_id: hasPackages && !otherSelected ? selectedPackageId : null,
           interested_types: submitTypes,
           interested_formats: submitFormats,
           consent_ip: userIp,
@@ -406,7 +412,43 @@ export default function ApplicationForm({ page }: { page: Page }) {
                       </label>
                     )
                   })}
+
+                  {/* "None of these fit" — lets the applicant describe what they want. */}
+                  <label
+                    style={{
+                      ...packageOption,
+                      borderColor: selectedPackageId === '__other__' ? ORANGE : '#dfe3e6',
+                      background: selectedPackageId === '__other__' ? '#fff8f4' : '#fff',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="selected_package"
+                      value="__other__"
+                      checked={selectedPackageId === '__other__'}
+                      onChange={() => setSelectedPackageId('__other__')}
+                      style={{ marginRight: 12, accentColor: ORANGE, alignSelf: 'flex-start', marginTop: 4 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 700, color: '#2d3436' }}>None of these quite fit</span>
+                      <p style={{ fontSize: 13, color: '#555b5e', margin: '4px 0 0', lineHeight: 1.4 }}>
+                        Tell {page.coachName.split(' ')[0]} what you&apos;re looking for and they&apos;ll be in touch.
+                      </p>
+                    </div>
+                  </label>
                 </div>
+
+                {selectedPackageId === '__other__' && (
+                  <div style={{ marginTop: 12 }}>
+                    <label style={labelStyle}>What are you looking for? *</label>
+                    <textarea
+                      style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+                      value={form.plan_interest}
+                      onChange={set('plan_interest')}
+                      placeholder="Describe the coaching you'd like — budget, format, goals, anything the packages above don't cover."
+                    />
+                  </div>
+                )}
               </div>
             )}
 

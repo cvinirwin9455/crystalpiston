@@ -215,6 +215,50 @@ export async function POST(request: Request) {
   return NextResponse.json({ paymentRequest: created, payUrl })
 }
 
+// --- PATCH: cancel a pending payment request ---
+//   body: { id, action: 'cancel', org?, coach? }
+// Marks a still-pending request 'cancelled' so the coach can stop chasing a
+// client who decided not to proceed. The pay link stops working (the /pay
+// checkout refuses non-pending requests). Only the owning coach can cancel.
+export async function PATCH(request: Request) {
+  const { createClient } = await import('@/lib/supabase/server')
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json().catch(() => ({}))
+  const { id, action, org: orgOverride, coach: coachOverride } = body || {}
+  if (!id || action !== 'cancel') {
+    return NextResponse.json({ error: 'id and action="cancel" are required' }, { status: 400 })
+  }
+
+  const admin = await createAdminClient()
+  const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
+  if (!scopeResult.scope) {
+    return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+  }
+  const { coachId } = scopeResult.scope
+
+  // Load + verify ownership and that it's still cancellable.
+  const { data: pr } = await admin
+    .from('payment_requests')
+    .select('id, coach_id, status')
+    .eq('id', id)
+    .maybeSingle()
+  if (!pr) return NextResponse.json({ error: 'Payment request not found' }, { status: 404 })
+  if (pr.coach_id !== coachId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (pr.status === 'paid') return NextResponse.json({ error: 'This payment was already completed.' }, { status: 409 })
+  if (pr.status !== 'pending') return NextResponse.json({ error: `This request is already ${pr.status}.` }, { status: 409 })
+
+  const { error } = await admin
+    .from('payment_requests')
+    .update({ status: 'cancelled' })
+    .eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true, status: 'cancelled' })
+}
+
 // Simple branded email with a "Pay now" button (raw Resend, mirrors notifyCoach).
 async function sendPaymentRequestEmail(params: {
   to: string

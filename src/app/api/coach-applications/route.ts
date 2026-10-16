@@ -90,6 +90,7 @@ export async function GET(request: Request) {
       selected_package_billing_interval: app.selected_package?.billing_interval || null,
       payment_status: pr?.status || null,       // null | 'pending' | 'paid' | 'cancelled' | 'expired'
       payment_token: pr?.token || null,
+      payment_request_id: pr?.id || null,
       payment_amount_cents: pr?.amount_cents || null,
     }
   })
