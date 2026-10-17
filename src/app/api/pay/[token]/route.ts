@@ -38,10 +38,10 @@ export async function GET(
   }
   const supabase = await adminClient()
 
-  // Try with client_id (renewal flag); fall back if the column isn't present.
+  // Try with is_renewal (controls renewal wording); fall back if not present.
   let { data: pr } = await supabase
     .from('payment_requests')
-    .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, client_id')
+    .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, is_renewal')
     .eq('token', params.token)
     .maybeSingle()
   if (!pr) {
@@ -70,7 +70,7 @@ export async function GET(
     billingInterval: pr.billing_interval,
     clientName: pr.client_name,
     status: pr.status,
-    isRenewal: !!(pr as any).client_id, // existing client paying -> renewal copy
+    isRenewal: !!(pr as any).is_renewal, // continuing-training copy only for renewals
   })
 }
 

@@ -298,3 +298,107 @@ export async function recordProgrammingPayment(
 
   return { ok: true, paymentId: payment?.id }
 }
+
+// Record a Stripe payment and route it to the RIGHT bucket based on the plan's
+// billing mode, so the client's Account shows it as paid:
+//   programming_only -> plans.paid (programming payment)
+//   per_session      -> session_packages.amount_paid (session payment)
+//   hybrid           -> split: programmingCost -> plan; remainder -> session package
+// Falls back to a programming payment if billing mode can't be determined.
+export async function recordPackagePayment(
+  admin: any,
+  params: {
+    planId: string
+    clientId: string
+    amount: number
+    pkg?: Package | null       // package (for hybrid split / billing mode)
+    notes?: string
+    packageId?: string | null
+    paymentRequestId?: string | null
+  }
+): Promise<{ ok: boolean; paymentId?: string; error?: string }> {
+  const { planId, clientId, amount } = params
+  if (!(amount > 0)) return { ok: true }
+
+  // De-dupe: if this payment_request already recorded a payment, stop.
+  if (params.paymentRequestId) {
+    const { data: existing } = await admin
+      .from('payments')
+      .select('id')
+      .eq('payment_request_id', params.paymentRequestId)
+      .maybeSingle()
+    if (existing) return { ok: true, paymentId: existing.id }
+  }
+
+  // Determine billing mode from the package, else the plan.
+  let billingMode = params.pkg?.billing_mode || null
+  if (!billingMode) {
+    const { data: plan } = await admin.from('plans').select('billing_mode').eq('id', planId).maybeSingle()
+    billingMode = (plan?.billing_mode as any) || 'programming_only'
+  }
+
+  // Compute how much goes to programming vs sessions.
+  let programmingAmount = amount
+  let sessionAmount = 0
+  if (billingMode === 'per_session') {
+    programmingAmount = 0
+    sessionAmount = amount
+  } else if (billingMode === 'hybrid') {
+    const progCost = params.pkg
+      ? (params.pkg.programming_cost != null && String(params.pkg.programming_cost) !== ''
+          ? toNumber(params.pkg.programming_cost)
+          : 0)
+      : 0
+    programmingAmount = Math.min(progCost, amount)
+    sessionAmount = Math.max(0, amount - programmingAmount)
+  }
+
+  let firstPaymentId: string | undefined
+
+  // --- Programming portion -> plans.paid + a programming payment row ---
+  if (programmingAmount > 0) {
+    const rec = await recordProgrammingPayment(admin, {
+      planId,
+      clientId,
+      amount: programmingAmount,
+      notes: params.notes,
+      packageId: params.packageId,
+      paymentRequestId: params.paymentRequestId,
+    })
+    if (!rec.ok) return rec
+    firstPaymentId = rec.paymentId
+  }
+
+  // --- Session portion -> session_packages.amount_paid + a session payment row ---
+  if (sessionAmount > 0) {
+    // Apply to the client's session package that still has a balance (newest
+    // first — the one we just created for this purchase), else the first one.
+    const { data: pkgs } = await admin
+      .from('session_packages')
+      .select('id, amount_paid, amount_owed')
+      .eq('client_id', clientId)
+      .order('purchased_at', { ascending: false })
+    const target = (pkgs || []).find((p: any) => (toNumber(p.amount_owed) || 0) > (toNumber(p.amount_paid) || 0)) || (pkgs || [])[0]
+    if (target) {
+      const newPaid = toNumber(target.amount_paid) + sessionAmount
+      await admin.from('session_packages').update({ amount_paid: newPaid }).eq('id', target.id)
+    }
+    // Record a session payment row so it shows in history.
+    const base: Record<string, any> = {
+      plan_id: null,
+      amount: sessionAmount,
+      payment_date: new Date().toISOString().split('T')[0],
+      notes: params.notes || null,
+    }
+    const full = await admin
+      .from('payments')
+      .insert({ ...base, payment_type: 'session', client_id: clientId, session_package_id: target?.id || null, package_id: params.packageId || null, payment_request_id: programmingAmount > 0 ? null : (params.paymentRequestId || null) })
+      .select('id')
+      .single()
+    if (!full.error && !firstPaymentId) firstPaymentId = full.data?.id
+    // (If the full insert fails on older schemas, the session balance was still
+    //  bumped above; the history row is best-effort.)
+  }
+
+  return { ok: true, paymentId: firstPaymentId }
+}

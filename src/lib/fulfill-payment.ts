@@ -1,5 +1,5 @@
 import { provisionClientFromApplication } from '@/lib/provision-client'
-import { loadPackage, createPlanFromPackage, recordProgrammingPayment } from '@/lib/plan-from-package'
+import { loadPackage, createPlanFromPackage, recordProgrammingPayment, recordPackagePayment } from '@/lib/plan-from-package'
 
 // Shared fulfillment: mark a payment request paid and provision the client's
 // account. Idempotent — safe to call from BOTH the Stripe webhook and the
@@ -106,6 +106,7 @@ export async function fulfillPaymentRequest(
     // applicant's original selected_package_id (the coach may have changed it,
     // or chosen a custom amount with no package).
     const packageId = pr.package_id || null
+    let recipePkg: any = null // the package used, so payment routing knows billing mode
 
     // A renewal always creates a NEW plan. Mark any existing active plan
     // complete first so the client has a single active plan (the new one).
@@ -137,6 +138,7 @@ export async function fulfillPaymentRequest(
       } else if (packageId) {
         const pkg = await loadPackage(admin, packageId)
         if (pkg) {
+          recipePkg = pkg
           const created = await createPlanFromPackage(admin, {
             clientId,
             coachId: pr.coach_id,
@@ -180,15 +182,19 @@ export async function fulfillPaymentRequest(
       }
     }
 
-    // Record the Stripe payment (full amount paid) against the plan — appears
-    // in the client's payment history exactly like a manually-logged payment.
+    // Record the Stripe payment (full amount paid) against the plan — routed to
+    // the right bucket (programming vs session) by billing mode so the client's
+    // Account shows it as paid.
     let paymentId: string | undefined
     if (planId && clientId) {
       const amount = (Number(pr.amount_cents) || 0) / 100
       const paidDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-      const rec = await recordProgrammingPayment(admin, {
+      // Ensure we know the billing mode (load the package if we didn't above).
+      if (!recipePkg && packageId) recipePkg = await loadPackage(admin, packageId)
+      const rec = await recordPackagePayment(admin, {
         planId,
         clientId,
+        pkg: recipePkg,
         amount,
         notes: `Paid on ${paidDate} via Stripe`,
         packageId,

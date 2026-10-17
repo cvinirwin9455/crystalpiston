@@ -37,10 +37,10 @@ async function fetchPay(token: string): Promise<PayData | null> {
       }
     )
 
-    // Try with client_id (renewal flag); fall back if the column isn't present.
+    // Try with is_renewal (controls renewal wording); fall back if not present.
     let { data: pr } = await supabase
       .from('payment_requests')
-      .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token, client_id')
+      .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token, is_renewal')
       .eq('token', token)
       .maybeSingle()
     if (!pr) {
@@ -70,7 +70,7 @@ async function fetchPay(token: string): Promise<PayData | null> {
       billingInterval: pr.billing_interval === 'monthly' ? 'monthly' : 'one_time',
       clientName: pr.client_name,
       status: pr.status,
-      isRenewal: !!(pr as any).client_id,
+      isRenewal: !!(pr as any).is_renewal,
     }
   } catch {
     return null

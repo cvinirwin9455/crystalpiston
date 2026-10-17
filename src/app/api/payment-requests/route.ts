@@ -165,6 +165,18 @@ export async function POST(request: Request) {
     }
   }
 
+  // Is this a RENEWAL (continuing training) vs. a FIRST package for a new client?
+  // A client set up manually (no application) who has no prior plans is a new
+  // onboarding → new-client wording. A client with any existing plan is renewing.
+  let isRenewalCharge = false
+  if (existingClient) {
+    const { count: priorPlans } = await admin
+      .from('plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', existingClient.id)
+    isRenewalCharge = (priorPlans || 0) > 0
+  }
+
   // Determine the amount: from a package, or a custom amount.
   let amountCents: number
   let currency = 'usd'
@@ -233,6 +245,8 @@ export async function POST(request: Request) {
     // Existing-client renewal: tie the request to the client so fulfillment
     // skips account provisioning and just creates the new plan + payment.
     client_id: existingClient?.id || null,
+    // True only when the client already has prior plans (continuing training).
+    is_renewal: isRenewalCharge,
   }
   let { data: created, error: insertErr } = await admin
     .from('payment_requests')
@@ -262,7 +276,7 @@ export async function POST(request: Request) {
       currency,
       packageName,
       payUrl,
-      isRenewal: !!existingClient, // existing-client charge = renewal wording
+      isRenewal: isRenewalCharge, // only "continuing" wording when they have prior plans
     })
   } catch (err) {
     console.error('Payment request email failed:', err)
