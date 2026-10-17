@@ -60,6 +60,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   const [chargeCustomAmount, setChargeCustomAmount] = useState("");
   const [chargeCustomWeeks, setChargeCustomWeeks] = useState("");
   const [chargeStartDate, setChargeStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [chargeMethod, setChargeMethod] = useState<"stripe" | "manual">("stripe");
   const [charging, setCharging] = useState(false);
   const [chargeMsg, setChargeMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   // Outstanding (pending) renewal charges for this client.
@@ -231,6 +232,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   }
 
   function openChargeModal() {
+    // Default to Stripe when connected, else manual (the only option).
+    setChargeMethod(chargeStripeReady ? "stripe" : "manual");
     setChargePackageId("");
     setChargeCustomName("");
     setChargeCustomAmount("");
@@ -253,25 +256,45 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     }
     setCharging(true);
     setChargeMsg(null);
+    const payload: Record<string, any> = {
+      client_id: clientData.clientId,
+      start_date: chargeStartDate || null,
+      ...(isCustom
+        ? { amount: chargeCustomAmount, custom_name: chargeCustomName.trim(), custom_duration_weeks: chargeCustomWeeks }
+        : { package_id: chargePackageId }),
+    };
     try {
-      const res = await fetch("/api/payment-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: clientData.clientId,
-          start_date: chargeStartDate || null,
-          ...(isCustom
-            ? { amount: chargeCustomAmount, custom_name: chargeCustomName.trim(), custom_duration_weeks: chargeCustomWeeks }
-            : { package_id: chargePackageId }),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setChargeMsg({ text: data.error || "Could not send the payment request.", type: "error" });
+      if (chargeMethod === "manual") {
+        // Collect manually → create the plan now (active); coach logs payments later.
+        payload.manual = true;
+        const res = await fetch("/api/payment-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setChargeMsg({ text: data.error || "Could not create the plan.", type: "error" });
+        } else {
+          setChargeMsg({ text: "Plan created. Use “Log Payment” to record what you collect.", type: "success" });
+          onPlanChange?.();
+          setTimeout(() => { setShowChargeModal(false); window.location.reload(); }, 1200);
+        }
       } else {
-        setChargeMsg({ text: `Payment link sent to ${clientData.email}. A new plan is created when they pay.`, type: "success" });
-        setPendingRefresh((x) => x + 1); // show the "Awaiting payment" banner
-        setTimeout(() => setShowChargeModal(false), 1800);
+        // Stripe → send a secure payment link; plan is created when they pay.
+        const res = await fetch("/api/payment-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setChargeMsg({ text: data.error || "Could not send the payment request.", type: "error" });
+        } else {
+          setChargeMsg({ text: `Payment link sent to ${clientData.email}. A new plan is created when they pay.`, type: "success" });
+          setPendingRefresh((x) => x + 1); // show the "Awaiting payment" banner
+          setTimeout(() => setShowChargeModal(false), 1800);
+        }
       }
     } catch {
       setChargeMsg({ text: "Network error.", type: "error" });
@@ -562,18 +585,17 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h4 className="text-gray-400 text-xs font-heading uppercase">Plans & Payments</h4>
           <div className="flex items-center gap-3">
-            {/* Charge via Stripe — renew / sell the next package to this client.
-                Only when the coach has Stripe connected + the client has an id. */}
-            {chargeStripeReady && clientData.clientId && (
-              <button onClick={openChargeModal} className="text-xs bg-accent/90 hover:bg-accent text-white font-bold px-2.5 py-1 rounded-lg">
-                💳 Charge via Stripe
-              </button>
-            )}
-            {/* Only show + New Plan if no active plan exists */}
-            {!plans.some(p => p.status === "active") ? (
-              <button onClick={() => setShowNewPlan(!showNewPlan)} className="text-accent text-xs hover:underline">+ New Plan</button>
-            ) : (
-              <span className="text-gray-500 text-xs italic">Active plan in progress</span>
+            {/* Single entry point for adding a plan — the modal lets the coach
+                choose Stripe link vs. manual/offline collection. Only when the
+                client has an id. Gated by the one-active-plan rule. */}
+            {clientData.clientId && (
+              !plans.some(p => p.status === "active") ? (
+                <button onClick={openChargeModal} className="text-xs bg-accent/90 hover:bg-accent text-white font-bold px-3 py-1.5 rounded-lg">
+                  + Add plan
+                </button>
+              ) : (
+                <span className="text-gray-500 text-xs italic">Active plan in progress</span>
+              )
             )}
           </div>
         </div>
@@ -582,9 +604,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
         {showChargeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowChargeModal(false)}>
             <div className="bg-secondary border border-white/10 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-white font-heading uppercase tracking-wider text-sm">Charge via Stripe</h3>
+              <h3 className="text-white font-heading uppercase tracking-wider text-sm">Add plan</h3>
               <p className="text-gray-400 text-xs mt-1">
-                Email {clientData.name || "this client"} a secure Stripe link. When they pay, a new plan is created on their account.
+                {chargeMethod === "stripe"
+                  ? <>Email {clientData.name || "this client"} a secure Stripe link. The plan is created when they pay.</>
+                  : <>Create the plan now and collect payment yourself. Log what you collect with “Log Payment”.</>}
               </p>
 
               {chargeMsg && (
@@ -594,6 +618,26 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
               )}
 
               <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">How will they pay?</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => chargeStripeReady && setChargeMethod("stripe")}
+                      disabled={!chargeStripeReady}
+                      title={chargeStripeReady ? "" : "Connect your Stripe account (Applications tab) to send payment links."}
+                      className={`text-xs font-medium px-3 py-2 rounded-lg border ${chargeMethod === "stripe" ? "bg-accent/20 border-accent/50 text-white" : "bg-white/5 border-white/10 text-gray-300 hover:border-white/20"} ${!chargeStripeReady ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      💳 Send Stripe link
+                    </button>
+                    <button type="button" onClick={() => setChargeMethod("manual")} className={`text-xs font-medium px-3 py-2 rounded-lg border ${chargeMethod === "manual" ? "bg-accent/20 border-accent/50 text-white" : "bg-white/5 border-white/10 text-gray-300 hover:border-white/20"}`}>
+                      ✍️ Collect manually
+                    </button>
+                  </div>
+                  {!chargeStripeReady && (
+                    <p className="text-[11px] text-gray-500 mt-1">Connect Stripe (Applications tab) to send payment links.</p>
+                  )}
+                </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Package</label>
                   <select value={chargePackageId} onChange={(e) => setChargePackageId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
@@ -627,13 +671,17 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">New plan start date</label>
                   <input type="date" value={chargeStartDate} onChange={(e) => setChargeStartDate(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 [color-scheme:dark]" />
-                  <p className="text-[11px] text-gray-500 mt-1">The current active plan (if any) is marked complete when they pay.</p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {chargeMethod === "stripe"
+                      ? "The current active plan (if any) is marked complete when they pay."
+                      : "The current active plan (if any) is marked complete now."}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-5 flex gap-2">
                 <button onClick={sendCharge} disabled={charging} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
-                  {charging ? "Sending…" : "Send payment link"}
+                  {charging ? "Working…" : chargeMethod === "stripe" ? "Send payment link" : "Create plan"}
                 </button>
                 <button onClick={() => setShowChargeModal(false)} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
               </div>

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { resolveCoachRequestScope } from '@/lib/coach-scope'
+import { loadPackage, createPlanFromPackage } from '@/lib/plan-from-package'
 
 // Authenticated COACH-facing endpoint to create a payment request for an
 // applicant, and list a coach's payment requests.
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const {
     application_id, client_id, package_id, amount, custom_name, custom_duration_weeks,
-    start_date, request_assessment, request_cycle_tracking,
+    start_date, request_assessment, request_cycle_tracking, manual,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -213,6 +214,75 @@ export async function POST(request: Request) {
     packageName = (custom_name && String(custom_name).trim()) || 'Custom coaching'
   } else {
     return NextResponse.json({ error: 'Provide a package or an amount' }, { status: 400 })
+  }
+
+  // --- MANUAL (offline) collection: create the plan NOW, no Stripe request. ---
+  // The coach collects payment themselves and logs it via "Log Payment" after.
+  if (manual) {
+    if (!existingClient?.id) {
+      return NextResponse.json({ error: 'Manual plans are created from a client\u2019s account.' }, { status: 400 })
+    }
+    const startDate = start_date && /^\d{4}-\d{2}-\d{2}$/.test(start_date) ? start_date : new Date().toISOString().split('T')[0]
+    // Mark any existing active plan complete (one active plan at a time).
+    try {
+      await admin.from('plans').update({ status: 'completed', completion_reason: 'Replaced by a new plan' }).eq('client_id', existingClient.id).eq('status', 'active')
+    } catch {
+      await admin.from('plans').update({ status: 'completed' }).eq('client_id', existingClient.id).eq('status', 'active')
+    }
+
+    let planId: string | undefined
+    if (resolvedPackageId) {
+      const pkg = await loadPackage(admin, resolvedPackageId)
+      if (pkg) {
+        const created = await createPlanFromPackage(admin, {
+          clientId: existingClient.id,
+          coachId,
+          organizationId: organizationId || existingClient.organization_id || null,
+          pkg,
+          startDate,
+        })
+        if (!created.ok) return NextResponse.json({ error: created.error || 'Could not create the plan.' }, { status: 500 })
+        planId = created.planId
+      }
+    } else {
+      // Custom manual plan: minimal programming-only plan spanning the given weeks.
+      const wk = custom_duration_weeks != null && String(custom_duration_weeks).trim() !== ''
+        ? parseInt(String(custom_duration_weeks).replace(/[^0-9]/g, ''), 10)
+        : 0
+      const weeks = wk > 0 ? wk : 1
+      const endObj = new Date(startDate + 'T00:00:00')
+      endObj.setDate(endObj.getDate() + weeks * 7)
+      const end = endObj.toISOString().split('T')[0]
+      const owed = amountCents / 100
+      const minimal: Record<string, any> = {
+        client_id: existingClient.id,
+        start_date: startDate,
+        end_date: end,
+        goal: packageName,
+        owed,
+        paid: 0,
+        status: 'active',
+        billing_mode: 'programming_only',
+        program_loaded: true,
+      }
+      let created = await admin.from('plans').insert(minimal).select('id').single()
+      if (created.error) {
+        const base = { client_id: existingClient.id, start_date: startDate, end_date: end, goal: packageName, owed, paid: 0, status: 'active' }
+        created = await admin.from('plans').insert(base).select('id').single()
+      }
+      if (created.error) return NextResponse.json({ error: created.error.message }, { status: 500 })
+      planId = created.data.id
+    }
+
+    // Apply assessment / cycle-tracking requests (same as provisioning).
+    if (request_assessment) {
+      try { await admin.from('client_assessments').upsert({ client_id: existingClient.id, status: 'review_requested', review_requested_at: new Date().toISOString() }, { onConflict: 'client_id' }) } catch {}
+    }
+    if (request_cycle_tracking) {
+      try { await admin.from('clients').update({ cycle_tracking_requested: true }).eq('id', existingClient.id) } catch {}
+    }
+
+    return NextResponse.json({ success: true, manual: true, planId })
   }
 
   // NOTE: Step C handles ONE-TIME payments. Monthly packages are charged as a
