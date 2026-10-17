@@ -16,6 +16,7 @@ type PayData = {
   billingInterval: 'monthly' | 'one_time'
   clientName: string | null
   status: 'pending' | 'paid' | 'cancelled' | 'expired'
+  isRenewal: boolean
 }
 
 // Read the payment request directly from the DB with the service-role client
@@ -36,11 +37,20 @@ async function fetchPay(token: string): Promise<PayData | null> {
       }
     )
 
-    const { data: pr } = await supabase
+    // Try with client_id (renewal flag); fall back if the column isn't present.
+    let { data: pr } = await supabase
       .from('payment_requests')
-      .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token')
+      .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token, client_id')
       .eq('token', token)
       .maybeSingle()
+    if (!pr) {
+      const retry = await supabase
+        .from('payment_requests')
+        .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token')
+        .eq('token', token)
+        .maybeSingle()
+      pr = retry.data
+    }
 
     if (!pr) return null
 
@@ -60,6 +70,7 @@ async function fetchPay(token: string): Promise<PayData | null> {
       billingInterval: pr.billing_interval === 'monthly' ? 'monthly' : 'one_time',
       clientName: pr.client_name,
       status: pr.status,
+      isRenewal: !!(pr as any).client_id,
     }
   } catch {
     return null

@@ -12,6 +12,7 @@ type PayData = {
   billingInterval: 'monthly' | 'one_time'
   clientName: string | null
   status: 'pending' | 'paid' | 'cancelled' | 'expired'
+  isRenewal?: boolean
 }
 
 const ORANGE = '#f26522'
@@ -104,8 +105,9 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
             <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
             <h1 style={{ fontSize: 22, color: '#2d3436', margin: '0 0 10px' }}>Payment complete!</h1>
             <p style={{ color: '#555b5e', fontSize: 15, lineHeight: 1.7, margin: 0 }}>
-              Thanks, {first}! Your payment to <strong>{pay.coachName}</strong> was successful. Check your
-              email for a link to set your password and access your training.
+              {pay.isRenewal
+                ? <>Thanks, {first}! Your payment to <strong>{pay.coachName}</strong> was successful. Your coaching continues — your new plan is now active in your account.</>
+                : <>Thanks, {first}! Your payment to <strong>{pay.coachName}</strong> was successful. Check your email for a link to set your password and access your training.</>}
             </p>
           </div>
         ) : view === 'confirming' ? (
@@ -160,7 +162,9 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
               {loading ? 'Redirecting…' : `Pay ${amount}`}
             </button>
             <p style={{ margin: '14px 0 0', fontSize: 12, color: '#9aa0a4', textAlign: 'center', lineHeight: 1.6 }}>
-              Payment is handled securely by Stripe. Your First Mile account is created once your payment completes.
+              {pay.isRenewal
+                ? 'Payment is handled securely by Stripe. Your coaching continues once your payment completes.'
+                : 'Payment is handled securely by Stripe. Your First Mile account is created once your payment completes.'}
             </p>
           </div>
         )}

@@ -38,11 +38,20 @@ export async function GET(
   }
   const supabase = await adminClient()
 
-  const { data: pr } = await supabase
+  // Try with client_id (renewal flag); fall back if the column isn't present.
+  let { data: pr } = await supabase
     .from('payment_requests')
-    .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status')
+    .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, client_id')
     .eq('token', params.token)
     .maybeSingle()
+  if (!pr) {
+    const retry = await supabase
+      .from('payment_requests')
+      .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status')
+      .eq('token', params.token)
+      .maybeSingle()
+    pr = retry.data
+  }
 
   if (!pr) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
@@ -61,6 +70,7 @@ export async function GET(
     billingInterval: pr.billing_interval,
     clientName: pr.client_name,
     status: pr.status,
+    isRenewal: !!(pr as any).client_id, // existing client paying -> renewal copy
   })
 }
 
