@@ -51,6 +51,7 @@ export async function GET(request: Request) {
   const orgOverride = searchParams.get('org')
   const coachOverride = searchParams.get('coach')
   const applicationId = searchParams.get('application')
+  const clientFilter = searchParams.get('client')
 
   const admin = await createAdminClient()
   const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
@@ -65,9 +66,21 @@ export async function GET(request: Request) {
     .eq('coach_id', coachId)
     .order('created_at', { ascending: false })
   if (applicationId) query = query.eq('application_id', applicationId)
+  if (clientFilter) query = query.eq('client_id', clientFilter)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // client_id column may not exist yet — retry without that filter.
+    if (clientFilter) {
+      const retry = await admin
+        .from('payment_requests')
+        .select('*')
+        .eq('coach_id', coachId)
+        .order('created_at', { ascending: false })
+      if (!retry.error) return NextResponse.json({ paymentRequests: retry.data || [] })
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
   return NextResponse.json({ paymentRequests: data || [] })
 }
 

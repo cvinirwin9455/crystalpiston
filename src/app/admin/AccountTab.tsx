@@ -62,6 +62,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   const [chargeStartDate, setChargeStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [charging, setCharging] = useState(false);
   const [chargeMsg, setChargeMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  // Outstanding (pending) renewal charges for this client.
+  const [pendingCharges, setPendingCharges] = useState<{ id: string; token: string; package_name: string | null; amount_cents: number; currency: string }[]>([]);
+  const [pendingRefresh, setPendingRefresh] = useState(0);
+  const [cancelingChargeId, setCancelingChargeId] = useState<string | null>(null);
   const [newPlanStart, setNewPlanStart] = useState("");
   const [newPlanEnd, setNewPlanEnd] = useState("");
   const [newPlanOwed, setNewPlanOwed] = useState("");
@@ -187,6 +191,45 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     })();
   }, []);
 
+  // Load this client's outstanding (pending) renewal charges.
+  useEffect(() => {
+    if (!clientData.clientId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/payment-requests?client=${clientData.clientId}`);
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          const pending = (data.paymentRequests || [])
+            .filter((r: any) => r.status === "pending" && r.client_id === clientData.clientId)
+            .map((r: any) => ({ id: r.id, token: r.token, package_name: r.package_name, amount_cents: r.amount_cents, currency: r.currency }));
+          setPendingCharges(pending);
+        }
+      } catch { /* non-fatal */ }
+    })();
+  }, [clientData.clientId, pendingRefresh]);
+
+  async function copyChargeLink(token: string) {
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/pay/${token}`;
+    try { await navigator.clipboard.writeText(url); setChargeMsg({ text: "Payment link copied.", type: "success" }); }
+    catch { setChargeMsg({ text: `Payment link: ${url}`, type: "success" }); }
+  }
+
+  async function cancelCharge(id: string) {
+    if (!confirm("Cancel this pending payment request? The client's pay link will stop working.")) return;
+    setCancelingChargeId(id);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "cancel" }),
+      });
+      if (res.ok) { setChargeMsg({ text: "Payment request cancelled.", type: "success" }); setPendingRefresh((x) => x + 1); }
+      else { const d = await res.json().catch(() => ({})); setChargeMsg({ text: d.error || "Could not cancel.", type: "error" }); }
+    } finally {
+      setCancelingChargeId(null);
+    }
+  }
+
   function openChargeModal() {
     setChargePackageId("");
     setChargeCustomName("");
@@ -227,6 +270,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
         setChargeMsg({ text: data.error || "Could not send the payment request.", type: "error" });
       } else {
         setChargeMsg({ text: `Payment link sent to ${clientData.email}. A new plan is created when they pay.`, type: "success" });
+        setPendingRefresh((x) => x + 1); // show the "Awaiting payment" banner
         setTimeout(() => setShowChargeModal(false), 1800);
       }
     } catch {
@@ -594,6 +638,29 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                 <button onClick={() => setShowChargeModal(false)} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Outstanding renewal charge(s) awaiting payment */}
+        {pendingCharges.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {pendingCharges.map((c) => {
+              const amt = (c.amount_cents / 100).toLocaleString(undefined, { style: "currency", currency: (c.currency || "usd").toUpperCase(), minimumFractionDigits: c.amount_cents % 100 === 0 ? 0 : 2 });
+              return (
+                <div key={c.id} className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-yellow-300 text-xs font-medium">💳 Awaiting payment — {c.package_name || "Coaching"} · {amt}</p>
+                    <p className="text-yellow-300/70 text-[11px] mt-0.5">A new plan is created when the client pays this link.</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => copyChargeLink(c.token)} className="text-[11px] border border-white/10 text-gray-200 hover:text-white px-2.5 py-1 rounded-lg">Copy link</button>
+                    <button onClick={() => cancelCharge(c.id)} disabled={cancelingChargeId === c.id} className="text-[11px] border border-red-500/30 text-red-300 hover:bg-red-500/10 px-2.5 py-1 rounded-lg disabled:opacity-50">
+                      {cancelingChargeId === c.id ? "…" : "Cancel"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
