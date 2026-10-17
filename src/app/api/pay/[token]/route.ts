@@ -109,49 +109,87 @@ export async function POST(
   const base = await siteUrl(request)
   const stripe = getStripe()
 
+  // Shared metadata — surfaced on the Checkout Session AND propagated to the
+  // objects the webhook reads (PaymentIntent for one-time, Subscription for
+  // recurring) so fulfillment can always find the originating request.
+  const sharedMeta: Record<string, string> = {
+    payment_request_id: pr.id,
+    token: pr.token,
+    coach_id: pr.coach_id,
+    application_id: pr.application_id || '',
+  }
+
+  // Monthly package => a recurring subscription; everything else => one-time.
+  const isSubscription = pr.billing_interval === 'monthly'
+
   try {
     // DIRECT charge on the coach's connected account (stripeAccount header).
     // No application_fee => First Mile takes no cut; the coach is merchant of
-    // record. Step C = one-time payment (mode 'payment').
-    const session = await stripe.checkout.sessions.create(
-      {
-        mode: 'payment',
-        // NOTE: do NOT set payment_method_types — Stripe now auto-manages the
-        // available payment methods from the connected account's Dashboard
-        // settings. Passing it is rejected by current API versions.
-        customer_email: pr.client_email || undefined,
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: pr.currency || 'usd',
-              unit_amount: pr.amount_cents,
-              product_data: {
-                name: pr.package_name || 'Coaching',
+    // record.
+    let session
+
+    if (isSubscription) {
+      // Recurring monthly subscription (mode 'subscription'). An inline
+      // recurring price_data avoids having to pre-create/store a Stripe Price.
+      // recur_months (if set) is carried on the subscription metadata; the
+      // webhook counts paid invoices and cancels once N have been billed.
+      // Blank recur_months => runs until the coach cancels.
+      const subMeta: Record<string, string> = { ...sharedMeta }
+      if (pr.recur_months && Number(pr.recur_months) > 0) {
+        subMeta.recur_months = String(Number(pr.recur_months))
+      }
+      session = await stripe.checkout.sessions.create(
+        {
+          mode: 'subscription',
+          customer_email: pr.client_email || undefined,
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: pr.currency || 'usd',
+                unit_amount: pr.amount_cents,
+                recurring: { interval: 'month' },
+                product_data: { name: pr.package_name || 'Coaching' },
               },
             },
-          },
-        ],
-        success_url: `${base}/pay/${pr.token}?status=success`,
-        cancel_url: `${base}/pay/${pr.token}?status=cancelled`,
-        metadata: {
-          payment_request_id: pr.id,
-          token: pr.token,
-          coach_id: pr.coach_id,
-          application_id: pr.application_id || '',
+          ],
+          success_url: `${base}/pay/${pr.token}?status=success`,
+          cancel_url: `${base}/pay/${pr.token}?status=cancelled`,
+          metadata: sharedMeta,
+          // Propagate metadata onto the Subscription so invoice.paid /
+          // subscription.* webhook events can resolve the payment request.
+          subscription_data: { metadata: subMeta },
         },
-        // Surface metadata on the PaymentIntent too (webhook reads it).
-        payment_intent_data: {
-          metadata: {
-            payment_request_id: pr.id,
-            token: pr.token,
-            coach_id: pr.coach_id,
-            application_id: pr.application_id || '',
-          },
+        { stripeAccount: coach.stripe_account_id }
+      )
+    } else {
+      // One-time payment (mode 'payment').
+      session = await stripe.checkout.sessions.create(
+        {
+          mode: 'payment',
+          // NOTE: do NOT set payment_method_types — Stripe now auto-manages the
+          // available payment methods from the connected account's Dashboard
+          // settings. Passing it is rejected by current API versions.
+          customer_email: pr.client_email || undefined,
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: pr.currency || 'usd',
+                unit_amount: pr.amount_cents,
+                product_data: { name: pr.package_name || 'Coaching' },
+              },
+            },
+          ],
+          success_url: `${base}/pay/${pr.token}?status=success`,
+          cancel_url: `${base}/pay/${pr.token}?status=cancelled`,
+          metadata: sharedMeta,
+          // Surface metadata on the PaymentIntent too (webhook reads it).
+          payment_intent_data: { metadata: sharedMeta },
         },
-      },
-      { stripeAccount: coach.stripe_account_id }
-    )
+        { stripeAccount: coach.stripe_account_id }
+      )
+    }
 
     // Save the session id so the webhook/success can reconcile.
     await supabase

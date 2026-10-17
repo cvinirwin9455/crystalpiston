@@ -97,7 +97,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const {
     application_id, client_id, package_id, amount, custom_name, custom_duration_weeks,
-    start_date, request_assessment, request_cycle_tracking, manual,
+    start_date, request_assessment, request_cycle_tracking, manual, recur_months,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -285,8 +285,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, manual: true, planId })
   }
 
-  // NOTE: Step C handles ONE-TIME payments. Monthly packages are charged as a
-  // single payment for now; recurring subscriptions come in a later step.
+  // Monthly packages create a recurring subscription at checkout (mode
+  // 'subscription' in /api/pay). recur_months (optional) caps how many months
+  // it bills before auto-cancelling; blank = until the coach cancels.
+  const recurMonthsInt = billingInterval === 'monthly' && recur_months != null && String(recur_months).trim() !== ''
+    ? parseInt(String(recur_months).replace(/[^0-9]/g, ''), 10)
+    : null
   const token = randomToken()
 
   const baseRow: Record<string, any> = {
@@ -320,6 +324,7 @@ export async function POST(request: Request) {
     request_cycle_tracking: !!request_cycle_tracking,
     custom_duration_weeks: useCustomAmount && customWeeksInt && customWeeksInt > 0 ? customWeeksInt : null,
     is_renewal: isRenewalCharge,
+    recur_months: recurMonthsInt && recurMonthsInt > 0 ? recurMonthsInt : null,
   }
 
   // Attempt insert; on an "unknown column" error, drop the named column and retry.

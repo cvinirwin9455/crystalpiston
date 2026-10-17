@@ -29,6 +29,16 @@ async function adminClient() {
   )
 }
 
+// Resolve the subscription id from an invoice across Stripe API versions:
+// older versions expose invoice.subscription; newer ones nest it under
+// invoice.parent.subscription_details.subscription.
+function invoiceSubscriptionId(invoice: any): string | null {
+  if (typeof invoice?.subscription === 'string') return invoice.subscription
+  const nested = invoice?.parent?.subscription_details?.subscription
+  if (typeof nested === 'string') return nested
+  return null
+}
+
 export async function POST(request: Request) {
   if (!isStripeConfigured()) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
@@ -56,23 +66,87 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Webhook Error: ${err?.message}` }, { status: 400 })
   }
 
+  // For Connect webhooks, event.account is the connected account the event
+  // came from — needed to make follow-up API calls (e.g. cancel a subscription)
+  // against that account.
+  const connectedAccount: string | null = (event as any).account || null
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object
-        if (session.payment_status === 'paid') {
+        // One-time: payment_status 'paid'. Subscription: 'paid' or 'no_payment_required';
+        // the first invoice is paid as part of checkout, so fulfill here too.
+        const ok = session.payment_status === 'paid' || session.mode === 'subscription'
+        if (ok) {
           const prId = session.metadata?.payment_request_id
           if (prId) {
             const admin = await adminClient()
             await fulfillPaymentRequest(admin, {
               paymentRequestId: prId,
               paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+              subscriptionId: typeof session.subscription === 'string' ? session.subscription : null,
+              customerId: typeof session.customer === 'string' ? session.customer : null,
             })
           }
         }
         break
       }
-      // Other events can be handled later (e.g. async payment success/failure).
+
+      case 'invoice.paid': {
+        // A recurring monthly charge succeeded. The FIRST invoice is handled by
+        // checkout.session.completed (fulfillment); subsequent ones are logged
+        // here as additional payments against the plan.
+        const invoice = event.data.object
+        const subscriptionId = invoiceSubscriptionId(invoice)
+        if (subscriptionId && invoice.billing_reason && invoice.billing_reason !== 'subscription_create') {
+          const admin = await adminClient()
+          const { recordRecurringInvoice, enforceRecurMonths } = await import('@/lib/subscriptions')
+          await recordRecurringInvoice(admin, {
+            subscriptionId,
+            amountCents: invoice.amount_paid ?? invoice.amount_due ?? 0,
+            currency: invoice.currency || 'usd',
+            paidAtUnix: invoice.status_transitions?.paid_at || invoice.created || null,
+            invoiceId: typeof invoice.id === 'string' ? invoice.id : null,
+          })
+          // If the subscription was set to run only N months, cancel it once
+          // that many invoices have been paid.
+          await enforceRecurMonths(admin, stripe, { subscriptionId, connectedAccount })
+        }
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object
+        const subscriptionId = invoiceSubscriptionId(invoice)
+        if (subscriptionId) {
+          const admin = await adminClient()
+          const { setSubscriptionStatus } = await import('@/lib/subscriptions')
+          await setSubscriptionStatus(admin, subscriptionId, 'past_due')
+        }
+        break
+      }
+
+      case 'customer.subscription.updated': {
+        const sub = event.data.object
+        const admin = await adminClient()
+        const { setSubscriptionStatus } = await import('@/lib/subscriptions')
+        // Keep local status in sync; include the scheduled cancel time if any.
+        const cancelAt = sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null
+        await setSubscriptionStatus(admin, sub.id, sub.status, cancelAt)
+        break
+      }
+
+      case 'customer.subscription.deleted': {
+        // Subscription ended (cancelled by coach, or ran its course). Complete
+        // the plan so it stops showing as an active recurring plan.
+        const sub = event.data.object
+        const admin = await adminClient()
+        const { endSubscription } = await import('@/lib/subscriptions')
+        await endSubscription(admin, sub.id)
+        break
+      }
+
       default:
         break
     }

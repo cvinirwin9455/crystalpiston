@@ -8,7 +8,14 @@ import { loadPackage, createPlanFromPackage, recordProgrammingPayment, recordPac
 // `admin` must be a service-role Supabase client.
 export async function fulfillPaymentRequest(
   admin: any,
-  params: { paymentRequestId: string; paymentIntentId?: string | null }
+  params: {
+    paymentRequestId: string
+    paymentIntentId?: string | null
+    // Present for subscription checkouts (recurring monthly). We store these
+    // on the plan so the webhook + cancel endpoint can manage the subscription.
+    subscriptionId?: string | null
+    customerId?: string | null
+  }
 ): Promise<{ ok: boolean; alreadyDone?: boolean; userId?: string; error?: string }> {
   const { data: pr } = await admin
     .from('payment_requests')
@@ -203,6 +210,22 @@ export async function fulfillPaymentRequest(
       if (rec.ok) paymentId = rec.paymentId
     }
 
+    // Subscription (recurring monthly): stamp the Stripe subscription/customer
+    // ids + status on the plan so the webhook and the cancel endpoint can
+    // manage it. Best-effort — older schemas without these columns still work.
+    if (planId && params.subscriptionId) {
+      const subUpdate: Record<string, any> = {
+        stripe_subscription_id: params.subscriptionId,
+        stripe_customer_id: params.customerId || null,
+        subscription_status: 'active',
+      }
+      const subRes = await admin.from('plans').update(subUpdate).eq('id', planId)
+      if (subRes.error) {
+        // Column(s) missing on an older schema — try status only, then skip.
+        await admin.from('plans').update({ subscription_status: 'active' }).eq('id', planId)
+      }
+    }
+
     // Mark the request paid and link it back to the plan/payment it produced.
     const paidUpdate = {
       status: 'paid',
@@ -210,15 +233,24 @@ export async function fulfillPaymentRequest(
       stripe_payment_intent_id: params.paymentIntentId || pr.stripe_payment_intent_id || null,
       provisioned_user_id: provisionedUserId || pr.provisioned_user_id || null,
     }
-    const linkedUpdate = {
+    const linkedUpdate: Record<string, any> = {
       ...paidUpdate,
       plan_id: planId || pr.plan_id || null,
       payment_id: paymentId || pr.payment_id || null,
     }
+    // Store the subscription id on the request so recur_months enforcement can
+    // find it by subscription id later.
+    if (params.subscriptionId) linkedUpdate.stripe_subscription_id = params.subscriptionId
     const linkResult = await admin.from('payment_requests').update(linkedUpdate).eq('id', pr.id)
     if (linkResult.error) {
-      // plan_id/payment_id columns may not exist yet — still mark it paid.
-      await admin.from('payment_requests').update(paidUpdate).eq('id', pr.id)
+      // Some newer columns may not exist yet — peel them off and retry, finally
+      // falling back to just marking it paid.
+      const retry = { ...linkedUpdate }
+      delete retry.stripe_subscription_id
+      const r2 = await admin.from('payment_requests').update(retry).eq('id', pr.id)
+      if (r2.error) {
+        await admin.from('payment_requests').update(paidUpdate).eq('id', pr.id)
+      }
     }
   } catch (err: any) {
     // Plan/payment linking is best-effort — never lose the "paid" status.

@@ -22,6 +22,9 @@ type Plan = {
   raceDateSameAsEnd?: boolean;
   billingMode?: 'programming_only' | 'per_session' | 'hybrid';
   packageName?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionCancelAt?: string | null;
 };
 
 type ClientData = {
@@ -60,6 +63,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   const [chargeCustomAmount, setChargeCustomAmount] = useState("");
   const [chargeCustomWeeks, setChargeCustomWeeks] = useState("");
   const [chargeStartDate, setChargeStartDate] = useState(new Date().toISOString().split("T")[0]);
+  // For a monthly (subscription) package: how many months to bill, blank = until cancelled.
+  const [chargeRecurMonths, setChargeRecurMonths] = useState("");
   const [chargeMethod, setChargeMethod] = useState<"stripe" | "manual">("stripe");
   const [charging, setCharging] = useState(false);
   const [chargeMsg, setChargeMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -165,6 +170,9 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             raceDateSameAsEnd: p.race_date_same_as_end !== false,
             billingMode: p.billing_mode || 'programming_only',
             packageName: p.package_name || null,
+            stripeSubscriptionId: p.stripe_subscription_id || null,
+            subscriptionStatus: p.subscription_status || null,
+            subscriptionCancelAt: p.subscription_cancel_at || null,
           })));
         }
       } catch (err) {
@@ -238,6 +246,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     setChargeCustomName("");
     setChargeCustomAmount("");
     setChargeCustomWeeks("");
+    setChargeRecurMonths("");
     setChargeStartDate(new Date().toISOString().split("T")[0]);
     setChargeMsg(null);
     setShowChargeModal(true);
@@ -262,6 +271,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
       ...(isCustom
         ? { amount: chargeCustomAmount, custom_name: chargeCustomName.trim(), custom_duration_weeks: chargeCustomWeeks }
         : { package_id: chargePackageId }),
+      // Only meaningful for a monthly package via Stripe (subscription).
+      ...(!isCustom && chargeRecurMonths.trim() ? { recur_months: chargeRecurMonths } : {}),
     };
     try {
       if (chargeMethod === "manual") {
@@ -651,6 +662,26 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                   </select>
                 </div>
 
+                {/* Monthly (subscription) package via Stripe: optional month cap. */}
+                {chargeMethod === "stripe" && (() => {
+                  const selPkg = chargePackages.find((p) => p.id === chargePackageId);
+                  if (!selPkg || selPkg.billing_interval !== "monthly") return null;
+                  return (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+                      <p className="text-blue-300 text-xs font-medium mb-1">🔄 Monthly subscription</p>
+                      <label className="block text-xs text-gray-400 mb-1">Bill for how many months? <span className="text-gray-500">(leave blank to continue until you cancel)</span></label>
+                      <input
+                        value={chargeRecurMonths}
+                        onChange={(e) => setChargeRecurMonths(e.target.value.replace(/[^0-9]/g, ""))}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                        placeholder="e.g. 3 — or blank for ongoing"
+                        inputMode="numeric"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">The client is charged every month. {chargeRecurMonths.trim() ? `It stops automatically after ${chargeRecurMonths.trim()} month${chargeRecurMonths.trim() === "1" ? "" : "s"}.` : "It continues until you cancel it from their account."}</p>
+                    </div>
+                  );
+                })()}
+
                 {chargePackageId === "__custom__" && (
                   <div className="grid grid-cols-3 gap-3">
                     <div>
@@ -1012,6 +1043,10 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   // What to do with unused in-person sessions when completing a
   // per-session / hybrid plan: 'keep' (carry over) or 'close' (deactivate).
   const [unusedSessionsAction, setUnusedSessionsAction] = useState<'keep' | 'close'>('keep');
+  // Subscription cancellation (monthly recurring plans).
+  const [showCancelSub, setShowCancelSub] = useState(false);
+  const [cancelingSub, setCancelingSub] = useState(false);
+  const [cancelSubMsg, setCancelSubMsg] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState(false);
   const [editGoal, setEditGoal] = useState(plan.goal);
   const [editStartDate, setEditStartDate] = useState(plan.startDate);
@@ -1266,6 +1301,44 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     }
   };
 
+  const handleCancelSubscription = async (immediate: boolean) => {
+    setCancelingSub(true);
+    setCancelSubMsg(null);
+    try {
+      const res = await fetch('/api/subscriptions/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: plan.id, immediate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCancelSubMsg(data.error || 'Could not cancel the subscription.');
+      } else {
+        setCancelSubMsg(immediate
+          ? 'Subscription cancelled. The plan will be marked complete.'
+          : 'Subscription will stop at the end of the current paid month.');
+        setShowCancelSub(false);
+        // Reload so the plan reflects the new subscription status.
+        setTimeout(() => window.location.reload(), 1400);
+      }
+    } catch {
+      setCancelSubMsg('Network error.');
+    } finally {
+      setCancelingSub(false);
+    }
+  };
+
+  const hasActiveSubscription = !!plan.stripeSubscriptionId
+    && plan.subscriptionStatus !== 'canceled';
+  const subBadge = (() => {
+    if (!plan.stripeSubscriptionId) return null;
+    const s = plan.subscriptionStatus;
+    if (s === 'past_due') return { text: '🔄 Subscription · payment failed', cls: 'bg-red-500/20 text-red-300' };
+    if (s === 'canceling') return { text: '🔄 Subscription · ending', cls: 'bg-amber-500/20 text-amber-300' };
+    if (s === 'canceled') return { text: '🔄 Subscription · ended', cls: 'bg-gray-500/20 text-gray-400' };
+    return { text: '🔄 Monthly subscription', cls: 'bg-blue-500/20 text-blue-300' };
+  })();
+
   return (
     <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5"}`}>
       <div className="flex items-center justify-between mb-2">
@@ -1283,11 +1356,17 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
           <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
             {plan.status}
           </span>
+          {subBadge && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${subBadge.cls}`}>{subBadge.text}</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {plan.status === "active" && (
             <>
               <button onClick={() => setEditingPlan(!editingPlan)} className="text-gray-500 text-xs hover:text-accent">{editingPlan ? "Cancel Edit" : "Edit Plan"}</button>
+              {hasActiveSubscription && plan.subscriptionStatus !== 'canceling' && (
+                <button onClick={() => { setShowCancelSub(true); setCancelSubMsg(null); }} className="text-gray-500 text-xs hover:text-red-400">Cancel Subscription</button>
+              )}
               <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
             </>
           )}
@@ -1419,6 +1498,27 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             <button onClick={() => { setEditingPlan(false); setEditGoal(plan.goal); setEditStartDate(plan.startDate); setEditEndDate(plan.endDate); setEditOwed(plan.owed.toString()); setEditTargetDistance(plan.targetDistance || ""); setEditRaceDate(plan.raceDate || ""); setEditGoalPace(plan.goalPace || ""); setEditInjuryNotes(plan.injuryNotes || ""); setEditProgramId((plan as any).programTemplateId || ""); setEditRaceDateSameAsEnd((plan as any).raceDateSameAsEnd !== false); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
           </div>
         </div>
+      )}
+
+      {/* Cancel subscription dialog */}
+      {showCancelSub && (
+        <div className="bg-secondary/50 border border-red-500/20 rounded-lg p-4 mb-3">
+          <p className="text-red-300 text-sm font-medium mb-1">Cancel this monthly subscription?</p>
+          <p className="text-gray-300 text-xs mb-3">Choose how to stop billing. The plan is marked complete when the subscription actually ends.</p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => handleCancelSubscription(false)} disabled={cancelingSub} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+              {cancelingSub ? "Working…" : "Stop at end of paid month"}
+            </button>
+            <button onClick={() => handleCancelSubscription(true)} disabled={cancelingSub} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+              {cancelingSub ? "Working…" : "Cancel immediately"}
+            </button>
+            <button onClick={() => setShowCancelSub(false)} className="text-gray-400 text-xs hover:text-white px-2">Keep subscription</button>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-2">Stop at end of paid month: the client keeps access through the month they&apos;ve already paid for. Cancel immediately: billing and access stop now.</p>
+        </div>
+      )}
+      {cancelSubMsg && !showCancelSub && (
+        <p className="text-xs text-gray-400 mb-3">{cancelSubMsg}</p>
       )}
 
       {/* Completion confirmation dialog */}
