@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { sendClientInviteEmail, getBrandFromDomain } from '@/lib/invite-emails'
 import { resolveCoachRequestScope } from '@/lib/coach-scope'
+import { provisionClientFromApplication } from '@/lib/provision-client'
 
 // Authenticated COACH-facing endpoints for managing applications that came in
 // through their public /join/<slug> link.
@@ -44,9 +44,18 @@ export async function GET(request: Request) {
   }
   const { coachId } = scopeResult.scope
 
+  // Fetch applications with their selected package info (if any)
   const { data: applications, error } = await admin
     .from('coach_applications')
-    .select('*')
+    .select(`
+      *,
+      selected_package:coach_packages!selected_package_id (
+        id,
+        name,
+        price_cents,
+        billing_interval
+      )
+    `)
     .eq('coach_id', coachId)
     .order('created_at', { ascending: false })
 
@@ -54,7 +63,39 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ applications: applications || [] })
+  // Pull this coach's payment requests so each application can show its payment
+  // status (requested / paid). Safe if the table doesn't exist yet.
+  const latestPrByApp = new Map<string, any>()
+  try {
+    const { data: prs } = await admin
+      .from('payment_requests')
+      .select('id, application_id, status, amount_cents, currency, token, created_at')
+      .eq('coach_id', coachId)
+      .order('created_at', { ascending: false })
+    for (const pr of prs || []) {
+      // Keep the most recent request per application (list is already desc).
+      if (pr.application_id && !latestPrByApp.has(pr.application_id)) {
+        latestPrByApp.set(pr.application_id, pr)
+      }
+    }
+  } catch { /* payment_requests not present yet */ }
+
+  // Flatten the package info for easier frontend consumption
+  const flatApplications = (applications || []).map((app: any) => {
+    const pr = latestPrByApp.get(app.id) || null
+    return {
+      ...app,
+      selected_package_name: app.selected_package?.name || null,
+      selected_package_price_cents: app.selected_package?.price_cents || null,
+      selected_package_billing_interval: app.selected_package?.billing_interval || null,
+      payment_status: pr?.status || null,       // null | 'pending' | 'paid' | 'cancelled' | 'expired'
+      payment_token: pr?.token || null,
+      payment_request_id: pr?.id || null,
+      payment_amount_cents: pr?.amount_cents || null,
+    }
+  })
+
+  return NextResponse.json({ applications: flatApplications })
 }
 
 // PATCH: accept or decline an application.
@@ -65,7 +106,10 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, action, org: orgOverride, coach: coachOverride } = body || {}
+  const {
+    id, action, org: orgOverride, coach: coachOverride,
+    start_date, request_assessment, request_cycle_tracking, package_id,
+  } = body || {}
   if (!id || (action !== 'accept' && action !== 'decline')) {
     return NextResponse.json({ error: 'id and a valid action are required' }, { status: 400 })
   }
@@ -114,144 +158,32 @@ export async function PATCH(request: Request) {
   }
 
   // --- ACCEPT: create (or link) the client account + assign this coach. ---
-  const email = String(application.email).trim().toLowerCase()
-  const name = String(application.full_name).trim()
-  const orgId = organizationId || application.organization_id || null
-
-  // Dual-role: if the email already has an account, don't re-invite — add a
-  // client record (if missing) and assign this coach. (Mirrors /api/clients.)
-  const { data: existingUser } = await admin
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()
-
-  if (existingUser) {
-    const { data: existingClient } = await admin
-      .from('clients')
-      .select('id')
-      .eq('user_id', existingUser.id)
-      .maybeSingle()
-
-    let clientId = existingClient?.id
-    if (!clientId) {
-      const { data: created, error: createErr } = await admin
-        .from('clients')
-        .insert({
-          user_id: existingUser.id,
-          goal: application.primary_goal || null,
-          owed: 0,
-          paid: 0,
-        })
-        .select('id')
-        .single()
-      if (createErr) return NextResponse.json({ error: createErr.message }, { status: 500 })
-      clientId = created.id
-    }
-
-    try {
-      const { data: existingAssignments } = await admin
-        .from('client_coaches')
-        .select('id')
-        .eq('client_id', clientId)
-      await admin
-        .from('client_coaches')
-        .upsert(
-          { client_id: clientId, coach_id: coachId, is_default: !existingAssignments || existingAssignments.length === 0 },
-          { onConflict: 'client_id,coach_id' }
-        )
-    } catch (err) {
-      console.error('Failed to assign coach to existing user:', err)
-    }
-
-    await admin
-      .from('coach_applications')
-      .update({ status: 'accepted', reviewed_at: new Date().toISOString(), accepted_user_id: existingUser.id })
-      .eq('id', id)
-
-    return NextResponse.json({
-      success: true,
-      status: 'accepted',
-      dualRole: true,
-      message: `${name} already had an account and has been added as your client.`,
-    })
-  }
-
-  // New user: generate invite link (no built-in email) + send branded email.
-  const redirectDomain = 'www.firstmilecoach.com'
-  const orgDomain = 'firstmilecoach.com'
-
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'invite',
-    email,
-    options: {
-      data: { name, role: 'client' },
-      redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
-    },
-  })
-
-  if (linkError) {
-    return NextResponse.json({ error: linkError.message }, { status: 500 })
-  }
-
-  const newUserId = linkData.user.id
-  const hashedToken = linkData.properties.hashed_token
-  const confirmationUrl = `https://${redirectDomain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
-
-  const emailSent = await sendClientInviteEmail({
-    to: email,
-    clientName: name,
+  // Uses the shared provisioning helper (same logic reused by payment-success).
+  const result = await provisionClientFromApplication(admin, {
+    application,
+    coachId,
+    organizationId,
     coachName,
-    confirmationUrl,
-    brand: getBrandFromDomain(orgDomain),
+    startDate: start_date || null,
+    requestAssessment: !!request_assessment,
+    requestCycleTracking: !!request_cycle_tracking,
+    // The coach may override the applicant's package at accept time. The body
+    // always carries package_id ('' / null = no package → custom plan). Only
+    // treat it as an override when the key is present in the request.
+    overridePackageId: 'package_id' in (body || {}) ? (package_id || null) : undefined,
   })
-  if (!emailSent) {
-    console.error(`Failed to send invite email to ${email}, but user was created`)
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error || 'Could not create the client account.' }, { status: 500 })
   }
 
-  // Set gender/org on the auto-created users row.
-  const userUpdates: Record<string, any> = {}
-  if (application.sex) userUpdates.gender = application.sex
-  if (orgId) userUpdates.organization_id = orgId
-  if (Object.keys(userUpdates).length > 0) {
-    await admin.from('users').update(userUpdates).eq('id', newUserId)
-  }
-
-  // Create the clients row.
-  const { data: newClientRecord, error: clientError } = await admin
-    .from('clients')
-    .insert({
-      user_id: newUserId,
-      goal: application.primary_goal || null,
-      owed: 0,
-      paid: 0,
-    })
-    .select('id')
-    .single()
-
-  if (clientError) {
-    return NextResponse.json({ error: clientError.message }, { status: 500 })
-  }
-
-  // Assign the effective coach as default coach.
-  if (newClientRecord) {
-    try {
-      await admin
-        .from('client_coaches')
-        .insert({ client_id: newClientRecord.id, coach_id: coachId, is_default: true })
-    } catch (err) {
-      console.error('Failed to assign coach to new client:', err)
-    }
-  }
-
-  await admin
-    .from('coach_applications')
-    .update({ status: 'accepted', reviewed_at: new Date().toISOString(), accepted_user_id: newUserId })
-    .eq('id', id)
-
+  const name = String(application.full_name).trim()
   return NextResponse.json({
     success: true,
     status: 'accepted',
-    message: `Invite email sent to ${email}. ${name} is now your client.`,
+    dualRole: result.dualRole || false,
+    message: result.dualRole
+      ? `${name} already had an account and has been added as your client.`
+      : `Invite email sent to ${application.email}. ${name} is now your client.`,
   })
 }

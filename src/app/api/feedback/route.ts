@@ -157,14 +157,23 @@ export async function POST(request: Request) {
         <p style="margin: 0 0 4px; color: #888; font-size: 12px;">Platform: ${platformLabel} &bull; Role: ${roleLabel}</p>
         ${pageUrl ? `<p style="margin: 0; color: #888; font-size: 12px;">Page: ${pageUrl}</p>` : ''}
       </div>
+      
+      <div style="margin: 16px 0 0; text-align: center;">
+        <a href="https://www.firstmilecoach.com/admin?view=feedback" style="display: inline-block; padding: 12px 24px; background-color: #f26522; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">View in Feedback & Bugs</a>
+      </div>
     `
 
-    sendEmail({
+    // Use await to ensure email sends before returning - don't fire and forget
+    const emailSent = await sendEmail({
       to: 'curtisirwin@me.com',
-      subject: `New ${typeLabel} from ${userName || 'a user'} (${platformLabel})`,
+      subject: `🐛 New ${typeLabel} from ${userName || 'a user'} (${platformLabel})`,
       html: adminEmailHtml,
       brand,
-    }).catch(err => console.error('Failed to send admin notification:', err))
+    })
+    
+    if (!emailSent) {
+      console.error(`Admin notification email failed for feedback ${feedback.id} - email to curtisirwin@me.com did not send`)
+    }
   } catch (err) {
     console.error('Admin notification error (feedback still saved):', err)
   }

@@ -28,7 +28,7 @@ type WeekPlanWorkout = { type: string; trainingType: string; title: string; mile
 type WeekPlanDay = { day: string; sessionType: "remote" | "in_person"; sessionConflict: boolean; workouts: WeekPlanWorkout[] };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; hasActivePlan?: boolean; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
@@ -712,8 +712,8 @@ export default function AdminPage() {
     if (activePlan?.billingMode === 'per_session') {
       setWeekDateWarning("");
     } else if (activePlan && activePlan.startDate && activePlan.endDate) {
-      const planStart = new Date(activePlan.startDate);
-      const planEnd = new Date(activePlan.endDate);
+      const planStart = new Date(activePlan.startDate + 'T00:00:00');
+      const planEnd = new Date(activePlan.endDate + 'T00:00:00');
       planStart.setHours(0, 0, 0, 0);
       planEnd.setHours(23, 59, 59, 999);
       const weekStart = new Date(monday);
@@ -1585,6 +1585,7 @@ export default function AdminPage() {
           email: c.email || '',
           gender: c.gender || 'female',
           goal: c.goal || '',
+          hasActivePlan: !!c.hasActivePlan,
           startDate: c.startDate || '',
           planDuration: c.planEnd || '',
           owed: c.owed || 0,
@@ -1902,6 +1903,8 @@ export default function AdminPage() {
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
   const isMileageWorkout = (workout: { type?: string }) => workout.type === 'run' || workout.type === 'walk';
   const formatProgrammedDistance = (workout: { type?: string; miles?: string | number | null; distanceUnit?: "mi" | "km" }) => {
+    // Only show distance for run/walk workouts — other types (strength, cross, etc.) don't use mileage
+    if (!isMileageWorkout(workout)) return '';
     if (workout.miles === null || workout.miles === undefined || workout.miles === '') return '';
     const value = Number(workout.miles);
     if (!Number.isFinite(value) || value <= 0) return '';
@@ -2323,7 +2326,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Active plan for the selected client
-  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; packageName?: string | null; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
@@ -2344,6 +2347,7 @@ export default function AdminPage() {
               startDate: active.start_date,
               endDate: active.end_date,
               goal: active.goal || '',
+              packageName: active.package_name || null,
               owed: parseFloat(active.owed) || 0,
               paid: parseFloat(active.paid) || 0,
               status: active.status,
@@ -2528,8 +2532,8 @@ export default function AdminPage() {
   // Filter workouts by active plan date range for "Current Plan" stats
   const planFilteredWorkouts = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientWorkouts;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
+    const planStart = new Date(activePlan.startDate + 'T00:00:00');
+    const planEnd = new Date(activePlan.endDate + 'T00:00:00');
     planStart.setHours(0, 0, 0, 0);
     planEnd.setHours(23, 59, 59, 999);
     const planWeeks = publishedWeeks.filter(w => {
@@ -2551,8 +2555,8 @@ export default function AdminPage() {
   const allClientAddedMiles = publishedWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0);
   const planClientAddedMiles = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientAddedMiles;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
+    const planStart = new Date(activePlan.startDate + 'T00:00:00');
+    const planEnd = new Date(activePlan.endDate + 'T00:00:00');
     planStart.setHours(0, 0, 0, 0);
     planEnd.setHours(23, 59, 59, 999);
     const planWeeks = publishedWeeks.filter(w => {
@@ -2598,8 +2602,8 @@ export default function AdminPage() {
       const weekEndStr = weekPlan.dateRange.split(' - ')[1];
       const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());
       const weekEnd = new Date(weekEndStr + ', ' + new Date().getFullYear());
-      const planStart = new Date(activePlan.startDate);
-      const planEnd = new Date(activePlan.endDate);
+      const planStart = new Date(activePlan.startDate + 'T00:00:00');
+      const planEnd = new Date(activePlan.endDate + 'T00:00:00');
       
       // Allow 1 day buffer for timezone differences
       planStart.setHours(0, 0, 0, 0);
@@ -3342,7 +3346,9 @@ export default function AdminPage() {
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                       : client.goal 
                         ? client.goal 
-                        : <span className="text-yellow-400">No active plan</span>
+                        : client.hasActivePlan
+                          ? <span className="text-green-400">Active plan</span>
+                          : <span className="text-yellow-400">No active plan</span>
                     }
                   </p>
                 </div>
@@ -3386,7 +3392,7 @@ export default function AdminPage() {
                                 ? <span className="text-gray-500">Archived</span>
                                 : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
-                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                                : client.goal ? client.goal : client.hasActivePlan ? <span className="text-green-400">Active plan</span> : <span className="text-yellow-400">No active plan</span>
                               }
                             </p>
                           </div>
@@ -3432,7 +3438,7 @@ export default function AdminPage() {
                                 ? <span className="text-gray-500">Archived</span>
                                 : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
-                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                                : client.goal ? client.goal : client.hasActivePlan ? <span className="text-green-400">Active plan</span> : <span className="text-yellow-400">No active plan</span>
                               }
                             </p>
                           </div>
@@ -3619,7 +3625,9 @@ export default function AdminPage() {
                     ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                     : selectedClientData.goal
                       ? <span className="text-gray-400">{selectedClientData.goal}</span>
-                      : <span className="text-yellow-400">No active plan</span>
+                      : selectedClientData.hasActivePlan
+                        ? <span className="text-green-400">Active plan</span>
+                        : <span className="text-yellow-400">No active plan</span>
                   }
                 </p>
               </div>
@@ -4214,8 +4222,8 @@ export default function AdminPage() {
                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
-                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
+                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.packageName || activePlan.goal || 'No goal set'}</p>
+                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}{activePlan.packageName && activePlan.goal ? ` · ${activePlan.goal}` : ''}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {activePlan.billingMode && activePlan.billingMode !== 'programming_only' && (

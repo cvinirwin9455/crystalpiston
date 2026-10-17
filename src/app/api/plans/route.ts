@@ -33,12 +33,12 @@ export async function GET(request: Request) {
   // Try full query with billing_mode
   const fullResult = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, program_loaded, source_package_id, stripe_subscription_id, subscription_status, subscription_cancel_at, current_period_start, current_period_end, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 
   if (fullResult.error) {
-    // billing_mode column may not exist — try without it
+    // billing_mode / program_loaded columns may not exist — try without them
     const midResult = await adminClient
       .from('plans')
       .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, created_at')
@@ -67,7 +67,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json(plans || [])
+  // Attach the source package name (if any) so the UI can label the plan with
+  // the package the client purchased. Best-effort — never fails the request.
+  const planList = plans || []
+  try {
+    const pkgIds = Array.from(
+      new Set(planList.map((p: any) => p.source_package_id).filter(Boolean))
+    )
+    if (pkgIds.length > 0) {
+      const { data: pkgs } = await adminClient
+        .from('coach_packages')
+        .select('id, name')
+        .in('id', pkgIds)
+      const nameById = new Map((pkgs || []).map((p: any) => [p.id, p.name]))
+      for (const p of planList) {
+        p.package_name = p.source_package_id ? nameById.get(p.source_package_id) || null : null
+      }
+    }
+  } catch {
+    /* source_package_id column or packages table missing — skip labeling */
+  }
+
+  return NextResponse.json(planList)
 }
 
 // POST /api/plans - Create a new plan for a client
@@ -257,7 +278,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId } = body
+  const { planId, startDate, endDate, owed, paid, status, completionReason, goal, targetDistance, raceDate, goalPace, injuryNotes, programTemplateId, programLoaded } = body
 
   if (!planId) {
     return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -278,16 +299,18 @@ export async function PATCH(request: Request) {
   if (goalPace !== undefined) updates.goal_pace = goalPace || null
   if (injuryNotes !== undefined) updates.injury_notes = injuryNotes || null
   if (programTemplateId !== undefined) updates.program_template_id = programTemplateId || null
+  if (programLoaded !== undefined) updates.program_loaded = !!programLoaded
 
   let { error } = await adminClient
     .from('plans')
     .update(updates)
     .eq('id', planId)
 
-  // If the update failed, retry without completion_reason (older schemas)
+  // If the update failed, retry without the newest columns (older schemas).
   if (error) {
     const fallbackUpdates = { ...updates }
     delete fallbackUpdates.completion_reason
+    delete fallbackUpdates.program_loaded
     const result = await adminClient
       .from('plans')
       .update(fallbackUpdates)

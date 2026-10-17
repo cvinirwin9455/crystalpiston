@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 
   let { data: page } = await admin
     .from('coach_application_pages')
-    .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats')
+    .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats, show_packages')
     .eq('coach_id', coachId)
     .maybeSingle()
 
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
         offer_types: ['running'],
         offer_formats: ['programming'],
       })
-      .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats')
+      .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats, show_packages')
       .single()
     if (createErr) return NextResponse.json({ error: createErr.message }, { status: 500 })
     page = created
@@ -106,7 +106,7 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { headline, intro, pricing, is_enabled, slug, offer_types, offer_formats, org: orgOverride, coach: coachOverride } = body || {}
+  const { headline, intro, pricing, is_enabled, slug, offer_types, offer_formats, show_packages, org: orgOverride, coach: coachOverride } = body || {}
 
   const admin = await createAdminClient()
   const scopeResult = await resolveCoachRequestScope(admin, user.id, orgOverride, coachOverride)
@@ -120,6 +120,7 @@ export async function PATCH(request: Request) {
   if (intro !== undefined) updates.intro = intro
   if (pricing !== undefined) updates.pricing = pricing
   if (is_enabled !== undefined) updates.is_enabled = !!is_enabled
+  if (show_packages !== undefined) updates.show_packages = !!show_packages
 
   // Offerings: validate against the known vocab and keep at least one each.
   const VALID_TYPES = ['running', 'personal_training']
@@ -160,7 +161,7 @@ export async function PATCH(request: Request) {
     .from('coach_application_pages')
     .update(updates)
     .eq('coach_id', coachId)
-    .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats')
+    .select('coach_id, slug, is_enabled, headline, intro, pricing, offer_types, offer_formats, show_packages')
     .maybeSingle()
 
   if (error) {
