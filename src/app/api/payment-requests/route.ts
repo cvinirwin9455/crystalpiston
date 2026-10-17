@@ -237,28 +237,38 @@ export async function POST(request: Request) {
   const customWeeksInt = custom_duration_weeks != null && String(custom_duration_weeks).trim() !== ''
     ? parseInt(String(custom_duration_weeks).replace(/[^0-9]/g, ''), 10)
     : null
-  const setupCols = {
+  // client_id is CRITICAL for a renewal (fulfillment + the pending banner key
+  // off it), so it goes in baseRow — never dropped by a fallback.
+  if (existingClient?.id) baseRow.client_id = existingClient.id
+
+  // Newer, individually-optional columns. Any of these may be absent on a DB
+  // that hasn't run every migration yet — so we insert with all of them, then
+  // peel off ONE missing column at a time (keeping client_id + everything else).
+  const optionalCols: Record<string, any> = {
     start_date: start_date && /^\d{4}-\d{2}-\d{2}$/.test(start_date) ? start_date : null,
     request_assessment: !!request_assessment,
     request_cycle_tracking: !!request_cycle_tracking,
     custom_duration_weeks: useCustomAmount && customWeeksInt && customWeeksInt > 0 ? customWeeksInt : null,
-    // Existing-client renewal: tie the request to the client so fulfillment
-    // skips account provisioning and just creates the new plan + payment.
-    client_id: existingClient?.id || null,
-    // True only when the client already has prior plans (continuing training).
     is_renewal: isRenewalCharge,
   }
-  let { data: created, error: insertErr } = await admin
-    .from('payment_requests')
-    .insert({ ...baseRow, ...setupCols })
-    .select('*')
-    .single()
 
-  if (insertErr) {
-    const retry = await admin.from('payment_requests').insert(baseRow).select('*').single()
-    created = retry.data
-    insertErr = retry.error
+  // Attempt insert; on an "unknown column" error, drop the named column and retry.
+  async function insertWithFallback(): Promise<{ data: any; error: any }> {
+    const cols = { ...optionalCols }
+    for (let i = 0; i <= Object.keys(optionalCols).length; i++) {
+      const res = await admin.from('payment_requests').insert({ ...baseRow, ...cols }).select('*').single()
+      if (!res.error) return res
+      // Find which optional column the error names and drop it, then retry.
+      const msg = String(res.error.message || '').toLowerCase()
+      const bad = Object.keys(cols).find((k) => msg.includes(k))
+      if (bad) { delete cols[bad]; continue }
+      // Error isn't about a known optional column — last resort: base row only.
+      return await admin.from('payment_requests').insert(baseRow).select('*').single()
+    }
+    return await admin.from('payment_requests').insert(baseRow).select('*').single()
   }
+
+  const { data: created, error: insertErr } = await insertWithFallback()
 
   if (insertErr) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 })
