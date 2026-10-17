@@ -10,6 +10,7 @@ type PayData = {
   amountCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
+  recurMonths?: number | null
   clientName: string | null
   status: 'pending' | 'paid' | 'cancelled' | 'expired'
   isRenewal?: boolean
@@ -93,6 +94,20 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
   const amount = formatAmount(pay.amountCents, pay.currency)
   const first = (pay.clientName || '').split(' ')[0] || 'there'
 
+  // Subscription (monthly) presentation.
+  const isSubscription = pay.billingInterval === 'monthly'
+  const months = pay.recurMonths && pay.recurMonths > 0 ? pay.recurMonths : null
+  // "US$75/month" for subscriptions; plain amount for one-time.
+  const amountDisplay = isSubscription ? `${amount}/mo` : amount
+  // Human description of the billing terms, shown under the package name.
+  const termsLine = isSubscription
+    ? (months
+        ? `Billed monthly for ${months} month${months === 1 ? '' : 's'}`
+        : 'Billed monthly until cancelled')
+    : 'One-time payment'
+  // Button label.
+  const payLabel = isSubscription ? `Subscribe · ${amount}/mo` : `Pay ${amount}`
+
   return (
     <main style={pageWrap}>
       <div style={card}>
@@ -103,12 +118,23 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
         {view === 'paid' ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
-            <h1 style={{ fontSize: 22, color: '#2d3436', margin: '0 0 10px' }}>Payment complete!</h1>
-            <p style={{ color: '#555b5e', fontSize: 15, lineHeight: 1.7, margin: 0 }}>
+            <h1 style={{ fontSize: 22, color: '#2d3436', margin: '0 0 10px' }}>
+              {isSubscription ? "You're subscribed!" : 'Payment complete!'}
+            </h1>
+            <p style={{ color: '#555b5e', fontSize: 15, lineHeight: 1.7, margin: '0 0 14px' }}>
               {pay.isRenewal
                 ? <>Thanks, {first}! Your payment to <strong>{pay.coachName}</strong> was successful. Your coaching continues — your new plan is now active in your account.</>
                 : <>Thanks, {first}! Your payment to <strong>{pay.coachName}</strong> was successful. Check your email for a link to set your password and access your training.</>}
             </p>
+            {isSubscription && (
+              <div style={{ margin: '0 auto', maxWidth: 360, padding: '14px 16px', borderRadius: 12, background: '#f6f8f9', border: '1px solid #eef1f3', textAlign: 'left' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#2d3436' }}>Your subscription</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#555b5e', lineHeight: 1.6 }}>
+                  <strong>{pay.packageName || 'Coaching'}</strong> — {amount}/month{months ? ` for ${months} month${months === 1 ? '' : 's'}` : ', ongoing until cancelled'}.
+                  You&apos;ll be billed automatically each month. To cancel, just reach out to {pay.coachName}.
+                </p>
+              </div>
+            )}
           </div>
         ) : view === 'confirming' ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
@@ -139,10 +165,23 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
             <div style={{ border: '1px solid #eef1f3', borderRadius: 12, padding: 18, marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, color: '#2d3436' }}>{pay.packageName || 'Coaching'}</span>
-                <span style={{ fontWeight: 800, color: ORANGE, fontSize: 18 }}>{amount}</span>
+                <span style={{ fontWeight: 800, color: ORANGE, fontSize: 18 }}>{amountDisplay}</span>
               </div>
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9aa0a4' }}>One-time payment</p>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9aa0a4' }}>{termsLine}</p>
             </div>
+
+            {isSubscription && (
+              <div style={{ margin: '0 0 20px', padding: '14px 16px', borderRadius: 12, background: '#fff6ec', border: '1px solid #ffe0c2' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#9a5b1e' }}>🔄 This is a monthly subscription</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#9a5b1e', lineHeight: 1.6 }}>
+                  You&apos;ll be charged <strong>{amount}</strong> today and then <strong>{amount} every month</strong>
+                  {months
+                    ? <> for <strong>{months} month{months === 1 ? '' : 's'}</strong>, after which it ends automatically.</>
+                    : <>, until you or {pay.coachName} cancels it.</>}
+                  {' '}You can ask {pay.coachName} to cancel anytime.
+                </p>
+              </div>
+            )}
 
             {error && (
               <div style={{ margin: '0 0 16px', padding: '12px 14px', borderRadius: 10, background: '#fdecea', color: '#b3261e', fontSize: 14 }}>
@@ -159,12 +198,14 @@ export default function CheckoutClient({ pay }: { pay: PayData }) {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'Redirecting…' : `Pay ${amount}`}
+              {loading ? 'Redirecting…' : payLabel}
             </button>
             <p style={{ margin: '14px 0 0', fontSize: 12, color: '#9aa0a4', textAlign: 'center', lineHeight: 1.6 }}>
-              {pay.isRenewal
-                ? 'Payment is handled securely by Stripe. Your coaching continues once your payment completes.'
-                : 'Payment is handled securely by Stripe. Your First Mile account is created once your payment completes.'}
+              {isSubscription
+                ? 'Payment is handled securely by Stripe. You can cancel your monthly subscription at any time by contacting your coach.'
+                : pay.isRenewal
+                  ? 'Payment is handled securely by Stripe. Your coaching continues once your payment completes.'
+                  : 'Payment is handled securely by Stripe. Your First Mile account is created once your payment completes.'}
             </p>
           </div>
         )}

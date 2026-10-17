@@ -14,6 +14,7 @@ type PayData = {
   amountCents: number
   currency: string
   billingInterval: 'monthly' | 'one_time'
+  recurMonths: number | null
   clientName: string | null
   status: 'pending' | 'paid' | 'cancelled' | 'expired'
   isRenewal: boolean
@@ -37,19 +38,27 @@ async function fetchPay(token: string): Promise<PayData | null> {
       }
     )
 
-    // Try with is_renewal (controls renewal wording); fall back if not present.
+    // Try with the newest columns (is_renewal + recur_months); peel back if absent.
     let { data: pr } = await supabase
       .from('payment_requests')
-      .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token, is_renewal')
+      .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token, is_renewal, recur_months')
       .eq('token', token)
       .maybeSingle()
     if (!pr) {
       const retry = await supabase
         .from('payment_requests')
-        .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token')
+        .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token, is_renewal')
         .eq('token', token)
         .maybeSingle()
       pr = retry.data
+    }
+    if (!pr) {
+      const retry2 = await supabase
+        .from('payment_requests')
+        .select('coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, token')
+        .eq('token', token)
+        .maybeSingle()
+      pr = retry2.data
     }
 
     if (!pr) return null
@@ -68,6 +77,7 @@ async function fetchPay(token: string): Promise<PayData | null> {
       amountCents: pr.amount_cents,
       currency: pr.currency || 'usd',
       billingInterval: pr.billing_interval === 'monthly' ? 'monthly' : 'one_time',
+      recurMonths: (pr as any).recur_months ?? null,
       clientName: pr.client_name,
       status: pr.status,
       isRenewal: !!(pr as any).is_renewal,

@@ -362,6 +362,8 @@ export async function POST(request: Request) {
       packageName,
       payUrl,
       isRenewal: isRenewalCharge, // only "continuing" wording when they have prior plans
+      billingInterval,
+      recurMonths: recurMonthsInt && recurMonthsInt > 0 ? recurMonthsInt : null,
     })
   } catch (err) {
     console.error('Payment request email failed:', err)
@@ -427,6 +429,8 @@ async function sendPaymentRequestEmail(params: {
   packageName: string | null
   payUrl: string
   isRenewal?: boolean
+  billingInterval?: 'monthly' | 'one_time'
+  recurMonths?: number | null
 }) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return
@@ -441,22 +445,43 @@ async function sendPaymentRequestEmail(params: {
   const what = params.packageName ? ` for <strong>${params.packageName}</strong>` : ''
   const whatText = params.packageName ? ` for ${params.packageName}` : ''
   const renewal = !!params.isRenewal
+  const isSubscription = params.billingInterval === 'monthly'
+  const months = params.recurMonths && params.recurMonths > 0 ? params.recurMonths : null
 
-  // Copy differs for a brand-new client (create/activate account) vs. an
-  // existing client renewing / buying their next package.
-  const subject = renewal
-    ? `Complete your payment to continue coaching with ${params.coachName}`
-    : `Complete your payment to start coaching with ${params.coachName}`
-  const heading = renewal ? `Ready for what's next, ${first}?` : `You're almost in, ${first}!`
-  const bodyLine = renewal
-    ? `${params.coachName} has set up your next block${what}. Complete your payment of <strong style="color:#2d3436;">${amount}</strong> to continue your coaching.`
-    : `${params.coachName} has set up your coaching${what}. Complete your payment of <strong style="color:#2d3436;">${amount}</strong> to activate your account and get started.`
-  const footerNote = renewal
-    ? `Payment is handled securely by Stripe. Your coaching continues once your payment is complete.`
-    : `Payment is handled securely by Stripe. Your First Mile account is created once your payment is complete.`
-  const bodyLineText = renewal
-    ? `${params.coachName} has set up your next block${whatText}. Complete your payment of ${amount} to continue your coaching:`
-    : `${params.coachName} has set up your coaching${whatText}. Complete your payment of ${amount} to activate your account:`
+  // Human terms line for a subscription (reused in HTML + text + button area).
+  const subTerms = isSubscription
+    ? (months
+        ? `${amount}/month for ${months} month${months === 1 ? '' : 's'}`
+        : `${amount}/month, ongoing until cancelled`)
+    : amount
+
+  // Copy differs for a subscription vs. a one-time payment, and (for one-time)
+  // for a brand-new client vs. an existing client renewing.
+  const subject = isSubscription
+    ? `Set up your monthly coaching subscription with ${params.coachName}`
+    : renewal
+      ? `Complete your payment to continue coaching with ${params.coachName}`
+      : `Complete your payment to start coaching with ${params.coachName}`
+  const heading = isSubscription
+    ? (renewal ? `Ready for what's next, ${first}?` : `You're almost in, ${first}!`)
+    : (renewal ? `Ready for what's next, ${first}?` : `You're almost in, ${first}!`)
+  const bodyLine = isSubscription
+    ? `${params.coachName} has set up a <strong>monthly coaching subscription</strong>${what}. You'll be billed <strong style="color:#2d3436;">${subTerms}</strong>. Set it up below to get started${renewal ? '' : ' and activate your account'}.`
+    : renewal
+      ? `${params.coachName} has set up your next block${what}. Complete your payment of <strong style="color:#2d3436;">${amount}</strong> to continue your coaching.`
+      : `${params.coachName} has set up your coaching${what}. Complete your payment of <strong style="color:#2d3436;">${amount}</strong> to activate your account and get started.`
+  const footerNote = isSubscription
+    ? `Payment is handled securely by Stripe. You can cancel your subscription anytime by contacting ${params.coachName}.`
+    : renewal
+      ? `Payment is handled securely by Stripe. Your coaching continues once your payment is complete.`
+      : `Payment is handled securely by Stripe. Your First Mile account is created once your payment is complete.`
+  const bodyLineText = isSubscription
+    ? `${params.coachName} has set up a monthly coaching subscription${whatText}. You'll be billed ${subTerms}. Set it up here${renewal ? '' : ' to activate your account'}:`
+    : renewal
+      ? `${params.coachName} has set up your next block${whatText}. Complete your payment of ${amount} to continue your coaching:`
+      : `${params.coachName} has set up your coaching${whatText}. Complete your payment of ${amount} to activate your account:`
+  // CTA button label.
+  const buttonLabel = isSubscription ? `SUBSCRIBE · ${amount}/MO` : `PAY ${amount}`
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -481,7 +506,7 @@ async function sendPaymentRequestEmail(params: {
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 8px;"><tr>
           <td align="center" style="border-radius:50px;background:#f26522;">
-            <a href="${params.payUrl}" target="_blank" style="display:inline-block;padding:14px 36px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:50px;">PAY ${amount}</a>
+            <a href="${params.payUrl}" target="_blank" style="display:inline-block;padding:14px 36px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:50px;">${buttonLabel}</a>
           </td>
         </tr></table>
         <p style="margin:16px 0 0;font-size:13px;color:#9aa0a4;line-height:1.6;text-align:center;">

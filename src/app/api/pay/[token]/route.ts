@@ -38,19 +38,28 @@ export async function GET(
   }
   const supabase = await adminClient()
 
-  // Try with is_renewal (controls renewal wording); fall back if not present.
+  // Try with the newest columns (is_renewal controls renewal wording;
+  // recur_months describes a capped subscription); peel back if absent.
   let { data: pr } = await supabase
     .from('payment_requests')
-    .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, is_renewal')
+    .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, is_renewal, recur_months')
     .eq('token', params.token)
     .maybeSingle()
   if (!pr) {
     const retry = await supabase
       .from('payment_requests')
-      .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status')
+      .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status, is_renewal')
       .eq('token', params.token)
       .maybeSingle()
     pr = retry.data
+  }
+  if (!pr) {
+    const retry2 = await supabase
+      .from('payment_requests')
+      .select('id, coach_id, package_name, amount_cents, currency, billing_interval, client_name, status')
+      .eq('token', params.token)
+      .maybeSingle()
+    pr = retry2.data
   }
 
   if (!pr) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -68,6 +77,7 @@ export async function GET(
     amountCents: pr.amount_cents,
     currency: pr.currency,
     billingInterval: pr.billing_interval,
+    recurMonths: (pr as any).recur_months ?? null, // capped subscription length, if any
     clientName: pr.client_name,
     status: pr.status,
     isRenewal: !!(pr as any).is_renewal, // continuing-training copy only for renewals
