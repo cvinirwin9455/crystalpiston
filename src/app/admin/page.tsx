@@ -28,7 +28,7 @@ type WeekPlanWorkout = { type: string; trainingType: string; title: string; mile
 type WeekPlanDay = { day: string; sessionType: "remote" | "in_person"; sessionConflict: boolean; workouts: WeekPlanWorkout[] };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; hasActivePlan?: boolean; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
@@ -1585,6 +1585,7 @@ export default function AdminPage() {
           email: c.email || '',
           gender: c.gender || 'female',
           goal: c.goal || '',
+          hasActivePlan: !!c.hasActivePlan,
           startDate: c.startDate || '',
           planDuration: c.planEnd || '',
           owed: c.owed || 0,
@@ -3345,7 +3346,9 @@ export default function AdminPage() {
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                       : client.goal 
                         ? client.goal 
-                        : <span className="text-yellow-400">No active plan</span>
+                        : client.hasActivePlan
+                          ? <span className="text-green-400">Active plan</span>
+                          : <span className="text-yellow-400">No active plan</span>
                     }
                   </p>
                 </div>
@@ -3389,7 +3392,7 @@ export default function AdminPage() {
                                 ? <span className="text-gray-500">Archived</span>
                                 : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
-                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                                : client.goal ? client.goal : client.hasActivePlan ? <span className="text-green-400">Active plan</span> : <span className="text-yellow-400">No active plan</span>
                               }
                             </p>
                           </div>
@@ -3435,7 +3438,7 @@ export default function AdminPage() {
                                 ? <span className="text-gray-500">Archived</span>
                                 : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
-                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                                : client.goal ? client.goal : client.hasActivePlan ? <span className="text-green-400">Active plan</span> : <span className="text-yellow-400">No active plan</span>
                               }
                             </p>
                           </div>
@@ -3622,7 +3625,9 @@ export default function AdminPage() {
                     ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                     : selectedClientData.goal
                       ? <span className="text-gray-400">{selectedClientData.goal}</span>
-                      : <span className="text-yellow-400">No active plan</span>
+                      : selectedClientData.hasActivePlan
+                        ? <span className="text-green-400">Active plan</span>
+                        : <span className="text-yellow-400">No active plan</span>
                   }
                 </p>
               </div>

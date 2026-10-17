@@ -130,8 +130,10 @@ export async function createPlanFromPackage(
   const owed = planOwedFromPackage(pkg)
   const hasProgram = !!pkg.program_template_id
 
-  // Goal/race metadata from the application, when available.
-  const goal = application?.primary_goal || application?.pt_goal || null
+  // Goal/race metadata from the application, when available. For a renewal
+  // (no application) fall back to the package name so the plan isn't blank —
+  // a blank goal makes the admin UI show "No active plan" even though it exists.
+  const goal = application?.primary_goal || application?.pt_goal || pkg.name || null
   const targetDistance = application?.target_race || null
   const injuryNotes = application?.injuries || null
   // For a template-based program with no explicit race, anchor the program's
