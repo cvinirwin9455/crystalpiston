@@ -433,6 +433,17 @@ export default function PackagesManager() {
       });
       return;
     }
+    // A one-time programming package needs a program length so the client's plan
+    // spans the right period (and the create-week flow works). Recurring is
+    // open-ended (no fixed weeks); per_session has no program span.
+    if (
+      form.billing_interval === "one_time" &&
+      form.billing_mode !== "per_session" &&
+      !(parseInt(form.duration_weeks.replace(/[^0-9]/g, ""), 10) > 0)
+    ) {
+      setMsg({ text: "Enter the program length (weeks) — or pick a program template that sets it.", type: "error" });
+      return;
+    }
     setSaving(true);
     setMsg(null);
     const capNum = form.client_cap.trim() ? parseInt(form.client_cap, 10) : null;
