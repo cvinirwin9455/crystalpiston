@@ -126,26 +126,27 @@ export async function POST(request: Request) {
     application = data
   } else {
     // Existing client renewal: load the client + verify this coach is assigned.
-    const { data: cli } = await admin
+    // NOTE: clients has no organization_id column — the org lives on users.
+    const { data: cli, error: cliErr } = await admin
       .from('clients')
-      .select('id, user_id, organization_id')
+      .select('id, user_id')
       .eq('id', client_id)
       .maybeSingle()
-    if (!cli) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    if (cliErr || !cli) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     const { data: assignment } = await admin
       .from('client_coaches')
       .select('id')
       .eq('client_id', cli.id)
       .eq('coach_id', coachId)
       .maybeSingle()
-    if (!assignment) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    // Grab the client's email/name for the payment + email.
+    if (!assignment) return NextResponse.json({ error: 'This client isn\u2019t assigned to you.' }, { status: 403 })
+    // Grab the client's email/name/org for the payment + email.
     const { data: cliUser } = await admin
       .from('users')
-      .select('email, name')
+      .select('email, name, organization_id')
       .eq('id', cli.user_id)
       .maybeSingle()
-    existingClient = { ...cli, email: cliUser?.email || null, name: cliUser?.name || null }
+    existingClient = { id: cli.id, user_id: cli.user_id, organization_id: cliUser?.organization_id || null, email: cliUser?.email || null, name: cliUser?.name || null }
     if (!existingClient.email) {
       return NextResponse.json({ error: 'This client has no email on file.' }, { status: 400 })
     }
