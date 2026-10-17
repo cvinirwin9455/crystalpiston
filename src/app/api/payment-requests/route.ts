@@ -82,13 +82,14 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}))
   const {
-    application_id, package_id, amount, custom_name, custom_duration_weeks,
+    application_id, client_id, package_id, amount, custom_name, custom_duration_weeks,
     start_date, request_assessment, request_cycle_tracking,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
-  if (!application_id) {
-    return NextResponse.json({ error: 'application_id is required' }, { status: 400 })
+  // A request targets EITHER a new application OR an existing client (renewal).
+  if (!application_id && !client_id) {
+    return NextResponse.json({ error: 'application_id or client_id is required' }, { status: 400 })
   }
 
   const admin = await createAdminClient()
@@ -111,15 +112,43 @@ export async function POST(request: Request) {
     )
   }
 
-  // Load + verify the application belongs to this coach.
-  const { data: application } = await admin
-    .from('coach_applications')
-    .select('*')
-    .eq('id', application_id)
-    .maybeSingle()
-  if (!application) return NextResponse.json({ error: 'Application not found' }, { status: 404 })
-  if (application.coach_id !== coachId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // Resolve the target: an application (new signup) OR an existing client.
+  let application: any = null
+  let existingClient: any = null
+  if (application_id) {
+    const { data } = await admin
+      .from('coach_applications')
+      .select('*')
+      .eq('id', application_id)
+      .maybeSingle()
+    if (!data) return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+    if (data.coach_id !== coachId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    application = data
+  } else {
+    // Existing client renewal: load the client + verify this coach is assigned.
+    const { data: cli } = await admin
+      .from('clients')
+      .select('id, user_id, organization_id')
+      .eq('id', client_id)
+      .maybeSingle()
+    if (!cli) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    const { data: assignment } = await admin
+      .from('client_coaches')
+      .select('id')
+      .eq('client_id', cli.id)
+      .eq('coach_id', coachId)
+      .maybeSingle()
+    if (!assignment) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // Grab the client's email/name for the payment + email.
+    const { data: cliUser } = await admin
+      .from('users')
+      .select('email, name')
+      .eq('id', cli.user_id)
+      .maybeSingle()
+    existingClient = { ...cli, email: cliUser?.email || null, name: cliUser?.name || null }
+    if (!existingClient.email) {
+      return NextResponse.json({ error: 'This client has no email on file.' }, { status: 400 })
+    }
   }
 
   // Determine the amount: from a package, or a custom amount.
@@ -133,7 +162,7 @@ export async function POST(request: Request) {
   // was chosen. (Don't fall back to the applicant's selected_package_id in that
   // case — the coach deliberately chose a custom charge.)
   const useCustomAmount = amount != null && String(amount).trim() !== '' && !package_id
-  const pkgId = useCustomAmount ? null : (package_id || application.selected_package_id || null)
+  const pkgId = useCustomAmount ? null : (package_id || application?.selected_package_id || null)
   if (pkgId) {
     const { data: pkg } = await admin
       .from('coach_packages')
@@ -166,15 +195,15 @@ export async function POST(request: Request) {
 
   const baseRow: Record<string, any> = {
     coach_id: coachId,
-    organization_id: organizationId || application.organization_id || null,
-    application_id,
+    organization_id: organizationId || application?.organization_id || existingClient?.organization_id || null,
+    application_id: application_id || null,
     package_id: resolvedPackageId,
     amount_cents: amountCents,
     currency,
     billing_interval: billingInterval,
     package_name: packageName,
-    client_email: String(application.email).trim().toLowerCase(),
-    client_name: String(application.full_name).trim(),
+    client_email: String(application?.email || existingClient?.email).trim().toLowerCase(),
+    client_name: String(application?.full_name || existingClient?.name || '').trim(),
     token,
     status: 'pending',
   }
@@ -187,6 +216,9 @@ export async function POST(request: Request) {
     request_assessment: !!request_assessment,
     request_cycle_tracking: !!request_cycle_tracking,
     custom_duration_weeks: useCustomAmount && customWeeksInt && customWeeksInt > 0 ? customWeeksInt : null,
+    // Existing-client renewal: tie the request to the client so fulfillment
+    // skips account provisioning and just creates the new plan + payment.
+    client_id: existingClient?.id || null,
   }
   let { data: created, error: insertErr } = await admin
     .from('payment_requests')

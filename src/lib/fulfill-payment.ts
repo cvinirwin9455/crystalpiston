@@ -84,6 +84,11 @@ export async function fulfillPaymentRequest(
   // idempotent retry (already_accepted) it won't return clientId/planId, so
   // resolve them here; and if no plan exists yet (e.g. package only set on the
   // payment_request), create one from the package.
+  // Existing-client renewal: no application/provisioning — the client already
+  // exists. Charge produces a NEW plan + payment on their account.
+  const isRenewal = !application && !!pr.client_id
+  if (isRenewal) clientId = pr.client_id
+
   try {
     if (!clientId && provisionedUserId) {
       const { data: c } = await admin
@@ -99,14 +104,31 @@ export async function fulfillPaymentRequest(
     // or chosen a custom amount with no package).
     const packageId = pr.package_id || null
 
+    // A renewal always creates a NEW plan. Mark any existing active plan
+    // complete first so the client has a single active plan (the new one).
+    if (isRenewal && clientId) {
+      try {
+        await admin
+          .from('plans')
+          .update({ status: 'completed', completion_reason: 'Renewed into a new plan' })
+          .eq('client_id', clientId)
+          .eq('status', 'active')
+      } catch {
+        await admin.from('plans').update({ status: 'completed' }).eq('client_id', clientId).eq('status', 'active')
+      }
+    }
+
     if (!planId && clientId) {
-      // Reuse an existing active plan if present, else create one from the package.
-      const { data: activePlan } = await admin
-        .from('plans')
-        .select('id')
-        .eq('client_id', clientId)
-        .eq('status', 'active')
-        .maybeSingle()
+      // For a NEW signup, reuse an existing active plan if present. For a
+      // renewal we skip that (we just completed it) and always create a new one.
+      const { data: activePlan } = isRenewal
+        ? { data: null as any }
+        : await admin
+            .from('plans')
+            .select('id')
+            .eq('client_id', clientId)
+            .eq('status', 'active')
+            .maybeSingle()
       if (activePlan) {
         planId = activePlan.id
       } else if (packageId) {

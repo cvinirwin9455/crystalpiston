@@ -50,6 +50,18 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [showNewPlan, setShowNewPlan] = useState(false);
+
+  // --- Charge via Stripe (renewal / next package for an existing client) ---
+  const [chargeStripeReady, setChargeStripeReady] = useState(false);
+  const [chargePackages, setChargePackages] = useState<{ id: string; name: string; price_cents: number; currency: string; billing_interval: string }[]>([]);
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [chargePackageId, setChargePackageId] = useState("");       // "" | "__custom__" | pkg id
+  const [chargeCustomName, setChargeCustomName] = useState("");
+  const [chargeCustomAmount, setChargeCustomAmount] = useState("");
+  const [chargeCustomWeeks, setChargeCustomWeeks] = useState("");
+  const [chargeStartDate, setChargeStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [charging, setCharging] = useState(false);
+  const [chargeMsg, setChargeMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [newPlanStart, setNewPlanStart] = useState("");
   const [newPlanEnd, setNewPlanEnd] = useState("");
   const [newPlanOwed, setNewPlanOwed] = useState("");
@@ -158,6 +170,71 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     };
     fetchPlans();
   }, [clientData.clientId]);
+
+  // Load Stripe-connected status + the coach's packages (for the Charge modal).
+  useEffect(() => {
+    (async () => {
+      try {
+        const [sRes, pRes] = await Promise.all([
+          fetch(`/api/stripe-connect`),
+          fetch(`/api/coach-packages`),
+        ]);
+        const sData = await sRes.json().catch(() => ({}));
+        const pData = await pRes.json().catch(() => ({}));
+        if (sRes.ok) setChargeStripeReady(!!sData.chargesEnabled);
+        if (pRes.ok) setChargePackages((pData.packages || []).filter((p: any) => p.is_active));
+      } catch { /* non-fatal */ }
+    })();
+  }, []);
+
+  function openChargeModal() {
+    setChargePackageId("");
+    setChargeCustomName("");
+    setChargeCustomAmount("");
+    setChargeCustomWeeks("");
+    setChargeStartDate(new Date().toISOString().split("T")[0]);
+    setChargeMsg(null);
+    setShowChargeModal(true);
+  }
+
+  async function sendCharge() {
+    if (!clientData.clientId) return;
+    const isCustom = chargePackageId === "__custom__";
+    if (!chargePackageId) { setChargeMsg({ text: "Choose a package or a custom amount.", type: "error" }); return; }
+    if (isCustom) {
+      const amt = parseFloat(chargeCustomAmount.replace(/[^0-9.]/g, ""));
+      const wks = parseInt(chargeCustomWeeks.replace(/[^0-9]/g, ""), 10);
+      if (!chargeCustomName.trim()) { setChargeMsg({ text: "Give the charge a name.", type: "error" }); return; }
+      if (!(amt > 0)) { setChargeMsg({ text: "Enter a valid amount.", type: "error" }); return; }
+      if (!(wks > 0)) { setChargeMsg({ text: "Enter the program length in weeks.", type: "error" }); return; }
+    }
+    setCharging(true);
+    setChargeMsg(null);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientData.clientId,
+          start_date: chargeStartDate || null,
+          ...(isCustom
+            ? { amount: chargeCustomAmount, custom_name: chargeCustomName.trim(), custom_duration_weeks: chargeCustomWeeks }
+            : { package_id: chargePackageId }),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setChargeMsg({ text: data.error || "Could not send the payment request.", type: "error" });
+      } else {
+        setChargeMsg({ text: `Payment link sent to ${clientData.email}. A new plan is created when they pay.`, type: "success" });
+        setTimeout(() => setShowChargeModal(false), 1800);
+      }
+    } catch {
+      setChargeMsg({ text: "Network error.", type: "error" });
+    } finally {
+      setCharging(false);
+    }
+  }
 
   const handleSaveDetails = async () => {
     setSaving(true);
@@ -438,15 +515,87 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
 
       {/* Plans & Payments */}
       <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h4 className="text-gray-400 text-xs font-heading uppercase">Plans & Payments</h4>
-          {/* Only show + New Plan if no active plan exists */}
-          {!plans.some(p => p.status === "active") ? (
-            <button onClick={() => setShowNewPlan(!showNewPlan)} className="text-accent text-xs hover:underline">+ New Plan</button>
-          ) : (
-            <span className="text-gray-500 text-xs italic">Active plan in progress</span>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Charge via Stripe — renew / sell the next package to this client.
+                Only when the coach has Stripe connected + the client has an id. */}
+            {chargeStripeReady && clientData.clientId && (
+              <button onClick={openChargeModal} className="text-xs bg-accent/90 hover:bg-accent text-white font-bold px-2.5 py-1 rounded-lg">
+                💳 Charge via Stripe
+              </button>
+            )}
+            {/* Only show + New Plan if no active plan exists */}
+            {!plans.some(p => p.status === "active") ? (
+              <button onClick={() => setShowNewPlan(!showNewPlan)} className="text-accent text-xs hover:underline">+ New Plan</button>
+            ) : (
+              <span className="text-gray-500 text-xs italic">Active plan in progress</span>
+            )}
+          </div>
         </div>
+
+        {/* Charge via Stripe modal */}
+        {showChargeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowChargeModal(false)}>
+            <div className="bg-secondary border border-white/10 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-white font-heading uppercase tracking-wider text-sm">Charge via Stripe</h3>
+              <p className="text-gray-400 text-xs mt-1">
+                Email {clientData.name || "this client"} a secure Stripe link. When they pay, a new plan is created on their account.
+              </p>
+
+              {chargeMsg && (
+                <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${chargeMsg.type === "success" ? "bg-green-500/15 text-green-300 border border-green-500/20" : "bg-red-500/15 text-red-300 border border-red-500/20"}`}>
+                  {chargeMsg.text}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Package</label>
+                  <select value={chargePackageId} onChange={(e) => setChargePackageId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
+                    <option value="">Choose…</option>
+                    {chargePackages.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {(p.price_cents / 100).toLocaleString(undefined, { style: "currency", currency: (p.currency || "usd").toUpperCase(), minimumFractionDigits: p.price_cents % 100 === 0 ? 0 : 2 })}{p.billing_interval === "monthly" ? "/mo" : ""}
+                      </option>
+                    ))}
+                    <option value="__custom__">Custom amount (one-time)…</option>
+                  </select>
+                </div>
+
+                {chargePackageId === "__custom__" && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">What&apos;s it for?</label>
+                      <input value={chargeCustomName} onChange={(e) => setChargeCustomName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Next block" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Amount</label>
+                      <input value={chargeCustomAmount} onChange={(e) => setChargeCustomAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 250" inputMode="decimal" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Weeks</label>
+                      <input value={chargeCustomWeeks} onChange={(e) => setChargeCustomWeeks(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">New plan start date</label>
+                  <input type="date" value={chargeStartDate} onChange={(e) => setChargeStartDate(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 [color-scheme:dark]" />
+                  <p className="text-[11px] text-gray-500 mt-1">The current active plan (if any) is marked complete when they pay.</p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex gap-2">
+                <button onClick={sendCharge} disabled={charging} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
+                  {charging ? "Sending…" : "Send payment link"}
+                </button>
+                <button onClick={() => setShowChargeModal(false)} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Instruction when trying to create plan while one is active */}
         {plans.some(p => p.status === "active") && showNewPlan && (
