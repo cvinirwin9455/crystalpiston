@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Coach-facing manager for their packages (the offerings they charge for).
 // Each package defines what's included via checkboxes, which controls
@@ -250,6 +250,15 @@ export default function PackagesManager() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  // Scroll the add/edit form into view when it opens (so editing a package
+  // further down the list doesn't look like it did nothing).
+  useEffect(() => {
+    if (showForm) {
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  }, [showForm]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -366,7 +375,16 @@ export default function PackagesManager() {
         p.session_cost != null && p.session_count && p.session_count > 0
           ? String(Math.round((Number(p.session_cost) / p.session_count) * 100) / 100)
           : "",
-      programming_cost: p.programming_cost != null ? String(p.programming_cost) : "",
+      // Programming cost drives the computed total. OLD packages predate this
+      // field (null) but have a real price_cents — fall back to the package
+      // price so editing doesn't wipe the price to $0. (Only for
+      // programming_only, where price == programming cost.)
+      programming_cost:
+        p.programming_cost != null
+          ? String(p.programming_cost)
+          : ((p.billing_mode || "programming_only") === "programming_only" && p.price_cents > 0
+              ? String(p.price_cents / 100)
+              : ""),
       recur_months: p.recur_months != null ? String(p.recur_months) : "",
       // Existing packages keep their saved description/name — don't auto-overwrite.
       description_touched: !!(p.description && p.description.trim()),
@@ -563,7 +581,10 @@ export default function PackagesManager() {
 
       {/* Add / edit form */}
       {showForm && (
-        <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
+        <div ref={formRef} className="mt-4 space-y-4 border-t border-white/10 pt-4 scroll-mt-4">
+          <p className="text-accent text-xs font-heading uppercase tracking-wider">
+            {form.id ? `Editing: ${form.name || "package"}` : "New package"}
+          </p>
           {/* STEP 1 — Billing is the first choice; it shapes the whole form. */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">How do you want to bill this package?</label>
