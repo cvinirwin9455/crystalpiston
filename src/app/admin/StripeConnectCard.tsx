@@ -42,6 +42,7 @@ export default function StripeConnectCard() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [showReceiptHelp, setShowReceiptHelp] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,7 +63,8 @@ export default function StripeConnectCard() {
       const stripeParam = params.get("stripe");
       const stripeMsg = params.get("stripe_msg");
       if (stripeParam === "return") {
-        setMsg({ text: "Welcome back! We're checking your Stripe connection…", type: "success" });
+        setMsg({ text: "Welcome back! We're checking your Stripe connection. Tip: turn on email receipts below so your clients get a receipt automatically.", type: "success" });
+        setShowReceiptHelp(true); // surface the receipt setup right after connecting
       } else if (stripeParam === "refresh") {
         setMsg({ text: "That connection link expired — click Connect to try again.", type: "error" });
       } else if (stripeParam === "error") {
@@ -158,18 +160,71 @@ export default function StripeConnectCard() {
             <p className="text-gray-500 text-xs mt-1">An admin needs to add the Stripe keys before coaches can connect. Check back soon.</p>
           </div>
         ) : ready ? (
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-green-300 text-sm">
-              You&apos;re all set — your Stripe account is connected and can accept payments.
-            </p>
-            <button
-              onClick={disconnect}
-              disabled={starting}
-              className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-3 py-1.5 disabled:opacity-50"
-            >
-              Disconnect
-            </button>
-          </div>
+          <>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-green-300 text-sm">
+                You&apos;re all set — your Stripe account is connected and can accept payments.
+              </p>
+              <button
+                onClick={disconnect}
+                disabled={starting}
+                className="text-xs text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-400/40 rounded-lg px-3 py-1.5 disabled:opacity-50"
+              >
+                Disconnect
+              </button>
+            </div>
+
+            {/* Turn on Stripe email receipts — recommended one-time setup. */}
+            <div className="mt-4 rounded-lg bg-blue-500/5 border border-blue-500/20 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowReceiptHelp((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-blue-500/5"
+              >
+                <span className="text-blue-200 text-sm font-medium">📧 Turn on email receipts for your clients <span className="text-blue-300/60 font-normal">(recommended)</span></span>
+                <svg className={`w-3.5 h-3.5 text-blue-300 transition-transform flex-shrink-0 ${showReceiptHelp ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+              {showReceiptHelp && (
+                <div className="px-4 pb-4 pt-1 border-t border-blue-500/10">
+                  <p className="text-gray-300 text-xs leading-relaxed mb-3">
+                    Stripe can automatically email your clients a receipt for every payment — including each monthly subscription charge. It&apos;s a quick one-time setting in <span className="text-gray-200 font-medium">your own</span> Stripe dashboard. Clients get a proper receipt from you, so you don&apos;t have to send one yourself.
+                  </p>
+                  <div className="space-y-3 text-xs text-gray-300">
+                    <div>
+                      <p className="text-blue-200 font-medium mb-1">For one-time payments:</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-gray-400">
+                        <li>In your Stripe dashboard, go to <span className="text-gray-200">Settings → Payments → Customer emails</span>.</li>
+                        <li>Turn on <span className="text-gray-200">&ldquo;Successful payments&rdquo;</span> (and &ldquo;Refunds&rdquo; if you like).</li>
+                        <li>Save.</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <p className="text-blue-200 font-medium mb-1">For monthly subscriptions:</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-gray-400">
+                        <li>Go to <span className="text-gray-200">Settings → Billing → Invoices (or &ldquo;Subscriptions and emails&rdquo;)</span>.</li>
+                        <li>Turn on <span className="text-gray-200">&ldquo;Email finalized invoices and receipts to customers&rdquo;</span>.</li>
+                        <li>Save.</li>
+                      </ol>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <a
+                      href="https://dashboard.stripe.com/settings/emails"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg"
+                    >
+                      Open Stripe email settings ↗
+                    </a>
+                    <span className="text-[11px] text-gray-500">Opens your Stripe dashboard in a new tab.</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-3 leading-relaxed">
+                    Note: because you&apos;re the one being paid, these receipts come from your Stripe account and settings — not from First Mile. You only need to do this once.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
         ) : connectedButIncomplete ? (
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-yellow-300 text-sm">
