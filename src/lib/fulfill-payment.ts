@@ -18,8 +18,11 @@ export async function fulfillPaymentRequest(
 
   if (!pr) return { ok: false, error: 'payment request not found' }
 
-  // Already fulfilled — no-op (idempotent).
-  if (pr.status === 'paid' && pr.provisioned_user_id) {
+  // Already fulfilled — no-op (idempotent). A new-signup request records
+  // provisioned_user_id; a renewal records plan_id instead (no provisioning).
+  // Treat either as "done" so the webhook + return-page confirm can't
+  // double-fulfill (which would create a duplicate plan on a renewal).
+  if (pr.status === 'paid' && (pr.provisioned_user_id || pr.plan_id)) {
     return { ok: true, alreadyDone: true, userId: pr.provisioned_user_id }
   }
 

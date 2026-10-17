@@ -249,6 +249,7 @@ export async function POST(request: Request) {
       currency,
       packageName,
       payUrl,
+      isRenewal: !!existingClient, // existing-client charge = renewal wording
     })
   } catch (err) {
     console.error('Payment request email failed:', err)
@@ -303,6 +304,8 @@ export async function PATCH(request: Request) {
 }
 
 // Simple branded email with a "Pay now" button (raw Resend, mirrors notifyCoach).
+// `isRenewal` switches the copy between "new client, create your account" and
+// "existing client, continue coaching" wording.
 async function sendPaymentRequestEmail(params: {
   to: string
   clientName: string
@@ -311,6 +314,7 @@ async function sendPaymentRequestEmail(params: {
   currency: string
   packageName: string | null
   payUrl: string
+  isRenewal?: boolean
 }) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return
@@ -323,6 +327,24 @@ async function sendPaymentRequestEmail(params: {
   })
   const first = (params.clientName || '').split(' ')[0] || 'there'
   const what = params.packageName ? ` for <strong>${params.packageName}</strong>` : ''
+  const whatText = params.packageName ? ` for ${params.packageName}` : ''
+  const renewal = !!params.isRenewal
+
+  // Copy differs for a brand-new client (create/activate account) vs. an
+  // existing client renewing / buying their next package.
+  const subject = renewal
+    ? `Complete your payment to continue coaching with ${params.coachName}`
+    : `Complete your payment to start coaching with ${params.coachName}`
+  const heading = renewal ? `Ready for what's next, ${first}?` : `You're almost in, ${first}!`
+  const bodyLine = renewal
+    ? `${params.coachName} has set up your next block${what}. Complete your payment of <strong style="color:#2d3436;">${amount}</strong> to continue your coaching.`
+    : `${params.coachName} has set up your coaching${what}. Complete your payment of <strong style="color:#2d3436;">${amount}</strong> to activate your account and get started.`
+  const footerNote = renewal
+    ? `Payment is handled securely by Stripe. Your coaching continues once your payment is complete.`
+    : `Payment is handled securely by Stripe. Your First Mile account is created once your payment is complete.`
+  const bodyLineText = renewal
+    ? `${params.coachName} has set up your next block${whatText}. Complete your payment of ${amount} to continue your coaching:`
+    : `${params.coachName} has set up your coaching${whatText}. Complete your payment of ${amount} to activate your account:`
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -331,7 +353,7 @@ async function sendPaymentRequestEmail(params: {
       from: `First Mile Coach <${senderEmail}>`,
       to: [params.to],
       reply_to: 'hello@firstmilecoach.com',
-      subject: `Complete your payment to start coaching with ${params.coachName}`,
+      subject,
       html: `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#fafbfc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -341,10 +363,9 @@ async function sendPaymentRequestEmail(params: {
         <img src="https://www.firstmilecoach.com/firstmile/logo.png" alt="First Mile Coach" width="160" style="display:block;margin:0 auto;border-radius:8px;" />
       </td></tr>
       <tr><td style="padding:40px 32px;">
-        <h1 style="margin:0 0 16px;font-size:22px;font-weight:800;color:#2d3436;">You're almost in, ${first}!</h1>
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:800;color:#2d3436;">${heading}</h1>
         <p style="margin:0 0 20px;font-size:16px;color:#555b5e;line-height:1.7;">
-          ${params.coachName} has set up your coaching${what}. Complete your payment of
-          <strong style="color:#2d3436;">${amount}</strong> to activate your account and get started.
+          ${bodyLine}
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 8px;"><tr>
           <td align="center" style="border-radius:50px;background:#f26522;">
@@ -352,7 +373,7 @@ async function sendPaymentRequestEmail(params: {
           </td>
         </tr></table>
         <p style="margin:16px 0 0;font-size:13px;color:#9aa0a4;line-height:1.6;text-align:center;">
-          Payment is handled securely by Stripe. Your First Mile account is created once your payment is complete.
+          ${footerNote}
         </p>
       </td></tr>
       <tr><td style="padding:20px 32px;border-top:1px solid rgba(0,0,0,0.06);text-align:center;background:#fafbfc;">
@@ -361,7 +382,7 @@ async function sendPaymentRequestEmail(params: {
     </table>
   </td></tr></table>
 </body></html>`,
-      text: `You're almost in, ${first}!\n\n${params.coachName} has set up your coaching${params.packageName ? ` for ${params.packageName}` : ''}. Complete your payment of ${amount} to activate your account:\n\n${params.payUrl}\n\nPayment is handled securely by Stripe. Your First Mile account is created once your payment is complete.`,
+      text: `${heading}\n\n${bodyLineText}\n\n${params.payUrl}\n\n${footerNote}`,
     }),
   })
 }
