@@ -2,6 +2,8 @@
 
 Website for Crystal's running coaching business - Pistol Performance Coaching.
 
+<!-- Practice edit on the `preview` branch — safe to remove later. -->
+
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
