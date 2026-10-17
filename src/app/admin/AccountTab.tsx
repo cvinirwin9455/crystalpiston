@@ -1009,6 +1009,9 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [completionReason, setCompletionReason] = useState("");
   const [completing, setCompleting] = useState(false);
+  // What to do with unused in-person sessions when completing a
+  // per-session / hybrid plan: 'keep' (carry over) or 'close' (deactivate).
+  const [unusedSessionsAction, setUnusedSessionsAction] = useState<'keep' | 'close'>('keep');
   const [editingPlan, setEditingPlan] = useState(false);
   const [editGoal, setEditGoal] = useState(plan.goal);
   const [editStartDate, setEditStartDate] = useState(plan.startDate);
@@ -1050,6 +1053,16 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   };
 
   const hasOutstandingBalance = (plan.owed - plan.paid) > 0;
+
+  // Unused in-person sessions on this client (per-session / hybrid plans).
+  const isSessionPlan = plan.billingMode === 'per_session' || plan.billingMode === 'hybrid';
+  const sessionsRemaining = sessionBalance ? Math.max(0, sessionBalance.total - sessionBalance.used) : 0;
+  const hasUnusedSessions = isSessionPlan && sessionBalanceLoaded && sessionsRemaining > 0;
+  // Approximate per-session value for display (based on what's been paid).
+  const perSessionValue = sessionBalance && sessionBalance.total > 0
+    ? sessionBalance.totalPaid / sessionBalance.total
+    : 0;
+  const unusedSessionsValue = perSessionValue * sessionsRemaining;
 
   // "Start date has passed" — an active plan whose start date is in the past
   // (e.g. a client paid late). Nudge the coach to adjust it via Edit Plan.
@@ -1227,10 +1240,26 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         } catch (schedErr) {
           console.error("Failed to clean up recurring schedules on plan completion:", schedErr);
         }
+
+        // If the client has unused sessions and the coach chose to close them
+        // out, deactivate all their active session packages (balance -> 0).
+        if (hasUnusedSessions && unusedSessionsAction === 'close') {
+          try {
+            await fetch('/api/session-packages', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'close_all', clientId: plan.clientId }),
+            });
+            setSessionBalanceRefresh((n) => n + 1);
+          } catch (closeErr) {
+            console.error("Failed to close out unused sessions on plan completion:", closeErr);
+          }
+        }
       }
 
       setShowCompleteConfirm(false);
       setCompletionReason("");
+      setUnusedSessionsAction('keep');
     } catch (err) {
       console.error("Failed to complete plan:", err);
     } finally {
@@ -1396,6 +1425,26 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       {/* Completion confirmation dialog */}
       {showCompleteConfirm && (
         <div className="bg-secondary/50 border border-white/10 rounded-lg p-4 mb-3">
+          {/* Unused in-person sessions — ask the coach what to do with them. */}
+          {hasUnusedSessions && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-3">
+              <p className="text-blue-300 text-sm font-medium mb-1">
+                {sessionsRemaining} unused in-person session{sessionsRemaining === 1 ? '' : 's'}
+                {unusedSessionsValue > 0 && <span className="text-blue-300/70"> (~${unusedSessionsValue.toFixed(2)} value)</span>}
+              </p>
+              <p className="text-gray-300 text-xs mb-3">This client still has sessions on their balance. What should happen to them when this plan is completed?</p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="unused-sessions" checked={unusedSessionsAction === 'keep'} onChange={() => setUnusedSessionsAction('keep')} className="mt-0.5" />
+                  <span className="text-gray-200 text-xs"><span className="font-medium">Keep them active</span> — the balance carries over to their next plan.</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="unused-sessions" checked={unusedSessionsAction === 'close'} onChange={() => setUnusedSessionsAction('close')} className="mt-0.5" />
+                  <span className="text-gray-200 text-xs"><span className="font-medium">Close them out</span> — mark the remaining sessions inactive (balance goes to 0). You can reopen them later.</span>
+                </label>
+              </div>
+            </div>
+          )}
           {hasOutstandingBalance ? (
             <>
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
@@ -1416,7 +1465,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                 <button onClick={handleCompletePlan} disabled={!completionReason.trim() || completing} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
                   {completing ? "Completing..." : "Complete Plan"}
                 </button>
-                <button onClick={() => { setShowCompleteConfirm(false); setCompletionReason(""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                <button onClick={() => { setShowCompleteConfirm(false); setCompletionReason(""); setUnusedSessionsAction('keep'); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
               </div>
             </>
           ) : (
@@ -1426,7 +1475,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                 <button onClick={handleCompletePlan} disabled={completing} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
                   {completing ? "Completing..." : "Yes, Complete Plan"}
                 </button>
-                <button onClick={() => setShowCompleteConfirm(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                <button onClick={() => { setShowCompleteConfirm(false); setUnusedSessionsAction('keep'); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
               </div>
             </>
           )}

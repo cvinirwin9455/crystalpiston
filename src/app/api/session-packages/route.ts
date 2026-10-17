@@ -27,26 +27,27 @@ export async function GET(request: Request) {
   const adminClient = await getAdminClient()
 
   // Fetch all packages for the client
-  // Try with amount_owed column, fall back if it doesn't exist yet
+  // Try selecting the richest column set first, peeling optional columns
+  // (status, amount_owed) that may not exist in a given DB yet.
   let packages: any[] | null = null
   let pkgError: any = null
-  const fullPkg = await adminClient
-    .from('session_packages')
-    .select('id, sessions_purchased, amount_paid, amount_owed, notes, purchased_at')
-    .eq('client_id', clientId)
-    .order('purchased_at', { ascending: false })
-
-  if (fullPkg.error) {
-    const fallbackPkg = await adminClient
+  const selectVariants = [
+    'id, sessions_purchased, amount_paid, amount_owed, status, notes, purchased_at',
+    'id, sessions_purchased, amount_paid, amount_owed, notes, purchased_at',
+    'id, sessions_purchased, amount_paid, notes, purchased_at',
+  ]
+  for (const sel of selectVariants) {
+    const attempt = await adminClient
       .from('session_packages')
-      .select('id, sessions_purchased, amount_paid, notes, purchased_at')
+      .select(sel)
       .eq('client_id', clientId)
       .order('purchased_at', { ascending: false })
-    packages = fallbackPkg.data
-    pkgError = fallbackPkg.error
-  } else {
-    packages = fullPkg.data
-    pkgError = fullPkg.error
+    if (!attempt.error) {
+      packages = attempt.data
+      pkgError = null
+      break
+    }
+    pkgError = attempt.error
   }
 
   if (pkgError) {
@@ -54,9 +55,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ packages: [], sessionsRemaining: 0 })
   }
 
-  // Calculate sessions remaining
+  // Calculate sessions remaining — only ACTIVE packages count toward the
+  // balance (closed ones are kept for history but don't add sessions).
   let sessionsRemaining = 0
-  const totalPurchased = (packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
+  const totalPurchased = (packages || [])
+    .filter((p: any) => (p.status ?? 'active') === 'active')
+    .reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
 
   // Try the view first
   const { data: balance, error: balanceError } = await adminClient
@@ -177,13 +181,41 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { packageId, paymentAmount } = body
+  const { packageId, paymentAmount, action, clientId } = body
 
+  const adminClient = await getAdminClient()
+
+  // --- Status actions: close out / reopen a client's session packages ---
+  // Used when a coach completes a per-session/hybrid plan and chooses what to
+  // do with unused sessions. 'close_all' marks the client's active packages
+  // inactive (balance -> 0); 'reopen_all' brings closed packages back.
+  if (action === 'close_all' || action === 'reopen_all') {
+    if (!clientId) {
+      return NextResponse.json({ error: 'clientId is required for this action' }, { status: 400 })
+    }
+    const from = action === 'close_all' ? 'active' : 'closed'
+    const to = action === 'close_all' ? 'closed' : 'active'
+    const { data: updated, error: statusErr } = await adminClient
+      .from('session_packages')
+      .update({ status: to })
+      .eq('client_id', clientId)
+      .eq('status', from)
+      .select('id')
+
+    if (statusErr) {
+      // status column may not exist yet — surface a clear message
+      return NextResponse.json(
+        { error: 'Could not update session packages. Run RUN_THIS_session_package_status.sql first.', detail: statusErr.message },
+        { status: 500 }
+      )
+    }
+    return NextResponse.json({ success: true, updated: updated?.length ?? 0 })
+  }
+
+  // --- Default: log a payment against a package (increment amount_paid) ---
   if (!packageId || !paymentAmount) {
     return NextResponse.json({ error: 'packageId and paymentAmount are required' }, { status: 400 })
   }
-
-  const adminClient = await getAdminClient()
 
   // Get current amount_paid
   const { data: pkg, error: fetchErr } = await adminClient
