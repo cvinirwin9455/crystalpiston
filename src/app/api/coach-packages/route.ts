@@ -273,6 +273,38 @@ export async function DELETE(request: Request) {
   }
   const { coachId } = scopeResult.scope
 
+  // Refuse to delete a package that clients are actively on, or that has an
+  // outstanding payment request — deleting would unlink it from those plans
+  // and lose the record. Tell the coach to turn it off instead. (Plans/payment
+  // requests use ON DELETE SET NULL, so a delete wouldn't destroy them, but it
+  // WOULD strip the link; blocking keeps the client's purchase traceable.)
+  try {
+    const { count: activePlanCount } = await admin
+      .from('plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('source_package_id', id)
+      .eq('status', 'active')
+    if ((activePlanCount || 0) > 0) {
+      return NextResponse.json(
+        { error: `This package is in use by ${activePlanCount} active client plan${activePlanCount === 1 ? '' : 's'}. Turn it off instead of deleting so it stays linked to their plans.` },
+        { status: 409 }
+      )
+    }
+    const { count: pendingPrCount } = await admin
+      .from('payment_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('package_id', id)
+      .eq('status', 'pending')
+    if ((pendingPrCount || 0) > 0) {
+      return NextResponse.json(
+        { error: `This package has ${pendingPrCount} payment request${pendingPrCount === 1 ? '' : 's'} awaiting payment. Cancel those or turn the package off instead of deleting.` },
+        { status: 409 }
+      )
+    }
+  } catch {
+    /* source_package_id column may not exist on older schemas — allow delete */
+  }
+
   const { error } = await admin
     .from('coach_packages')
     .delete()

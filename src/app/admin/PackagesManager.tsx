@@ -557,6 +557,217 @@ export default function PackagesManager() {
     return badges;
   }
 
+  // The add/edit form. Rendered at the top when ADDING, or inline beneath the
+  // package being edited (so editing a package lower in the list expands in place).
+  const renderForm = () => (
+    <div ref={formRef} className="mt-4 space-y-4 border-t border-white/10 pt-4 scroll-mt-4">
+      <p className="text-accent text-xs font-heading uppercase tracking-wider">
+        {form.id ? `Editing: ${form.name || "package"}` : "New package"}
+      </p>
+      {/* STEP 1 — Billing is the first choice; it shapes the whole form. */}
+      <div>
+        <label className="block text-xs text-gray-400 mb-1">How do you want to bill this package?</label>
+        <select
+          value={form.billing_chosen ? form.billing_interval : ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "") { setForm((f) => ({ ...f, billing_chosen: false })); return; }
+            const interval = v as "monthly" | "one_time";
+            setForm((f) =>
+              interval === "monthly"
+                ? {
+                    ...f,
+                    billing_chosen: true,
+                    billing_interval: interval,
+                    program_template_id: "",
+                    billing_mode: "programming_only",
+                    duration_weeks: "",
+                    includes_in_person: false,
+                    includes_programming: true,
+                    session_count: "",
+                    session_cost_per: "",
+                  }
+                : { ...f, billing_chosen: true, billing_interval: interval, recur_months: "" }
+            );
+          }}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+        >
+          <option value="">— Choose billing to begin —</option>
+          <option value="monthly">Recurring (monthly) — ongoing membership</option>
+          <option value="one_time">One-time charge — a fixed program</option>
+        </select>
+      </div>
+
+      {form.billing_chosen && (<>
+
+      {form.billing_interval === "one_time" && (
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
+          <select
+            value={form.program_template_id}
+            onChange={(e) => handleSelectTemplate(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+          >
+            <option value="">— None (enter details manually) —</option>
+            {programTemplates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
+              </option>
+            ))}
+          </select>
+          {templateLocked && (
+            <p className="text-[11px] text-cyan-300/80 mt-1">
+              📋 This program sets the type, delivery and duration below. It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs text-gray-400 mb-2">
+          What type of coaching? (select at least one)
+          {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+        </label>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
+            <input type="checkbox" checked={form.includes_running} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_running", e.target.checked)} className="accent-accent" />
+            <span>🏃 Running</span>
+          </label>
+          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
+            <input type="checkbox" checked={form.includes_strength} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)} className="accent-accent" />
+            <span>💪 Strength / PT</span>
+          </label>
+        </div>
+
+        <label className="block text-xs text-gray-400 mb-2">
+          How is it delivered? (select at least one)
+          {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
+            <input type="checkbox" checked={form.includes_programming} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_programming", e.target.checked)} className="accent-accent" />
+            <span>📱 Programming (remote)</span>
+          </label>
+          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
+            <input type="checkbox" checked={form.includes_in_person} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)} className="accent-accent" />
+            <span>📍 In-person sessions</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Package name</label>
+          <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value, name_touched: true }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength - Hybrid" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">
+            {form.billing_interval === "monthly" ? "Price / month" : "Total price"}
+          </label>
+          <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
+            <span className="font-heading">${form.price || "0"}{form.billing_interval === "monthly" ? "/mo" : ""}</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1">
+            {form.billing_interval === "monthly" ? "The monthly billing amount below." : "Sum of programming + in-person below."}
+          </p>
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-400 mb-1">Description (auto-filled — you can edit)</label>
+        <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value, description_touched: true }))} rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 resize-y" placeholder="What's included…" />
+        {form.description_touched && (
+          <button type="button" onClick={() => setForm((f) => ({ ...f, description_touched: false, description: autoDescription(f) }))} className="text-[10px] text-cyan-300/80 hover:text-cyan-200 mt-1">
+            ↻ Reset to auto description
+          </button>
+        )}
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {form.billing_interval === "monthly" ? (
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Bill for how many months?</label>
+            <input value={form.recur_months} onChange={(e) => setForm((f) => ({ ...f, recur_months: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="blank = until cancelled" inputMode="numeric" />
+            <p className="text-[10px] text-gray-500 mt-1">Leave blank to bill every month until you (or the client) cancel.</p>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Client cap (optional)</label>
+            <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-white/10 pt-4">
+        <label className="block text-xs text-gray-400 mb-1">Plan details</label>
+        <p className="text-[11px] text-gray-500 mb-3">
+          When a client is accepted (or pays), these create their plan on the Account page — just like a plan you set up by hand.
+        </p>
+
+        {form.billing_interval === "one_time" && !templateLocked && (
+          <div className="mb-3">
+            <label className="block text-xs text-gray-400 mb-1">Billing mode</label>
+            <select value={form.billing_mode} onChange={(e) => setForm((f) => ({ ...f, billing_mode: e.target.value as DraftForm["billing_mode"] }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
+              <option value="programming_only">Programming only</option>
+              <option value="per_session">Per session (in-person)</option>
+              <option value="hybrid">Hybrid (programming + sessions)</option>
+            </select>
+          </div>
+        )}
+
+        {form.billing_mode !== "per_session" && (
+          <div className="grid sm:grid-cols-2 gap-3 mt-1">
+            {form.billing_interval === "one_time" && (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
+                <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} disabled={templateLocked} className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 ${templateLocked ? "opacity-60 cursor-not-allowed" : ""}`} placeholder="e.g. 12" inputMode="numeric" />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">
+                {form.billing_interval === "monthly" ? "Monthly cost" : "Programming cost"}
+              </label>
+              <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder={form.billing_interval === "monthly" ? "e.g. 125" : "e.g. 200"} inputMode="decimal" />
+            </div>
+          </div>
+        )}
+
+        {(form.billing_mode === "per_session" || form.billing_mode === "hybrid") && (
+          <div className="grid sm:grid-cols-3 gap-3 mt-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1"># In-person sessions</label>
+              <input value={form.session_count} onChange={(e) => setForm((f) => ({ ...f, session_count: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 10" inputMode="numeric" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Cost per session</label>
+              <input value={form.session_cost_per} onChange={(e) => setForm((f) => ({ ...f, session_cost_per: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 30" inputMode="decimal" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">In-person total</label>
+              <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
+                <span className="font-heading">${fmtMoney(sessionsTotal(form))}</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-gray-300">
+        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="accent-accent" />
+        Active (shown to applicants)
+      </label>
+
+      </>)}
+
+      <div className="flex gap-2">
+        <button onClick={save} disabled={saving || !form.billing_chosen} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
+          {saving ? "Saving…" : form.id ? "Save changes" : "Add package"}
+        </button>
+        <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -579,273 +790,8 @@ export default function PackagesManager() {
         </div>
       )}
 
-      {/* Add / edit form */}
-      {showForm && (
-        <div ref={formRef} className="mt-4 space-y-4 border-t border-white/10 pt-4 scroll-mt-4">
-          <p className="text-accent text-xs font-heading uppercase tracking-wider">
-            {form.id ? `Editing: ${form.name || "package"}` : "New package"}
-          </p>
-          {/* STEP 1 — Billing is the first choice; it shapes the whole form. */}
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">How do you want to bill this package?</label>
-            <select
-              value={form.billing_chosen ? form.billing_interval : ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "") { setForm((f) => ({ ...f, billing_chosen: false })); return; }
-                const interval = v as "monthly" | "one_time";
-                setForm((f) =>
-                  interval === "monthly"
-                    ? {
-                        // Recurring = open-ended programming membership: no template,
-                        // no fixed weeks, no in-person. Keep the monthly cost.
-                        ...f,
-                        billing_chosen: true,
-                        billing_interval: interval,
-                        program_template_id: "",
-                        billing_mode: "programming_only",
-                        duration_weeks: "",
-                        includes_in_person: false,
-                        includes_programming: true,
-                        session_count: "",
-                        session_cost_per: "",
-                      }
-                    : { ...f, billing_chosen: true, billing_interval: interval, recur_months: "" }
-                );
-              }}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-            >
-              <option value="">— Choose billing to begin —</option>
-              <option value="monthly">Recurring (monthly) — ongoing membership</option>
-              <option value="one_time">One-time charge — a fixed program</option>
-            </select>
-          </div>
-
-          {/* STEP 2 — Everything else only appears once billing is chosen. For a
-              one-time package, the program template picker leads the way. */}
-          {form.billing_chosen && (<>
-
-          {/* One-time only: start from a program template (optional). */}
-          {form.billing_interval === "one_time" && (
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
-              <select
-                value={form.program_template_id}
-                onChange={(e) => handleSelectTemplate(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-              >
-                <option value="">— None (enter details manually) —</option>
-                {programTemplates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
-                  </option>
-                ))}
-              </select>
-              {templateLocked && (
-                <p className="text-[11px] text-cyan-300/80 mt-1">
-                  📋 This program sets the type, delivery and duration below. It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* What's included checkboxes - two groups (locked when a template drives them) */}
-          <div>
-            <label className="block text-xs text-gray-400 mb-2">
-              What type of coaching? (select at least one)
-              {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
-            </label>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-                <input
-                  type="checkbox"
-                  checked={form.includes_running}
-                  disabled={templateLocked}
-                  onChange={(e) => handleIncludesChange("includes_running", e.target.checked)}
-                  className="accent-accent"
-                />
-                <span>🏃 Running</span>
-              </label>
-              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-                <input
-                  type="checkbox"
-                  checked={form.includes_strength}
-                  disabled={templateLocked}
-                  onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)}
-                  className="accent-accent"
-                />
-                <span>💪 Strength / PT</span>
-              </label>
-            </div>
-
-            <label className="block text-xs text-gray-400 mb-2">
-              How is it delivered? (select at least one)
-              {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-                <input
-                  type="checkbox"
-                  checked={form.includes_programming}
-                  disabled={templateLocked}
-                  onChange={(e) => handleIncludesChange("includes_programming", e.target.checked)}
-                  className="accent-accent"
-                />
-                <span>📱 Programming (remote)</span>
-              </label>
-              <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-                <input
-                  type="checkbox"
-                  checked={form.includes_in_person}
-                  disabled={templateLocked}
-                  onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)}
-                  className="accent-accent"
-                />
-                <span>📍 In-person sessions</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Package name</label>
-              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value, name_touched: true }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Run + Strength - Hybrid" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">
-                {form.billing_interval === "monthly" ? "Price / month" : "Total price"}
-              </label>
-              <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
-                <span className="font-heading">${form.price || "0"}{form.billing_interval === "monthly" ? "/mo" : ""}</span>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
-              </div>
-              <p className="text-[10px] text-gray-500 mt-1">
-                {form.billing_interval === "monthly" ? "The monthly billing amount below." : "Sum of programming + in-person below."}
-              </p>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Description (auto-filled — you can edit)</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value, description_touched: true }))}
-              rows={2}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 resize-y"
-              placeholder="What's included…"
-            />
-            {form.description_touched && (
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, description_touched: false, description: autoDescription(f) }))}
-                className="text-[10px] text-cyan-300/80 hover:text-cyan-200 mt-1"
-              >
-                ↻ Reset to auto description
-              </button>
-            )}
-          </div>
-          {/* Recurring: # months (blank = until cancelled). One-time: client cap. */}
-          <div className="grid sm:grid-cols-2 gap-3">
-            {form.billing_interval === "monthly" ? (
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Bill for how many months?</label>
-                <input value={form.recur_months} onChange={(e) => setForm((f) => ({ ...f, recur_months: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="blank = until cancelled" inputMode="numeric" />
-                <p className="text-[10px] text-gray-500 mt-1">Leave blank to bill every month until you (or the client) cancel.</p>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Client cap (optional)</label>
-                <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
-              </div>
-            )}
-          </div>
-
-          {/* ---- Plan details: a package stamps out a client plan on acceptance ---- */}
-          <div className="border-t border-white/10 pt-4">
-            <label className="block text-xs text-gray-400 mb-1">Plan details</label>
-            <p className="text-[11px] text-gray-500 mb-3">
-              When a client is accepted (or pays), these create their plan on the Account page — just like a plan you set up by hand.
-            </p>
-
-            {/* Billing mode — only for one-time packages without a template
-                (recurring is always programming; a template is programming_only). */}
-            {form.billing_interval === "one_time" && !templateLocked && (
-              <div className="mb-3">
-                <label className="block text-xs text-gray-400 mb-1">Billing mode</label>
-                <select
-                  value={form.billing_mode}
-                  onChange={(e) => setForm((f) => ({ ...f, billing_mode: e.target.value as DraftForm["billing_mode"] }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-                >
-                  <option value="programming_only">Programming only</option>
-                  <option value="per_session">Per session (in-person)</option>
-                  <option value="hybrid">Hybrid (programming + sessions)</option>
-                </select>
-              </div>
-            )}
-
-            {/* Programming component. For recurring, there's no fixed duration —
-                just the monthly cost. For one-time, show weeks + cost. */}
-            {form.billing_mode !== "per_session" && (
-              <div className="grid sm:grid-cols-2 gap-3 mt-1">
-                {form.billing_interval === "one_time" && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
-                    <input
-                      value={form.duration_weeks}
-                      onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))}
-                      disabled={templateLocked}
-                      className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 ${templateLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                      placeholder="e.g. 12"
-                      inputMode="numeric"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    {form.billing_interval === "monthly" ? "Monthly cost" : "Programming cost"}
-                  </label>
-                  <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder={form.billing_interval === "monthly" ? "e.g. 125" : "e.g. 200"} inputMode="decimal" />
-                </div>
-              </div>
-            )}
-
-            {/* In-person component (per_session + hybrid): # sessions × cost per session */}
-            {(form.billing_mode === "per_session" || form.billing_mode === "hybrid") && (
-              <div className="grid sm:grid-cols-3 gap-3 mt-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1"># In-person sessions</label>
-                  <input value={form.session_count} onChange={(e) => setForm((f) => ({ ...f, session_count: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 10" inputMode="numeric" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Cost per session</label>
-                  <input value={form.session_cost_per} onChange={(e) => setForm((f) => ({ ...f, session_cost_per: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 30" inputMode="decimal" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">In-person total</label>
-                  <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
-                    <span className="font-heading">${fmtMoney(sessionsTotal(form))}</span>
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-gray-300">
-            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="accent-accent" />
-            Active (shown to applicants)
-          </label>
-
-          </>)}
-
-          <div className="flex gap-2">
-            <button onClick={save} disabled={saving || !form.billing_chosen} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
-              {saving ? "Saving…" : form.id ? "Save changes" : "Add package"}
-            </button>
-            <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
-          </div>
-        </div>
-      )}
+      {/* Add form — only when ADDING (editing renders inline under the package below). */}
+      {showForm && !form.id && renderForm()}
 
       {/* List */}
       <div className="mt-4">
@@ -878,6 +824,9 @@ export default function PackagesManager() {
                     <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded-full ${badge.color}`}>{badge.text}</span>
                   ))}
                 </div>
+
+                {/* Inline edit form — expands directly under the package being edited. */}
+                {showForm && form.id === p.id && renderForm()}
               </div>
             ))}
           </div>
