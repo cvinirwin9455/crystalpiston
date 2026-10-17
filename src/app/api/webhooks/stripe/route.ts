@@ -39,6 +39,33 @@ function invoiceSubscriptionId(invoice: any): string | null {
   return null
 }
 
+// Current billing period (UNIX seconds) from a Subscription object. Newer
+// Stripe API versions moved current_period_* onto the subscription item, so
+// fall back to the first item's period if the top-level fields are absent.
+function subPeriodStart(sub: any): number | null {
+  if (typeof sub?.current_period_start === 'number') return sub.current_period_start
+  const item = sub?.items?.data?.[0]
+  return typeof item?.current_period_start === 'number' ? item.current_period_start : null
+}
+function subPeriodEnd(sub: any): number | null {
+  if (typeof sub?.current_period_end === 'number') return sub.current_period_end
+  const item = sub?.items?.data?.[0]
+  return typeof item?.current_period_end === 'number' ? item.current_period_end : null
+}
+
+// Current billing period (UNIX seconds) from an Invoice: prefer the line
+// item's period, fall back to the invoice-level period fields.
+function invoicePeriodStart(invoice: any): number | null {
+  const line = invoice?.lines?.data?.[0]
+  if (typeof line?.period?.start === 'number') return line.period.start
+  return typeof invoice?.period_start === 'number' ? invoice.period_start : null
+}
+function invoicePeriodEnd(invoice: any): number | null {
+  const line = invoice?.lines?.data?.[0]
+  if (typeof line?.period?.end === 'number') return line.period.end
+  return typeof invoice?.period_end === 'number' ? invoice.period_end : null
+}
+
 export async function POST(request: Request) {
   if (!isStripeConfigured()) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
@@ -109,6 +136,9 @@ export async function POST(request: Request) {
             paidAtUnix: invoice.status_transitions?.paid_at || invoice.created || null,
             invoiceId: typeof invoice.id === 'string' ? invoice.id : null,
           })
+          // Keep the displayed billing period fresh from the invoice too.
+          const { setCurrentPeriod } = await import('@/lib/subscriptions')
+          await setCurrentPeriod(admin, subscriptionId, invoicePeriodStart(invoice), invoicePeriodEnd(invoice))
           // If the subscription was set to run only N months, cancel it once
           // that many invoices have been paid.
           await enforceRecurMonths(admin, stripe, { subscriptionId, connectedAccount })
@@ -127,13 +157,16 @@ export async function POST(request: Request) {
         break
       }
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object
         const admin = await adminClient()
-        const { setSubscriptionStatus } = await import('@/lib/subscriptions')
+        const { setSubscriptionStatus, setCurrentPeriod } = await import('@/lib/subscriptions')
         // Keep local status in sync; include the scheduled cancel time if any.
         const cancelAt = sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null
         await setSubscriptionStatus(admin, sub.id, sub.status, cancelAt)
+        // Record the current billing period (shown on the plan).
+        await setCurrentPeriod(admin, sub.id, subPeriodStart(sub), subPeriodEnd(sub))
         break
       }
 

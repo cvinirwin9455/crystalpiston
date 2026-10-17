@@ -25,6 +25,8 @@ type Plan = {
   stripeSubscriptionId?: string | null;
   subscriptionStatus?: string | null;
   subscriptionCancelAt?: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
 };
 
 type ClientData = {
@@ -173,6 +175,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             stripeSubscriptionId: p.stripe_subscription_id || null,
             subscriptionStatus: p.subscription_status || null,
             subscriptionCancelAt: p.subscription_cancel_at || null,
+            currentPeriodStart: p.current_period_start || null,
+            currentPeriodEnd: p.current_period_end || null,
           })));
         }
       } catch (err) {
@@ -1328,8 +1332,31 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     }
   };
 
+  // A subscription plan is one that has a Stripe subscription attached.
+  const isSubscriptionPlan = !!plan.stripeSubscriptionId;
   const hasActiveSubscription = !!plan.stripeSubscriptionId
     && plan.subscriptionStatus !== 'canceled';
+  // Current billing period label, e.g. "Oct 17 — Nov 16" (end = period end
+  // minus one day so it reads as the last covered day, not the next bill date).
+  const subscriptionPeriodLabel = (() => {
+    if (!isSubscriptionPlan || !plan.currentPeriodStart || !plan.currentPeriodEnd) return null;
+    const start = new Date(plan.currentPeriodStart);
+    const end = new Date(plan.currentPeriodEnd);
+    end.setDate(end.getDate() - 1); // last covered day
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    const fmt = (d: Date) => {
+      const day = d.getDate();
+      const month = d.toLocaleDateString('en-US', { month: 'long' });
+      const year = d.getFullYear();
+      return dateFormat === 'DD/MM/YYYY' ? `${day} ${month} ${year}` : `${month} ${day}, ${year}`;
+    };
+    return `${fmt(start)} — ${fmt(end)}`;
+  })();
+  // Dates shown on the plan: current billing period for a subscription (so it
+  // rolls each month), otherwise the plan's fixed start→end range.
+  const planDateRange = (isSubscriptionPlan && subscriptionPeriodLabel)
+    ? subscriptionPeriodLabel
+    : `${formatDate(plan.startDate)} — ${formatDate(plan.endDate)}`;
   const subBadge = (() => {
     if (!plan.stripeSubscriptionId) return null;
     const s = plan.subscriptionStatus;
@@ -1349,10 +1376,16 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             ? <span className="text-white text-sm font-medium">{plan.packageName}</span>
             : plan.goal
               ? <span className="text-white text-sm font-medium">{plan.goal}</span>
-              : <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
-          {/* Secondary: goal (if the title is the package name) then the dates. */}
+              : <span className="text-white text-sm font-medium">{planDateRange}</span>}
+          {/* Secondary: goal (if the title is the package name) then the dates.
+              For a subscription the dates are the CURRENT billing period. */}
           {plan.packageName && plan.goal && <span className="text-gray-400 text-xs">{plan.goal}</span>}
-          {(plan.packageName || plan.goal) && <span className="text-gray-400 text-xs">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
+          {(plan.packageName || plan.goal) && (
+            <span className="text-gray-400 text-xs">
+              {isSubscriptionPlan && subscriptionPeriodLabel && <span className="text-blue-300/70">Current month: </span>}
+              {planDateRange}
+            </span>
+          )}
           <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
             {plan.status}
           </span>
@@ -1362,13 +1395,19 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         </div>
         <div className="flex items-center gap-2">
           {plan.status === "active" && (
-            <>
-              <button onClick={() => setEditingPlan(!editingPlan)} className="text-gray-500 text-xs hover:text-accent">{editingPlan ? "Cancel Edit" : "Edit Plan"}</button>
-              {hasActiveSubscription && plan.subscriptionStatus !== 'canceling' && (
+            isSubscriptionPlan ? (
+              // A subscription's lifecycle is driven by Stripe — the only
+              // action is cancelling it (which completes the plan when it ends).
+              // Edit Plan / Mark Complete don't apply here.
+              hasActiveSubscription && plan.subscriptionStatus !== 'canceling' ? (
                 <button onClick={() => { setShowCancelSub(true); setCancelSubMsg(null); }} className="text-gray-500 text-xs hover:text-red-400">Cancel Subscription</button>
-              )}
-              <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
-            </>
+              ) : null
+            ) : (
+              <>
+                <button onClick={() => setEditingPlan(!editingPlan)} className="text-gray-500 text-xs hover:text-accent">{editingPlan ? "Cancel Edit" : "Edit Plan"}</button>
+                <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
+              </>
+            )
           )}
           {plan.status === "completed" && (
             <button onClick={() => onUpdate(plan.id, { status: "active" })} className="text-gray-500 text-xs hover:text-blue-400">Reactivate Plan</button>

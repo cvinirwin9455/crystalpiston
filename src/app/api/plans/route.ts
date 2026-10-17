@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   // Try full query with billing_mode
   const fullResult = await adminClient
     .from('plans')
-    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, program_loaded, source_package_id, stripe_subscription_id, subscription_status, subscription_cancel_at, created_at')
+    .select('id, client_id, start_date, end_date, goal, owed, paid, status, completion_reason, target_distance, race_date, goal_pace, injury_notes, program_template_id, billing_mode, program_loaded, source_package_id, stripe_subscription_id, subscription_status, subscription_cancel_at, current_period_start, current_period_end, created_at')
     .eq('client_id', clientId)
     .order('start_date', { ascending: false })
 

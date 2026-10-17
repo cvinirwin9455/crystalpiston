@@ -33,3 +33,13 @@ CREATE INDEX IF NOT EXISTS idx_plans_stripe_subscription_id
 
 CREATE INDEX IF NOT EXISTS idx_payment_requests_stripe_subscription_id
   ON public.payment_requests(stripe_subscription_id);
+
+-- ------------------------------------------------------------
+-- Current billing period (shown on the client's plan instead of the
+-- fixed start/end dates). Updated by the invoice.paid and
+-- customer.subscription.* webhooks. On cancellation the LAST period is
+-- left frozen so the record stays clear.
+-- ------------------------------------------------------------
+ALTER TABLE public.plans
+  ADD COLUMN IF NOT EXISTS current_period_start timestamptz,
+  ADD COLUMN IF NOT EXISTS current_period_end timestamptz;

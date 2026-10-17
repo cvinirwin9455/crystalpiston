@@ -148,6 +148,28 @@ export async function enforceRecurMonths(
   }
 }
 
+// Store the current billing period on the plan (shown instead of the fixed
+// start/end dates for a subscription). Values are Stripe UNIX seconds.
+// Best-effort: swallows missing-column errors on older schemas.
+export async function setCurrentPeriod(
+  admin: any,
+  subscriptionId: string,
+  periodStartUnix: number | null,
+  periodEndUnix: number | null
+): Promise<void> {
+  if (!periodStartUnix && !periodEndUnix) return
+  const update: Record<string, any> = {}
+  if (periodStartUnix) update.current_period_start = new Date(periodStartUnix * 1000).toISOString()
+  if (periodEndUnix) update.current_period_end = new Date(periodEndUnix * 1000).toISOString()
+  const res = await admin
+    .from('plans')
+    .update(update)
+    .eq('stripe_subscription_id', subscriptionId)
+  if (res.error) {
+    // Columns may not exist yet — ignore silently.
+  }
+}
+
 // Subscription ended — mark the plan completed so it no longer shows as an
 // active recurring plan on the client's account.
 export async function endSubscription(admin: any, subscriptionId: string): Promise<void> {
