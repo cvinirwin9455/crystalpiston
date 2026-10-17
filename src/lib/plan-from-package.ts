@@ -210,14 +210,21 @@ export async function createPlanFromPackage(
       client_id: clientId,
       organization_id: orgId,
       coach_id: coachId,
+      plan_id: plan.id,
       sessions_purchased: pkg.session_count,
       amount_paid: 0,
       notes: `Initial package from "${pkg.name || 'package'}"`,
     }
+    // Try with the richest column set, peeling optional columns (amount_owed,
+    // plan_id) that may not exist on older schemas yet.
     const spFull = await admin.from('session_packages').insert({ ...spInsert, amount_owed: owedValue })
     if (spFull.error) {
-      // amount_owed may not exist on older schemas — fall back.
-      await admin.from('session_packages').insert({ ...spInsert, amount_paid: owedValue })
+      const spNoOwed = await admin.from('session_packages').insert({ ...spInsert, amount_paid: owedValue })
+      if (spNoOwed.error) {
+        // plan_id column may also be missing — last-resort client-wide insert.
+        const { plan_id, ...spNoPlan } = spInsert
+        await admin.from('session_packages').insert({ ...spNoPlan, amount_paid: owedValue })
+      }
     }
   }
 
@@ -371,21 +378,34 @@ export async function recordPackagePayment(
 
   // --- Session portion -> session_packages.amount_paid + a session payment row ---
   if (sessionAmount > 0) {
-    // Apply to the client's session package that still has a balance (newest
-    // first — the one we just created for this purchase), else the first one.
-    const { data: pkgs } = await admin
+    // Apply to THIS PLAN's session package that still has a balance (newest
+    // first — the one we just created for this purchase), else this plan's
+    // first package. Scope by plan_id so a payment lands on the right plan;
+    // fall back to client-wide if plan_id isn't populated (older schemas).
+    let pkgs: any[] | null = null
+    const byPlan = await admin
       .from('session_packages')
       .select('id, amount_paid, amount_owed')
-      .eq('client_id', clientId)
+      .eq('plan_id', planId)
       .order('purchased_at', { ascending: false })
+    if (!byPlan.error && (byPlan.data || []).length > 0) {
+      pkgs = byPlan.data
+    } else {
+      const byClient = await admin
+        .from('session_packages')
+        .select('id, amount_paid, amount_owed')
+        .eq('client_id', clientId)
+        .order('purchased_at', { ascending: false })
+      pkgs = byClient.data
+    }
     const target = (pkgs || []).find((p: any) => (toNumber(p.amount_owed) || 0) > (toNumber(p.amount_paid) || 0)) || (pkgs || [])[0]
     if (target) {
       const newPaid = toNumber(target.amount_paid) + sessionAmount
       await admin.from('session_packages').update({ amount_paid: newPaid }).eq('id', target.id)
     }
-    // Record a session payment row so it shows in history.
+    // Record a session payment row so it shows in history (scoped to the plan).
     const base: Record<string, any> = {
-      plan_id: null,
+      plan_id: planId,
       amount: sessionAmount,
       payment_date: new Date().toISOString().split('T')[0],
       notes: params.notes || null,

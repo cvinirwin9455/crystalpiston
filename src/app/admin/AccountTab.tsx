@@ -1077,12 +1077,9 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        // For session/hybrid plans, fetch ALL payments (programming + session) by client.
-        // For programming-only, fetch by plan.
-        const hasSessions = plan.billingMode === 'per_session' || plan.billingMode === 'hybrid';
-        const url = hasSessions
-          ? `/api/payments?client_id=${plan.clientId}`
-          : `/api/payments?plan_id=${plan.id}`;
+        // Payments (programming + session) are scoped to this plan so each
+        // plan's history stays isolated.
+        const url = `/api/payments?plan_id=${plan.id}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
@@ -1108,7 +1105,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     if (plan.billingMode !== 'per_session' && plan.billingMode !== 'hybrid') return;
     const fetchSessionBalance = async () => {
       try {
-        const res = await fetch(`/api/session-packages?client_id=${plan.clientId}`);
+        const res = await fetch(`/api/session-packages?client_id=${plan.clientId}&plan_id=${plan.id}`);
         if (res.ok) {
           const data = await res.json();
           const totalPurchased = (data.packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0);
@@ -1150,7 +1147,9 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentType: type,
-          planId: isSession ? null : plan.id,
+          // Scope both programming and session payments to this plan so each
+          // plan's payment history and balance stay isolated.
+          planId: plan.id,
           clientId: plan.clientId,
           amount: paymentAmount,
           paymentDate: paymentDate,
@@ -1248,7 +1247,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             await fetch('/api/session-packages', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'close_all', clientId: plan.clientId }),
+              body: JSON.stringify({ action: 'close_all', clientId: plan.clientId, planId: plan.id }),
             });
             setSessionBalanceRefresh((n) => n + 1);
           } catch (closeErr) {
@@ -1640,10 +1639,10 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
 
-  // Fetch existing packages and balance
+  // Fetch existing packages and balance (scoped to this plan)
   const fetchPackages = async () => {
     try {
-      const res = await fetch(`/api/session-packages?client_id=${clientId}`);
+      const res = await fetch(`/api/session-packages?client_id=${clientId}&plan_id=${planId}`);
       if (res.ok) {
         const data = await res.json();
         setPackages(data.packages || []);
@@ -1658,7 +1657,7 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
 
   useEffect(() => {
     fetchPackages();
-  }, [clientId]);
+  }, [clientId, planId]);
 
   const handleAddPackage = async () => {
     if (!sessionCount || parseInt(sessionCount) <= 0) return;
@@ -1669,6 +1668,7 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId,
+          planId,
           sessionsPurchased: parseInt(sessionCount),
           amountOwed: amountOwed || "0",
           amountPaid: amountPaid || "0",
