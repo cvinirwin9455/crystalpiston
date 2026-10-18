@@ -352,15 +352,17 @@ export default function PackagesManager() {
 
   // The currently selected program template (one-time OR monthly packages).
   const selectedTemplate = programTemplates.find((t) => t.id === form.program_template_id) || null;
-  // When a template is chosen, duration + type are LOCKED to the template (so
-  // the package can't drift out of sync with the program). Applies to both
-  // one-time and monthly — on monthly the template's duration drives how many
-  // months are billed.
+  // When a template is chosen, the DURATION and the TRAINING TYPE (running /
+  // strength-cross) are LOCKED to the template — those are reliably in the
+  // template's content. DELIVERY FORMAT (programming vs in-person) is NOT
+  // locked: that's the coach's selling decision and the template can't know it.
+  // Applies to both one-time and monthly (on monthly the duration drives the
+  // number of months billed).
   const templateLocked = !!selectedTemplate;
 
   // Pick / clear a program template. Selecting one auto-fills + locks duration
-  // and the running/strength type, and defaults the name (unless the coach has
-  // already typed their own).
+  // and the running/strength type (from the template's content), leaves
+  // delivery format to the coach, and defaults the name (unless customised).
   function handleSelectTemplate(templateId: string) {
     const tmpl = programTemplates.find((t) => t.id === templateId) || null;
     setForm((f) => {
@@ -368,16 +370,24 @@ export default function PackagesManager() {
         // Cleared — unlock fields, keep whatever values were there.
         return { ...f, program_template_id: "" };
       }
+      // Delivery format (programming vs in-person) is the COACH's selling
+      // decision — the template can't know it — so we don't force or lock it.
+      // Default to programming only if the coach hasn't chosen a delivery yet.
+      const hasDeliveryChosen = f.includes_programming || f.includes_in_person;
       return {
         ...f,
         program_template_id: templateId,
+        // Duration + content type ARE reliably in the template → auto-fill (locked).
         duration_weeks: tmpl.totalWeeks != null ? String(tmpl.totalWeeks) : f.duration_weeks,
         includes_running: tmpl.hasRunning,
         includes_strength: tmpl.hasStrength,
-        // Template packages are programming (not in-person).
-        includes_programming: true,
-        includes_in_person: false,
-        billing_mode: "programming_only",
+        // Delivery: keep the coach's choice; default to programming if none yet.
+        includes_programming: hasDeliveryChosen ? f.includes_programming : true,
+        includes_in_person: hasDeliveryChosen ? f.includes_in_person : false,
+        // Keep billing_mode consistent with the (possibly defaulted) delivery.
+        billing_mode: hasDeliveryChosen
+          ? f.billing_mode
+          : billingModeFromIncludes({ in_person: false, programming: true }),
         // Default the name to the template name unless the coach customised it.
         name: f.name_touched && f.name.trim() ? f.name : tmpl.name,
       };
@@ -749,19 +759,23 @@ export default function PackagesManager() {
         </div>
 
         <label className="block text-xs text-gray-400 mb-2">
-          How is it delivered? (select at least one)
-          {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+          How is it delivered? (select at least one — your choice)
         </label>
         <div className="grid grid-cols-2 gap-2">
-          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-            <input type="checkbox" checked={form.includes_programming} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_programming", e.target.checked)} className="accent-accent" />
+          <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+            <input type="checkbox" checked={form.includes_programming} onChange={(e) => handleIncludesChange("includes_programming", e.target.checked)} className="accent-accent" />
             <span>📱 Programming (remote)</span>
           </label>
-          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-            <input type="checkbox" checked={form.includes_in_person} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)} className="accent-accent" />
+          <label className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:border-white/20">
+            <input type="checkbox" checked={form.includes_in_person} onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)} className="accent-accent" />
             <span>📍 In-Person / Personal Training</span>
           </label>
         </div>
+        {templateLocked && (
+          <p className="text-[11px] text-gray-500 mt-1.5">
+            The template sets the training type and duration above. How you deliver it — remote programming, in-person, or both — is up to you.
+          </p>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
