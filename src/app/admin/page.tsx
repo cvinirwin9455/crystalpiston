@@ -3540,8 +3540,8 @@ export default function AdminPage() {
         {/* Desktop back button for coach-dropdown views (Templates, Changelog, Manage Coaches,
             Account Preferences, Exercise Library, Coach Guide) — mirrors the client "Back to
             Dashboard" button so these views aren't a dead end on desktop. */}
-        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide) && (
-          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); }} className="hidden md:flex sticky top-0 z-30 items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/95 backdrop-blur transition-colors">
+        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showPackages) && (
+          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); }} className="hidden md:flex sticky top-0 z-30 items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/95 backdrop-blur transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             <span className="text-sm">Back to Dashboard</span>
           </button>
