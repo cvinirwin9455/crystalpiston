@@ -27,11 +27,13 @@ export function findBestMatch(
   stravaTrainingType: string | null,
   candidates: MatchCandidate[]
 ): MatchResult {
-  // Never auto-match activities with essentially 0 distance for distance-based types
-  // (likely accidental start/stop). Non-distance types (stretching, strength, cross) are fine with 0.
+  // Never auto-match tiny distance-based activities (likely accidental
+  // start/stop, a watch that "couldn't stop", or a brief GPS blip). A real
+  // programmed run/walk/ride is never a quarter mile. Non-distance types
+  // (stretching, strength, cross) are fine with 0 distance.
   const distanceTypes = ['run', 'walk', 'cycling'];
-  if (distanceTypes.includes(stravaType) && stravaMiles < 0.1) {
-    return { candidateId: null, candidateType: null, confidence: 0, reasons: ['Activity has no distance — likely accidental'] };
+  if (distanceTypes.includes(stravaType) && stravaMiles <= 0.25) {
+    return { candidateId: null, candidateType: null, confidence: 0, reasons: ['Activity distance too small — likely accidental start/stop'] };
   }
 
   // Filter to same day only
@@ -61,6 +63,14 @@ export function findBestMatch(
     // 2. Distance match — up to 30 points
     if (candidate.miles && stravaMiles > 0) {
       const distanceRatio = Math.min(stravaMiles, candidate.miles) / Math.max(stravaMiles, candidate.miles);
+      // For distance-based types, a wildly wrong distance DISQUALIFIES the match.
+      // A programmed 10mi run should never match a 0.1mi (or 30mi) activity just
+      // because the type lines up. Require the distances to be at least roughly
+      // comparable (within ~2x) before a distance-type candidate is considered.
+      if (distanceTypes.includes(stravaType) && distanceRatio < 0.5) {
+        reasons.push(`Distance too different (${stravaMiles.toFixed(1)} vs ${candidate.miles.toFixed(1)} mi) — skipping`);
+        continue;
+      }
       if (distanceRatio >= 0.8) {
         // Within 20% — strong match
         score += 30;
@@ -70,7 +80,7 @@ export function findBestMatch(
         score += 15;
         reasons.push(`Distance somewhat close (${stravaMiles.toFixed(1)} vs ${candidate.miles.toFixed(1)} mi)`);
       } else {
-        // Far off — weak signal
+        // Far off (but still within the 0.5 floor for distance types) — weak signal
         score += 5;
         reasons.push(`Distance differs (${stravaMiles.toFixed(1)} vs ${candidate.miles.toFixed(1)} mi)`);
       }
