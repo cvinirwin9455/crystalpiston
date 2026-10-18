@@ -359,6 +359,12 @@ export default function PackagesManager() {
   // Applies to both one-time and monthly (on monthly the duration drives the
   // number of months billed).
   const templateLocked = !!selectedTemplate;
+  // Type detection is reliable from workout content — EXCEPT for an empty /
+  // all-rest template that has neither running nor strength work. In that case
+  // we can't infer the type, so leave the type checkboxes editable (don't lock
+  // them to "nothing"). Duration stays locked regardless.
+  const templateTypeDetected = !!selectedTemplate && (selectedTemplate.hasRunning || selectedTemplate.hasStrength);
+  const typeLocked = templateLocked && templateTypeDetected;
 
   // Pick / clear a program template. Selecting one auto-fills + locks duration
   // and the running/strength type (from the template's content), leaves
@@ -745,15 +751,16 @@ export default function PackagesManager() {
       <div>
         <label className="block text-xs text-gray-400 mb-2">
           What type of coaching? (select at least one)
-          {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+          {typeLocked && <span className="text-cyan-300/70 ml-1">— set by the program template</span>}
+          {templateLocked && !templateTypeDetected && <span className="text-amber-300/70 ml-1">— couldn&apos;t detect from the template, please set it</span>}
         </label>
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-            <input type="checkbox" checked={form.includes_running} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_running", e.target.checked)} className="accent-accent" />
+          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${typeLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
+            <input type="checkbox" checked={form.includes_running} disabled={typeLocked} onChange={(e) => handleIncludesChange("includes_running", e.target.checked)} className="accent-accent" />
             <span>🏃 Running</span>
           </label>
-          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
-            <input type="checkbox" checked={form.includes_strength} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)} className="accent-accent" />
+          <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${typeLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
+            <input type="checkbox" checked={form.includes_strength} disabled={typeLocked} onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)} className="accent-accent" />
             <span>💪 Strength / Cross-Training</span>
           </label>
         </div>

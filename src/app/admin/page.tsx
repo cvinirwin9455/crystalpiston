@@ -1282,11 +1282,23 @@ export default function AdminPage() {
   const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) return;
     try {
-      const res = await fetch('/api/templates', {
+      let res = await fetch('/api/templates', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId }),
       });
+      // Soft warning if a package uses this template — confirm, then proceed.
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.warning === 'template_in_use') {
+          if (!confirm(data.message || 'This template is used by one or more packages. Delete anyway?')) return;
+          res = await fetch('/api/templates', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateId, confirm: true }),
+          });
+        }
+      }
       if (res.ok) {
         fetchTemplates();
       }
@@ -1510,11 +1522,25 @@ export default function AdminPage() {
   const handleDeleteProgram = async (id: string) => {
     if (!confirm("Delete this program template? This cannot be undone.")) return;
     try {
-      await fetch('/api/templates', {
+      let res = await fetch('/api/templates', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: id }),
       });
+      // Soft warning: the template is used by one or more packages. Confirm,
+      // then re-send with confirm:true to proceed (packages are unlinked, not
+      // deleted — they just won't load a program for new clients).
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.warning === 'template_in_use') {
+          if (!confirm(data.message || 'This template is used by one or more packages. Delete anyway?')) return;
+          res = await fetch('/api/templates', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateId: id, confirm: true }),
+          });
+        }
+      }
       fetchTemplates();
     } catch (err) {
       console.error('Failed to delete program template:', err);

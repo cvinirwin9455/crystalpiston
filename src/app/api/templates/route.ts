@@ -124,7 +124,7 @@ export async function DELETE(request: Request) {
   }
 
   const body = await request.json()
-  const { templateId } = body
+  const { templateId, confirm } = body
 
   if (!templateId) {
     return NextResponse.json({ error: 'templateId is required' }, { status: 400 })
@@ -132,6 +132,34 @@ export async function DELETE(request: Request) {
 
   const adminClient = await getAdminClient()
   const orgId = await getOrgIdForUser(adminClient, user.id)
+
+  // Soft-warn if any PACKAGE uses this template as its program recipe. The FK
+  // is ON DELETE SET NULL, so deleting won't error or destroy the package —
+  // but it WOULD leave those packages with no program to load onto new
+  // clients' plans. Unless the caller confirms, return the warning + count so
+  // the UI can ask "delete anyway?". (coach_packages may not exist / lack the
+  // column on older schemas — treat any failure as "no dependents".)
+  if (!confirm) {
+    try {
+      const { data: usingPkgs } = await adminClient
+        .from('coach_packages')
+        .select('id, name')
+        .eq('program_template_id', templateId)
+      if (usingPkgs && usingPkgs.length > 0) {
+        return NextResponse.json(
+          {
+            warning: 'template_in_use',
+            packageCount: usingPkgs.length,
+            packageNames: usingPkgs.map((p: any) => p.name),
+            message: `This template is used by ${usingPkgs.length} package${usingPkgs.length === 1 ? '' : 's'} (${usingPkgs.map((p: any) => p.name).join(', ')}). Deleting it means ${usingPkgs.length === 1 ? 'that package' : 'those packages'} will no longer load a training program onto new clients' plans. Delete anyway?`,
+          },
+          { status: 409 }
+        )
+      }
+    } catch {
+      /* coach_packages missing or unqueryable — allow the delete to proceed */
+    }
+  }
 
   // Only allow deleting templates within the coach's own org
   let query = adminClient
