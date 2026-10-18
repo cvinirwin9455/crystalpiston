@@ -164,10 +164,15 @@ export default function AdminPage() {
     setSuperAdminScopeReady(true);
   }, []);
 
-  // Open the Applications view directly from a notification email link (/admin?view=applications)
+  // Open a specific view directly from a URL link, e.g.:
+  //   /admin?view=applications  (notification email link)
+  //   /admin?view=account       (Stripe Connect callback → show "connected")
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('view') === 'applications') {
+    const view = new URLSearchParams(window.location.search).get('view');
+    if (view === 'applications') {
       setShowApplications(true);
+    } else if (view === 'account') {
+      setShowNotificationSettings(true);
     }
   }, []);
 

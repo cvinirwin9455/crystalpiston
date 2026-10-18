@@ -8,7 +8,8 @@ import { getStripe, isStripeConfigured } from '@/lib/stripe'
 // Stripe redirects the coach here after they authorize (or decline) the
 // connection. We validate the `state` token we issued, exchange the `code` for
 // the coach's connected account id (stripe_user_id), store it, then bounce the
-// coach back to the Applications tab.
+// coach back to Account Preferences (where the Stripe card now lives) so they
+// see the connection confirmed.
 //
 // This route has NO cookie session (the coach is coming from Stripe), so it
 // resolves the coach purely from the signed `state` token via the service-role
@@ -33,7 +34,9 @@ async function siteUrl(request: Request): Promise<string> {
 }
 
 function redirect(base: string, status: 'return' | 'refresh' | 'error', message?: string) {
-  const params = new URLSearchParams({ view: 'applications', stripe: status })
+  // Land on Account Preferences — that's where the Stripe Connect card lives,
+  // so the coach sees the connection confirmed (and any stripe status message).
+  const params = new URLSearchParams({ view: 'account', stripe: status })
   if (message) params.set('stripe_msg', message)
   return NextResponse.redirect(`${base}/admin?${params.toString()}`)
 }
