@@ -24,6 +24,7 @@ async function createAdminClient() {
 
 const VALID_INTERVALS = ['monthly', 'one_time']
 const VALID_BILLING_MODES = ['programming_only', 'per_session', 'hybrid']
+const VALID_MONTHLY_PRICING = ['direct', 'split']
 
 // Parse a dollar amount into a NUMERIC-friendly number, or null if blank/invalid.
 function parseAmount(raw: unknown): number | null {
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
     includes_running, includes_strength, includes_in_person, includes_programming,
     client_cap, is_active, sort_order,
     program_template_id, billing_mode, duration_weeks, session_count, session_cost, programming_cost, recur_months,
+    monthly_pricing_mode,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -134,6 +136,10 @@ export async function POST(request: Request) {
     programming_cost: parseAmount(programming_cost),
     // Recurring duration: only for monthly packages; null = until cancelled.
     recur_months: interval === 'monthly' ? parsePositiveInt(recur_months) : null,
+    // How a monthly package's per-month price was set (direct vs split a total).
+    monthly_pricing_mode: interval === 'monthly' && VALID_MONTHLY_PRICING.includes(monthly_pricing_mode)
+      ? monthly_pricing_mode
+      : 'direct',
   }
 
   let { data, error } = await admin
@@ -152,6 +158,7 @@ export async function POST(request: Request) {
     delete base.session_cost
     delete base.programming_cost
     delete base.recur_months
+    delete base.monthly_pricing_mode
     const retry = await admin.from('coach_packages').insert(base).select('*').single()
     data = retry.data
     error = retry.error
@@ -172,6 +179,7 @@ export async function PATCH(request: Request) {
     includes_running, includes_strength, includes_in_person, includes_programming,
     client_cap, is_active, sort_order,
     program_template_id, billing_mode, duration_weeks, session_count, session_cost, programming_cost, recur_months,
+    monthly_pricing_mode,
     org: orgOverride, coach: coachOverride,
   } = body || {}
 
@@ -224,10 +232,13 @@ export async function PATCH(request: Request) {
   if (session_cost !== undefined) updates.session_cost = parseAmount(session_cost)
   if (programming_cost !== undefined) updates.programming_cost = parseAmount(programming_cost)
   if (recur_months !== undefined) updates.recur_months = parsePositiveInt(recur_months)
+  if (monthly_pricing_mode !== undefined) {
+    updates.monthly_pricing_mode = VALID_MONTHLY_PRICING.includes(monthly_pricing_mode) ? monthly_pricing_mode : 'direct'
+  }
 
   // Scope the update to the coach so a super admin can't edit another coach's row.
   // The new plan-recipe columns may not exist yet — retry without them on failure.
-  const planRecipeKeys = ['program_template_id', 'billing_mode', 'duration_weeks', 'session_count', 'session_cost', 'programming_cost', 'recur_months']
+  const planRecipeKeys = ['program_template_id', 'billing_mode', 'duration_weeks', 'session_count', 'session_cost', 'programming_cost', 'recur_months', 'monthly_pricing_mode']
   let { data, error } = await admin
     .from('coach_packages')
     .update(updates)

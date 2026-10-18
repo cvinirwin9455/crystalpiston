@@ -30,6 +30,7 @@ export type CoachPackage = {
   session_cost: number | null;
   programming_cost: number | null;
   recur_months: number | null;
+  monthly_pricing_mode: "direct" | "split" | null;
 };
 
 // A program template, enriched with what we can derive from its content:
@@ -140,7 +141,14 @@ type DraftForm = {
   session_cost_per: string;
   programming_cost: string;
   // Recurring (monthly) packages: number of months to bill. "" = until cancelled.
+  // For program-length monthly packages this is auto-derived from duration_weeks.
   recur_months: string;
+  // How a MONTHLY package's per-month price is set:
+  //   "direct" = coach types the monthly amount (programming_cost)
+  //   "split"  = coach enters a program TOTAL (monthly_total) split over the months
+  monthly_pricing_mode: "direct" | "split";
+  // The program total to split across months (only when monthly + "split").
+  monthly_total: string;
   // Whether the coach has manually overridden the auto-filled description.
   description_touched: boolean;
   // Whether the coach has manually overridden the auto-filled name.
@@ -169,6 +177,8 @@ const EMPTY_FORM: DraftForm = {
   session_cost_per: "",
   programming_cost: "",
   recur_months: "",
+  monthly_pricing_mode: "direct",
+  monthly_total: "",
   description_touched: false,
   name_touched: false,
   billing_chosen: false,
@@ -179,6 +189,39 @@ const EMPTY_FORM: DraftForm = {
 function num(v: string): number {
   const n = parseFloat(String(v ?? "").replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) ? n : 0;
+}
+
+// Convert a program length in weeks into the number of monthly bills.
+// Coaching programs run in ~4-week blocks, so we bill roughly every 4 weeks,
+// rounded to the nearest whole month, with a minimum of 1.
+//   8wk -> 2, 12wk -> 3, 15wk -> 4 (3.75 rounds up), 16wk -> 4, 20wk -> 5.
+function monthsFromWeeks(weeks: number): number {
+  if (!(weeks > 0)) return 0;
+  return Math.max(1, Math.round(weeks / 4));
+}
+
+// For a MONTHLY package that splits a program TOTAL across N months.
+// Stripe subscriptions bill the SAME amount each cycle, so we charge one
+// rounded per-month figure every month. The resulting billed total
+// (perMonth × months) is shown to the coach so the small rounding on odd
+// splits is explicit (e.g. $500 / 3 -> $166.67/mo × 3 = $500.01).
+// Returns dollars. `billedTotal` is perMonth × months (what's actually taken).
+function splitTotal(totalDollars: number, months: number): { perMonth: number; billedTotal: number; months: number } {
+  if (!(totalDollars > 0) || !(months > 0)) return { perMonth: 0, billedTotal: 0, months: 0 };
+  const totalCents = Math.round(totalDollars * 100);
+  const perMonthCents = Math.round(totalCents / months);
+  return { perMonth: perMonthCents / 100, billedTotal: (perMonthCents * months) / 100, months };
+}
+
+// The regular per-month charge for a monthly package, derived from the form:
+//   split  -> round(total / months)
+//   direct -> the monthly cost the coach typed
+function monthlyPerMonth(f: DraftForm): number {
+  if (f.monthly_pricing_mode === "split") {
+    const months = monthsFromWeeks(num(f.duration_weeks));
+    return splitTotal(num(f.monthly_total), months).perMonth;
+  }
+  return num(f.programming_cost);
 }
 
 // Total value of the in-person component = # sessions × cost per session.
@@ -193,8 +236,11 @@ function programmingTotal(f: DraftForm): number {
   return num(f.programming_cost);
 }
 
-// Top price = programming + in-person total (the whole-package total).
+// Top "price" shown on the package.
+//   monthly -> the regular per-month charge (split-derived or typed directly)
+//   one-time -> programming + in-person total (the whole-package total)
 function packageTotal(f: DraftForm): number {
+  if (f.billing_interval === "monthly") return monthlyPerMonth(f);
   return programmingTotal(f) + sessionsTotal(f);
 }
 
@@ -207,13 +253,27 @@ function fmtMoney(n: number): string {
 //   one-time: "12-week program • 10 in-person sessions ($30/session)"
 //   monthly:  "$125/month, recurring"  /  "$125/month for 3 months"
 function autoDescription(f: DraftForm): string {
-  // Recurring (monthly) membership: describe the billing cadence, not weeks.
+  // Recurring (monthly): describe the billing cadence.
   if (f.billing_interval === "monthly") {
+    // Split a program total across the program's months.
+    if (f.monthly_pricing_mode === "split") {
+      const total = num(f.monthly_total);
+      const months = monthsFromWeeks(num(f.duration_weeks));
+      if (total <= 0 || months <= 0) return "";
+      const { perMonth, billedTotal } = splitTotal(total, months);
+      const weeks = num(f.duration_weeks);
+      const span = weeks > 0 ? `${weeks}-week program • ` : "";
+      return `${span}$${fmtMoney(perMonth)}/month for ${months} month${months === 1 ? "" : "s"} (total $${fmtMoney(billedTotal)})`;
+    }
+    // Direct monthly price. If a program length is set, billing stops at the
+    // program's end (N months); otherwise it recurs until cancelled.
     const monthly = num(f.programming_cost);
     if (monthly <= 0) return "";
-    const months = num(f.recur_months);
+    const months = monthsFromWeeks(num(f.duration_weeks));
+    const weeks = num(f.duration_weeks);
+    const span = weeks > 0 ? `${weeks}-week program • ` : "";
     return months > 0
-      ? `$${fmtMoney(monthly)}/month for ${months} month${months === 1 ? "" : "s"}`
+      ? `${span}$${fmtMoney(monthly)}/month for ${months} month${months === 1 ? "" : "s"}`
       : `$${fmtMoney(monthly)}/month, recurring until cancelled`;
   }
 
@@ -343,6 +403,8 @@ export default function PackagesManager() {
     form.session_cost_per,
     form.programming_cost,
     form.recur_months,
+    form.monthly_pricing_mode,
+    form.monthly_total,
     form.description_touched,
   ]);
 
@@ -386,6 +448,13 @@ export default function PackagesManager() {
               ? String(p.price_cents / 100)
               : ""),
       recur_months: p.recur_months != null ? String(p.recur_months) : "",
+      monthly_pricing_mode: p.monthly_pricing_mode === "split" ? "split" : "direct",
+      // For a split package, reconstruct the program total from the stored
+      // per-month price × months (what was actually billed). Round-trips cleanly.
+      monthly_total:
+        p.monthly_pricing_mode === "split" && p.recur_months
+          ? String(Math.round(p.price_cents * p.recur_months) / 100)
+          : "",
       // Existing packages keep their saved description/name — don't auto-overwrite.
       description_touched: !!(p.description && p.description.trim()),
       name_touched: !!(p.name && p.name.trim()),
@@ -442,6 +511,22 @@ export default function PackagesManager() {
       setMsg({ text: "Give the package a name.", type: "error" });
       return;
     }
+    // Monthly-specific validation.
+    if (form.billing_interval === "monthly") {
+      if (form.monthly_pricing_mode === "split") {
+        if (!(num(form.monthly_total) > 0)) {
+          setMsg({ text: "Enter the program total to split across the months.", type: "error" });
+          return;
+        }
+        if (!(num(form.duration_weeks) > 0)) {
+          setMsg({ text: "Enter the program length (weeks) so we can split the total across the months.", type: "error" });
+          return;
+        }
+      } else if (!(num(form.programming_cost) > 0)) {
+        setMsg({ text: "Enter the monthly price.", type: "error" });
+        return;
+      }
+    }
     if (packageTotal(form) <= 0) {
       setMsg({
         text: form.billing_mode === "per_session"
@@ -488,8 +573,17 @@ export default function PackagesManager() {
       // Stored as the TOTAL (count × per-session).
       session_cost: computedSessionTotal > 0 ? String(computedSessionTotal) : null,
       programming_cost: form.programming_cost.trim() || null,
-      // Recurring duration: only meaningful for monthly packages; "" = forever.
-      recur_months: form.billing_interval === "monthly" ? (form.recur_months.trim() || null) : null,
+      // Recurring duration: for a monthly package with a program length, bill
+      // stops at the program's end (derived from weeks). With no length set it
+      // falls back to the typed recur_months ("" = until cancelled).
+      recur_months:
+        form.billing_interval === "monthly"
+          ? (num(form.duration_weeks) > 0
+              ? String(monthsFromWeeks(num(form.duration_weeks)))
+              : (form.recur_months.trim() || null))
+          : null,
+      // How the monthly price was set (direct vs split a total).
+      monthly_pricing_mode: form.billing_interval === "monthly" ? form.monthly_pricing_mode : "direct",
       ...scopeBody(),
     };
     try {
@@ -581,13 +675,24 @@ export default function PackagesManager() {
                     billing_interval: interval,
                     program_template_id: "",
                     billing_mode: "programming_only",
-                    duration_weeks: "",
+                    // Monthly packages are programming (not in-person sessions).
                     includes_in_person: false,
                     includes_programming: true,
                     session_count: "",
                     session_cost_per: "",
+                    // Keep duration_weeks — monthly now uses it to derive the
+                    // number of months (billing stops at the program's end).
+                    monthly_pricing_mode: "direct",
+                    monthly_total: "",
                   }
-                : { ...f, billing_chosen: true, billing_interval: interval, recur_months: "" }
+                : {
+                    ...f,
+                    billing_chosen: true,
+                    billing_interval: interval,
+                    recur_months: "",
+                    monthly_pricing_mode: "direct",
+                    monthly_total: "",
+                  }
             );
           }}
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
@@ -683,18 +788,10 @@ export default function PackagesManager() {
         )}
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
-        {form.billing_interval === "monthly" ? (
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Bill for how many months?</label>
-            <input value={form.recur_months} onChange={(e) => setForm((f) => ({ ...f, recur_months: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="blank = until cancelled" inputMode="numeric" />
-            <p className="text-[10px] text-gray-500 mt-1">Leave blank to bill every month until you (or the client) cancel.</p>
-          </div>
-        ) : (
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Client cap (optional)</label>
-            <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
-          </div>
-        )}
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Client cap (optional)</label>
+          <input value={form.client_cap} onChange={(e) => setForm((f) => ({ ...f, client_cap: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 5 (leave blank = unlimited)" inputMode="numeric" />
+        </div>
       </div>
 
       <div className="border-t border-white/10 pt-4">
@@ -714,19 +811,74 @@ export default function PackagesManager() {
           </div>
         )}
 
-        {form.billing_mode !== "per_session" && (
-          <div className="grid sm:grid-cols-2 gap-3 mt-1">
-            {form.billing_interval === "one_time" && (
+        {/* ---- MONTHLY: program length + how to set the monthly price ---- */}
+        {form.billing_interval === "monthly" && (
+          <div className="space-y-3 mt-1">
+            <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
-                <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} disabled={templateLocked} className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 ${templateLocked ? "opacity-60 cursor-not-allowed" : ""}`} placeholder="e.g. 12" inputMode="numeric" />
+                <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 15" inputMode="numeric" />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  {num(form.duration_weeks) > 0
+                    ? `Billed monthly for ${monthsFromWeeks(num(form.duration_weeks))} month${monthsFromWeeks(num(form.duration_weeks)) === 1 ? "" : "s"}, then stops.`
+                    : "Sets how many months to bill (stops at the program's end). Leave blank to bill until cancelled."}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">How do you want to set the monthly price?</label>
+                <select
+                  value={form.monthly_pricing_mode}
+                  onChange={(e) => setForm((f) => ({ ...f, monthly_pricing_mode: e.target.value as "direct" | "split" }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                >
+                  <option value="direct">Set the monthly price directly</option>
+                  <option value="split">Split a program total across the months</option>
+                </select>
+              </div>
+            </div>
+
+            {form.monthly_pricing_mode === "split" ? (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Program total (split across the months)</label>
+                <input value={form.monthly_total} onChange={(e) => setForm((f) => ({ ...f, monthly_total: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 499" inputMode="decimal" />
+                {num(form.monthly_total) > 0 && num(form.duration_weeks) > 0 && (() => {
+                  const months = monthsFromWeeks(num(form.duration_weeks));
+                  const { perMonth, billedTotal } = splitTotal(num(form.monthly_total), months);
+                  const drift = Math.round((billedTotal - num(form.monthly_total)) * 100);
+                  return (
+                    <p className="text-[11px] text-cyan-300/80 mt-1">
+                      ≈ ${fmtMoney(perMonth)}/month × {months} = ${fmtMoney(billedTotal)}
+                      {drift !== 0 && <span className="text-gray-500"> (rounds to ${fmtMoney(billedTotal)}; you entered ${fmtMoney(num(form.monthly_total))})</span>}
+                    </p>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Monthly price</label>
+                  <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 130" inputMode="decimal" />
+                  {num(form.programming_cost) > 0 && num(form.duration_weeks) > 0 && (
+                    <p className="text-[11px] text-cyan-300/80 mt-1">
+                      ${fmtMoney(num(form.programming_cost))}/month × {monthsFromWeeks(num(form.duration_weeks))} = ${fmtMoney(num(form.programming_cost) * monthsFromWeeks(num(form.duration_weeks)))} total
+                    </p>
+                  )}
+                </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ---- ONE-TIME: programming cost (+ duration for programming plans) ---- */}
+        {form.billing_interval === "one_time" && form.billing_mode !== "per_session" && (
+          <div className="grid sm:grid-cols-2 gap-3 mt-1">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">
-                {form.billing_interval === "monthly" ? "Monthly cost" : "Programming cost"}
-              </label>
-              <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder={form.billing_interval === "monthly" ? "e.g. 125" : "e.g. 200"} inputMode="decimal" />
+              <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
+              <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} disabled={templateLocked} className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 ${templateLocked ? "opacity-60 cursor-not-allowed" : ""}`} placeholder="e.g. 12" inputMode="numeric" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Programming cost</label>
+              <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 200" inputMode="decimal" />
             </div>
           </div>
         )}

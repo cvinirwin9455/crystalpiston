@@ -184,6 +184,10 @@ export async function POST(request: Request) {
   let billingInterval: 'monthly' | 'one_time' = 'one_time'
   let packageName: string | null = null
   let resolvedPackageId: string | null = null
+  // A monthly package carries its own recur_months (how many months to bill,
+  // auto-derived from the program length). This is the default unless the
+  // request body explicitly overrides it below.
+  let packageRecurMonths: number | null = null
 
   // A custom amount is used when `amount` is provided AND no explicit package_id
   // was chosen. (Don't fall back to the applicant's selected_package_id in that
@@ -191,11 +195,23 @@ export async function POST(request: Request) {
   const useCustomAmount = amount != null && String(amount).trim() !== '' && !package_id
   const pkgId = useCustomAmount ? null : (package_id || application?.selected_package_id || null)
   if (pkgId) {
-    const { data: pkg } = await admin
+    // Try selecting recur_months (newer column); fall back if it doesn't exist.
+    let pkg: any = null
+    const withRecur = await admin
       .from('coach_packages')
-      .select('id, name, price_cents, currency, billing_interval, coach_id')
+      .select('id, name, price_cents, currency, billing_interval, coach_id, recur_months')
       .eq('id', pkgId)
       .maybeSingle()
+    if (!withRecur.error) {
+      pkg = withRecur.data
+    } else {
+      const base = await admin
+        .from('coach_packages')
+        .select('id, name, price_cents, currency, billing_interval, coach_id')
+        .eq('id', pkgId)
+        .maybeSingle()
+      pkg = base.data
+    }
     if (!pkg || pkg.coach_id !== coachId) {
       return NextResponse.json({ error: 'Package not found' }, { status: 404 })
     }
@@ -204,6 +220,7 @@ export async function POST(request: Request) {
     billingInterval = pkg.billing_interval === 'monthly' ? 'monthly' : 'one_time'
     packageName = pkg.name
     resolvedPackageId = pkg.id
+    packageRecurMonths = pkg.recur_months != null && Number(pkg.recur_months) > 0 ? Number(pkg.recur_months) : null
   } else if (useCustomAmount) {
     const cents = Math.round(Number(String(amount).replace(/[^0-9.]/g, '')) * 100)
     if (!Number.isFinite(cents) || cents <= 0) {
@@ -288,8 +305,14 @@ export async function POST(request: Request) {
   // Monthly packages create a recurring subscription at checkout (mode
   // 'subscription' in /api/pay). recur_months (optional) caps how many months
   // it bills before auto-cancelling; blank = until the coach cancels.
-  const recurMonthsInt = billingInterval === 'monthly' && recur_months != null && String(recur_months).trim() !== ''
+  // Months to bill a monthly subscription: an explicit request-body override
+  // wins; otherwise use the package's own recur_months (derived from the
+  // program length). null = bill until cancelled.
+  const recurMonthsOverride = recur_months != null && String(recur_months).trim() !== ''
     ? parseInt(String(recur_months).replace(/[^0-9]/g, ''), 10)
+    : null
+  const recurMonthsInt = billingInterval === 'monthly'
+    ? (recurMonthsOverride && recurMonthsOverride > 0 ? recurMonthsOverride : packageRecurMonths)
     : null
   const token = randomToken()
 
