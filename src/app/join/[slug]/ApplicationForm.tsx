@@ -41,7 +41,7 @@ const ORANGE = '#f26522'
 
 const TYPE_LABELS: Record<string, string> = {
   running: 'Running coaching',
-  personal_training: 'Personal training',
+  personal_training: 'Strength / Cross-Training',
 }
 
 const MONTHS = [
@@ -358,7 +358,7 @@ export default function ApplicationForm({ page }: { page: Page }) {
                 {page.offerFormats.map((f) => (
                   <label key={f} style={checkRow}>
                     <input type="checkbox" checked={interestedFormats.includes(f)} onChange={() => toggle(interestedFormats, setInterestedFormats, f)} />
-                    <span>{f === 'programming' ? 'Programming only (remote — I follow a plan on my own)' : f === 'in_person' ? 'In-person training (sessions with you)' : f}</span>
+                    <span>{f === 'programming' ? 'Programming only (remote — I follow a plan on my own)' : f === 'in_person' ? 'In-Person / Personal Training (sessions with you)' : f}</span>
                   </label>
                 ))}
               </div>

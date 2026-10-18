@@ -51,8 +51,8 @@ type Page = {
   offer_formats: string[] | null;
 };
 
-const TYPE_LABELS: Record<string, string> = { running: "Running coaching", personal_training: "Personal training" };
-const FORMAT_LABELS: Record<string, string> = { programming: "Programming only (remote)", in_person: "In-person training" };
+const TYPE_LABELS: Record<string, string> = { running: "Running coaching", personal_training: "Strength / Cross-Training" };
+const FORMAT_LABELS: Record<string, string> = { programming: "Programming only (remote)", in_person: "In-Person / Personal Training" };
 
 function formatPrice(cents: number, interval: string | null): string {
   const amount = (cents / 100).toLocaleString(undefined, {

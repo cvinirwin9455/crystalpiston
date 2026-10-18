@@ -647,8 +647,8 @@ export default function PackagesManager() {
   function getIncludesBadges(p: CoachPackage) {
     const badges: { text: string; color: string }[] = [];
     if (p.includes_running) badges.push({ text: "🏃 Running", color: "bg-green-500/15 text-green-300" });
-    if (p.includes_strength) badges.push({ text: "💪 Strength", color: "bg-purple-500/15 text-purple-300" });
-    if (p.includes_in_person) badges.push({ text: "📍 In-person", color: "bg-blue-500/15 text-blue-300" });
+    if (p.includes_strength) badges.push({ text: "💪 Strength / Cross-Training", color: "bg-purple-500/15 text-purple-300" });
+    if (p.includes_in_person) badges.push({ text: "📍 In-Person / PT", color: "bg-blue-500/15 text-blue-300" });
     if (p.includes_programming) badges.push({ text: "📱 Remote", color: "bg-cyan-500/15 text-cyan-300" });
     return badges;
   }
@@ -744,7 +744,7 @@ export default function PackagesManager() {
           </label>
           <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
             <input type="checkbox" checked={form.includes_strength} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_strength", e.target.checked)} className="accent-accent" />
-            <span>💪 Strength / PT</span>
+            <span>💪 Strength / Cross-Training</span>
           </label>
         </div>
 
@@ -759,7 +759,7 @@ export default function PackagesManager() {
           </label>
           <label className={`flex items-center gap-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2 ${templateLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-white/20"}`}>
             <input type="checkbox" checked={form.includes_in_person} disabled={templateLocked} onChange={(e) => handleIncludesChange("includes_in_person", e.target.checked)} className="accent-accent" />
-            <span>📍 In-person sessions</span>
+            <span>📍 In-Person / Personal Training</span>
           </label>
         </div>
       </div>
