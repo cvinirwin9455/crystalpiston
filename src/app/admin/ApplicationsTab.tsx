@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import PackagesManager from "./PackagesManager";
-import StripeConnectCard from "./StripeConnectCard";
 
 // Coach-facing "Applications" inbox + public application-page settings.
 // Shows prospects who applied through the coach's /join/<slug> link, lets the
@@ -507,12 +505,6 @@ export default function ApplicationsTab() {
           </div>
         )}
       </div>
-
-      {/* ---- Get paid: connect Stripe ---- */}
-      <StripeConnectCard />
-
-      {/* ---- Packages (offerings the coach charges for) ---- */}
-      <PackagesManager />
 
       {msg && (
         <div className={`rounded-lg px-4 py-3 text-sm ${msg.type === "success" ? "bg-green-500/15 text-green-300 border border-green-500/20" : "bg-red-500/15 text-red-300 border border-red-500/20"}`}>

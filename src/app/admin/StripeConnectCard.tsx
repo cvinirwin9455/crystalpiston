@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 // Coach-facing card for connecting their Stripe account (Stripe Connect Express).
-// Shown in the Applications tab next to PackagesManager. Lets a coach start/
+// Shown in the Account Preferences view. Lets a coach start/
 // finish Stripe onboarding so they can be paid directly by their clients.
 // Honors super-admin "view as coach" via the same sessionStorage scope keys.
 
