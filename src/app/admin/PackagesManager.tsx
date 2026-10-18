@@ -350,11 +350,13 @@ export default function PackagesManager() {
 
   useEffect(() => { load(); loadProgramTemplates(); }, [load, loadProgramTemplates]);
 
-  // The currently selected program template (one-time packages only).
+  // The currently selected program template (one-time OR monthly packages).
   const selectedTemplate = programTemplates.find((t) => t.id === form.program_template_id) || null;
-  // When a template is chosen on a one-time package, duration + type are LOCKED
-  // to the template (so the package can't drift out of sync with the program).
-  const templateLocked = form.billing_interval === "one_time" && !!selectedTemplate;
+  // When a template is chosen, duration + type are LOCKED to the template (so
+  // the package can't drift out of sync with the program). Applies to both
+  // one-time and monthly — on monthly the template's duration drives how many
+  // months are billed.
+  const templateLocked = !!selectedTemplate;
 
   // Pick / clear a program template. Selecting one auto-fills + locks duration
   // and the running/strength type, and defaults the name (unless the coach has
@@ -673,14 +675,14 @@ export default function PackagesManager() {
                     ...f,
                     billing_chosen: true,
                     billing_interval: interval,
-                    program_template_id: "",
                     billing_mode: "programming_only",
                     // Monthly packages are programming (not in-person sessions).
                     includes_in_person: false,
                     includes_programming: true,
                     session_count: "",
                     session_cost_per: "",
-                    // Keep duration_weeks — monthly now uses it to derive the
+                    // Keep program_template_id + duration_weeks — monthly now
+                    // supports templates, and uses the duration to derive the
                     // number of months (billing stops at the program's end).
                     monthly_pricing_mode: "direct",
                     monthly_total: "",
@@ -705,28 +707,30 @@ export default function PackagesManager() {
 
       {form.billing_chosen && (<>
 
-      {form.billing_interval === "one_time" && (
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
-          <select
-            value={form.program_template_id}
-            onChange={(e) => handleSelectTemplate(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-          >
-            <option value="">— None (enter details manually) —</option>
-            {programTemplates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
-              </option>
-            ))}
-          </select>
-          {templateLocked && (
-            <p className="text-[11px] text-cyan-300/80 mt-1">
-              📋 This program sets the type, delivery and duration below. It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
-            </p>
-          )}
-        </div>
-      )}
+      <div>
+        <label className="block text-xs text-gray-400 mb-1">Start from a program template (optional)</label>
+        <select
+          value={form.program_template_id}
+          onChange={(e) => handleSelectTemplate(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+        >
+          <option value="">— None (enter details manually) —</option>
+          {programTemplates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}{t.totalWeeks ? ` (${t.totalWeeks} wks)` : ""}
+            </option>
+          ))}
+        </select>
+        {templateLocked && (
+          <p className="text-[11px] text-cyan-300/80 mt-1">
+            📋 This program sets the type, delivery and duration below.
+            {form.billing_interval === "monthly"
+              ? " The duration determines how many months are billed."
+              : ""}
+            {" "}It&apos;ll be flagged on the client&apos;s plan to load once they&apos;re set up.
+          </p>
+        )}
+      </div>
 
       <div>
         <label className="block text-xs text-gray-400 mb-2">
@@ -816,8 +820,11 @@ export default function PackagesManager() {
           <div className="space-y-3 mt-1">
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Program duration (weeks)</label>
-                <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 15" inputMode="numeric" />
+                <label className="block text-xs text-gray-400 mb-1">
+                  Program duration (weeks)
+                  {templateLocked && <span className="text-cyan-300/70 ml-1">— set by the template</span>}
+                </label>
+                <input value={form.duration_weeks} onChange={(e) => setForm((f) => ({ ...f, duration_weeks: e.target.value.replace(/[^0-9]/g, "") }))} disabled={templateLocked} className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 ${templateLocked ? "opacity-60 cursor-not-allowed" : ""}`} placeholder="e.g. 15" inputMode="numeric" />
                 <p className="text-[10px] text-gray-500 mt-1">
                   {num(form.duration_weeks) > 0
                     ? `Billed monthly for ${monthsFromWeeks(num(form.duration_weeks))} month${monthsFromWeeks(num(form.duration_weeks)) === 1 ? "" : "s"}, then stops.`
