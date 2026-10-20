@@ -75,9 +75,41 @@ async function fetchPage(slug: string): Promise<PageData | null> {
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const page = await fetchPage(params.slug)
   if (!page) return { title: 'Apply for Coaching — First Mile Coach' }
+
+  // Per-coach social preview. The root layout defaults to the First Mile
+  // "launch your coaching business" pitch — which is aimed at COACHES, not the
+  // prospective clients a coach shares their /join link with. We must override
+  // openGraph / twitter / canonical here so link previews and crawlers show the
+  // COACH's page, not the platform ad.
+  const title = `Apply for coaching with ${page.coachName}`
+  const description =
+    page.intro ||
+    page.headline ||
+    `Apply to train with ${page.coachName} on First Mile Coach.`
+  // Prefer the coach's own photo as the preview image; fall back to the
+  // First Mile logo so the card is never blank. These must be ABSOLUTE urls.
+  const image = page.coachAvatar || 'https://www.firstmilecoach.com/firstmile/logo.png'
+  const url = `https://www.firstmilecoach.com/join/${page.slug}`
+
   return {
-    title: `${page.headline} — First Mile Coach`,
-    description: page.intro || `Apply for coaching with ${page.coachName}.`,
+    title: `${title} — First Mile Coach`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'First Mile Coach',
+      type: 'website',
+      locale: 'en_US',
+      images: [{ url: image, alt: page.coachName }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
   }
 }
 
