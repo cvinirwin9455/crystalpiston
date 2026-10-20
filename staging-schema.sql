@@ -878,6 +878,33 @@ LEFT JOIN (
 ) used ON used.client_id = c.id;
 
 -- ============================================================
+-- DATA API GRANTS (required for rebuilds on/after Oct 30 2026)
+-- ------------------------------------------------------------
+-- As of Oct 30 2026, Supabase no longer auto-grants Data API access to new
+-- tables in `public`. Without these grants, supabase-js / PostgREST / GraphQL
+-- return "permission denied" for anon/authenticated. Row Level Security still
+-- governs what each role can actually read/write — these grants just expose the
+-- tables to the API (reproducing the old default so a rebuilt DB matches prod).
+-- Safe to run multiple times.
+-- ============================================================
+
+-- Grant on everything that already exists in public.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO service_role;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- And auto-grant on any table/sequence created LATER in this schema, so future
+-- migrations don't each need their own grant.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
+
+-- ============================================================
 -- DONE! Your staging database now has the full schema.
 -- Next: Create a test coach account and test client in this DB.
 -- ============================================================
