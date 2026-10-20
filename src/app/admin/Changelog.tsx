@@ -3,15 +3,27 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-13T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-19T12:00:00Z";
 
 const updates = [
+  {
+    date: "October 19, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Packages now has its own spot in the menu. Instead of living down on the Applications tab, 'Packages' is its own menu item so it's easier to find and manage. Set up everything you charge for — give each package a name, price, and whether it's a monthly (recurring) or one-time charge, add a short description, cap how many clients can be on it, and turn packages on or off without deleting them." },
+      { area: "Admin", text: "NEW: Monthly packages can use split pricing. For a recurring package you can now set it up as a simple monthly amount, or split it into pieces (for example a base coaching fee plus an optional add-on) so the pricing you show matches how you actually bill." },
+      { area: "Admin", text: "NEW: Attach a program template to a package. When you set up a package you can link one of your saved program templates to it, so the plan that goes with that offering is ready to use. Deleting a template now also warns you if it's attached to a package so you don't remove something still in use." },
+      { area: "Admin", text: "Improved: Clearer labels across the app — 'Strength' is now grouped under Cross-Training where it belongs, and coaching types read as 'Personal Training' and 'In-Person' so what you offer is easier to describe to applicants." },
+      { area: "Marketing", text: "NEW: Better application funnel. Your public application page (firstmilecoach.com/join/your-link) now walks applicants through choosing what kind of coaching they want and how they'd like to train, shows your packages so they can pick one, and includes an 'I'm not sure yet' path for people who want guidance before committing. You see exactly what they picked in the application details." },
+      { area: "Marketing", text: "NEW: Your /join link now shows a proper preview when shared. When you paste your application link into Instagram, a text, or an email, it now shows YOUR name, headline, and photo in the link preview instead of a generic First Mile card — so it looks like your page, not ours." },
+      { area: "Admin", text: "Note: Online card payments through your application link are built and coming soon. For now you keep arranging payment your usual way after you accept an applicant — the Packages you set up just describe and display your pricing." },
+    ],
+  },
   {
     date: "October 13, 2026",
     items: [
       { area: "Admin", text: "Fixed: Cross-training, Strength, HIIT, and other non-running workouts no longer incorrectly show mileage. Previously, if a workout had leftover distance data from a template or copy operation, it would display as '5mi' even on strength workouts. Now only Run and Walk workouts display distance — everything else shows the exercises or description as intended." },
       { area: "Client", text: "Same fix for the client dashboard — non-running workouts no longer show a mileage value when they shouldn't." },
-      { area: "Admin", text: "NEW: Packages. On your Applications tab there's now a 'Your Packages' section where you set up the things you charge for — give each a name, price, and whether it's a monthly (recurring) or one-time charge. You can add a short description, cap how many clients can be on a package (e.g. limit a premium plan to 5), and turn packages on/off without deleting them. This replaces the old free-text pricing box with a proper list. (This is step 1 of adding real payments to signups — collecting money comes in a later update.)" },
+      { area: "Admin", text: "NEW: Packages. There's now a 'Packages' area where you set up the things you charge for — give each a name, price, and whether it's a monthly (recurring) or one-time charge. You can add a short description, cap how many clients can be on a package (e.g. limit a premium plan to 5), and turn packages on/off without deleting them. This replaces the old free-text pricing box with a proper list. (This is step 1 of adding real payments to signups — collecting money comes in a later update.)" },
       { area: "Marketing", text: "NEW: Your packages now show on your public application page (firstmilecoach.com/join/your-link) so people can see your pricing before they apply. Each package shows its name, description, and price. If you haven't added packages yet, your existing pricing text still shows as before." },
       { area: "Marketing", text: "NEW: Applicants can now select which package they want. When you have packages set up, the application form shows a 'Which package are you interested in?' picker where they choose one of your packages — no more free-text guessing. When you view an application, you'll see exactly which package they selected along with the price. (Coaches without packages still get the free-text field.)" },
     ],
