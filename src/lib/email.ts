@@ -55,11 +55,29 @@ export function getEmailBrandFromOrgId(orgId: string | null | undefined): EmailB
   return 'first-mile'
 }
 
-// Helper: get the production site URL (never use preview deployment URLs in emails)
+// Helper: resolve the base site URL used in email links.
+//
+// CRITICAL: links must point back to the environment that sent the email. On a
+// staging/preview deployment they must stay on staging, NOT jump to production.
+// Resolution order:
+//   1. An explicit configured base — NEXT_PUBLIC_SITE_URL or
+//      STRIPE_CONNECT_REDIRECT_BASE (the latter is set to the stable staging URL
+//      on the preview deployment, so staging emails link to staging).
+//   2. The request's own origin (so a preview links back to that preview),
+//      unless it's localhost.
+//   3. Production as the final fallback.
 export function getProductionUrl(requestUrl?: string): string {
-  // Always prefer the configured production URL
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL || process.env.STRIPE_CONNECT_REDIRECT_BASE
+  if (explicit) {
+    return explicit.replace(/\/$/, '')
+  }
+  if (requestUrl) {
+    try {
+      const origin = new URL(requestUrl).origin
+      if (origin && !origin.includes('localhost')) return origin.replace(/\/$/, '')
+    } catch {
+      /* fall through */
+    }
   }
   // All platform links now go to First Mile Coach
   return 'https://www.firstmilecoach.com'

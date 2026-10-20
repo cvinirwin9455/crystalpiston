@@ -1,0 +1,424 @@
+// Shared "turn a package into a client plan (+ payment)" logic.
+//
+// A coach_packages row is a reusable PLAN RECIPE: it carries the same inputs a
+// per-client plan needs (price/owed, billing_mode, duration, session bundle,
+// optional program template). This module stamps that recipe out onto a client
+// so that an application-provisioned client ends up with the EXACT same
+// structure as a manually-created one:
+//   * a `plans` row (owed = package price, billing_mode, dates, program_template_id)
+//   * a `session_packages` row for per_session / hybrid packages
+//   * clients.billing_mode updated
+//   * (optionally) a `payments` row recording money collected, bumping plans.paid
+//
+// Used by BOTH:
+//   * provision-client.ts (coach manually accepts an application, no Stripe)
+//   * fulfill-payment.ts  (Stripe payment succeeds)
+//
+// `admin` must be a service-role Supabase client.
+
+type Package = {
+  id: string
+  coach_id: string
+  organization_id: string | null
+  name: string | null
+  price_cents: number
+  currency?: string | null
+  billing_interval?: string | null
+  program_template_id?: string | null
+  billing_mode?: 'programming_only' | 'per_session' | 'hybrid' | null
+  duration_weeks?: number | null
+  session_count?: number | null
+  session_cost?: number | string | null
+  programming_cost?: number | string | null
+}
+
+export type PlanFromPackageResult = {
+  ok: boolean
+  planId?: string
+  error?: string
+}
+
+function toNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+// Fetch a coach_packages row by id (service-role).
+export async function loadPackage(admin: any, packageId: string): Promise<Package | null> {
+  const { data } = await admin
+    .from('coach_packages')
+    .select('*')
+    .eq('id', packageId)
+    .maybeSingle()
+  return (data as Package) || null
+}
+
+// Resolve the number of weeks a plan should span from a package.
+// Prefer the package's duration_weeks; if that's missing but a program template
+// is attached, fall back to the template's data.totalWeeks (so a template-based
+// package like "Beginner 5K — 4 weeks" produces a 4-week plan even if the
+// duration_weeks column wasn't persisted). Defaults to 1 as a last resort.
+async function resolveDurationWeeks(admin: any, pkg: Package): Promise<number> {
+  if (pkg.duration_weeks && pkg.duration_weeks > 0) return pkg.duration_weeks
+  if (pkg.program_template_id) {
+    try {
+      const { data: tmpl } = await admin
+        .from('templates')
+        .select('data')
+        .eq('id', pkg.program_template_id)
+        .maybeSingle()
+      const total = Number(tmpl?.data?.totalWeeks)
+      if (Number.isFinite(total) && total > 0) return total
+    } catch {
+      /* template missing — fall through to default */
+    }
+  }
+  return 1
+}
+
+// Compute the plan's `owed` from a package, mirroring POST /api/plans:
+//   per_session     -> 0 (money lives on the session package)
+//   hybrid          -> programming_cost (fallback: package price)
+//   programming_only-> programming_cost (fallback: package price)
+function planOwedFromPackage(pkg: Package): number {
+  const billingMode = pkg.billing_mode || 'programming_only'
+  const priceDollars = toNumber(pkg.price_cents) / 100
+  const programmingCost =
+    pkg.programming_cost != null && String(pkg.programming_cost) !== ''
+      ? toNumber(pkg.programming_cost)
+      : priceDollars
+  if (billingMode === 'per_session') return 0
+  // hybrid + programming_only both use the programming cost as owed.
+  return programmingCost
+}
+
+// Create a plan (+ session package) for a client from a package recipe.
+// Idempotent-ish: callers guard against double-creation via payment_requests.plan_id.
+export async function createPlanFromPackage(
+  admin: any,
+  params: {
+    clientId: string
+    coachId: string
+    organizationId?: string | null
+    pkg: Package
+    application?: any // optional coach_applications row for goal/race fields
+    startDate?: string | null // coach-chosen program start date (defaults to today)
+  }
+): Promise<PlanFromPackageResult> {
+  const { clientId, coachId, pkg, application } = params
+  const organizationId = params.organizationId ?? pkg.organization_id ?? null
+  const billingMode = pkg.billing_mode || 'programming_only'
+
+  // Dates: start on the coach-chosen date (default today); end = start +
+  // duration_weeks (default 1 week so the NOT NULL end_date is always set).
+  // per_session has no span.
+  const startDate =
+    params.startDate && /^\d{4}-\d{2}-\d{2}$/.test(params.startDate)
+      ? params.startDate
+      : new Date().toISOString().split('T')[0]
+  let endDate = startDate
+  if (billingMode !== 'per_session') {
+    const weeks = await resolveDurationWeeks(admin, pkg)
+    const end = new Date(startDate + 'T00:00:00')
+    // A program is N weeks of training: a 4-week program ending on the last day
+    // of week 4 is start + (N*7 - 1) days. Use N*7 so the window fully contains
+    // all N Monday–Sunday weeks (inclusive of the final week).
+    end.setDate(end.getDate() + weeks * 7)
+    endDate = end.toISOString().split('T')[0]
+  }
+
+  const owed = planOwedFromPackage(pkg)
+  const hasProgram = !!pkg.program_template_id
+
+  // Goal/race metadata from the application, when available. For a renewal
+  // (no application) fall back to the package name so the plan isn't blank —
+  // a blank goal makes the admin UI show "No active plan" even though it exists.
+  const goal = application?.primary_goal || application?.pt_goal || pkg.name || null
+  const targetDistance = application?.target_race || null
+  const injuryNotes = application?.injuries || null
+  // For a template-based program with no explicit race, anchor the program's
+  // week mapping to the plan end date (the create-week flow maps program weeks
+  // backward from race_date || end_date).
+  const raceDate = application?.race_date || (hasProgram ? endDate : null)
+
+  // Build the plan row. Use fallbacks (like /api/plans) so older schemas that
+  // lack the newer columns still get a plan created.
+  const fullInsert: Record<string, any> = {
+    client_id: clientId,
+    start_date: startDate,
+    end_date: endDate,
+    goal,
+    owed,
+    paid: 0,
+    status: 'active',
+    target_distance: targetDistance,
+    race_date: raceDate,
+    injury_notes: injuryNotes,
+    program_template_id: pkg.program_template_id || null,
+    billing_mode: billingMode,
+    source_package_id: pkg.id,
+    // If there's a program template, it still needs loading onto the client;
+    // if there's none, mark as "loaded" so no indicator shows.
+    program_loaded: !hasProgram,
+  }
+
+  let plan: any = null
+  const attempt1 = await admin.from('plans').insert(fullInsert).select('id').single()
+  if (!attempt1.error) {
+    plan = attempt1.data
+  } else {
+    // Retry without the newest columns (source_package_id / program_loaded).
+    const mid = { ...fullInsert }
+    delete mid.source_package_id
+    delete mid.program_loaded
+    const attempt2 = await admin.from('plans').insert(mid).select('id').single()
+    if (!attempt2.error) {
+      plan = attempt2.data
+    } else {
+      // Retry without billing_mode.
+      const mid2 = { ...mid }
+      delete mid2.billing_mode
+      const attempt3 = await admin.from('plans').insert(mid2).select('id').single()
+      if (!attempt3.error) {
+        plan = attempt3.data
+      } else {
+        // Last resort: base columns only.
+        const base = await admin
+          .from('plans')
+          .insert({
+            client_id: clientId,
+            start_date: startDate,
+            end_date: endDate,
+            goal,
+            owed,
+            paid: 0,
+            status: 'active',
+          })
+          .select('id')
+          .single()
+        if (base.error) return { ok: false, error: base.error.message }
+        plan = base.data
+      }
+    }
+  }
+
+  // Session bundle for per_session / hybrid packages.
+  if ((billingMode === 'per_session' || billingMode === 'hybrid') && (pkg.session_count || 0) > 0) {
+    const orgId = organizationId || coachId
+    const owedValue = toNumber(pkg.session_cost)
+    const spInsert: Record<string, any> = {
+      client_id: clientId,
+      organization_id: orgId,
+      coach_id: coachId,
+      plan_id: plan.id,
+      sessions_purchased: pkg.session_count,
+      amount_paid: 0,
+      notes: `Initial package from "${pkg.name || 'package'}"`,
+    }
+    // Try with the richest column set, peeling optional columns (amount_owed,
+    // plan_id) that may not exist on older schemas yet.
+    const spFull = await admin.from('session_packages').insert({ ...spInsert, amount_owed: owedValue })
+    if (spFull.error) {
+      const spNoOwed = await admin.from('session_packages').insert({ ...spInsert, amount_paid: owedValue })
+      if (spNoOwed.error) {
+        // plan_id column may also be missing — last-resort client-wide insert.
+        const { plan_id, ...spNoPlan } = spInsert
+        await admin.from('session_packages').insert({ ...spNoPlan, amount_paid: owedValue })
+      }
+    }
+  }
+
+  // Keep clients.billing_mode in sync (same as /api/plans).
+  if (billingMode && billingMode !== 'programming_only') {
+    try {
+      await admin.from('clients').update({ billing_mode: billingMode }).eq('id', clientId)
+    } catch {
+      /* column may not exist yet */
+    }
+  }
+
+  return { ok: true, planId: plan.id }
+}
+
+// Record a payment against a plan and bump plans.paid — the same shape the
+// coach's "Log Payment" UI writes, so Stripe/offline payments appear in the
+// client's payment history identically.
+//
+// `paymentRequestId` (optional) links the payment to its Stripe request AND
+// guards against double-recording (unique index on payments.payment_request_id).
+export async function recordProgrammingPayment(
+  admin: any,
+  params: {
+    planId: string
+    clientId: string
+    amount: number
+    notes?: string
+    packageId?: string | null
+    paymentRequestId?: string | null
+  }
+): Promise<{ ok: boolean; paymentId?: string; error?: string }> {
+  const { planId, clientId, amount } = params
+  if (!(amount > 0)) return { ok: true } // nothing collected yet (e.g. offline, $0)
+
+  // If this payment_request already produced a payment, don't double-record.
+  if (params.paymentRequestId) {
+    const { data: existing } = await admin
+      .from('payments')
+      .select('id')
+      .eq('payment_request_id', params.paymentRequestId)
+      .maybeSingle()
+    if (existing) return { ok: true, paymentId: existing.id }
+  }
+
+  const base: Record<string, any> = {
+    plan_id: planId,
+    amount,
+    payment_date: new Date().toISOString().split('T')[0],
+    notes: params.notes || null,
+  }
+
+  let payment: any = null
+  const full = await admin
+    .from('payments')
+    .insert({
+      ...base,
+      payment_type: 'programming',
+      client_id: clientId,
+      package_id: params.packageId || null,
+      payment_request_id: params.paymentRequestId || null,
+    })
+    .select('id')
+    .single()
+  if (!full.error) {
+    payment = full.data
+  } else {
+    // Legacy fallback: base columns only.
+    const legacy = await admin.from('payments').insert(base).select('id').single()
+    if (legacy.error) return { ok: false, error: legacy.error.message }
+    payment = legacy.data
+  }
+
+  // Bump the running total on the plan.
+  const { data: plan } = await admin.from('plans').select('paid').eq('id', planId).single()
+  const newPaid = toNumber(plan?.paid) + amount
+  await admin.from('plans').update({ paid: newPaid }).eq('id', planId)
+
+  return { ok: true, paymentId: payment?.id }
+}
+
+// Record a Stripe payment and route it to the RIGHT bucket based on the plan's
+// billing mode, so the client's Account shows it as paid:
+//   programming_only -> plans.paid (programming payment)
+//   per_session      -> session_packages.amount_paid (session payment)
+//   hybrid           -> split: programmingCost -> plan; remainder -> session package
+// Falls back to a programming payment if billing mode can't be determined.
+export async function recordPackagePayment(
+  admin: any,
+  params: {
+    planId: string
+    clientId: string
+    amount: number
+    pkg?: Package | null       // package (for hybrid split / billing mode)
+    notes?: string
+    packageId?: string | null
+    paymentRequestId?: string | null
+  }
+): Promise<{ ok: boolean; paymentId?: string; error?: string }> {
+  const { planId, clientId, amount } = params
+  if (!(amount > 0)) return { ok: true }
+
+  // De-dupe: if this payment_request already recorded a payment, stop.
+  if (params.paymentRequestId) {
+    const { data: existing } = await admin
+      .from('payments')
+      .select('id')
+      .eq('payment_request_id', params.paymentRequestId)
+      .maybeSingle()
+    if (existing) return { ok: true, paymentId: existing.id }
+  }
+
+  // Determine billing mode from the package, else the plan.
+  let billingMode = params.pkg?.billing_mode || null
+  if (!billingMode) {
+    const { data: plan } = await admin.from('plans').select('billing_mode').eq('id', planId).maybeSingle()
+    billingMode = (plan?.billing_mode as any) || 'programming_only'
+  }
+
+  // Compute how much goes to programming vs sessions.
+  let programmingAmount = amount
+  let sessionAmount = 0
+  if (billingMode === 'per_session') {
+    programmingAmount = 0
+    sessionAmount = amount
+  } else if (billingMode === 'hybrid') {
+    const progCost = params.pkg
+      ? (params.pkg.programming_cost != null && String(params.pkg.programming_cost) !== ''
+          ? toNumber(params.pkg.programming_cost)
+          : 0)
+      : 0
+    programmingAmount = Math.min(progCost, amount)
+    sessionAmount = Math.max(0, amount - programmingAmount)
+  }
+
+  let firstPaymentId: string | undefined
+
+  // --- Programming portion -> plans.paid + a programming payment row ---
+  if (programmingAmount > 0) {
+    const rec = await recordProgrammingPayment(admin, {
+      planId,
+      clientId,
+      amount: programmingAmount,
+      notes: params.notes,
+      packageId: params.packageId,
+      paymentRequestId: params.paymentRequestId,
+    })
+    if (!rec.ok) return rec
+    firstPaymentId = rec.paymentId
+  }
+
+  // --- Session portion -> session_packages.amount_paid + a session payment row ---
+  if (sessionAmount > 0) {
+    // Apply to THIS PLAN's session package that still has a balance (newest
+    // first — the one we just created for this purchase), else this plan's
+    // first package. Scope by plan_id so a payment lands on the right plan;
+    // fall back to client-wide if plan_id isn't populated (older schemas).
+    let pkgs: any[] | null = null
+    const byPlan = await admin
+      .from('session_packages')
+      .select('id, amount_paid, amount_owed')
+      .eq('plan_id', planId)
+      .order('purchased_at', { ascending: false })
+    if (!byPlan.error && (byPlan.data || []).length > 0) {
+      pkgs = byPlan.data
+    } else {
+      const byClient = await admin
+        .from('session_packages')
+        .select('id, amount_paid, amount_owed')
+        .eq('client_id', clientId)
+        .order('purchased_at', { ascending: false })
+      pkgs = byClient.data
+    }
+    const target = (pkgs || []).find((p: any) => (toNumber(p.amount_owed) || 0) > (toNumber(p.amount_paid) || 0)) || (pkgs || [])[0]
+    if (target) {
+      const newPaid = toNumber(target.amount_paid) + sessionAmount
+      await admin.from('session_packages').update({ amount_paid: newPaid }).eq('id', target.id)
+    }
+    // Record a session payment row so it shows in history (scoped to the plan).
+    const base: Record<string, any> = {
+      plan_id: planId,
+      amount: sessionAmount,
+      payment_date: new Date().toISOString().split('T')[0],
+      notes: params.notes || null,
+    }
+    const full = await admin
+      .from('payments')
+      .insert({ ...base, payment_type: 'session', client_id: clientId, session_package_id: target?.id || null, package_id: params.packageId || null, payment_request_id: programmingAmount > 0 ? null : (params.paymentRequestId || null) })
+      .select('id')
+      .single()
+    if (!full.error && !firstPaymentId) firstPaymentId = full.data?.id
+    // (If the full insert fails on older schemas, the session balance was still
+    //  bumped above; the history row is best-effort.)
+  }
+
+  return { ok: true, paymentId: firstPaymentId }
+}

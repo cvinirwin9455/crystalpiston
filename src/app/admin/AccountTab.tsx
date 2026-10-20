@@ -18,8 +18,15 @@ type Plan = {
   goalPace: string;
   injuryNotes: string;
   programTemplateId?: string;
+  programLoaded?: boolean;
   raceDateSameAsEnd?: boolean;
   billingMode?: 'programming_only' | 'per_session' | 'hybrid';
+  packageName?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionCancelAt?: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
 };
 
 type ClientData = {
@@ -48,6 +55,25 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [showNewPlan, setShowNewPlan] = useState(false);
+
+  // --- Charge via Stripe (renewal / next package for an existing client) ---
+  const [chargeStripeReady, setChargeStripeReady] = useState(false);
+  const [chargePackages, setChargePackages] = useState<{ id: string; name: string; price_cents: number; currency: string; billing_interval: string }[]>([]);
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [chargePackageId, setChargePackageId] = useState("");       // "" | "__custom__" | pkg id
+  const [chargeCustomName, setChargeCustomName] = useState("");
+  const [chargeCustomAmount, setChargeCustomAmount] = useState("");
+  const [chargeCustomWeeks, setChargeCustomWeeks] = useState("");
+  const [chargeStartDate, setChargeStartDate] = useState(new Date().toISOString().split("T")[0]);
+  // For a monthly (subscription) package: how many months to bill, blank = until cancelled.
+  const [chargeRecurMonths, setChargeRecurMonths] = useState("");
+  const [chargeMethod, setChargeMethod] = useState<"stripe" | "manual">("stripe");
+  const [charging, setCharging] = useState(false);
+  const [chargeMsg, setChargeMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  // Outstanding (pending) renewal charges for this client.
+  const [pendingCharges, setPendingCharges] = useState<{ id: string; token: string; package_name: string | null; amount_cents: number; currency: string }[]>([]);
+  const [pendingRefresh, setPendingRefresh] = useState(0);
+  const [cancelingChargeId, setCancelingChargeId] = useState<string | null>(null);
   const [newPlanStart, setNewPlanStart] = useState("");
   const [newPlanEnd, setNewPlanEnd] = useState("");
   const [newPlanOwed, setNewPlanOwed] = useState("");
@@ -142,8 +168,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             goalPace: p.goal_pace || '',
             injuryNotes: p.injury_notes || '',
             programTemplateId: p.program_template_id || '',
+            programLoaded: p.program_loaded !== false,
             raceDateSameAsEnd: p.race_date_same_as_end !== false,
             billingMode: p.billing_mode || 'programming_only',
+            packageName: p.package_name || null,
+            stripeSubscriptionId: p.stripe_subscription_id || null,
+            subscriptionStatus: p.subscription_status || null,
+            subscriptionCancelAt: p.subscription_cancel_at || null,
+            currentPeriodStart: p.current_period_start || null,
+            currentPeriodEnd: p.current_period_end || null,
           })));
         }
       } catch (err) {
@@ -154,6 +187,136 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     };
     fetchPlans();
   }, [clientData.clientId]);
+
+  // Load Stripe-connected status + the coach's packages (for the Charge modal).
+  useEffect(() => {
+    (async () => {
+      try {
+        const [sRes, pRes] = await Promise.all([
+          fetch(`/api/stripe-connect`),
+          fetch(`/api/coach-packages`),
+        ]);
+        const sData = await sRes.json().catch(() => ({}));
+        const pData = await pRes.json().catch(() => ({}));
+        if (sRes.ok) setChargeStripeReady(!!sData.chargesEnabled);
+        if (pRes.ok) setChargePackages((pData.packages || []).filter((p: any) => p.is_active));
+      } catch { /* non-fatal */ }
+    })();
+  }, []);
+
+  // Load this client's outstanding (pending) renewal charges.
+  useEffect(() => {
+    if (!clientData.clientId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/payment-requests?client=${clientData.clientId}`);
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          const pending = (data.paymentRequests || [])
+            .filter((r: any) => r.status === "pending" && r.client_id === clientData.clientId)
+            .map((r: any) => ({ id: r.id, token: r.token, package_name: r.package_name, amount_cents: r.amount_cents, currency: r.currency }));
+          setPendingCharges(pending);
+        }
+      } catch { /* non-fatal */ }
+    })();
+  }, [clientData.clientId, pendingRefresh]);
+
+  async function copyChargeLink(token: string) {
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/pay/${token}`;
+    try { await navigator.clipboard.writeText(url); setChargeMsg({ text: "Payment link copied.", type: "success" }); }
+    catch { setChargeMsg({ text: `Payment link: ${url}`, type: "success" }); }
+  }
+
+  async function cancelCharge(id: string) {
+    if (!confirm("Cancel this pending payment request? The client's pay link will stop working.")) return;
+    setCancelingChargeId(id);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "cancel" }),
+      });
+      if (res.ok) { setChargeMsg({ text: "Payment request cancelled.", type: "success" }); setPendingRefresh((x) => x + 1); }
+      else { const d = await res.json().catch(() => ({})); setChargeMsg({ text: d.error || "Could not cancel.", type: "error" }); }
+    } finally {
+      setCancelingChargeId(null);
+    }
+  }
+
+  function openChargeModal() {
+    // Default to Stripe when connected, else manual (the only option).
+    setChargeMethod(chargeStripeReady ? "stripe" : "manual");
+    setChargePackageId("");
+    setChargeCustomName("");
+    setChargeCustomAmount("");
+    setChargeCustomWeeks("");
+    setChargeRecurMonths("");
+    setChargeStartDate(new Date().toISOString().split("T")[0]);
+    setChargeMsg(null);
+    setShowChargeModal(true);
+  }
+
+  async function sendCharge() {
+    if (!clientData.clientId) return;
+    const isCustom = chargePackageId === "__custom__";
+    if (!chargePackageId) { setChargeMsg({ text: "Choose a package or a custom amount.", type: "error" }); return; }
+    if (isCustom) {
+      const amt = parseFloat(chargeCustomAmount.replace(/[^0-9.]/g, ""));
+      const wks = parseInt(chargeCustomWeeks.replace(/[^0-9]/g, ""), 10);
+      if (!chargeCustomName.trim()) { setChargeMsg({ text: "Give the charge a name.", type: "error" }); return; }
+      if (!(amt > 0)) { setChargeMsg({ text: "Enter a valid amount.", type: "error" }); return; }
+      if (!(wks > 0)) { setChargeMsg({ text: "Enter the program length in weeks.", type: "error" }); return; }
+    }
+    setCharging(true);
+    setChargeMsg(null);
+    const payload: Record<string, any> = {
+      client_id: clientData.clientId,
+      start_date: chargeStartDate || null,
+      ...(isCustom
+        ? { amount: chargeCustomAmount, custom_name: chargeCustomName.trim(), custom_duration_weeks: chargeCustomWeeks }
+        : { package_id: chargePackageId }),
+      // Only meaningful for a monthly package via Stripe (subscription).
+      ...(!isCustom && chargeRecurMonths.trim() ? { recur_months: chargeRecurMonths } : {}),
+    };
+    try {
+      if (chargeMethod === "manual") {
+        // Collect manually → create the plan now (active); coach logs payments later.
+        payload.manual = true;
+        const res = await fetch("/api/payment-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setChargeMsg({ text: data.error || "Could not create the plan.", type: "error" });
+        } else {
+          setChargeMsg({ text: "Plan created. Use “Log Payment” to record what you collect.", type: "success" });
+          onPlanChange?.();
+          setTimeout(() => { setShowChargeModal(false); window.location.reload(); }, 1200);
+        }
+      } else {
+        // Stripe → send a secure payment link; plan is created when they pay.
+        const res = await fetch("/api/payment-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setChargeMsg({ text: data.error || "Could not send the payment request.", type: "error" });
+        } else {
+          setChargeMsg({ text: `Payment link sent to ${clientData.email}. A new plan is created when they pay.`, type: "success" });
+          setPendingRefresh((x) => x + 1); // show the "Awaiting payment" banner
+          setTimeout(() => setShowChargeModal(false), 1800);
+        }
+      }
+    } catch {
+      setChargeMsg({ text: "Network error.", type: "error" });
+    } finally {
+      setCharging(false);
+    }
+  }
 
   const handleSaveDetails = async () => {
     setSaving(true);
@@ -434,15 +597,155 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
 
       {/* Plans & Payments */}
       <div className="bg-primary/30 border border-white/5 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h4 className="text-gray-400 text-xs font-heading uppercase">Plans & Payments</h4>
-          {/* Only show + New Plan if no active plan exists */}
-          {!plans.some(p => p.status === "active") ? (
-            <button onClick={() => setShowNewPlan(!showNewPlan)} className="text-accent text-xs hover:underline">+ New Plan</button>
-          ) : (
-            <span className="text-gray-500 text-xs italic">Active plan in progress</span>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Single entry point for adding a plan — the modal lets the coach
+                choose Stripe link vs. manual/offline collection. Only when the
+                client has an id. Gated by the one-active-plan rule. */}
+            {clientData.clientId && (
+              !plans.some(p => p.status === "active") ? (
+                <button onClick={openChargeModal} className="text-xs bg-accent/90 hover:bg-accent text-white font-bold px-3 py-1.5 rounded-lg">
+                  + Add plan
+                </button>
+              ) : (
+                <span className="text-gray-500 text-xs italic">Active plan in progress</span>
+              )
+            )}
+          </div>
         </div>
+
+        {/* Charge via Stripe modal */}
+        {showChargeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowChargeModal(false)}>
+            <div className="bg-secondary border border-white/10 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-white font-heading uppercase tracking-wider text-sm">Add plan</h3>
+              <p className="text-gray-400 text-xs mt-1">
+                {chargeMethod === "stripe"
+                  ? <>Email {clientData.name || "this client"} a secure Stripe link. The plan is created when they pay.</>
+                  : <>Create the plan now and collect payment yourself. Log what you collect with “Log Payment”.</>}
+              </p>
+
+              {chargeMsg && (
+                <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${chargeMsg.type === "success" ? "bg-green-500/15 text-green-300 border border-green-500/20" : "bg-red-500/15 text-red-300 border border-red-500/20"}`}>
+                  {chargeMsg.text}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">How will they pay?</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => chargeStripeReady && setChargeMethod("stripe")}
+                      disabled={!chargeStripeReady}
+                      title={chargeStripeReady ? "" : "Connect your Stripe account (Applications tab) to send payment links."}
+                      className={`text-xs font-medium px-3 py-2 rounded-lg border ${chargeMethod === "stripe" ? "bg-accent/20 border-accent/50 text-white" : "bg-white/5 border-white/10 text-gray-300 hover:border-white/20"} ${!chargeStripeReady ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      💳 Send Stripe link
+                    </button>
+                    <button type="button" onClick={() => setChargeMethod("manual")} className={`text-xs font-medium px-3 py-2 rounded-lg border ${chargeMethod === "manual" ? "bg-accent/20 border-accent/50 text-white" : "bg-white/5 border-white/10 text-gray-300 hover:border-white/20"}`}>
+                      ✍️ Collect manually
+                    </button>
+                  </div>
+                  {!chargeStripeReady && (
+                    <p className="text-[11px] text-gray-500 mt-1">Connect Stripe (Applications tab) to send payment links.</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Package</label>
+                  <select value={chargePackageId} onChange={(e) => setChargePackageId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50">
+                    <option value="">Choose…</option>
+                    {chargePackages.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {(p.price_cents / 100).toLocaleString(undefined, { style: "currency", currency: (p.currency || "usd").toUpperCase(), minimumFractionDigits: p.price_cents % 100 === 0 ? 0 : 2 })}{p.billing_interval === "monthly" ? "/mo" : ""}
+                      </option>
+                    ))}
+                    <option value="__custom__">Custom amount (one-time)…</option>
+                  </select>
+                </div>
+
+                {/* Monthly (subscription) package via Stripe: optional month cap. */}
+                {chargeMethod === "stripe" && (() => {
+                  const selPkg = chargePackages.find((p) => p.id === chargePackageId);
+                  if (!selPkg || selPkg.billing_interval !== "monthly") return null;
+                  return (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+                      <p className="text-blue-300 text-xs font-medium mb-1">🔄 Monthly subscription</p>
+                      <label className="block text-xs text-gray-400 mb-1">Bill for how many months? <span className="text-gray-500">(leave blank to continue until you cancel)</span></label>
+                      <input
+                        value={chargeRecurMonths}
+                        onChange={(e) => setChargeRecurMonths(e.target.value.replace(/[^0-9]/g, ""))}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                        placeholder="e.g. 3 — or blank for ongoing"
+                        inputMode="numeric"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">The client is charged every month. {chargeRecurMonths.trim() ? `It stops automatically after ${chargeRecurMonths.trim()} month${chargeRecurMonths.trim() === "1" ? "" : "s"}.` : "It continues until you cancel it from their account."}</p>
+                    </div>
+                  );
+                })()}
+
+                {chargePackageId === "__custom__" && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">What&apos;s it for?</label>
+                      <input value={chargeCustomName} onChange={(e) => setChargeCustomName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Next block" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Amount</label>
+                      <input value={chargeCustomAmount} onChange={(e) => setChargeCustomAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 250" inputMode="decimal" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Weeks</label>
+                      <input value={chargeCustomWeeks} onChange={(e) => setChargeCustomWeeks(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">New plan start date</label>
+                  <input type="date" value={chargeStartDate} onChange={(e) => setChargeStartDate(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 [color-scheme:dark]" />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {chargeMethod === "stripe"
+                      ? "The current active plan (if any) is marked complete when they pay."
+                      : "The current active plan (if any) is marked complete now."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex gap-2">
+                <button onClick={sendCharge} disabled={charging} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-50">
+                  {charging ? "Working…" : chargeMethod === "stripe" ? "Send payment link" : "Create plan"}
+                </button>
+                <button onClick={() => setShowChargeModal(false)} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Outstanding renewal charge(s) awaiting payment */}
+        {pendingCharges.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {pendingCharges.map((c) => {
+              const amt = (c.amount_cents / 100).toLocaleString(undefined, { style: "currency", currency: (c.currency || "usd").toUpperCase(), minimumFractionDigits: c.amount_cents % 100 === 0 ? 0 : 2 });
+              return (
+                <div key={c.id} className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-yellow-300 text-xs font-medium">💳 Awaiting payment — {c.package_name || "Coaching"} · {amt}</p>
+                    <p className="text-yellow-300/70 text-[11px] mt-0.5">A new plan is created when the client pays this link.</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => copyChargeLink(c.token)} className="text-[11px] border border-white/10 text-gray-200 hover:text-white px-2.5 py-1 rounded-lg">Copy link</button>
+                    <button onClick={() => cancelCharge(c.id)} disabled={cancelingChargeId === c.id} className="text-[11px] border border-red-500/30 text-red-300 hover:bg-red-500/10 px-2.5 py-1 rounded-lg disabled:opacity-50">
+                      {cancelingChargeId === c.id ? "…" : "Cancel"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Instruction when trying to create plan while one is active */}
         {plans.some(p => p.status === "active") && showNewPlan && (
@@ -735,12 +1038,19 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
   const [openPaymentForm, setOpenPaymentForm] = useState<null | 'programming' | 'session'>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string; type?: string}[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<{id: string; amount: number; date: string; type?: string; notes?: string | null}[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loggingPayment, setLoggingPayment] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [completionReason, setCompletionReason] = useState("");
   const [completing, setCompleting] = useState(false);
+  // What to do with unused in-person sessions when completing a
+  // per-session / hybrid plan: 'keep' (carry over) or 'close' (deactivate).
+  const [unusedSessionsAction, setUnusedSessionsAction] = useState<'keep' | 'close'>('keep');
+  // Subscription cancellation (monthly recurring plans).
+  const [showCancelSub, setShowCancelSub] = useState(false);
+  const [cancelingSub, setCancelingSub] = useState(false);
+  const [cancelSubMsg, setCancelSubMsg] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState(false);
   const [editGoal, setEditGoal] = useState(plan.goal);
   const [editStartDate, setEditStartDate] = useState(plan.startDate);
@@ -783,16 +1093,32 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
 
   const hasOutstandingBalance = (plan.owed - plan.paid) > 0;
 
+  // Unused in-person sessions on this client (per-session / hybrid plans).
+  const isSessionPlan = plan.billingMode === 'per_session' || plan.billingMode === 'hybrid';
+  const sessionsRemaining = sessionBalance ? Math.max(0, sessionBalance.total - sessionBalance.used) : 0;
+  const hasUnusedSessions = isSessionPlan && sessionBalanceLoaded && sessionsRemaining > 0;
+  // Approximate per-session value for display (based on what's been paid).
+  const perSessionValue = sessionBalance && sessionBalance.total > 0
+    ? sessionBalance.totalPaid / sessionBalance.total
+    : 0;
+  const unusedSessionsValue = perSessionValue * sessionsRemaining;
+
+  // "Start date has passed" — an active plan whose start date is in the past
+  // (e.g. a client paid late). Nudge the coach to adjust it via Edit Plan.
+  const startPassed = (() => {
+    if (plan.status !== "active" || !plan.startDate) return false;
+    const start = new Date(plan.startDate + "T00:00:00");
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return start.getTime() < today.getTime();
+  })();
+
   // Fetch payments from API on mount
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        // For session/hybrid plans, fetch ALL payments (programming + session) by client.
-        // For programming-only, fetch by plan.
-        const hasSessions = plan.billingMode === 'per_session' || plan.billingMode === 'hybrid';
-        const url = hasSessions
-          ? `/api/payments?client_id=${plan.clientId}`
-          : `/api/payments?plan_id=${plan.id}`;
+        // Payments (programming + session) are scoped to this plan so each
+        // plan's history stays isolated.
+        const url = `/api/payments?plan_id=${plan.id}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
@@ -801,6 +1127,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
             amount: parseFloat(p.amount),
             date: p.payment_date,
             type: p.payment_type || 'programming',
+            notes: p.notes || null,
           })));
         }
       } catch (err) {
@@ -817,7 +1144,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     if (plan.billingMode !== 'per_session' && plan.billingMode !== 'hybrid') return;
     const fetchSessionBalance = async () => {
       try {
-        const res = await fetch(`/api/session-packages?client_id=${plan.clientId}`);
+        const res = await fetch(`/api/session-packages?client_id=${plan.clientId}&plan_id=${plan.id}`);
         if (res.ok) {
           const data = await res.json();
           const totalPurchased = (data.packages || []).reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0);
@@ -859,7 +1186,9 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentType: type,
-          planId: isSession ? null : plan.id,
+          // Scope both programming and session payments to this plan so each
+          // plan's payment history and balance stay isolated.
+          planId: plan.id,
           clientId: plan.clientId,
           amount: paymentAmount,
           paymentDate: paymentDate,
@@ -911,11 +1240,14 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
 
   const renderPaymentHistory = (payments: typeof paymentHistory) => (
     payments.length > 0 ? (
-      <div className="mt-2 space-y-1">
+      <div className="mt-2 space-y-1.5">
         {payments.map((p) => (
-          <div key={p.id} className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">{formatDate(p.date)}</span>
-            <span className="text-green-400 font-medium">+${p.amount.toFixed(2)}</span>
+          <div key={p.id} className="flex items-start justify-between text-xs gap-3">
+            <div className="min-w-0">
+              <span className="text-gray-400">{formatDate(p.date)}</span>
+              {p.notes && <span className="block text-gray-500 text-[11px] truncate">{p.notes}</span>}
+            </div>
+            <span className="text-green-400 font-medium flex-shrink-0">+${p.amount.toFixed(2)}</span>
           </div>
         ))}
       </div>
@@ -946,10 +1278,26 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         } catch (schedErr) {
           console.error("Failed to clean up recurring schedules on plan completion:", schedErr);
         }
+
+        // If the client has unused sessions and the coach chose to close them
+        // out, deactivate all their active session packages (balance -> 0).
+        if (hasUnusedSessions && unusedSessionsAction === 'close') {
+          try {
+            await fetch('/api/session-packages', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'close_all', clientId: plan.clientId, planId: plan.id }),
+            });
+            setSessionBalanceRefresh((n) => n + 1);
+          } catch (closeErr) {
+            console.error("Failed to close out unused sessions on plan completion:", closeErr);
+          }
+        }
       }
 
       setShowCompleteConfirm(false);
       setCompletionReason("");
+      setUnusedSessionsAction('keep');
     } catch (err) {
       console.error("Failed to complete plan:", err);
     } finally {
@@ -957,29 +1305,139 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     }
   };
 
+  const handleCancelSubscription = async (immediate: boolean) => {
+    setCancelingSub(true);
+    setCancelSubMsg(null);
+    try {
+      const res = await fetch('/api/subscriptions/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: plan.id, immediate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCancelSubMsg(data.error || 'Could not cancel the subscription.');
+      } else {
+        setCancelSubMsg(immediate
+          ? 'Subscription cancelled. The plan will be marked complete.'
+          : 'Subscription will stop at the end of the current paid month.');
+        setShowCancelSub(false);
+        // Reload so the plan reflects the new subscription status.
+        setTimeout(() => window.location.reload(), 1400);
+      }
+    } catch {
+      setCancelSubMsg('Network error.');
+    } finally {
+      setCancelingSub(false);
+    }
+  };
+
+  // A subscription plan is one that has a Stripe subscription attached.
+  const isSubscriptionPlan = !!plan.stripeSubscriptionId;
+  const hasActiveSubscription = !!plan.stripeSubscriptionId
+    && plan.subscriptionStatus !== 'canceled';
+  // Current billing period label, e.g. "Oct 17 — Nov 16" (end = period end
+  // minus one day so it reads as the last covered day, not the next bill date).
+  const subscriptionPeriodLabel = (() => {
+    if (!isSubscriptionPlan || !plan.currentPeriodStart || !plan.currentPeriodEnd) return null;
+    const start = new Date(plan.currentPeriodStart);
+    const end = new Date(plan.currentPeriodEnd);
+    end.setDate(end.getDate() - 1); // last covered day
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    const fmt = (d: Date) => {
+      const day = d.getDate();
+      const month = d.toLocaleDateString('en-US', { month: 'long' });
+      const year = d.getFullYear();
+      return dateFormat === 'DD/MM/YYYY' ? `${day} ${month} ${year}` : `${month} ${day}, ${year}`;
+    };
+    return `${fmt(start)} — ${fmt(end)}`;
+  })();
+  // Dates shown on the plan: current billing period for a subscription (so it
+  // rolls each month), otherwise the plan's fixed start→end range.
+  const planDateRange = (isSubscriptionPlan && subscriptionPeriodLabel)
+    ? subscriptionPeriodLabel
+    : `${formatDate(plan.startDate)} — ${formatDate(plan.endDate)}`;
+  const subBadge = (() => {
+    if (!plan.stripeSubscriptionId) return null;
+    const s = plan.subscriptionStatus;
+    if (s === 'past_due') return { text: '🔄 Subscription · payment failed', cls: 'bg-red-500/20 text-red-300' };
+    if (s === 'canceling') return { text: '🔄 Subscription · ending', cls: 'bg-amber-500/20 text-amber-300' };
+    if (s === 'canceled') return { text: '🔄 Subscription · ended', cls: 'bg-gray-500/20 text-gray-400' };
+    return { text: '🔄 Monthly subscription', cls: 'bg-blue-500/20 text-blue-300' };
+  })();
+
   return (
     <div className={`border rounded-lg p-4 mb-3 ${plan.status === "active" ? "border-accent/20" : "border-white/5"}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 flex-wrap">
-          {plan.goal && <span className="text-white text-sm font-medium">{plan.goal}</span>}
-          {!plan.goal && <span className="text-white text-sm font-medium">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
-          {plan.goal && <span className="text-gray-400 text-xs">{formatDate(plan.startDate)} — {formatDate(plan.endDate)}</span>}
+          {/* Prefer the purchased package name as the plan's title; fall back to
+              the goal, then to the date range. */}
+          {plan.packageName
+            ? <span className="text-white text-sm font-medium">{plan.packageName}</span>
+            : plan.goal
+              ? <span className="text-white text-sm font-medium">{plan.goal}</span>
+              : <span className="text-white text-sm font-medium">{planDateRange}</span>}
+          {/* Secondary: goal (if the title is the package name) then the dates.
+              For a subscription the dates are the CURRENT billing period. */}
+          {plan.packageName && plan.goal && <span className="text-gray-400 text-xs">{plan.goal}</span>}
+          {(plan.packageName || plan.goal) && (
+            <span className="text-gray-400 text-xs">
+              {isSubscriptionPlan && subscriptionPeriodLabel && <span className="text-blue-300/70">Current month: </span>}
+              {planDateRange}
+            </span>
+          )}
           <span className={`text-xs px-2 py-0.5 rounded-full ${plan.status === "active" ? "bg-green-500/20 text-green-400" : plan.status === "completed" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"}`}>
             {plan.status}
           </span>
+          {subBadge && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${subBadge.cls}`}>{subBadge.text}</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {plan.status === "active" && (
-            <>
-              <button onClick={() => setEditingPlan(!editingPlan)} className="text-gray-500 text-xs hover:text-accent">{editingPlan ? "Cancel Edit" : "Edit Plan"}</button>
-              <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
-            </>
+            isSubscriptionPlan ? (
+              // A subscription's lifecycle is driven by Stripe — the only
+              // action is cancelling it (which completes the plan when it ends).
+              // Edit Plan / Mark Complete don't apply here.
+              hasActiveSubscription && plan.subscriptionStatus !== 'canceling' ? (
+                <button onClick={() => { setShowCancelSub(true); setCancelSubMsg(null); }} className="text-gray-500 text-xs hover:text-red-400">Cancel Subscription</button>
+              ) : null
+            ) : (
+              <>
+                <button onClick={() => setEditingPlan(!editingPlan)} className="text-gray-500 text-xs hover:text-accent">{editingPlan ? "Cancel Edit" : "Edit Plan"}</button>
+                <button onClick={() => setShowCompleteConfirm(true)} className="text-gray-500 text-xs hover:text-white">Mark Complete</button>
+              </>
+            )
           )}
           {plan.status === "completed" && (
             <button onClick={() => onUpdate(plan.id, { status: "active" })} className="text-gray-500 text-xs hover:text-blue-400">Reactivate Plan</button>
           )}
         </div>
       </div>
+
+      {/* Start-date-has-passed indicator — the plan's start date is in the past
+          (e.g. a late payment). Prompt the coach to adjust it via Edit Plan. */}
+      {startPassed && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2.5 mb-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 min-w-0">
+              <span className="text-base leading-none mt-0.5">⚠️</span>
+              <div className="min-w-0">
+                <p className="text-amber-200 text-xs font-medium">Start date has passed</p>
+                <p className="text-amber-300/70 text-[11px] mt-0.5">
+                  This plan was set to start {formatDate(plan.startDate)}. If the client started late, update the start date.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setEditingPlan(true)}
+              className="flex-shrink-0 text-[11px] bg-amber-600/80 hover:bg-amber-600 text-white font-medium px-2.5 py-1 rounded-lg"
+            >
+              Adjust dates
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Plan Form */}
       {editingPlan && plan.status === "active" && (
@@ -1081,9 +1539,50 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
         </div>
       )}
 
+      {/* Cancel subscription dialog */}
+      {showCancelSub && (
+        <div className="bg-secondary/50 border border-red-500/20 rounded-lg p-4 mb-3">
+          <p className="text-red-300 text-sm font-medium mb-1">Cancel this monthly subscription?</p>
+          <p className="text-gray-300 text-xs mb-3">Choose how to stop billing. The plan is marked complete when the subscription actually ends.</p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => handleCancelSubscription(false)} disabled={cancelingSub} className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+              {cancelingSub ? "Working…" : "Stop at end of paid month"}
+            </button>
+            <button onClick={() => handleCancelSubscription(true)} disabled={cancelingSub} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
+              {cancelingSub ? "Working…" : "Cancel immediately"}
+            </button>
+            <button onClick={() => setShowCancelSub(false)} className="text-gray-400 text-xs hover:text-white px-2">Keep subscription</button>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-2">Stop at end of paid month: the client keeps access through the month they&apos;ve already paid for. Cancel immediately: billing and access stop now.</p>
+        </div>
+      )}
+      {cancelSubMsg && !showCancelSub && (
+        <p className="text-xs text-gray-400 mb-3">{cancelSubMsg}</p>
+      )}
+
       {/* Completion confirmation dialog */}
       {showCompleteConfirm && (
         <div className="bg-secondary/50 border border-white/10 rounded-lg p-4 mb-3">
+          {/* Unused in-person sessions — ask the coach what to do with them. */}
+          {hasUnusedSessions && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-3">
+              <p className="text-blue-300 text-sm font-medium mb-1">
+                {sessionsRemaining} unused in-person session{sessionsRemaining === 1 ? '' : 's'}
+                {unusedSessionsValue > 0 && <span className="text-blue-300/70"> (~${unusedSessionsValue.toFixed(2)} value)</span>}
+              </p>
+              <p className="text-gray-300 text-xs mb-3">This client still has sessions on their balance. What should happen to them when this plan is completed?</p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="unused-sessions" checked={unusedSessionsAction === 'keep'} onChange={() => setUnusedSessionsAction('keep')} className="mt-0.5" />
+                  <span className="text-gray-200 text-xs"><span className="font-medium">Keep them active</span> — the balance carries over to their next plan.</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="unused-sessions" checked={unusedSessionsAction === 'close'} onChange={() => setUnusedSessionsAction('close')} className="mt-0.5" />
+                  <span className="text-gray-200 text-xs"><span className="font-medium">Close them out</span> — mark the remaining sessions inactive (balance goes to 0). You can reopen them later.</span>
+                </label>
+              </div>
+            </div>
+          )}
           {hasOutstandingBalance ? (
             <>
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
@@ -1104,7 +1603,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                 <button onClick={handleCompletePlan} disabled={!completionReason.trim() || completing} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
                   {completing ? "Completing..." : "Complete Plan"}
                 </button>
-                <button onClick={() => { setShowCompleteConfirm(false); setCompletionReason(""); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                <button onClick={() => { setShowCompleteConfirm(false); setCompletionReason(""); setUnusedSessionsAction('keep'); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
               </div>
             </>
           ) : (
@@ -1114,7 +1613,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
                 <button onClick={handleCompletePlan} disabled={completing} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-xs disabled:opacity-50">
                   {completing ? "Completing..." : "Yes, Complete Plan"}
                 </button>
-                <button onClick={() => setShowCompleteConfirm(false)} className="text-gray-400 text-xs hover:text-white">Cancel</button>
+                <button onClick={() => { setShowCompleteConfirm(false); setUnusedSessionsAction('keep'); }} className="text-gray-400 text-xs hover:text-white">Cancel</button>
               </div>
             </>
           )}
@@ -1279,10 +1778,10 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null);
 
-  // Fetch existing packages and balance
+  // Fetch existing packages and balance (scoped to this plan)
   const fetchPackages = async () => {
     try {
-      const res = await fetch(`/api/session-packages?client_id=${clientId}`);
+      const res = await fetch(`/api/session-packages?client_id=${clientId}&plan_id=${planId}`);
       if (res.ok) {
         const data = await res.json();
         setPackages(data.packages || []);
@@ -1297,7 +1796,7 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
 
   useEffect(() => {
     fetchPackages();
-  }, [clientId]);
+  }, [clientId, planId]);
 
   const handleAddPackage = async () => {
     if (!sessionCount || parseInt(sessionCount) <= 0) return;
@@ -1308,6 +1807,7 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId,
+          planId,
           sessionsPurchased: parseInt(sessionCount),
           amountOwed: amountOwed || "0",
           amountPaid: amountPaid || "0",

@@ -21,6 +21,10 @@ type Application = {
   injuries: string | null;
   why_coaching: string | null;
   plan_interest: string | null;
+  selected_package_id: string | null;
+  selected_package_name: string | null;
+  selected_package_price_cents: number | null;
+  selected_package_billing_interval: string | null;
   interested_types: string[] | null;
   interested_formats: string[] | null;
   pt_goal: string | null;
@@ -31,6 +35,10 @@ type Application = {
   status: "pending" | "accepted" | "declined";
   created_at: string;
   reviewed_at: string | null;
+  payment_status: "pending" | "paid" | "cancelled" | "expired" | null;
+  payment_token: string | null;
+  payment_request_id: string | null;
+  payment_amount_cents: number | null;
 };
 
 type Page = {
@@ -43,8 +51,17 @@ type Page = {
   offer_formats: string[] | null;
 };
 
-const TYPE_LABELS: Record<string, string> = { running: "Running coaching", personal_training: "Personal training" };
-const FORMAT_LABELS: Record<string, string> = { programming: "Programming only (remote)", in_person: "In-person training" };
+const TYPE_LABELS: Record<string, string> = { running: "Running coaching", personal_training: "Strength / Cross-Training" };
+const FORMAT_LABELS: Record<string, string> = { programming: "Programming only (remote)", in_person: "In-Person / Personal Training" };
+
+function formatPrice(cents: number, interval: string | null): string {
+  const amount = (cents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  });
+  return interval === 'monthly' ? `${amount}/mo` : amount;
+}
 
 const SITE = typeof window !== "undefined" ? window.location.origin : "https://www.firstmilecoach.com";
 
@@ -75,6 +92,8 @@ function scopeBody(): Record<string, string> {
 export default function ApplicationsTab() {
   const [apps, setApps] = useState<Application[]>([]);
   const [page, setPage] = useState<Page | null>(null);
+  const [packages, setPackages] = useState<{ id: string; name: string; price_cents: number; currency: string; billing_interval: string; is_active: boolean }[]>([]);
+  const [stripeReady, setStripeReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "accepted" | "declined" | "all">("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -82,6 +101,35 @@ export default function ApplicationsTab() {
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Setup modal shown before accepting / requesting payment. Collects the
+  // program start date + whether to request the assessment and (for women)
+  // menstrual cycle tracking.
+  const [setupFor, setSetupFor] = useState<{ app: Application; mode: "accept" | "request_payment" } | null>(null);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [setupStartDate, setSetupStartDate] = useState(todayStr);
+  const [setupRequestAssessment, setSetupRequestAssessment] = useState(false);
+  const [setupRequestCycle, setSetupRequestCycle] = useState(false);
+  // The package the coach will actually use for this client. Values:
+  //   "" (no package / custom plan the coach builds by hand),
+  //   "__custom__" (a custom one-time charge — amount typed below), or
+  //   a real package id.
+  const [setupPackageId, setSetupPackageId] = useState<string>("");
+  const [setupCustomName, setSetupCustomName] = useState<string>("");
+  const [setupCustomAmount, setSetupCustomAmount] = useState<string>("");
+  const [setupCustomWeeks, setSetupCustomWeeks] = useState<string>("");
+
+  function openSetup(app: Application, mode: "accept" | "request_payment") {
+    setSetupFor({ app, mode });
+    setSetupStartDate(todayStr);
+    setSetupRequestAssessment(false);
+    setSetupRequestCycle(false);
+    setSetupPackageId(app.selected_package_id || "");
+    setSetupCustomName("");
+    setSetupCustomAmount("");
+    setSetupCustomWeeks("");
+    setMsg(null);
+  }
 
   // Editable settings form state
   const [editSlug, setEditSlug] = useState("");
@@ -100,13 +148,19 @@ export default function ApplicationsTab() {
     setLoading(true);
     try {
       const sq = scopeQuery();
-      const [appsRes, pageRes] = await Promise.all([
+      const [appsRes, pageRes, pkgRes, stripeRes] = await Promise.all([
         fetch(`/api/coach-applications${sq}`),
         fetch(`/api/application-page${sq}`),
+        fetch(`/api/coach-packages${sq}`),
+        fetch(`/api/stripe-connect${sq}`),
       ]);
       const appsData = await appsRes.json().catch(() => ({}));
       const pageData = await pageRes.json().catch(() => ({}));
+      const pkgData = await pkgRes.json().catch(() => ({}));
+      const stripeData = await stripeRes.json().catch(() => ({}));
       if (appsRes.ok) setApps(appsData.applications || []);
+      if (pkgRes.ok) setPackages((pkgData.packages || []).filter((p: any) => p.is_active));
+      if (stripeRes.ok) setStripeReady(!!stripeData.chargesEnabled);
       if (pageRes.ok && pageData.page) {
         setPage(pageData.page);
         setEditSlug(pageData.page.slug || "");
@@ -136,33 +190,187 @@ export default function ApplicationsTab() {
     }
   }
 
-  async function act(id: string, action: "accept" | "decline") {
-    if (action === "decline" && !confirm("Decline this application? The applicant will not be notified and no account is created.")) return;
-    setActingId(id);
+  async function copyPayLink(a: Application) {
+    if (!a.payment_token) return;
+    const url = `${SITE}/pay/${a.payment_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setMsg({ text: "Payment link copied to clipboard.", type: "success" });
+    } catch {
+      setMsg({ text: `Payment link: ${url}`, type: "success" });
+    }
+  }
+
+  type SetupOpts = {
+    startDate: string;
+    requestAssessment: boolean;
+    requestCycleTracking: boolean;
+    packageId: string; // "" | "__custom__" | <package id>
+    customName: string;
+    customAmount: string;
+    customWeeks: string;
+  };
+
+  async function requestPayment(a: Application, opts: SetupOpts) {
+    const isCustom = opts.packageId === "__custom__";
+    if (!opts.packageId) {
+      setMsg({ text: "Choose a package or a custom amount to charge. To take no payment, use 'Accept' instead.", type: "error" });
+      return;
+    }
+    if (isCustom) {
+      const amt = parseFloat(opts.customAmount.replace(/[^0-9.]/g, ""));
+      const wks = parseInt(opts.customWeeks.replace(/[^0-9]/g, ""), 10);
+      if (!opts.customName.trim()) { setMsg({ text: "Give the custom charge a name (e.g. 'Custom coaching').", type: "error" }); return; }
+      if (!(amt > 0)) { setMsg({ text: "Enter a valid custom amount.", type: "error" }); return; }
+      if (!(wks > 0)) { setMsg({ text: "Enter the program length in weeks.", type: "error" }); return; }
+    }
+    setActingId(a.id);
     setMsg(null);
     try {
-      const res = await fetch("/api/coach-applications", {
-        method: "PATCH",
+      const res = await fetch("/api/payment-requests", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action, ...scopeBody() }),
+        body: JSON.stringify({
+          application_id: a.id,
+          // Custom one-time charge sends amount + name (no package_id);
+          // otherwise the chosen package id.
+          ...(isCustom
+            ? { amount: opts.customAmount, custom_name: opts.customName.trim(), custom_duration_weeks: opts.customWeeks }
+            : { package_id: opts.packageId }),
+          start_date: opts.startDate || null,
+          request_assessment: opts.requestAssessment,
+          request_cycle_tracking: opts.requestCycleTracking,
+          ...scopeBody(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMsg({ text: data.error || "Action failed", type: "error" });
+        setMsg({ text: data.error || "Could not create payment request.", type: "error" });
       } else {
         setMsg({
-          text: action === "accept"
-            ? (data.message || "Application accepted — client account created.")
-            : "Application declined.",
+          text: `Payment request sent to ${a.email}. They'll receive an email to pay.`,
           type: "success",
         });
-        setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status: data.status } : a)));
+        await load(); // refresh so the "Awaiting payment" badge appears
       }
     } catch {
       setMsg({ text: "Network error", type: "error" });
     } finally {
       setActingId(null);
     }
+  }
+
+  // Cancel a pending payment request (client decided not to proceed).
+  async function cancelPaymentRequest(a: Application) {
+    if (!confirm(`Cancel the payment request for ${a.full_name}? Their pay link will stop working. You can send a new request later if they change their mind.`)) return;
+    setActingId(a.id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: a.payment_request_id, action: "cancel", ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg({ text: data.error || "Could not cancel the request.", type: "error" });
+      else { setMsg({ text: `Payment request for ${a.full_name} cancelled.`, type: "success" }); await load(); }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  // Re-send an existing payment request's email (no setup modal needed).
+  async function resendPayment(a: Application) {
+    if (!a.selected_package_id) return;
+    setActingId(a.id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: a.id, package_id: a.selected_package_id, ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg({ text: data.error || "Could not resend.", type: "error" });
+      else { setMsg({ text: `Payment email re-sent to ${a.email}.`, type: "success" }); await load(); }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function acceptApp(a: Application, opts: SetupOpts) {
+    setActingId(a.id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/coach-applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: a.id,
+          action: "accept",
+          start_date: opts.startDate || null,
+          request_assessment: opts.requestAssessment,
+          request_cycle_tracking: opts.requestCycleTracking,
+          // "" or "__custom__" on the no-payment accept path means no package →
+          // coach builds a custom plan manually (custom *charges* go via Stripe).
+          package_id: opts.packageId && opts.packageId !== "__custom__" ? opts.packageId : null,
+          ...scopeBody(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({ text: data.error || "Action failed", type: "error" });
+      } else {
+        setMsg({ text: data.message || "Application accepted — client account created.", type: "success" });
+        setApps((prev) => prev.map((x) => (x.id === a.id ? { ...x, status: data.status } : x)));
+      }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function decline(id: string) {
+    if (!confirm("Decline this application? The applicant will not be notified and no account is created.")) return;
+    setActingId(id);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/coach-applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "decline", ...scopeBody() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setMsg({ text: data.error || "Action failed", type: "error" });
+      else { setMsg({ text: "Application declined.", type: "success" }); setApps((prev) => prev.map((x) => (x.id === id ? { ...x, status: data.status } : x))); }
+    } catch {
+      setMsg({ text: "Network error", type: "error" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  // Confirm the setup modal → run the right action with the chosen options.
+  async function confirmSetup() {
+    if (!setupFor) return;
+    const { app, mode } = setupFor;
+    const opts: SetupOpts = {
+      startDate: setupStartDate,
+      requestAssessment: setupRequestAssessment,
+      requestCycleTracking: setupRequestCycle,
+      packageId: setupPackageId,
+      customName: setupCustomName,
+      customAmount: setupCustomAmount,
+      customWeeks: setupCustomWeeks,
+    };
+    setSetupFor(null);
+    if (mode === "accept") await acceptApp(app, opts);
+    else await requestPayment(app, opts);
   }
 
   async function saveSettings() {
@@ -345,13 +553,39 @@ export default function ApplicationsTab() {
                     </button>
                     {a.status === "pending" && (
                       <>
-                        <button onClick={() => act(a.id, "accept")} disabled={actingId === a.id} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
-                          {actingId === a.id ? "…" : "Accept"}
-                        </button>
-                        <button onClick={() => act(a.id, "decline")} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
-                          Decline
-                        </button>
+                        {a.payment_status === "pending" ? (
+                          // A payment request is out — awaiting payment.
+                          <>
+                            <span className="text-[11px] px-2 py-1 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 whitespace-nowrap">💳 Awaiting payment</span>
+                            <button onClick={() => copyPayLink(a)} className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg">
+                              Copy pay link
+                            </button>
+                            <button onClick={() => resendPayment(a)} disabled={actingId === a.id} title="Re-send the payment email." className="text-xs border border-white/10 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              {actingId === a.id ? "…" : "Resend"}
+                            </button>
+                            <button onClick={() => cancelPaymentRequest(a)} disabled={actingId === a.id} title="Cancel this payment request — the pay link will stop working." className="text-xs border border-red-500/30 text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              {actingId === a.id ? "…" : "Cancel request"}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {stripeReady && (
+                              <button onClick={() => openSetup(a, "request_payment")} disabled={actingId === a.id} title="Choose a package or custom amount, then email the applicant a secure Stripe payment link. Their account is created once they pay." className="bg-accent hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                                {actingId === a.id ? "…" : "Request payment"}
+                              </button>
+                            )}
+                            <button onClick={() => openSetup(a, "accept")} disabled={actingId === a.id} title="Create the client's account now without taking payment." className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              {actingId === a.id ? "…" : "Accept (no payment)"}
+                            </button>
+                            <button onClick={() => decline(a.id)} disabled={actingId === a.id} className="border border-red-500/30 text-red-300 hover:bg-red-500/10 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50">
+                              Decline
+                            </button>
+                          </>
+                        )}
                       </>
+                    )}
+                    {a.status === "accepted" && a.payment_status === "paid" && (
+                      <span className="text-[11px] px-2 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-500/20 whitespace-nowrap">✓ Paid</span>
                     )}
                   </div>
                 </div>
@@ -370,7 +604,14 @@ export default function ApplicationsTab() {
                     <Detail label="Days available" value={a.days_available} />
                     <Detail label="Current PRs" value={a.current_prs} />
                     <Detail label="Injuries / limitations" value={a.injuries} />
-                    <Detail label="Plan interested in" value={a.plan_interest} />
+                    {a.selected_package_name ? (
+                      <Detail 
+                        label="Package selected" 
+                        value={`${a.selected_package_name}${a.selected_package_price_cents ? ` — ${formatPrice(a.selected_package_price_cents, a.selected_package_billing_interval)}` : ''}`} 
+                      />
+                    ) : (
+                      <Detail label="Plan interested in" value={a.plan_interest} />
+                    )}
                     <div className="sm:col-span-2">
                       <Detail label="Why coaching?" value={a.why_coaching} />
                     </div>
@@ -382,6 +623,97 @@ export default function ApplicationsTab() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ---- Setup modal (shown before Accept / Request payment) ---- */}
+      {setupFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSetupFor(null)}>
+          <div className="bg-secondary border border-white/10 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-white font-heading uppercase tracking-wider text-sm">
+              {setupFor.mode === "accept" ? "Accept & set up" : "Request payment & set up"}
+            </h3>
+            <p className="text-gray-400 text-xs mt-1">
+              {setupFor.mode === "accept"
+                ? `Create ${setupFor.app.full_name}'s account now (no payment).`
+                : `Email ${setupFor.app.full_name} a secure Stripe link. Their account is created once they pay.`}
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Package</label>
+                <select
+                  value={setupPackageId}
+                  onChange={(e) => setSetupPackageId(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                >
+                  <option value="">No package — I&apos;ll set up a custom plan</option>
+                  {packages.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {formatPrice(p.price_cents, p.billing_interval)}{p.id === setupFor.app.selected_package_id ? " (their choice)" : ""}
+                    </option>
+                  ))}
+                  {setupFor.mode === "request_payment" && (
+                    <option value="__custom__">Custom amount (one-time)…</option>
+                  )}
+                </select>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {setupFor.mode === "request_payment"
+                    ? "The client is charged for this. Change it if you agreed on something different, or choose a custom one-time amount."
+                    : "Creates the plan from this package. Choose \u201CNo package\u201D to build a custom plan by hand on their Account page."}
+                </p>
+              </div>
+
+              {/* Custom one-time charge (request-payment path only) */}
+              {setupFor.mode === "request_payment" && setupPackageId === "__custom__" && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">What&apos;s it for?</label>
+                    <input value={setupCustomName} onChange={(e) => setSetupCustomName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. Custom coaching" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Amount (one-time)</label>
+                    <input value={setupCustomAmount} onChange={(e) => setSetupCustomAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 250" inputMode="decimal" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Program length (weeks)</label>
+                    <input value={setupCustomWeeks} onChange={(e) => setSetupCustomWeeks(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 12" inputMode="numeric" />
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Program start date</label>
+                <input
+                  type="date"
+                  value={setupStartDate}
+                  onChange={(e) => setSetupStartDate(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  This is the date the plan starts on the client&apos;s Account page.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={setupRequestAssessment} onChange={(e) => setSetupRequestAssessment(e.target.checked)} className="accent-accent mt-0.5" />
+                <span>Request the health assessment from the client</span>
+              </label>
+
+              {setupFor.app.sex === "female" && (
+                <label className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+                  <input type="checkbox" checked={setupRequestCycle} onChange={(e) => setSetupRequestCycle(e.target.checked)} className="accent-accent mt-0.5" />
+                  <span>Request menstrual cycle tracking (client will be asked to consent)</span>
+                </label>
+              )}
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button onClick={confirmSetup} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm">
+                {setupFor.mode === "accept" ? "Accept client" : "Send payment request"}
+              </button>
+              <button onClick={() => setSetupFor(null)} className="text-gray-400 hover:text-white text-sm px-3">Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

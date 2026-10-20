@@ -36,26 +36,33 @@ export async function POST(request: Request) {
       .eq('email', email)
       .single()
 
-    // Determine brand: use the brand passed from the client (based on hostname),
-    // or fall back to the user's org if available.
-    // Default the reset LINK domain to First Mile (the management app lives there now;
-    // the Crystal domain only serves marketing and redirects platform routes anyway).
+    // Determine brand (controls the email's logo/colours only).
     let brand: EmailBrand = 'first-mile'
-    let domain = 'www.firstmilecoach.com'
-
     if (brandSlug === 'first-mile') {
       brand = 'first-mile'
-      domain = 'www.firstmilecoach.com'
     } else if (userRecord?.organization_id) {
-      const orgBrand = getEmailBrandFromOrgId(userRecord.organization_id)
-      brand = orgBrand
-      if (orgBrand === 'first-mile') {
-        domain = 'www.firstmilecoach.com'
-      }
+      brand = getEmailBrandFromOrgId(userRecord.organization_id)
+    }
+
+    // Resolve the LINK base URL. CRITICAL: the reset link must point back to the
+    // environment the request came from (staging/preview stays on staging), not
+    // always production. Prefer an explicit base (set to the staging URL on the
+    // preview deployment), then the request origin, then the production domain.
+    const explicitBase = process.env.STRIPE_CONNECT_REDIRECT_BASE || process.env.NEXT_PUBLIC_SITE_URL
+    let baseUrl: string
+    if (explicitBase) {
+      baseUrl = explicitBase.replace(/\/$/, '')
+    } else {
+      let originBase: string | null = null
+      try {
+        const origin = new URL(request.url).origin
+        if (origin && !origin.includes('localhost')) originBase = origin.replace(/\/$/, '')
+      } catch { /* fall through */ }
+      baseUrl = originBase || 'https://www.firstmilecoach.com'
     }
 
     // Generate a password recovery link without sending Supabase's built-in email
-    const redirectUrl = `https://${domain}/auth/callback?next=/reset-password`
+    const redirectUrl = `${baseUrl}/auth/callback?next=/reset-password`
 
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: 'recovery',
@@ -72,7 +79,7 @@ export async function POST(request: Request) {
 
     // Build the reset URL using token_hash format
     const hashedToken = linkData.properties.hashed_token
-    const resetUrl = `https://${domain}/auth/callback?token_hash=${hashedToken}&type=recovery&next=/reset-password`
+    const resetUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=recovery&next=/reset-password`
 
     // Get user's first name for the email
     const firstName = userRecord?.name?.split(' ')[0] || ''

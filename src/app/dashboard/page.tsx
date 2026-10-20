@@ -2473,7 +2473,7 @@ export default function DashboardPage() {
                                                 </div>
                                               </div>
                                               <div className="text-right flex items-center gap-2">
-                                                {w.miles != null && w.miles > 0 ? <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
+                                                {(w.type === 'run' || w.type === 'walk') && w.miles != null && w.miles > 0 ? <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span> : null}
                                                 <span className="text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
                                               </div>
                                             </div>
@@ -2491,7 +2491,7 @@ export default function DashboardPage() {
                                                 </div>
                                               </div>
                                               <div className="text-right flex items-center gap-2">
-                                                {cwk.miles != null && cwk.miles > 0 ? <span className="text-white text-xs font-bold">{convertDist(cwk.miles, getWorkoutUnit(cwk.id), 'mi')} {distUnitShort}</span> : null}
+                                                {(cwk.type === 'run' || cwk.type === 'walk') && cwk.miles != null && cwk.miles > 0 ? <span className="text-white text-xs font-bold">{convertDist(cwk.miles, getWorkoutUnit(cwk.id), 'mi')} {distUnitShort}</span> : null}
                                                 <span className="text-cyan-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">Link</span>
                                               </div>
                                             </div>
@@ -2536,7 +2536,7 @@ export default function DashboardPage() {
                                                 {w.trainingType && <span className={`text-xs px-1.5 py-0.5 rounded border ${getTrainingTypeBadge(w.trainingType)}`}>{getTrainingTypeLabel(w.trainingType)}</span>}
                                                 {w.title && <span className="text-gray-300 text-xs">{w.title}</span>}
                                               </div>
-                                              {w.miles != null && w.miles > 0 && <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span>}
+                                              {(w.type === 'run' || w.type === 'walk') && w.miles != null && w.miles > 0 && <span className="text-white text-xs font-bold">{convertDist(w.miles, getWorkoutUnit(w.id), w.distanceUnit)} {distUnitShort}</span>}
                                             </div>
                                           </button>
                                         ))}

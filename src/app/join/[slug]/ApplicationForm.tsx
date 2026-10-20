@@ -2,6 +2,19 @@
 
 import { useState } from 'react'
 
+type PackageData = {
+  id: string
+  name: string
+  description: string | null
+  priceCents: number
+  currency: string
+  billingInterval: 'monthly' | 'one_time'
+  includesRunning: boolean
+  includesStrength: boolean
+  includesInPerson: boolean
+  includesProgramming: boolean
+}
+
 type Page = {
   slug: string
   coachName: string
@@ -11,25 +24,57 @@ type Page = {
   pricing: string
   offerTypes: string[]
   offerFormats: string[]
+  showPackages?: boolean
+  packages?: PackageData[]
+}
+
+function formatPkgPrice(cents: number, currency: string, interval: string): string {
+  const amount = (cents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: (currency || 'usd').toUpperCase(),
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  })
+  return interval === 'monthly' ? `${amount}/mo` : `${amount}`
 }
 
 const ORANGE = '#f26522'
 
 const TYPE_LABELS: Record<string, string> = {
   running: 'Running coaching',
-  personal_training: 'Personal training',
+  personal_training: 'Strength / Cross-Training',
 }
-const FORMAT_LABELS: Record<string, string> = {
-  programming: 'Programming only (remote — I follow a plan on my own)',
-  in_person: 'In-person training (sessions with you)',
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+// Years for the birth-year dropdown (this year back ~100 years).
+const CURRENT_YEAR = new Date().getFullYear()
+const BIRTH_YEARS = Array.from({ length: 100 }, (_, i) => CURRENT_YEAR - i)
+
+// Derive an age (integer) from a birth month (1-12) + year.
+function deriveAge(birthMonth: string, birthYear: string): number | null {
+  const m = parseInt(birthMonth, 10)
+  const y = parseInt(birthYear, 10)
+  if (!Number.isFinite(m) || !Number.isFinite(y)) return null
+  const now = new Date()
+  let age = now.getFullYear() - y
+  // Not yet had this year's birthday month? subtract one.
+  if (now.getMonth() + 1 < m) age -= 1
+  return age >= 0 && age < 130 ? age : null
 }
 
 export default function ApplicationForm({ page }: { page: Page }) {
+  const hasPackages = page.showPackages !== false && page.packages && page.packages.length > 0
+
   const [form, setForm] = useState({
     full_name: '',
     email: '',
     phone: '',
-    age: '',
+    // Birth month/year (day not collected). We also derive an age integer.
+    birth_month: '',
+    birth_year: '',
     sex: '',
     running_experience: '',
     primary_goal: '',
@@ -47,7 +92,9 @@ export default function ApplicationForm({ page }: { page: Page }) {
     preferred_location: '',
     sessions_per_week: '',
   })
-  // Prospect's selections (subset of what the coach offers)
+  // Package selection (when coach has packages)
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('')
+  // Prospect's selections for NO-packages flow (subset of what the coach offers)
   const [interestedTypes, setInterestedTypes] = useState<string[]>([])
   const [interestedFormats, setInterestedFormats] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -60,27 +107,78 @@ export default function ApplicationForm({ page }: { page: Page }) {
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val])
 
-  // The coach may offer only one type/format — if so, auto-apply it and hide
-  // that selector (nothing to choose).
+  const otherSelected = selectedPackageId === '__other__'
+  // Get the selected package (if any — not the "other" sentinel)
+  const selectedPackage = hasPackages && selectedPackageId && !otherSelected
+    ? page.packages!.find(p => p.id === selectedPackageId)
+    : null
+
+  // --- NO PACKAGES FLOW: use the tickbox approach ---
   const singleType = page.offerTypes.length === 1 ? page.offerTypes[0] : null
   const singleFormat = page.offerFormats.length === 1 ? page.offerFormats[0] : null
-  const effectiveTypes = singleType ? [singleType] : interestedTypes
-  const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
-  const showRunning = effectiveTypes.includes('running')
-  const showPT = effectiveTypes.includes('personal_training')
-  const showInPerson = effectiveFormats.includes('in_person')
+
+  // --- Determine which question sections to show ---
+  let showRunning = false
+  let showPT = false
+  let showInPerson = false
+
+  if (hasPackages) {
+    // PACKAGES FLOW: questions depend on selected package's includes_* flags
+    if (selectedPackage) {
+      showRunning = selectedPackage.includesRunning
+      showPT = selectedPackage.includesStrength
+      showInPerson = selectedPackage.includesInPerson
+    }
+  } else {
+    // NO PACKAGES FLOW: questions depend on tickbox selections
+    const effectiveTypes = singleType ? [singleType] : interestedTypes
+    const effectiveFormats = singleFormat ? [singleFormat] : interestedFormats
+    showRunning = effectiveTypes.includes('running')
+    showPT = effectiveTypes.includes('personal_training')
+    showInPerson = effectiveFormats.includes('in_person')
+  }
+
+  // Should we show the questions section? (A real package shows its matching
+  // questions; "other" has no package-driven questions but still submits.)
+  const showQuestions = hasPackages ? (!!selectedPackage || otherSelected) : true
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    // Require a choice when the coach offers more than one option.
-    if (!singleType && interestedTypes.length === 0) {
-      setError('Please choose what you’re interested in.')
+    // Required: date of birth (month + year), sex, primary goal.
+    if (!form.birth_month || !form.birth_year) {
+      setError('Please enter your date of birth (month and year).')
       return
     }
-    if (!singleFormat && interestedFormats.length === 0) {
-      setError('Please choose how you’d like to train.')
+    if (!form.sex) {
+      setError('Please select your sex.')
       return
+    }
+    if (!form.primary_goal.trim()) {
+      setError('Please tell us your primary goal.')
+      return
+    }
+
+    if (hasPackages) {
+      // PACKAGES FLOW validation
+      if (!selectedPackageId) {
+        setError('Please select a coaching package.')
+        return
+      }
+      if (otherSelected && !form.plan_interest.trim()) {
+        setError('Please describe what you\'re looking for.')
+        return
+      }
+    } else {
+      // NO PACKAGES FLOW validation
+      if (!singleType && interestedTypes.length === 0) {
+        setError("Please choose what you're interested in.")
+        return
+      }
+      if (!singleFormat && interestedFormats.length === 0) {
+        setError("Please choose how you'd like to train.")
+        return
+      }
     }
 
     setLoading(true)
@@ -94,14 +192,37 @@ export default function ApplicationForm({ page }: { page: Page }) {
       /* non-blocking */
     }
 
+    // Build interested_types and interested_formats for the submission
+    let submitTypes: string[]
+    let submitFormats: string[]
+
+    if (hasPackages && selectedPackage) {
+      // Map package includes to types/formats
+      submitTypes = []
+      if (selectedPackage.includesRunning) submitTypes.push('running')
+      if (selectedPackage.includesStrength) submitTypes.push('personal_training')
+      
+      submitFormats = []
+      if (selectedPackage.includesProgramming) submitFormats.push('programming')
+      if (selectedPackage.includesInPerson) submitFormats.push('in_person')
+    } else {
+      submitTypes = singleType ? [singleType] : interestedTypes
+      submitFormats = singleFormat ? [singleFormat] : interestedFormats
+    }
+
     try {
       const res = await fetch(`/api/apply/${encodeURIComponent(page.slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          interested_types: effectiveTypes,
-          interested_formats: effectiveFormats,
+          // Derive age from birth month/year (day not collected).
+          age: deriveAge(form.birth_month, form.birth_year),
+          birth_month: form.birth_month ? parseInt(form.birth_month, 10) : null,
+          birth_year: form.birth_year ? parseInt(form.birth_year, 10) : null,
+          selected_package_id: hasPackages && !otherSelected ? selectedPackageId : null,
+          interested_types: submitTypes,
+          interested_formats: submitFormats,
           consent_ip: userIp,
           consent_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         }),
@@ -166,7 +287,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
           {page.intro && (
             <p style={{ fontSize: 15, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '8px 0 20px', textAlign: 'center' }}>{page.intro}</p>
           )}
-          {page.pricing && (
+          {/* Show legacy pricing text only if coach has NO packages */}
+          {!hasPackages && page.pricing && (
             <div style={{ margin: '0 0 24px', padding: 18, background: '#fff8f4', borderRadius: 12, border: '1px solid rgba(242,101,34,0.15)' }}>
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#2d3436', textTransform: 'uppercase', letterSpacing: 0.4 }}>Coaching Plans</p>
               <p style={{ margin: 0, fontSize: 14, color: '#555b5e', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{page.pricing}</p>
@@ -186,28 +308,38 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <label style={labelStyle}>Email *</label>
               <input style={inputStyle} type="email" value={form.email} onChange={set('email')} required placeholder="you@example.com" />
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ ...groupStyle, flex: 1 }}>
-                <label style={labelStyle}>Phone</label>
-                <input style={inputStyle} value={form.phone} onChange={set('phone')} placeholder="(555) 123-4567" />
-              </div>
-              <div style={{ ...groupStyle, width: 90 }}>
-                <label style={labelStyle}>Age</label>
-                <input style={inputStyle} type="number" min="0" value={form.age} onChange={set('age')} placeholder="30" />
+            <div style={groupStyle}>
+              <label style={labelStyle}>Phone</label>
+              <input style={inputStyle} value={form.phone} onChange={set('phone')} placeholder="(555) 123-4567" />
+            </div>
+            <div style={groupStyle}>
+              <label style={labelStyle}>Date of birth *</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <select style={{ ...inputStyle, flex: 1 }} value={form.birth_month} onChange={set('birth_month')} required aria-label="Birth month">
+                  <option value="">Month</option>
+                  {MONTHS.map((label, i) => (
+                    <option key={i} value={String(i + 1)}>{label}</option>
+                  ))}
+                </select>
+                <select style={{ ...inputStyle, flex: 1 }} value={form.birth_year} onChange={set('birth_year')} required aria-label="Birth year">
+                  <option value="">Year</option>
+                  {BIRTH_YEARS.map((y) => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div style={groupStyle}>
-              <label style={labelStyle}>Sex</label>
-              <select style={inputStyle} value={form.sex} onChange={set('sex')}>
-                <option value="">Prefer not to say</option>
+              <label style={labelStyle}>Sex *</label>
+              <select style={inputStyle} value={form.sex} onChange={set('sex')} required>
+                <option value="">Select…</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
-                <option value="other">Other</option>
               </select>
             </div>
 
-            {/* --- What are you interested in? (only if coach offers 2+ types) --- */}
-            {!singleType && page.offerTypes.length > 1 && (
+            {/* --- NO PACKAGES FLOW: What are you interested in? (only if coach offers 2+ types) --- */}
+            {!hasPackages && !singleType && page.offerTypes.length > 1 && (
               <div style={{ ...groupStyle, marginTop: 22 }}>
                 <label style={labelStyle}>What are you interested in? *</label>
                 {page.offerTypes.map((t) => (
@@ -219,30 +351,114 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- How would you like to train? (only if coach offers 2+ formats) --- */}
-            {!singleFormat && page.offerFormats.length > 1 && (
+            {/* --- NO PACKAGES FLOW: How would you like to train? (only if coach offers 2+ formats) --- */}
+            {!hasPackages && !singleFormat && page.offerFormats.length > 1 && (
               <div style={groupStyle}>
                 <label style={labelStyle}>How would you like to train? *</label>
                 {page.offerFormats.map((f) => (
                   <label key={f} style={checkRow}>
                     <input type="checkbox" checked={interestedFormats.includes(f)} onChange={() => toggle(interestedFormats, setInterestedFormats, f)} />
-                    <span>{FORMAT_LABELS[f] || f}</span>
+                    <span>{f === 'programming' ? 'Programming only (remote — I follow a plan on my own)' : f === 'in_person' ? 'In-Person / Personal Training (sessions with you)' : f}</span>
                   </label>
                 ))}
               </div>
             )}
 
+            {/* --- PACKAGES FLOW: Simple package selection --- */}
+            {hasPackages && (
+              <div style={{ ...groupStyle, marginTop: 22 }}>
+                <label style={labelStyle}>Which package are you interested in? *</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {page.packages!.map((pkg) => {
+                    const isSelected = selectedPackageId === pkg.id
+                    // Build badges for what's included
+                    const badges: string[] = []
+                    if (pkg.includesRunning) badges.push('🏃 Running')
+                    if (pkg.includesStrength) badges.push('💪 Strength')
+                    if (pkg.includesInPerson) badges.push('📍 In-person')
+                    if (pkg.includesProgramming) badges.push('📱 Remote')
+                    
+                    return (
+                      <label
+                        key={pkg.id}
+                        style={{
+                          ...packageOption,
+                          borderColor: isSelected ? ORANGE : '#dfe3e6',
+                          background: isSelected ? '#fff8f4' : '#fff',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="selected_package"
+                          value={pkg.id}
+                          checked={isSelected}
+                          onChange={() => setSelectedPackageId(pkg.id)}
+                          style={{ marginRight: 12, accentColor: ORANGE, alignSelf: 'flex-start', marginTop: 4 }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, color: '#2d3436' }}>{pkg.name}</span>
+                            <span style={{ fontWeight: 800, color: ORANGE, whiteSpace: 'nowrap' }}>
+                              {formatPkgPrice(pkg.priceCents, pkg.currency, pkg.billingInterval)}
+                            </span>
+                          </div>
+                          {pkg.description && <p style={{ fontSize: 13, color: '#555b5e', margin: '4px 0 0', lineHeight: 1.4 }}>{pkg.description}</p>}
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                            {badges.map((badge, i) => (
+                              <span key={i} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f0f2f4', color: '#555b5e' }}>{badge}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </label>
+                    )
+                  })}
+
+                  {/* "None of these fit" — lets the applicant describe what they want. */}
+                  <label
+                    style={{
+                      ...packageOption,
+                      borderColor: selectedPackageId === '__other__' ? ORANGE : '#dfe3e6',
+                      background: selectedPackageId === '__other__' ? '#fff8f4' : '#fff',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="selected_package"
+                      value="__other__"
+                      checked={selectedPackageId === '__other__'}
+                      onChange={() => setSelectedPackageId('__other__')}
+                      style={{ marginRight: 12, accentColor: ORANGE, alignSelf: 'flex-start', marginTop: 4 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 700, color: '#2d3436' }}>None of these quite fit</span>
+                      <p style={{ fontSize: 13, color: '#555b5e', margin: '4px 0 0', lineHeight: 1.4 }}>
+                        Tell {page.coachName.split(' ')[0]} what you&apos;re looking for and they&apos;ll be in touch.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {selectedPackageId === '__other__' && (
+                  <div style={{ marginTop: 12 }}>
+                    <label style={labelStyle}>What are you looking for? *</label>
+                    <textarea
+                      style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+                      value={form.plan_interest}
+                      onChange={set('plan_interest')}
+                      placeholder="Describe the coaching you'd like — budget, format, goals, anything the packages above don't cover."
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={groupStyle}>
-              <label style={labelStyle}>Primary goal</label>
-              <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} placeholder="What are you hoping to achieve?" />
-            </div>
-            <div style={groupStyle}>
-              <label style={labelStyle}>Days available to train</label>
-              <input style={inputStyle} value={form.days_available} onChange={set('days_available')} placeholder="e.g. Mon/Wed/Fri + weekends" />
+              <label style={labelStyle}>Primary goal *</label>
+              <input style={inputStyle} value={form.primary_goal} onChange={set('primary_goal')} required placeholder="What are you hoping to achieve?" />
             </div>
 
-            {/* --- Running block --- */}
-            {showRunning && (
+            {/* --- Running block (only show when questions should be visible) --- */}
+            {showQuestions && showRunning && (
               <div style={sectionBox}>
                 <p style={sectionTitle}>About your running</p>
                 <div style={groupStyle}>
@@ -260,8 +476,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- Personal training block --- */}
-            {showPT && (
+            {/* --- Personal training block (only show when questions should be visible) --- */}
+            {showQuestions && showPT && (
               <div style={sectionBox}>
                 <p style={sectionTitle}>About your training</p>
                 <div style={groupStyle}>
@@ -291,8 +507,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               </div>
             )}
 
-            {/* --- In-person block --- */}
-            {showInPerson && (
+            {/* --- In-person block (only show when questions should be visible) --- */}
+            {showQuestions && showInPerson && (
               <div style={sectionBox}>
                 <p style={sectionTitle}>In-person sessions</p>
                 <div style={groupStyle}>
@@ -310,16 +526,13 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <label style={labelStyle}>Injuries / limitations</label>
               <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={form.injuries} onChange={set('injuries')} placeholder="Anything your coach should know" />
             </div>
-            {page.pricing && (
+            {/* Only show free-text plan interest if coach has NO packages (legacy/fallback) */}
+            {!hasPackages && page.pricing && (
               <div style={groupStyle}>
                 <label style={labelStyle}>Which plan are you interested in?</label>
-                <input style={inputStyle} value={form.plan_interest} onChange={set('plan_interest')} placeholder="Name the plan from above, or 'not sure yet'" />
+                <input style={inputStyle} value={form.plan_interest} onChange={set('plan_interest')} placeholder="Name the one from above, or 'not sure yet'" />
               </div>
             )}
-            <div style={groupStyle}>
-              <label style={labelStyle}>Why are you looking for coaching?</label>
-              <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={form.why_coaching} onChange={set('why_coaching')} placeholder="A sentence or two about what you're after" />
-            </div>
 
             {error && (
               <div style={{ margin: '0 0 16px', padding: '12px 14px', borderRadius: 10, background: '#fdecea', color: '#b3261e', fontSize: 14 }}>
@@ -361,6 +574,11 @@ const card: React.CSSProperties = {
 const checkRow: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginBottom: 8,
   border: '1px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer', lineHeight: 1.4,
+}
+const packageOption: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', padding: '12px 14px',
+  border: '2px solid #dfe3e6', borderRadius: 10, fontSize: 14, color: '#2d3436', cursor: 'pointer',
+  transition: 'border-color 0.15s, background 0.15s',
 }
 const sectionBox: React.CSSProperties = {
   margin: '0 0 16px', padding: 16, background: '#fafbfc', border: '1px solid #eef1f3', borderRadius: 12,

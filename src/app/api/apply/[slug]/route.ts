@@ -50,6 +50,73 @@ export async function GET(
     .eq('id', page.coach_id)
     .maybeSingle()
 
+  // show_packages flag (read separately so a missing column can't break this).
+  let showPackages = true
+  try {
+    const { data: flagRow } = await supabase
+      .from('coach_application_pages')
+      .select('show_packages')
+      .eq('slug', slug)
+      .maybeSingle()
+    if (flagRow && typeof flagRow.show_packages === 'boolean') showPackages = flagRow.show_packages
+  } catch { /* column not present yet */ }
+
+  // Active packages for this coach (safe if the table doesn't exist yet).
+  let packages: any[] = []
+  if (showPackages) {
+    try {
+      // First try with new includes_* columns
+      const { data: pkgRows, error: pkgError } = await supabase
+        .from('coach_packages')
+        .select('id, name, description, price_cents, currency, billing_interval, includes_running, includes_strength, includes_in_person, includes_programming, is_active, sort_order')
+        .eq('coach_id', page.coach_id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+      
+      if (pkgError) {
+        // Columns might not exist yet - try without them
+        console.log('Packages query with includes columns failed, trying without:', pkgError.message)
+        const { data: fallbackRows } = await supabase
+          .from('coach_packages')
+          .select('id, name, description, price_cents, currency, billing_interval, is_active, sort_order')
+          .eq('coach_id', page.coach_id)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true })
+        packages = (fallbackRows || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || null,
+          priceCents: p.price_cents,
+          currency: p.currency || 'usd',
+          billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+          // Default to running + programming if columns don't exist
+          includesRunning: true,
+          includesStrength: false,
+          includesInPerson: false,
+          includesProgramming: true,
+        }))
+      } else {
+        packages = (pkgRows || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || null,
+          priceCents: p.price_cents,
+          currency: p.currency || 'usd',
+          billingInterval: p.billing_interval === 'one_time' ? 'one_time' : 'monthly',
+          includesRunning: p.includes_running ?? true,
+          includesStrength: p.includes_strength ?? false,
+          includesInPerson: p.includes_in_person ?? false,
+          includesProgramming: p.includes_programming ?? true,
+        }))
+      }
+    } catch (e) {
+      console.log('Packages query failed entirely:', e)
+      /* table not present yet */
+    }
+  }
+
   return NextResponse.json({
     slug: page.slug,
     coachName: coach?.name || 'Your coach',
@@ -59,6 +126,8 @@ export async function GET(
     pricing: page.pricing || '',
     offerTypes: Array.isArray(page.offer_types) && page.offer_types.length ? page.offer_types : ['running'],
     offerFormats: Array.isArray(page.offer_formats) && page.offer_formats.length ? page.offer_formats : ['programming'],
+    showPackages,
+    packages,
   })
 }
 
@@ -75,16 +144,29 @@ export async function POST(
     const slug = (params.slug || '').toLowerCase()
     const body = await request.json()
     const {
-      full_name, email, phone, age, sex, running_experience, primary_goal,
+      full_name, email, phone, age, birth_month, birth_year, sex, running_experience, primary_goal,
       target_race, days_available, current_prs, injuries, why_coaching,
       plan_interest, consent_ip, consent_user_agent,
       interested_types, interested_formats,
+      selected_package_id,
       pt_goal, training_experience, equipment_access,
       preferred_location, sessions_per_week,
     } = body || {}
 
     if (!full_name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
+    }
+    // Now-required fields: date of birth (month + year), sex (male/female), goal.
+    const birthMonthInt = birth_month != null && String(birth_month).trim() !== '' ? parseInt(String(birth_month), 10) : null
+    const birthYearInt = birth_year != null && String(birth_year).trim() !== '' ? parseInt(String(birth_year), 10) : null
+    if (!birthMonthInt || birthMonthInt < 1 || birthMonthInt > 12 || !birthYearInt) {
+      return NextResponse.json({ error: 'Date of birth (month and year) is required' }, { status: 400 })
+    }
+    if (sex !== 'male' && sex !== 'female') {
+      return NextResponse.json({ error: 'Sex is required' }, { status: 400 })
+    }
+    if (!primary_goal || !String(primary_goal).trim()) {
+      return NextResponse.json({ error: 'Primary goal is required' }, { status: 400 })
     }
 
     const supabase = await adminClient()
@@ -108,35 +190,53 @@ export async function POST(
     const pickedTypes = Array.isArray(interested_types) ? interested_types.filter((t: string) => offeredTypes.includes(t)) : []
     const pickedFormats = Array.isArray(interested_formats) ? interested_formats.filter((f: string) => offeredFormats.includes(f)) : []
 
-    const { error: insertError } = await supabase
+    // Prefer the derived age from the client; else compute from birth month/year.
+    let resolvedAge = Number.isFinite(ageInt as number) ? ageInt : null
+    if (resolvedAge == null && birthMonthInt && birthYearInt) {
+      const now = new Date()
+      let a = now.getFullYear() - birthYearInt
+      if (now.getMonth() + 1 < birthMonthInt) a -= 1
+      resolvedAge = a >= 0 && a < 130 ? a : null
+    }
+
+    const baseRow: Record<string, any> = {
+      coach_id: page.coach_id,
+      organization_id: page.organization_id,
+      full_name: String(full_name).trim(),
+      email: String(email).trim().toLowerCase(),
+      phone: phone || null,
+      age: resolvedAge,
+      sex: sex || null,
+      running_experience: running_experience || null,
+      primary_goal: primary_goal || null,
+      target_race: target_race || null,
+      days_available: days_available || null,
+      current_prs: current_prs || null,
+      injuries: injuries || null,
+      why_coaching: why_coaching || null,
+      plan_interest: plan_interest || null,
+      selected_package_id: selected_package_id || null,
+      interested_types: pickedTypes,
+      interested_formats: pickedFormats,
+      pt_goal: pt_goal || null,
+      training_experience: training_experience || null,
+      equipment_access: equipment_access || null,
+      preferred_location: preferred_location || null,
+      sessions_per_week: sessions_per_week || null,
+      status: 'pending',
+      consent_ip: consent_ip || 'unknown',
+      consent_user_agent: consent_user_agent || 'unknown',
+    }
+
+    // Try with birth month/year columns; fall back if they don't exist yet.
+    let { error: insertError } = await supabase
       .from('coach_applications')
-      .insert({
-        coach_id: page.coach_id,
-        organization_id: page.organization_id,
-        full_name: String(full_name).trim(),
-        email: String(email).trim().toLowerCase(),
-        phone: phone || null,
-        age: Number.isFinite(ageInt as number) ? ageInt : null,
-        sex: sex || null,
-        running_experience: running_experience || null,
-        primary_goal: primary_goal || null,
-        target_race: target_race || null,
-        days_available: days_available || null,
-        current_prs: current_prs || null,
-        injuries: injuries || null,
-        why_coaching: why_coaching || null,
-        plan_interest: plan_interest || null,
-        interested_types: pickedTypes,
-        interested_formats: pickedFormats,
-        pt_goal: pt_goal || null,
-        training_experience: training_experience || null,
-        equipment_access: equipment_access || null,
-        preferred_location: preferred_location || null,
-        sessions_per_week: sessions_per_week || null,
-        status: 'pending',
-        consent_ip: consent_ip || 'unknown',
-        consent_user_agent: consent_user_agent || 'unknown',
-      })
+      .insert({ ...baseRow, birth_month: birthMonthInt, birth_year: birthYearInt })
+
+    if (insertError) {
+      const retry = await supabase.from('coach_applications').insert(baseRow)
+      insertError = retry.error
+    }
 
     if (insertError) {
       return NextResponse.json({ error: `Could not submit: ${insertError.message}` }, { status: 500 })

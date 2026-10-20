@@ -63,6 +63,18 @@ interface SendInviteEmailParams {
   senderEmail: string
 }
 
+// Build a valid RFC 5322 "From" value. A display name containing special
+// characters (parentheses, commas, quotes, etc. — e.g. a coach named
+// "Curtis Irwin (Staging)") MUST be wrapped in double quotes, otherwise strict
+// providers like Resend reject the send with a 422 validation error.
+function formatFrom(senderName: string, senderEmail: string): string {
+  const clean = (senderName || '').replace(/"/g, '').trim()
+  // Quote the name whenever it contains anything beyond simple word chars/space.
+  const needsQuoting = /[^A-Za-z0-9 ]/.test(clean)
+  const name = needsQuoting ? `"${clean}"` : clean
+  return name ? `${name} <${senderEmail}>` : senderEmail
+}
+
 async function sendInviteEmail({ to, subject, html, text, senderName, senderEmail }: SendInviteEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
@@ -78,7 +90,7 @@ async function sendInviteEmail({ to, subject, html, text, senderName, senderEmai
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: `${senderName} <${senderEmail}>`,
+        from: formatFrom(senderName, senderEmail),
         to: [to],
         reply_to: REPLY_TO_EMAIL,
         subject,

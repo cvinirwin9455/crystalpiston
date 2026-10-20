@@ -102,10 +102,21 @@ export async function POST(request: Request) {
     })
   }
 
-  // Determine the correct redirect URL based on the inviting coach's organization
+  // Determine the base URL the invite link should point at.
+  //
+  // IMPORTANT: on a non-production deployment (e.g. the staging/preview branch)
+  // the invite must send the coach BACK to that same environment to set their
+  // password — not to production. So we prefer, in order:
+  //   1. An explicit base (STRIPE_CONNECT_REDIRECT_BASE / NEXT_PUBLIC_SITE_URL)
+  //      — this is set to the stable staging URL on the preview deployment.
+  //   2. The request's own origin (so a preview links back to that preview),
+  //      unless it's localhost.
+  //   3. The inviting coach's organization domain (production default).
   const orgId = await getOrgIdForUser(adminClient, user.id)
-  let redirectDomain = 'www.firstmilecoach.com'
   let orgDomain: string | null = null
+
+  // Production fallback domain from the org (used only if no explicit/origin base).
+  let prodDomain = 'www.firstmilecoach.com'
   if (orgId) {
     const { data: orgData } = await adminClient
       .from('organizations')
@@ -117,8 +128,22 @@ export async function POST(request: Request) {
       let domain = orgData.domain
       if (domain === 'firstmilecoach.com') domain = 'www.firstmilecoach.com'
       if (domain === 'crystalpistolperformance.com') domain = 'www.crystalpistolperformance.com'
-      redirectDomain = domain
+      prodDomain = domain
     }
+  }
+
+  // Resolve the base URL (no trailing slash).
+  const explicitBase = process.env.STRIPE_CONNECT_REDIRECT_BASE || process.env.NEXT_PUBLIC_SITE_URL
+  let baseUrl: string
+  if (explicitBase) {
+    baseUrl = explicitBase.replace(/\/$/, '')
+  } else {
+    let originBase: string | null = null
+    try {
+      const origin = new URL(request.url).origin
+      if (origin && !origin.includes('localhost')) originBase = origin.replace(/\/$/, '')
+    } catch { /* fall through to production domain */ }
+    baseUrl = originBase || `https://${prodDomain}`
   }
 
   // Generate the invite link without sending Supabase's built-in email
@@ -130,7 +155,7 @@ export async function POST(request: Request) {
         name,
         role: 'admin',
       },
-      redirectTo: `https://${redirectDomain}/auth/callback?next=/set-password`,
+      redirectTo: `${baseUrl}/auth/callback?next=/set-password`,
     },
   })
 
@@ -141,7 +166,7 @@ export async function POST(request: Request) {
   const newUserId = linkData.user.id
   // Build the confirmation URL using hashed_token pointing to our app's auth callback
   const hashedToken = linkData.properties.hashed_token
-  const confirmationUrl = `https://${redirectDomain}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
+  const confirmationUrl = `${baseUrl}/auth/callback?token_hash=${hashedToken}&type=invite&next=/set-password`
 
   // Send our custom coach invite email via Resend
   const emailSent = await sendCoachInviteEmail({

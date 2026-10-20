@@ -100,9 +100,11 @@ export async function POST(request: Request) {
     resolvedClientId = plan?.client_id || null
   }
 
-  // Insert the payment record (with fallback if new columns don't exist)
+  // Insert the payment record (with fallback if new columns don't exist).
+  // Session payments are now scoped to a plan too (per-plan isolation), so
+  // stamp plan_id when the caller provided one.
   const insertData: any = {
-    plan_id: type === 'programming' ? planId : null,
+    plan_id: planId || null,
     amount: parseFloat(amount),
     payment_date: paymentDate || new Date().toISOString().split('T')[0],
     notes: notes || null,
@@ -135,14 +137,28 @@ export async function POST(request: Request) {
     await adminClient.from('plans').update({ paid: newPaid }).eq('id', planId)
     return NextResponse.json({ success: true, payment, newPaidTotal: newPaid })
   } else {
-    // Session payment: apply to the specified package, or the oldest package with a balance
+    // Session payment: apply to the specified package, else THIS PLAN's
+    // package with an outstanding balance (per-plan isolation), falling back
+    // to client-wide if plan_id isn't populated.
     let targetPackageId = sessionPackageId
     if (!targetPackageId) {
-      const { data: pkgs } = await adminClient
-        .from('session_packages')
-        .select('id, amount_paid, amount_owed')
-        .eq('client_id', clientId)
-        .order('purchased_at', { ascending: true })
+      let pkgs: any[] | null = null
+      if (planId) {
+        const byPlan = await adminClient
+          .from('session_packages')
+          .select('id, amount_paid, amount_owed')
+          .eq('plan_id', planId)
+          .order('purchased_at', { ascending: true })
+        if (!byPlan.error && (byPlan.data || []).length > 0) pkgs = byPlan.data
+      }
+      if (!pkgs) {
+        const byClient = await adminClient
+          .from('session_packages')
+          .select('id, amount_paid, amount_owed')
+          .eq('client_id', clientId)
+          .order('purchased_at', { ascending: true })
+        pkgs = byClient.data
+      }
       // Find first package with outstanding balance
       const target = (pkgs || []).find((p: any) => (parseFloat(p.amount_owed) || 0) > (parseFloat(p.amount_paid) || 0))
       targetPackageId = target?.id || (pkgs || [])[0]?.id

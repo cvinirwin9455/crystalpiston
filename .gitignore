@@ -32,3 +32,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*
+
+# local DB troubleshooting helper (reads secrets from .env.local)
+.db-query.mjs
+
+# supabase CLI local temp
+supabase/.temp/

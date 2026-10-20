@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import AccountTab from "./AccountTab";
 import ApplicationsTab from "./ApplicationsTab";
+import PackagesManager from "./PackagesManager";
+import StripeConnectCard from "./StripeConnectCard";
 import SessionsTab from "./SessionsTab";
 import AssessmentTab from "./AssessmentTab";
 import BiometricSetup from "@/components/BiometricSetup";
@@ -28,7 +30,7 @@ type WeekPlanWorkout = { type: string; trainingType: string; title: string; mile
 type WeekPlanDay = { day: string; sessionType: "remote" | "in_person"; sessionConflict: boolean; workouts: WeekPlanWorkout[] };
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
-type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
+type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; hasActivePlan?: boolean; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
@@ -79,6 +81,7 @@ export default function AdminPage() {
   const [showChangelog, setShowChangelog] = useState(false);
   const [showManageCoaches, setShowManageCoaches] = useState(false);
   const [showApplications, setShowApplications] = useState(false);
+  const [showPackages, setShowPackages] = useState(false);
   const [pendingApplicationCount, setPendingApplicationCount] = useState(0);
   const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
   const [exerciseLibrary, setExerciseLibrary] = useState<ExerciseLibraryItem[]>([]);
@@ -161,10 +164,15 @@ export default function AdminPage() {
     setSuperAdminScopeReady(true);
   }, []);
 
-  // Open the Applications view directly from a notification email link (/admin?view=applications)
+  // Open a specific view directly from a URL link, e.g.:
+  //   /admin?view=applications  (notification email link)
+  //   /admin?view=account       (Stripe Connect callback → show "connected")
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('view') === 'applications') {
+    const view = new URLSearchParams(window.location.search).get('view');
+    if (view === 'applications') {
       setShowApplications(true);
+    } else if (view === 'account') {
+      setShowNotificationSettings(true);
     }
   }, []);
 
@@ -712,8 +720,8 @@ export default function AdminPage() {
     if (activePlan?.billingMode === 'per_session') {
       setWeekDateWarning("");
     } else if (activePlan && activePlan.startDate && activePlan.endDate) {
-      const planStart = new Date(activePlan.startDate);
-      const planEnd = new Date(activePlan.endDate);
+      const planStart = new Date(activePlan.startDate + 'T00:00:00');
+      const planEnd = new Date(activePlan.endDate + 'T00:00:00');
       planStart.setHours(0, 0, 0, 0);
       planEnd.setHours(23, 59, 59, 999);
       const weekStart = new Date(monday);
@@ -1279,11 +1287,23 @@ export default function AdminPage() {
   const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) return;
     try {
-      const res = await fetch('/api/templates', {
+      let res = await fetch('/api/templates', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId }),
       });
+      // Soft warning if a package uses this template — confirm, then proceed.
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.warning === 'template_in_use') {
+          if (!confirm(data.message || 'This template is used by one or more packages. Delete anyway?')) return;
+          res = await fetch('/api/templates', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateId, confirm: true }),
+          });
+        }
+      }
       if (res.ok) {
         fetchTemplates();
       }
@@ -1507,11 +1527,25 @@ export default function AdminPage() {
   const handleDeleteProgram = async (id: string) => {
     if (!confirm("Delete this program template? This cannot be undone.")) return;
     try {
-      await fetch('/api/templates', {
+      let res = await fetch('/api/templates', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: id }),
       });
+      // Soft warning: the template is used by one or more packages. Confirm,
+      // then re-send with confirm:true to proceed (packages are unlinked, not
+      // deleted — they just won't load a program for new clients).
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.warning === 'template_in_use') {
+          if (!confirm(data.message || 'This template is used by one or more packages. Delete anyway?')) return;
+          res = await fetch('/api/templates', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateId: id, confirm: true }),
+          });
+        }
+      }
       fetchTemplates();
     } catch (err) {
       console.error('Failed to delete program template:', err);
@@ -1585,6 +1619,7 @@ export default function AdminPage() {
           email: c.email || '',
           gender: c.gender || 'female',
           goal: c.goal || '',
+          hasActivePlan: !!c.hasActivePlan,
           startDate: c.startDate || '',
           planDuration: c.planEnd || '',
           owed: c.owed || 0,
@@ -1876,6 +1911,7 @@ export default function AdminPage() {
     setShowChangelog(false);
     setShowExerciseLibrary(false);
     setShowGuide(false);
+    setShowPackages(false);
     setShowMobileDashboard(false);
     setAdminStatsFilter("currentWeek");
     // Mark workout comments as viewed for this client (clears purple dot)
@@ -1902,6 +1938,8 @@ export default function AdminPage() {
   const distUnitShort = adminDistanceUnit === "km" ? "km" : "mi";
   const isMileageWorkout = (workout: { type?: string }) => workout.type === 'run' || workout.type === 'walk';
   const formatProgrammedDistance = (workout: { type?: string; miles?: string | number | null; distanceUnit?: "mi" | "km" }) => {
+    // Only show distance for run/walk workouts — other types (strength, cross, etc.) don't use mileage
+    if (!isMileageWorkout(workout)) return '';
     if (workout.miles === null || workout.miles === undefined || workout.miles === '') return '';
     const value = Number(workout.miles);
     if (!Number.isFinite(value) || value <= 0) return '';
@@ -2323,7 +2361,7 @@ export default function AdminPage() {
   }, [selectedClient]);
 
   // Active plan for the selected client
-  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: string; startDate: string; endDate: string; goal: string; packageName?: string | null; owed: number; paid: number; status: string; programTemplateId?: string | null; raceDate?: string | null; billingMode?: string } | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [clientRecurringDays, setClientRecurringDays] = useState<number[]>([]);
   const [clientSessionDates, setClientSessionDates] = useState<string[]>([]); // actual scheduled session dates (YYYY-MM-DD)
@@ -2344,6 +2382,7 @@ export default function AdminPage() {
               startDate: active.start_date,
               endDate: active.end_date,
               goal: active.goal || '',
+              packageName: active.package_name || null,
               owed: parseFloat(active.owed) || 0,
               paid: parseFloat(active.paid) || 0,
               status: active.status,
@@ -2528,8 +2567,8 @@ export default function AdminPage() {
   // Filter workouts by active plan date range for "Current Plan" stats
   const planFilteredWorkouts = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientWorkouts;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
+    const planStart = new Date(activePlan.startDate + 'T00:00:00');
+    const planEnd = new Date(activePlan.endDate + 'T00:00:00');
     planStart.setHours(0, 0, 0, 0);
     planEnd.setHours(23, 59, 59, 999);
     const planWeeks = publishedWeeks.filter(w => {
@@ -2551,8 +2590,8 @@ export default function AdminPage() {
   const allClientAddedMiles = publishedWeeks.flatMap(w => w.clientWorkouts || []).filter(cw => cw.type === 'run' || cw.type === 'walk').reduce((s, cw) => s + convertDist(cw.miles || 0, 'mi'), 0);
   const planClientAddedMiles = (() => {
     if (!activePlan || !activePlan.startDate || !activePlan.endDate) return allClientAddedMiles;
-    const planStart = new Date(activePlan.startDate);
-    const planEnd = new Date(activePlan.endDate);
+    const planStart = new Date(activePlan.startDate + 'T00:00:00');
+    const planEnd = new Date(activePlan.endDate + 'T00:00:00');
     planStart.setHours(0, 0, 0, 0);
     planEnd.setHours(23, 59, 59, 999);
     const planWeeks = publishedWeeks.filter(w => {
@@ -2598,8 +2637,8 @@ export default function AdminPage() {
       const weekEndStr = weekPlan.dateRange.split(' - ')[1];
       const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());
       const weekEnd = new Date(weekEndStr + ', ' + new Date().getFullYear());
-      const planStart = new Date(activePlan.startDate);
-      const planEnd = new Date(activePlan.endDate);
+      const planStart = new Date(activePlan.startDate + 'T00:00:00');
+      const planEnd = new Date(activePlan.endDate + 'T00:00:00');
       
       // Allow 1 day buffer for timezone differences
       planStart.setHours(0, 0, 0, 0);
@@ -3133,7 +3172,7 @@ export default function AdminPage() {
         </div>
       )}
       {/* LEFT SIDEBAR - Client List (full screen on mobile, sidebar on desktop) */}
-      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showMobileDashboard ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20 ${isSuperAdminViewing ? "md:pt-10" : ""}`}>
+      <aside data-sidebar className={`${selectedClient || showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showPackages || showMobileDashboard ? "hidden md:flex" : "flex"} w-full md:w-72 bg-secondary/50 md:border-r border-white/10 flex-col h-screen md:sticky md:top-0 z-20 ${isSuperAdminViewing ? "md:pt-10" : ""}`}>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-3 mb-3 relative">
             {/* Mobile: coach photo */}
@@ -3166,34 +3205,38 @@ export default function AdminPage() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowAdminMenu(false)} />
                   <div className="absolute left-0 top-2 bg-secondary border border-white/10 rounded-xl shadow-xl z-50 py-1.5 min-w-[220px] overflow-hidden">
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-23T15:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-23T15:00:00Z"); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       Templates
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowGuide(false); setShowApplications(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowApplications(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                       Applications
                       {pendingApplicationCount > 0 && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">{pendingApplicationCount}</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(true); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                      Packages
+                    </button>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(true); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                       Exercise Library
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-accent hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(true); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-accent hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                       Coach Guide
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
                     {myCoachLevel !== 'coach' && (
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
@@ -3232,34 +3275,38 @@ export default function AdminPage() {
                   <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowAdminMenu(false)} />
                   <div className="fixed left-4 right-4 top-20 bg-secondary border border-white/10 rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
                     <p className="text-gray-500 text-[10px] font-heading uppercase tracking-wider px-4 pb-2 border-b border-white/5 mb-1">Settings</p>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-23T15:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(true); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowNewUpdatesBadge(false); setShowAdminMenu(false); localStorage.setItem("changelog_last_seen", "2026-08-23T15:00:00Z"); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       What&apos;s New
                       {showNewUpdatesBadge && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">NEW</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(true); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       Templates
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowGuide(false); setShowApplications(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowApplications(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                       Applications
                       {pendingApplicationCount > 0 && <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">{pendingApplicationCount}</span>}
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(true); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                      Packages
+                    </button>
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(true); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                       Exercise Library
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(true); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-accent active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(true); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-accent active:bg-white/10">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                       Coach Guide
                     </button>
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(true); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Account Preferences
                     </button>
                     {myCoachLevel !== 'coach' && (
-                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
+                    <button onClick={() => { setSelectedClient(null); setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(true); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); setShowAdminMenu(false); }} className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-gray-300 active:bg-white/10">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Manage Coaches
                     </button>
@@ -3342,7 +3389,9 @@ export default function AdminPage() {
                       ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                       : client.goal 
                         ? client.goal 
-                        : <span className="text-yellow-400">No active plan</span>
+                        : client.hasActivePlan
+                          ? <span className="text-green-400">Active plan</span>
+                          : <span className="text-yellow-400">No active plan</span>
                     }
                   </p>
                 </div>
@@ -3386,7 +3435,7 @@ export default function AdminPage() {
                                 ? <span className="text-gray-500">Archived</span>
                                 : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
-                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                                : client.goal ? client.goal : client.hasActivePlan ? <span className="text-green-400">Active plan</span> : <span className="text-yellow-400">No active plan</span>
                               }
                             </p>
                           </div>
@@ -3432,7 +3481,7 @@ export default function AdminPage() {
                                 ? <span className="text-gray-500">Archived</span>
                                 : client.inviteStatus !== "accepted" 
                                 ? <span className={client.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{client.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
-                                : client.goal ? client.goal : <span className="text-yellow-400">No active plan</span>
+                                : client.goal ? client.goal : client.hasActivePlan ? <span className="text-green-400">Active plan</span> : <span className="text-yellow-400">No active plan</span>
                               }
                             </p>
                           </div>
@@ -3473,7 +3522,7 @@ export default function AdminPage() {
       </button>
 
       {/* MAIN CONTENT (full screen on mobile when client selected) */}
-      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showApplications && !showExerciseLibrary && !showGuide && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${isSuperAdminViewing ? "pt-10" : ""} ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
+      <main className={`${!selectedClient && !showNotificationSettings && !showTemplatesView && !showChangelog && !showManageCoaches && !showApplications && !showExerciseLibrary && !showGuide && !showPackages && !showMobileDashboard ? "hidden md:block" : "block"} flex-1 ${isSuperAdminViewing ? "pt-10" : ""} ${selectedClient ? 'h-screen overflow-hidden' : `overflow-y-auto pb-20 ${(showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showPackages || showMobileDashboard) ? 'h-screen' : 'min-h-screen'}`}`}>
         {/* Back to Dashboard Button */}
         {selectedClient && (
           <button onClick={() => setSelectedClient(null)} className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/30 transition-colors">
@@ -3491,8 +3540,8 @@ export default function AdminPage() {
         {/* Desktop back button for coach-dropdown views (Templates, Changelog, Manage Coaches,
             Account Preferences, Exercise Library, Coach Guide) — mirrors the client "Back to
             Dashboard" button so these views aren't a dead end on desktop. */}
-        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide) && (
-          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); }} className="hidden md:flex sticky top-0 z-30 items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/95 backdrop-blur transition-colors">
+        {!selectedClient && (showNotificationSettings || showTemplatesView || showChangelog || showManageCoaches || showApplications || showExerciseLibrary || showGuide || showPackages) && (
+          <button onClick={() => { setShowNotificationSettings(false); setShowTemplatesView(false); setShowChangelog(false); setShowManageCoaches(false); setShowApplications(false); setShowExerciseLibrary(false); setShowGuide(false); setShowPackages(false); }} className="hidden md:flex sticky top-0 z-30 items-center gap-2 px-4 py-3 text-gray-400 hover:text-white border-b border-white/10 w-full bg-secondary/95 backdrop-blur transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             <span className="text-sm">Back to Dashboard</span>
           </button>
@@ -3619,7 +3668,9 @@ export default function AdminPage() {
                     ? <span className={selectedClientData.inviteStatus === "pending" ? "text-blue-400" : "text-red-400"}>{selectedClientData.inviteStatus === "pending" ? "Invite pending" : "Invite expired"}</span>
                     : selectedClientData.goal
                       ? <span className="text-gray-400">{selectedClientData.goal}</span>
-                      : <span className="text-yellow-400">No active plan</span>
+                      : selectedClientData.hasActivePlan
+                        ? <span className="text-green-400">Active plan</span>
+                        : <span className="text-yellow-400">No active plan</span>
                   }
                 </p>
               </div>
@@ -4214,8 +4265,8 @@ export default function AdminPage() {
                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.goal || 'No goal set'}</p>
-                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}</p>
+                      <p className="text-green-400 text-xs font-heading uppercase">Active Plan: {activePlan.packageName || activePlan.goal || 'No goal set'}</p>
+                      <p className="text-gray-400 text-xs">{fmtDateFull(activePlan.startDate)} — {fmtDateFull(activePlan.endDate)}{activePlan.packageName && activePlan.goal ? ` · ${activePlan.goal}` : ''}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {activePlan.billingMode && activePlan.billingMode !== 'programming_only' && (
@@ -4785,6 +4836,9 @@ export default function AdminPage() {
                 </div>
 
                 <p className="text-gray-400 text-sm">Choose how often you want to be notified for each type of activity. Changes save automatically.</p>
+
+                {/* Connect Stripe to get paid */}
+                <StripeConnectCard />
 
                 {/* Coach Profile Photo */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
@@ -6082,6 +6136,8 @@ export default function AdminPage() {
               </>
             ) : showApplications ? (
               <div className="p-6"><ApplicationsTab /></div>
+            ) : showPackages ? (
+              <div className="p-6"><PackagesManager /></div>
             ) : showManageCoaches ? (
               <>
                 <div className="flex items-center justify-between">
