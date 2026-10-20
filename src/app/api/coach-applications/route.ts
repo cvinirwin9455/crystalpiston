@@ -44,8 +44,13 @@ export async function GET(request: Request) {
   }
   const { coachId } = scopeResult.scope
 
-  // Fetch applications with their selected package info (if any)
-  const { data: applications, error } = await admin
+  // Fetch applications with their selected package info (if any).
+  // The embedded coach_packages join only works once that table + the
+  // selected_package_id FK exist. On an older schema (table/column missing)
+  // the join errors, so fall back to a plain select — the package fields then
+  // come back null, which the frontend already tolerates.
+  let applications: any[] | null = null
+  const withPkg = await admin
     .from('coach_applications')
     .select(`
       *,
@@ -59,8 +64,18 @@ export async function GET(request: Request) {
     .eq('coach_id', coachId)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!withPkg.error) {
+    applications = withPkg.data
+  } else {
+    const plain = await admin
+      .from('coach_applications')
+      .select('*')
+      .eq('coach_id', coachId)
+      .order('created_at', { ascending: false })
+    if (plain.error) {
+      return NextResponse.json({ error: plain.error.message }, { status: 500 })
+    }
+    applications = plain.data
   }
 
   // Pull this coach's payment requests so each application can show its payment
