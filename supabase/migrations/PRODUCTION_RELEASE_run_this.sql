@@ -286,3 +286,16 @@ SELECT
   (SELECT count(*) FROM information_schema.columns WHERE table_name='plans'    AND column_name='billing_mode')  AS plans_billing_mode,
   (SELECT count(*) FROM information_schema.columns WHERE table_name='workouts' AND column_name='session_type')  AS workouts_session_type,
   (SELECT count(*) FROM information_schema.columns WHERE table_name='payments' AND column_name='payment_type')  AS payments_payment_type;
+
+-- ############################################################
+-- DATA API GRANTS (required on/after Oct 30 2026)
+-- As of Oct 30 2026 Supabase no longer auto-grants Data API access to new
+-- public tables. These grants expose the tables created above to supabase-js /
+-- PostgREST (RLS still governs row access). Safe to run multiple times.
+-- ############################################################
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
