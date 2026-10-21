@@ -113,13 +113,16 @@ export async function POST(request: Request) {
   }
   const { coachId, organizationId } = scopeResult.scope
 
-  // The coach must have a Stripe account that can accept charges.
+  // Load the coach (name is used in the payment email).
   const { data: coach } = await admin
     .from('users')
     .select('name, stripe_account_id, stripe_charges_enabled')
     .eq('id', coachId)
     .maybeSingle()
-  if (!coach?.stripe_account_id || !coach.stripe_charges_enabled) {
+  // Stripe is only required for the "send a payment link" path. Manual/offline
+  // collection creates the plan directly and never touches Stripe, so don't
+  // gate it on a connected Stripe account.
+  if (!manual && (!coach?.stripe_account_id || !coach.stripe_charges_enabled)) {
     return NextResponse.json(
       { error: 'Connect your Stripe account (and finish onboarding) before requesting payments.' },
       { status: 400 }
@@ -379,7 +382,7 @@ export async function POST(request: Request) {
     await sendPaymentRequestEmail({
       to: created.client_email,
       clientName: created.client_name || 'there',
-      coachName: coach.name || 'Your coach',
+      coachName: coach?.name || 'Your coach',
       amountCents,
       currency,
       packageName,

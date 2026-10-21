@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-19T12:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-19T18:00:00Z";
 
 const updates = [
   {
     date: "October 19, 2026",
     items: [
+      { area: "Admin", text: "Fixed: Adding a plan with 'Collect manually' no longer asks you to connect Stripe. Previously, creating a plan on a client's Account tab would show a 'Connect your Stripe account' error even when you'd chosen to collect payment yourself — now the plan is created right away and you log what you collect with 'Log Payment'. (Connecting Stripe is only needed if you want to send a payment link.)" },
       { area: "Admin", text: "NEW: Packages now has its own spot in the menu. Instead of living down on the Applications tab, 'Packages' is its own menu item so it's easier to find and manage. Set up everything you charge for — give each package a name, price, and whether it's a monthly (recurring) or one-time charge, add a short description, cap how many clients can be on it, and turn packages on or off without deleting them." },
       { area: "Admin", text: "NEW: Monthly packages can use split pricing. For a recurring package you can now set it up as a simple monthly amount, or split it into pieces (for example a base coaching fee plus an optional add-on) so the pricing you show matches how you actually bill." },
       { area: "Admin", text: "NEW: Attach a program template to a package. When you set up a package you can link one of your saved program templates to it, so the plan that goes with that offering is ready to use. Deleting a template now also warns you if it's attached to a package so you don't remove something still in use." },
