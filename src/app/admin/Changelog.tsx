@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-19T22:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-22T20:00:00Z";
 
 const updates = [
+  {
+    date: "October 22, 2026",
+    items: [
+      { area: "Admin", text: "Fixed: A new session package now shows the correct remaining balance. Before, a fresh block of in-person sessions could show sessions as already 'used' because it was counting sessions from the client's earlier plans. Now a package's remaining count only reflects sessions that happen after it was purchased, so a new 10-session package correctly reads 10 remaining." },
+    ],
+  },
   {
     date: "October 19, 2026",
     items: [

@@ -67,26 +67,40 @@ export async function GET(request: Request) {
   }
 
   // Purchased = active packages in the current scope (this plan, or client-wide).
-  const totalPurchased = (packages || [])
-    .filter((p: any) => (p.status ?? 'active') === 'active')
-    .reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
-
-  // Used sessions are tracked client-wide (not plan-linked).
-  const { count: usedCount } = await adminClient
-    .from('sessions')
-    .select('id', { count: 'exact', head: true })
-    .eq('client_id', clientId)
-    .in('status', ['completed', 'cancelled_charged', 'no_show'])
-  const used = usedCount || 0
+  const activePackages = (packages || []).filter((p: any) => (p.status ?? 'active') === 'active')
+  const totalPurchased = activePackages.reduce((sum: number, p: any) => sum + (p.sessions_purchased || 0), 0)
 
   let sessionsRemaining = 0
   if (planScoped) {
-    // Per-plan: this plan's purchased minus used, capped at the plan's
-    // purchased (used is client-wide so it can't drive remaining negative
-    // for this plan, nor exceed what this plan sold).
-    sessionsRemaining = Math.max(0, totalPurchased - Math.min(used, totalPurchased))
+    // Per-plan "used": the sessions table has no plan_id, so "used" is
+    // otherwise counted client-wide — which wrongly draws a NEW package down
+    // by sessions completed under EARLIER plans. Scope "used" to sessions that
+    // occurred on/after this plan's package was purchased, so a fresh package
+    // starts at its full balance and only its own sessions count against it.
+    const earliestPurchase = activePackages
+      .map((p: any) => p.purchased_at)
+      .filter(Boolean)
+      .sort()[0] || null
+
+    let usedQuery = adminClient
+      .from('sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .in('status', ['completed', 'cancelled_charged', 'no_show'])
+    if (earliestPurchase) usedQuery = usedQuery.gte('scheduled_at', earliestPurchase)
+    const { count: planUsed } = await usedQuery
+
+    // Cap at purchased so remaining can't go negative or exceed what was sold.
+    sessionsRemaining = Math.max(0, totalPurchased - Math.min(planUsed || 0, totalPurchased))
   } else {
-    // Client-wide: prefer the balance view, else compute manually.
+    // Client-wide: count all used sessions, prefer the balance view.
+    const { count: usedCount } = await adminClient
+      .from('sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .in('status', ['completed', 'cancelled_charged', 'no_show'])
+    const used = usedCount || 0
+
     const { data: balance, error: balanceError } = await adminClient
       .from('client_session_balances')
       .select('sessions_remaining')
