@@ -46,43 +46,58 @@ export async function GET() {
     return NextResponse.json({ activePlan: null, allPlans: [], gender: userProfile?.gender || null, trainingProfile: null, coachName: null, coachAvatarUrl: null, coachStravaUrl: null })
   }
 
-  // Fetch the default coach name for this client
+  // Fetch the coach name/photo for this client. Prefer the coach flagged
+  // is_default; if none is flagged (e.g. a client has multiple coaches but no
+  // default was set), fall back to the first-assigned coach rather than showing
+  // a generic "your coach" placeholder.
   let coachName: string | null = null
   let coachAvatarUrl: string | null = null
   let coachStravaUrl: string | null = null
-  try {
-    const { data: coachAssignment } = await adminClient
-      .from('client_coaches')
-      .select('coach_id')
-      .eq('client_id', client.id)
-      .eq('is_default', true)
-      .single()
 
-    console.log(`[my-plans] Client ${user.id}, clients.id=${client.id}, default coach assignment:`, coachAssignment)
-
-    if (coachAssignment) {
-      const { data: coachUser } = await adminClient
-        .from('users')
-        .select('name, avatar_url')
-        .eq('id', coachAssignment.coach_id)
-        .single()
-      coachName = coachUser?.name || null
-      coachAvatarUrl = coachUser?.avatar_url || null
-
-      // Also get Strava profile for fallback
-      if (!coachAvatarUrl) {
-        const { data: strava } = await adminClient
-          .from('strava_connections')
-          .select('athlete_profile')
-          .eq('user_id', coachAssignment.coach_id)
-          .maybeSingle()
-        if (strava?.athlete_profile) {
-          coachStravaUrl = strava.athlete_profile.replace(/^http:\/\//i, 'https://')
-        }
+  // Resolve a coach user's display name + avatar (with Strava photo fallback).
+  const resolveCoachProfile = async (coachId: string) => {
+    const { data: coachUser } = await adminClient
+      .from('users')
+      .select('name, avatar_url')
+      .eq('id', coachId)
+      .maybeSingle()
+    coachName = coachUser?.name || null
+    coachAvatarUrl = coachUser?.avatar_url || null
+    if (!coachAvatarUrl) {
+      const { data: strava } = await adminClient
+        .from('strava_connections')
+        .select('athlete_profile')
+        .eq('user_id', coachId)
+        .maybeSingle()
+      if (strava?.athlete_profile) {
+        coachStravaUrl = strava.athlete_profile.replace(/^http:\/\//i, 'https://')
       }
     }
+  }
+
+  try {
+    // Pull ALL of this client's coach assignments (no is_default filter, no
+    // .single() — both would error when there's no default or several coaches).
+    const { data: assignments } = await adminClient
+      .from('client_coaches')
+      .select('coach_id, is_default, created_at')
+      .eq('client_id', client.id)
+      .order('is_default', { ascending: false }) // default (true) first
+      .order('created_at', { ascending: true })  // then earliest-assigned
+
+    // Prefer the explicitly-flagged default; otherwise the first assignment.
+    const chosen =
+      (assignments || []).find((a: any) => a.is_default) ||
+      (assignments || [])[0] ||
+      null
+
+    console.log(`[my-plans] Client ${user.id}, clients.id=${client.id}, coach assignments=${assignments?.length ?? 0}, chosen coach:`, chosen?.coach_id || null)
+
+    if (chosen?.coach_id) {
+      await resolveCoachProfile(chosen.coach_id)
+    }
   } catch {
-    // Table may not exist yet - fallback to first admin
+    // client_coaches may not exist yet — fall back to the first admin.
     try {
       const { data: adminUsers } = await adminClient
         .from('users')
@@ -90,19 +105,7 @@ export async function GET() {
         .eq('role', 'admin')
         .order('created_at', { ascending: true })
         .limit(1)
-      coachName = adminUsers?.[0]?.name || null
-      coachAvatarUrl = adminUsers?.[0]?.avatar_url || null
-
-      if (!coachAvatarUrl && adminUsers?.[0]?.id) {
-        const { data: strava } = await adminClient
-          .from('strava_connections')
-          .select('athlete_profile')
-          .eq('user_id', adminUsers[0].id)
-          .maybeSingle()
-        if (strava?.athlete_profile) {
-          coachStravaUrl = strava.athlete_profile.replace(/^http:\/\//i, 'https://')
-        }
-      }
+      if (adminUsers?.[0]?.id) await resolveCoachProfile(adminUsers[0].id)
     } catch {}
   }
 
