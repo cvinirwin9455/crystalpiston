@@ -3,6 +3,31 @@
 import { useState, useEffect } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
 
+// Super-admin "view as coach" scope. When a super admin is viewing a coach,
+// these sessionStorage keys hold the impersonated coach's org/coach ids (set by
+// the admin page). Pass them through so coach-scoped APIs resolve the viewed
+// coach's data (packages, Stripe, charges) instead of the super admin's own.
+function scopeQuery(): string {
+  if (typeof window === "undefined") return "";
+  const org = sessionStorage.getItem("superadmin_target_org");
+  const coach = sessionStorage.getItem("superadmin_target_coach");
+  const p = new URLSearchParams();
+  if (org) p.set("org", org);
+  if (coach) p.set("coach", coach);
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+function scopeBody(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const org = sessionStorage.getItem("superadmin_target_org");
+  const coach = sessionStorage.getItem("superadmin_target_coach");
+  const b: Record<string, string> = {};
+  if (org) b.org = org;
+  if (coach) b.coach = coach;
+  return b;
+}
+
 type Plan = {
   id: string;
   clientId: string;
@@ -192,9 +217,10 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
   useEffect(() => {
     (async () => {
       try {
+        const sq = scopeQuery();
         const [sRes, pRes] = await Promise.all([
-          fetch(`/api/stripe-connect`),
-          fetch(`/api/coach-packages`),
+          fetch(`/api/stripe-connect${sq}`),
+          fetch(`/api/coach-packages${sq}`),
         ]);
         const sData = await sRes.json().catch(() => ({}));
         const pData = await pRes.json().catch(() => ({}));
@@ -209,7 +235,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     if (!clientData.clientId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/payment-requests?client=${clientData.clientId}`);
+        const res = await fetch(`/api/payment-requests?client=${clientData.clientId}${scopeQuery().replace("?", "&")}`);
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
           const pending = (data.paymentRequests || [])
@@ -277,6 +303,8 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
         : { package_id: chargePackageId }),
       // Only meaningful for a monthly package via Stripe (subscription).
       ...(!isCustom && chargeRecurMonths.trim() ? { recur_months: chargeRecurMonths } : {}),
+      // Super-admin "view as coach": create the plan under the viewed coach.
+      ...scopeBody(),
     };
     try {
       if (chargeMethod === "manual") {
