@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getOrgIdForUser } from '@/lib/org'
 import { hasCoachAccess } from '@/lib/roles'
+import { resolveCoachRequestScope } from '@/lib/coach-scope'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -67,8 +68,21 @@ export async function GET(request: Request) {
     })))
   }
 
-  // List all coaches (admin users) scoped to this org
-  const orgId = await getOrgIdForUser(adminClient, user.id)
+  // List all coaches (admin users) scoped to this org. When a super admin is
+  // viewing as a coach (?org=&coach=), scope to the VIEWED coach's org so the
+  // list shows that coach's team — not the super admin's own org/identity.
+  const orgOverride = searchParams.get('org')
+  const coachOverride = searchParams.get('coach')
+  let orgId: string | null
+  if (orgOverride) {
+    const scopeResult = await resolveCoachRequestScope(adminClient, user.id, orgOverride, coachOverride)
+    if (!scopeResult.scope) {
+      return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status })
+    }
+    orgId = scopeResult.scope.organizationId
+  } else {
+    orgId = await getOrgIdForUser(adminClient, user.id)
+  }
 
   // Try with access_level and coach_level columns, fall back if they don't exist yet
   let coaches: any[] | null = null

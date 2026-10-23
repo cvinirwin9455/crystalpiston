@@ -11,6 +11,13 @@ import Changelog from "@/app/admin/Changelog";
 const CRYSTAL_ORG_ID = 'fffa6f6b-8226-40d9-9e49-ff17164334f4';
 const LEGACY_FIRSTMILE_ORG_ID = '1eb9b481-b6b6-455c-b733-fee789803a17';
 
+type OrgCoach = {
+  id: string;
+  name: string;
+  email: string;
+  coachLevel: string;
+};
+
 type Organization = {
   id: string;
   name: string;
@@ -21,6 +28,7 @@ type Organization = {
   clients: number;
   activeClients: number;
   accountCoachId: string | null;
+  coaches?: OrgCoach[];
 };
 
 type BetaSignup = {
@@ -396,7 +404,36 @@ export default function SuperAdminPage() {
                           <div className="text-[10px] text-gray-500">Total Clients</div>
                         </div>
                       </div>
-                      {org.accountCoachId && (
+                      {(org.coaches && org.coaches.length > 1) ? (
+                        // Multiple coaches in this org: let the super admin view
+                        // AS a specific coach (not just the account coach).
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium">View as a coach</p>
+                          {org.coaches.map((c) => (
+                            <div key={c.id} className="flex items-center gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-gray-800 truncate">{c.name}</p>
+                                <p className="text-[10px] text-gray-500 truncate">
+                                  {c.coachLevel === 'account_coach' ? 'Account Coach' : 'Coach'}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => viewAsCoach(c.id)}
+                                disabled={impersonatingId === c.id}
+                                className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition font-medium disabled:opacity-50 flex-shrink-0"
+                              >
+                                {impersonatingId === c.id ? "Opening..." : "View as \u2192"}
+                              </button>
+                              <button
+                                onClick={() => openMessageCoach(c.id, org.name)}
+                                className="text-xs bg-orange-50 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition font-medium flex-shrink-0"
+                              >
+                                Message
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : org.accountCoachId ? (
                         <div className="flex gap-2">
                           <button
                             onClick={() => viewAsCoach(org.accountCoachId!)}
@@ -412,7 +449,7 @@ export default function SuperAdminPage() {
                             Message
                           </button>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                 </div>

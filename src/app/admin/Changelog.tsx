@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-22T23:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-23T02:00:00Z";
 
 const updates = [
   {
     date: "October 22, 2026",
     items: [
+      { area: "Admin", text: "Fixed (Super Admin): Viewing as a coach now fully replicates that coach's account. The 'Super Admin' link no longer shows in the menu while you're viewing, the Coaches list shows the viewed coach's team (not you), and the 'You' tag and role-based menu items now follow the coach you're viewing. Exit using the red banner to return to your own account." },
+      { area: "Admin", text: "NEW (Super Admin): When a coach account has more than one coach, you can now pick which specific coach to view as. Each org card lists its coaches with their own 'View as' and 'Message' buttons, so you can step into any coach — not just the account owner." },
       { area: "Admin", text: "Fixed (Super Admin): When you view a coach's account and add a plan for one of their clients, the package picker now shows THAT coach's packages — not yours. Previously it fell back to your own packages, Stripe status, and charges. Now the Add Plan flow fully reflects the coach you're viewing, so plans and charges are created under their account." },
       { area: "Admin", text: "Fixed: A new session package now shows the correct remaining balance. Before, a fresh block of in-person sessions could show sessions as already 'used' because it was counting sessions from the client's earlier plans. Now a package's remaining count only reflects sessions that happen after it was purchased, so a new 10-session package correctly reads 10 remaining." },
     ],

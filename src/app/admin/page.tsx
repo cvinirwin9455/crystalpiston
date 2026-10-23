@@ -203,6 +203,11 @@ export default function AdminPage() {
           // everywhere (only the red banner reveals a super admin is behind it).
           setLoggedInUser(data.name || data.email || '');
           setAdminAvatarUrl(data.avatarUrl || null);
+          // Replicate the viewed coach's identity for id + role-gated UI, so
+          // things like "Manage Coaches" visibility and the "You" tag reflect
+          // the coach being viewed, not the super admin behind the scenes.
+          if (data.id) setLoggedInUserId(data.id);
+          if (data.coachLevel) setMyCoachLevel(data.coachLevel);
         }
       } catch {}
     };
@@ -764,11 +769,17 @@ export default function AdminPage() {
   const [createCoachSuccess, setCreateCoachSuccess] = useState("");
   const [deletingCoachId, setDeletingCoachId] = useState<string | null>(null);
 
-  // Fetch all coaches in the system
+  // Fetch all coaches in the system. When a super admin is viewing as a coach,
+  // scope to the viewed coach's org so the list is that coach's team, not ours.
   useEffect(() => {
+    if (!superAdminScopeReady) return;
     const fetchCoaches = async () => {
       try {
-        const res = await fetch('/api/coaches');
+        const scopeParams = new URLSearchParams();
+        if (superAdminTargetOrgId) scopeParams.set('org', superAdminTargetOrgId);
+        if (superAdminTargetCoachId) scopeParams.set('coach', superAdminTargetCoachId);
+        const sq = scopeParams.toString();
+        const res = await fetch(`/api/coaches${sq ? `?${sq}` : ''}`);
         if (res.ok) {
           const data = await res.json();
           setAllCoaches(data.map((c: any) => ({ id: c.id, name: c.name, email: c.email, accessLevel: c.accessLevel || 'all_clients', coachLevel: c.coachLevel || 'account_coach' })));
@@ -776,7 +787,7 @@ export default function AdminPage() {
       } catch (err) { console.error('Failed to fetch coaches:', err); }
     };
     fetchCoaches();
-  }, []);
+  }, [superAdminScopeReady, superAdminTargetOrgId, superAdminTargetCoachId]);
 
   // Assign a coach to the selected client
   const handleAssignCoach = async (coachId: string) => {
@@ -922,16 +933,20 @@ export default function AdminPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: profile } = await supabase.from('users').select('name, avatar_url, access_level, coach_level, is_super_admin').eq('id', user.id).single();
-          setLoggedInUserId(user.id);
-          if (profile?.access_level) setMyAccessLevel(profile.access_level);
-          if (profile?.coach_level) setMyCoachLevel(profile.coach_level);
+          // is_super_admin always reflects the REAL user (it gates returning to
+          // the super-admin console, which is correct to hide while viewing).
           if (profile?.is_super_admin) setIsSuperAdmin(true);
-          // When impersonating a coach, the displayed identity (name, photo)
-          // belongs to that coach — the target-coach effect sets those. Only
-          // load the real user's identity when NOT impersonating.
+          // When impersonating a coach, the account identity (id, name, photo,
+          // coach level) belongs to the VIEWED coach — the target-coach effect
+          // sets those. Only load the real user's identity when NOT impersonating,
+          // so role-gated UI ("Manage Coaches", the "You" tag, client grouping)
+          // reflects the coach being viewed rather than the super admin.
           const impersonating = sessionStorage.getItem('superadmin_viewing') === 'true'
             && !!sessionStorage.getItem('superadmin_target_org');
           if (!impersonating) {
+            setLoggedInUserId(user.id);
+            if (profile?.access_level) setMyAccessLevel(profile.access_level);
+            if (profile?.coach_level) setMyCoachLevel(profile.coach_level);
             setLoggedInUser(profile?.name || user.email || '');
             if (profile?.avatar_url) setAdminAvatarUrl(profile.avatar_url);
           }
@@ -3241,7 +3256,7 @@ export default function AdminPage() {
                       Manage Coaches
                     </button>
                     )}
-                    {isSuperAdmin && (
+                    {isSuperAdmin && !isSuperAdminViewing && (
                     <a href="/super-admin" target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-purple-400 hover:text-purple-300">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                       Super Admin
