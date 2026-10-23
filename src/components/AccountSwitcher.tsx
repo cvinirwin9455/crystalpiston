@@ -19,16 +19,26 @@ export default function AccountSwitcher({
   current,
   variant = "admin",
   mobile = false,
+  impersonating = false,
+  impersonatedCoachIsDual = false,
 }: {
   current: "coach" | "client";
   variant?: "admin" | "dashboard" | "dashboard-light";
   mobile?: boolean;
+  // Super-admin "view as coach" context. When impersonating, visibility of the
+  // switcher must reflect the VIEWED coach (not the real logged-in user): only
+  // show "Switch to My Training" if that coach also has a linked client account.
+  impersonating?: boolean;
+  impersonatedCoachIsDual?: boolean;
 }) {
   const supabase = createClient();
   const [isDual, setIsDual] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    // While impersonating, the real user's own dual-role status is irrelevant —
+    // the switcher must reflect the coach being viewed, handled below.
+    if (impersonating) return;
     let cancelled = false;
     async function check() {
       const {
@@ -54,9 +64,17 @@ export default function AccountSwitcher({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [impersonating]);
 
-  if (!isDual) return null;
+  // Visibility:
+  //  - Normal use: show for dual-role users.
+  //  - Impersonating: show ONLY if the VIEWED coach is dual-role. (If they have
+  //    no client account — like a coach-only account — don't offer it at all.)
+  if (impersonating) {
+    if (!impersonatedCoachIsDual) return null;
+  } else if (!isDual) {
+    return null;
+  }
 
   // Switching means: go to the OTHER view.
   const target: "coach" | "client" = current === "coach" ? "client" : "coach";
@@ -64,7 +82,7 @@ export default function AccountSwitcher({
     target === "coach" ? "Switch to Coaching" : "Switch to My Training";
 
   async function handleSwitch() {
-    if (busy) return;
+    if (busy || impersonating) return;
     setBusy(true);
     try {
       await fetch("/api/preferred-view", {
@@ -105,8 +123,13 @@ export default function AccountSwitcher({
   return (
     <button
       onClick={handleSwitch}
-      disabled={busy}
-      className={`${base} ${colors} disabled:opacity-50`}
+      disabled={busy || impersonating}
+      title={
+        impersonating
+          ? "This coach also has a client account. Switching into their training isn't available from view-as mode."
+          : undefined
+      }
+      className={`${base} ${colors} disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       {icon}
       {busy ? "Switching…" : label}

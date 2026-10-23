@@ -127,6 +127,9 @@ export default function AdminPage() {
   const [superAdminScopeReady, setSuperAdminScopeReady] = useState(false);
   const [superAdminTargetCoachName, setSuperAdminTargetCoachName] = useState<string | null>(null);
   const [superAdminTargetCoachAvatar, setSuperAdminTargetCoachAvatar] = useState<string | null>(null);
+  // Whether the VIEWED coach also has a linked client account (dual-role).
+  // Drives whether "Switch to My Training" shows while viewing as that coach.
+  const [superAdminTargetHasClientAccount, setSuperAdminTargetHasClientAccount] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('superadmin') === 'true') {
@@ -208,6 +211,8 @@ export default function AdminPage() {
           // the coach being viewed, not the super admin behind the scenes.
           if (data.id) setLoggedInUserId(data.id);
           if (data.coachLevel) setMyCoachLevel(data.coachLevel);
+          // Only offer "Switch to My Training" if THIS coach is dual-role.
+          setSuperAdminTargetHasClientAccount(!!data.hasClientAccount);
         }
       } catch {}
     };
@@ -3263,7 +3268,7 @@ export default function AdminPage() {
                     </a>
                     )}
                     <div className="border-t border-white/10 mt-1 pt-1">
-                      <AccountSwitcher current="coach" variant="admin" />
+                      <AccountSwitcher current="coach" variant="admin" impersonating={isSuperAdminViewing} impersonatedCoachIsDual={superAdminTargetHasClientAccount} />
                       <a href="/auth/signout" className="w-full flex items-center gap-2.5 text-xs py-2 px-3 hover:bg-white/5 transition-colors text-red-400 hover:text-red-300">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Logout
@@ -3333,7 +3338,7 @@ export default function AdminPage() {
                     </a>
                     )}
                     <div className="border-t border-white/10 mt-1 pt-1">
-                      <AccountSwitcher current="coach" variant="admin" mobile />
+                      <AccountSwitcher current="coach" variant="admin" mobile impersonating={isSuperAdminViewing} impersonatedCoachIsDual={superAdminTargetHasClientAccount} />
                       <a href="/auth/signout" className="w-full flex items-center gap-3 text-sm py-3 px-4 hover:bg-white/5 transition-colors text-red-400 active:bg-white/10">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Logout
