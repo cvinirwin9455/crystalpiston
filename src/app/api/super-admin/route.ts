@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     // so they continue to fall back to that organization's account coach.
     let ownerQuery = adminClient
       .from('users')
-      .select('id, name, email, avatar_url')
+      .select('id, name, email, avatar_url, coach_level')
       .eq('organization_id', orgId)
 
     if (coachId) {
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       // Fallback: get any admin in that org
       const { data: anyAdmin } = await adminClient
         .from('users')
-        .select('id, name, email, avatar_url')
+        .select('id, name, email, avatar_url, coach_level')
         .eq('organization_id', orgId)
         .eq('role', 'admin')
         .limit(1)
@@ -75,6 +75,7 @@ export async function GET(request: Request) {
         name: anyAdmin?.name || 'Unknown Coach',
         email: anyAdmin?.email || '',
         avatarUrl: anyAdmin?.avatar_url || null,
+        coachLevel: anyAdmin?.coach_level || 'account_coach',
       })
     }
 
@@ -83,6 +84,7 @@ export async function GET(request: Request) {
       name: owner.name || owner.email || 'Unknown Coach',
       email: owner.email || '',
       avatarUrl: owner.avatar_url || null,
+      coachLevel: owner.coach_level || 'account_coach',
     })
   }
 
@@ -95,18 +97,33 @@ export async function GET(request: Request) {
   // Get user counts per org
   const { data: users } = await adminClient
     .from('users')
-    .select('id, organization_id, role, status, coach_level')
+    .select('id, organization_id, role, status, coach_level, name, email')
 
   const orgStats = (orgs || []).map(org => {
     const orgUsers = (users || []).filter(u => u.organization_id === org.id)
-    const accountCoach = orgUsers.find(u => u.role === 'admin' && u.coach_level === 'account_coach')
+    const adminUsers = orgUsers.filter(u => u.role === 'admin')
+    const accountCoach = adminUsers.find(u => u.coach_level === 'account_coach')
     return {
       ...org,
       totalUsers: orgUsers.length,
-      admins: orgUsers.filter(u => u.role === 'admin').length,
+      admins: adminUsers.length,
       clients: orgUsers.filter(u => u.role === 'client').length,
       activeClients: orgUsers.filter(u => u.role === 'client' && u.status !== 'inactive').length,
       accountCoachId: accountCoach?.id || null,
+      // Every coach in the org, so a super admin can view AS a specific one
+      // (account coach first, then the rest by name).
+      coaches: adminUsers
+        .map(u => ({
+          id: u.id,
+          name: u.name || u.email || 'Unnamed coach',
+          email: u.email || '',
+          coachLevel: u.coach_level || 'account_coach',
+        }))
+        .sort((a, b) =>
+          a.coachLevel === b.coachLevel
+            ? a.name.localeCompare(b.name)
+            : a.coachLevel === 'account_coach' ? -1 : 1
+        ),
     }
   })
 
