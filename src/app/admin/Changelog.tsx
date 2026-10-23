@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-23T02:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-10-23T05:00:00Z";
 
 const updates = [
+  {
+    date: "October 23, 2026",
+    items: [
+      { area: "Admin", text: "Fixed (Super Admin): 'Switch to My Training' now only appears when the coach you're viewing actually has their own client account. Before, it showed based on YOUR account, so viewing a coach-only account (no client side) still offered it and dropped you into your own training. Now it reflects the viewed coach." },
+    ],
+  },
   {
     date: "October 22, 2026",
     items: [

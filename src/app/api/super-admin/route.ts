@@ -60,6 +60,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Target coach not found in organization' }, { status: 404 })
     }
 
+    // Does this coach ALSO have a linked client account (dual-role)? Used to
+    // decide whether "Switch to My Training" should appear while viewing them.
+    const hasClientAccount = async (userId: string | null | undefined): Promise<boolean> => {
+      if (!userId) return false
+      const { data } = await adminClient
+        .from('clients')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+      return !!data
+    }
+
     if (!owner) {
       // Fallback: get any admin in that org
       const { data: anyAdmin } = await adminClient
@@ -76,6 +88,7 @@ export async function GET(request: Request) {
         email: anyAdmin?.email || '',
         avatarUrl: anyAdmin?.avatar_url || null,
         coachLevel: anyAdmin?.coach_level || 'account_coach',
+        hasClientAccount: await hasClientAccount(anyAdmin?.id),
       })
     }
 
@@ -85,6 +98,7 @@ export async function GET(request: Request) {
       email: owner.email || '',
       avatarUrl: owner.avatar_url || null,
       coachLevel: owner.coach_level || 'account_coach',
+      hasClientAccount: await hasClientAccount(owner.id),
     })
   }
 
