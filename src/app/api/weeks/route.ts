@@ -91,6 +91,9 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')
+  // ?summary=1 returns only each week's id, date range and status (no workouts,
+  // logs or Strava data) for cheap "does a week exist?" checks.
+  const summaryOnly = searchParams.get('summary') === '1'
 
   if (!clientId) {
     return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
@@ -117,6 +120,12 @@ export async function GET(request: Request) {
 
   if (!weeks || weeks.length === 0) {
     return NextResponse.json([])
+  }
+
+  if (summaryOnly) {
+    return NextResponse.json(
+      weeks.map(w => ({ weekId: w.id, dateRange: w.date_range, status: w.status }))
+    )
   }
 
   // Fetch all workouts for these weeks

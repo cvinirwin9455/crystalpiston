@@ -230,6 +230,26 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
     })();
   }, []);
 
+  // This client's training weeks (labels + status only). The plan card's
+  // "start date has passed" warning only applies when nothing was published for
+  // the week the plan was set to start. null = not loaded yet (or failed), in
+  // which case no warning is shown rather than a false one.
+  const [clientWeeks, setClientWeeks] = useState<{ dateRange: string; status: string }[] | null>(null);
+  useEffect(() => {
+    setClientWeeks(null);
+    if (!clientData.clientId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/weeks?client_id=${clientData.clientId}&summary=1`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setClientWeeks(Array.isArray(data) ? data : []);
+      } catch { /* non-fatal: leave null so no warning is shown */ }
+    })();
+    return () => { cancelled = true; };
+  }, [clientData.clientId]);
+
   // Load this client's outstanding (pending) renewal charges.
   useEffect(() => {
     if (!clientData.clientId) return;
@@ -1006,7 +1026,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
         {!loadingPlans && plans.length === 0 && <p className="text-gray-500 text-sm">No plans yet. Create one above.</p>}
         {/* Active Plan */}
         {plans.filter(p => p.status === "active").map((plan) => (
-          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} programTemplates={programTemplates} />
+          <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} programTemplates={programTemplates} clientWeeks={clientWeeks} />
         ))}
         {/* Completed Plans - collapsible */}
         {plans.filter(p => p.status !== "active").length > 0 && (
@@ -1016,7 +1036,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
             </summary>
             <div className="mt-3 space-y-3">
               {plans.filter(p => p.status !== "active").map((plan) => (
-                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} programTemplates={programTemplates} />
+                <PlanCard key={plan.id} plan={plan} onUpdate={handleUpdatePlan} dateFormat={dateFormat} programTemplates={programTemplates} clientWeeks={clientWeeks} />
               ))}
             </div>
           </details>
@@ -1061,7 +1081,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
 }
 
 // Sub-component for individual plan card with payment logging
-function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
+function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[]; clientWeeks?: { dateRange: string; status: string }[] | null }) {
   // Payment form — 'which' tracks which card's form is open (null = closed)
   const [openPaymentForm, setOpenPaymentForm] = useState<null | 'programming' | 'session'>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -1131,13 +1151,42 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
     : 0;
   const unusedSessionsValue = perSessionValue * sessionsRemaining;
 
-  // "Start date has passed" — an active plan whose start date is in the past
-  // (e.g. a client paid late). Nudge the coach to adjust it via Edit Plan.
+  // "Start date has passed" — an active plan whose start date is in the past AND
+  // for which no training was published in the week it was set to start (e.g. a
+  // client who paid late). If a week WAS published for that week, the client
+  // started on time and there is nothing to adjust, so we stay quiet. The coach
+  // can also dismiss it; that is remembered per plan in this browser.
+  const startAlertKey = `startDateAlertDismissed:${plan.id}`;
+  const [startAlertDismissed, setStartAlertDismissed] = useState<boolean>(() => {
+    try { return typeof window !== "undefined" && window.localStorage.getItem(startAlertKey) === "1"; } catch { return false; }
+  });
+  const dismissStartAlert = () => {
+    setStartAlertDismissed(true);
+    try { window.localStorage.setItem(startAlertKey, "1"); } catch { /* storage blocked: hidden for this view only */ }
+  };
   const startPassed = (() => {
     if (plan.status !== "active" || !plan.startDate) return false;
-    const start = new Date(plan.startDate + "T00:00:00");
+    if (startAlertDismissed || !clientWeeks) return false; // dismissed, or weeks not loaded yet
+    const start = new Date(plan.startDate.slice(0, 10) + "T00:00:00");
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    return start.getTime() < today.getTime();
+    if (!(start.getTime() < today.getTime())) return false;
+    // Weeks run Mon-Sun and are labelled like "Jun 22 - Jun 28". Find the Monday
+    // of the week containing the start date and look for a published week with it.
+    // A plan set to start on a SUNDAY is on the last day of its week, so training
+    // naturally begins the next day: also accept the week starting the next Monday.
+    const label = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const monday = new Date(start);
+    monday.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    const acceptedMondays = [label(monday)];
+    if (start.getDay() === 0) {
+      const nextMonday = new Date(start);
+      nextMonday.setDate(start.getDate() + 1);
+      acceptedMondays.push(label(nextMonday));
+    }
+    const startedThatWeek = clientWeeks.some(
+      (w) => w.status === "published" && acceptedMondays.includes((w.dateRange || "").split(" - ")[0].trim())
+    );
+    return !startedThatWeek;
   })();
 
   // Fetch payments from API on mount
@@ -1444,25 +1493,35 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates }: { plan: Plan
       </div>
 
       {/* Start-date-has-passed indicator — the plan's start date is in the past
-          (e.g. a late payment). Prompt the coach to adjust it via Edit Plan. */}
+          and no training was published for that week (e.g. a late payment).
+          The coach can adjust the dates via Edit Plan, or dismiss it. */}
       {startPassed && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2.5 mb-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-start gap-2 min-w-0">
-              <span className="text-base leading-none mt-0.5">⚠️</span>
+              <span className="text-base leading-none mt-0.5" aria-hidden="true">⚠️</span>
               <div className="min-w-0">
                 <p className="text-amber-200 text-xs font-medium">Start date has passed</p>
                 <p className="text-amber-300/70 text-[11px] mt-0.5">
-                  This plan was set to start {formatDate(plan.startDate)}. If the client started late, update the start date.
+                  This plan was set to start {formatDate(plan.startDate)}, but no training was published for that week. If the client started late, update the start date.
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setEditingPlan(true)}
-              className="flex-shrink-0 text-[11px] bg-amber-600/80 hover:bg-amber-600 text-white font-medium px-2.5 py-1 rounded-lg"
-            >
-              Adjust dates
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setEditingPlan(true)}
+                className="text-[11px] bg-amber-600/80 hover:bg-amber-600 text-white font-medium px-2.5 py-1 rounded-lg"
+              >
+                Adjust dates
+              </button>
+              <button
+                onClick={dismissStartAlert}
+                aria-label="Dismiss start date warning"
+                className="text-[11px] border border-amber-500/40 text-amber-200 hover:bg-amber-500/10 font-medium px-2.5 py-1 rounded-lg"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       )}
