@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-10-23T05:00:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-10T09:30:00Z";
 
 const updates = [
+  {
+    date: "November 10, 2026",
+    items: [
+      { area: "Admin", text: "Improved: The 'Start date has passed' warning on a client's Account tab now only appears when it's useful. If you've already published training for the week the plan was set to start, the client clearly started on time, so the warning stays hidden. It still shows when nothing was published that week (for example a client who started late), and you can now tap 'Dismiss' to hide it for that plan, or 'Adjust dates' to fix the start date." },
+    ],
+  },
   {
     date: "October 23, 2026",
     items: [
