@@ -29,6 +29,63 @@ type WeekData = { weekId: string; label: string; dateRange: string; focus: strin
 // because workouts carry optional structure data and are built from several sources.
 type WeekPlanWorkout = { type: string; trainingType: string; title: string; miles: string; description: string; paceTarget: string; location: string; coachNotes: string; distanceUnit?: "mi" | "km"; structure?: any; crossTrainingStructure?: any; [key: string]: any };
 type WeekPlanDay = { day: string; sessionType: "remote" | "in_person"; sessionConflict: boolean; workouts: WeekPlanWorkout[] };
+// ---- Create Week autosave (this browser only) -------------------------------------
+// While a coach builds a week, a copy of the form is kept in localStorage, per coach
+// AND per client, so closing the tab / refreshing / navigating away doesn't lose it.
+type WeekPlanForm = { dateRange: string; focus: string; coachMessage: string; days: WeekPlanDay[] };
+type WeekAutosave = { v: 1; savedAt: string; editingDraftId: string | null; weekPlan: WeekPlanForm };
+const WEEK_AUTOSAVE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // forget copies older than 14 days
+const weekAutosaveKey = (coachId: string, clientUserId: string) => `fm_weekplan_autosave_v1:${coachId}:${clientUserId}`;
+
+// A blank Create Week form (used when switching clients).
+const blankWeekPlan = (unit: "mi" | "km"): WeekPlanForm => ({
+  dateRange: "", focus: "", coachMessage: "",
+  days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => ({
+    day, sessionType: "remote" as const, sessionConflict: false,
+    workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: unit }],
+  })),
+});
+
+// Has the coach actually entered anything? (Picking a date alone, or a form of only
+// rest days, isn't worth saving or offering to restore.)
+function weekPlanHasContent(wp: { focus: string; coachMessage: string; days: WeekPlanDay[] }): boolean {
+  if ((wp.focus || "").trim() || (wp.coachMessage || "").trim()) return true;
+  return wp.days.some((d) => d.workouts.some((w) =>
+    (w.type && w.type !== "rest") ||
+    String(w.title || "").trim() || String(w.description || "").trim() || String(w.miles || "").trim() ||
+    String(w.paceTarget || "").trim() || String(w.coachNotes || "").trim() || String(w.location || "").trim()
+  ));
+}
+
+// Read + validate a saved copy; anything malformed, empty or stale is discarded.
+function readWeekAutosave(key: string): WeekAutosave | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WeekAutosave;
+    const fresh = parsed && parsed.v === 1 && Date.now() - new Date(parsed.savedAt).getTime() < WEEK_AUTOSAVE_MAX_AGE_MS;
+    const valid = fresh && parsed.weekPlan && Array.isArray(parsed.weekPlan.days) && parsed.weekPlan.days.length === 7 && weekPlanHasContent(parsed.weekPlan);
+    if (!valid) { window.localStorage.removeItem(key); return null; }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Monday (local midnight) of a week label like "Nov 16 - Nov 22". Labels carry no year,
+// so use this year, rolling forward if that lands > ~6 months in the past.
+function mondayFromWeekLabel(label: string): Date | null {
+  const startStr = (label || "").split(" - ")[0]?.trim();
+  // Strict "Mon D" shape: JavaScript's date parser quietly accepts junk like "garbage, 2026".
+  if (!startStr || !/^[A-Za-z]{3,9}\.? \d{1,2}$/.test(startStr)) return null;
+  const now = new Date();
+  let d = new Date(`${startStr}, ${now.getFullYear()}`);
+  if (isNaN(d.getTime())) return null;
+  if (d.getTime() < now.getTime() - 180 * 24 * 60 * 60 * 1000) d = new Date(`${startStr}, ${now.getFullYear() + 1}`);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 type CoachMessage = { id: string; date: string; from: string; message: string; };
 type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean; };
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; hasActivePlan?: boolean; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
@@ -1919,6 +1976,75 @@ export default function AdminPage() {
 
   const selectedClientData = clients.find((c) => c.id === selectedClient);
 
+  // ---- Create Week autosave ---------------------------------------------------------
+  // A saved copy of the form that can be offered back to the coach (null = nothing to offer).
+  const [autosavedPlan, setAutosavedPlan] = useState<WeekAutosave | null>(null);
+  const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
+
+  // Remove the saved copy (after saving/publishing, Cancel, or Discard).
+  const clearWeekAutosave = () => {
+    if (loggedInUserId && selectedClient) {
+      try { window.localStorage.removeItem(weekAutosaveKey(loggedInUserId, selectedClient)); } catch { /* ignore */ }
+    }
+    setAutosavedPlan(null);
+    setLastAutosavedAt(null);
+  };
+
+  // A half-built week belongs to ONE client. Switching clients must not carry the form
+  // (or the "editing this draft" marker) over, otherwise publishing would delete one
+  // client's draft and create the week for a different client.
+  useEffect(() => {
+    setEditingDraftId(null);
+    setWeekPlan(blankWeekPlan(adminDistanceUnit));
+    setSelectedWeekStart(null);
+    setWeekDateWarning("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClient]);
+
+  // When Create Week opens (or the client changes), look for a saved copy to offer.
+  useEffect(() => {
+    setLastAutosavedAt(null);
+    if (clientTab !== 'create' || !selectedClient || !loggedInUserId) { setAutosavedPlan(null); return; }
+    setAutosavedPlan(readWeekAutosave(weekAutosaveKey(loggedInUserId, selectedClient)));
+  }, [clientTab, selectedClient, loggedInUserId]);
+
+  // Save a copy of the form shortly after every change (debounced).
+  useEffect(() => {
+    if (clientTab !== 'create' || !selectedClient || !loggedInUserId) return;
+    // A draft being edited must belong to THIS client, never a stale marker from another.
+    if (editingDraftId && !selectedClientData?.weeks.some((w) => w.weekId === editingDraftId)) return;
+    if (!weekPlanHasContent(weekPlan)) return;
+    const key = weekAutosaveKey(loggedInUserId, selectedClient);
+    const timer = setTimeout(() => {
+      try {
+        const entry: WeekAutosave = { v: 1, savedAt: new Date().toISOString(), editingDraftId, weekPlan };
+        window.localStorage.setItem(key, JSON.stringify(entry));
+        setLastAutosavedAt(new Date());
+        // Keep the offered copy current, so if the form is wiped (e.g. the Create Week tab is
+        // clicked again) the restore banner reflects what was just saved.
+        setAutosavedPlan(entry);
+      } catch { /* storage full or blocked: never interrupt the coach */ }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [weekPlan, editingDraftId, clientTab, selectedClient, loggedInUserId, selectedClientData]);
+
+  // Put the saved copy back into the form.
+  const restoreWeekAutosave = () => {
+    if (!autosavedPlan) return;
+    const saved = autosavedPlan;
+    const weeks = selectedClientData?.weeks || [];
+    // Only keep "editing draft X" if that draft still exists, otherwise treat it as a new week.
+    const draftStillThere = !!saved.editingDraftId && weeks.some((w) => w.weekId === saved.editingDraftId && w.status === 'draft');
+    setWeekPlan(saved.weekPlan);
+    setEditingDraftId(draftStillThere ? saved.editingDraftId : null);
+    setSelectedWeekStart(mondayFromWeekLabel(saved.weekPlan.dateRange));
+    const dup = weeks.find((w) => w.dateRange === saved.weekPlan.dateRange);
+    setWeekDateWarning(dup && !(draftStillThere && dup.weekId === saved.editingDraftId)
+      ? `A week already exists for ${saved.weekPlan.dateRange} (${dup.status}). You cannot create a duplicate. Go to ${dup.status === 'draft' ? 'Drafts' : 'Training & Logs'} to view or edit it.`
+      : "");
+    setAutosavedPlan(null);
+  };
+
   // Helper: select a client and mark their workout comments as viewed (clears purple dot)
   const handleSelectClient = (clientId: string) => {
     setSelectedClient(clientId);
@@ -2807,6 +2933,8 @@ export default function AdminPage() {
         }),
       });
       if (res.ok) {
+        // The week is saved on the server now, so the local autosave copy is no longer needed.
+        clearWeekAutosave();
         // Reset form
         setWeekPlan({
           dateRange: "", focus: "", coachMessage: "",
@@ -4446,6 +4574,23 @@ export default function AdminPage() {
                 <h3 ref={createWeekRef} className="font-heading text-lg uppercase text-white">{editingDraftId ? "Edit Week Plan" : "Create Week Plan"}</h3>
                 <p className="text-gray-400 text-sm">{editingDraftId ? "Editing existing draft. Save to update." : "Save as a draft to review later, or publish directly to make it visible to your client."}</p>
                 <p className="text-gray-300 text-xs"><span className="text-accent">*</span> Required fields: Week Date Range. At least one workout day should have a type selected.</p>
+
+                {/* Autosave: offer back a plan that was in progress (closed tab, refresh, navigated away). */}
+                {autosavedPlan && !editingDraftId && !weekPlanHasContent(weekPlan) && (
+                  <div role="status" className="bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-white text-sm font-medium">You have an unsaved plan{autosavedPlan.weekPlan.dateRange ? ` for ${autosavedPlan.weekPlan.dateRange}` : ''}</p>
+                      <p className="text-gray-300 text-xs mt-0.5">Autosaved {new Date(autosavedPlan.savedAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })} on this device. Starting a new plan instead replaces it.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={restoreWeekAutosave} className="bg-accent hover:bg-orange-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs">Restore</button>
+                      <button onClick={clearWeekAutosave} className="border border-white/10 text-gray-300 hover:text-white py-1.5 px-4 rounded-lg text-xs">Discard</button>
+                    </div>
+                  </div>
+                )}
+                {lastAutosavedAt && weekPlanHasContent(weekPlan) && (
+                  <p className="text-gray-500 text-xs">Autosaved on this device at {lastAutosavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
+                )}
                 {/* Program Banner — shows for clients with an assigned program */}
                 {activePlan?.programTemplateId && (() => {
                   const prog = programTemplates.find(p => p.id === activePlan.programTemplateId);
@@ -4815,7 +4960,7 @@ export default function AdminPage() {
                   <span className="text-gray-400 text-sm">Weekly Mileage Total:</span>
                   <span className="text-accent font-heading text-lg">{sumProgrammedMileage(weekPlan.days.flatMap(day => day.workouts)).toFixed(2)} {distUnitShort}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save as Draft"}</button><button onClick={() => handleSaveWeek("published")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save & Publish"}</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
+                <div className="flex gap-3 flex-wrap items-center"><button onClick={() => handleSaveWeek("draft")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save as Draft"}</button><button onClick={() => handleSaveWeek("published")} disabled={savingWeek || !!weekDateWarning || !weekPlan.dateRange} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">{savingWeek ? "Saving..." : "Save & Publish"}</button><button type="button" onClick={() => { setShowSaveWeekTemplate(true); setTimeout(() => saveTemplateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className="border border-gold/30 text-gold hover:bg-gold/10 font-bold py-2 px-4 rounded-lg text-sm">Save as Template</button><button type="button" onClick={() => { setWeekPlan({ dateRange: "", focus: "", coachMessage: "", days: [ { day: "Monday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Tuesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Wednesday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Thursday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Friday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Saturday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] }, { day: "Sunday", sessionType: "remote", sessionConflict: false, workouts: [{ type: "", trainingType: "", title: "", miles: "", description: "", paceTarget: "", location: "", coachNotes: "", distanceUnit: "mi" }] } ] }); clearWeekAutosave(); setSelectedWeekStart(null); setEditingDraftId(null); setWeekDateWarning(""); setClientTab("plan"); }} className="text-gray-400 hover:text-white text-sm ml-2">Cancel</button></div>
                 {!weekPlan.dateRange && <p className="text-accent text-xs mt-2">Select a week date range to save.</p>}
                 {/* Save Week Template Dialog */}
                 {showSaveWeekTemplate && (
