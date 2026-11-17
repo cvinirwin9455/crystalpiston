@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-10T09:30:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-17T18:10:00Z";
 
 const updates = [
+  {
+    date: "November 17, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Move a workout to a different day while you're editing a week, just like your clients can. In Edit Week, drag a workout by its grip (the dots marked 'Drag') and drop it on another day, or use the 'Move to another day' button, which also works on phones. The workout shows up on its new day right away and is saved when you click Save Changes (Cancel undoes it, and 'Undo' puts it back). If your client had already moved that workout themselves, your change replaces theirs, so their 'Reset Week' won't pull it back to the old day. Workouts that are already completed, matched to Strava, or on an in-person session day can't be moved, and in-person days won't accept a drop. For in-person days, change the session on the Sessions tab instead." },
+    ],
+  },
   {
     date: "November 10, 2026",
     items: [
