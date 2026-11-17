@@ -14,6 +14,7 @@ import StructuredRunBuilder, { calculateTotalDistance, formatStructureForDisplay
 import type { WorkoutStructure, WorkBlock } from "./StructuredRunBuilder";
 import StructuredCrossTrainingBuilder, { formatCrossTrainingForDisplay } from "./StructuredCrossTrainingBuilder";
 import AvatarUpload from "@/components/AvatarUpload";
+import { DragDropProvider, DroppableDay, DragHandle, Toast } from "@/components/WorkoutDragDrop";
 import ClientStatsTab from "./ClientStatsTab";
 import ExerciseLibraryTab from "./ExerciseLibraryTab";
 import CoachGuide from "./CoachGuide";
@@ -2410,6 +2411,38 @@ export default function AdminPage() {
     const dayNameToIndex: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 0 };
     return weekHasSessionDates ? clientSessionDates.includes(iso) : clientRecurringDays.includes(dayNameToIndex[dayName]);
   };
+
+  // Edit Week move rules, shared by the "Move to another day" button and drag and
+  // drop so the two can never disagree. (The server enforces the same rules.)
+  // Why can't this workout be moved at all? null = it can.
+  const workoutMoveLockedReason = (w: { day: string; stravaSynced?: boolean }): string | null => {
+    if (w.stravaSynced) return 'Matched to a Strava activity, so it can\u2019t be moved.';
+    if (adminDayHasScheduledSession(w.day)) return 'In-person session day. Reschedule the session from the Sessions tab instead.';
+    return null;
+  };
+  // Why can't a workout be moved ONTO this day? null = it can.
+  const dayDropBlockedReason = (dayName: string): string | null =>
+    adminDayHasScheduledSession(dayName) ? `${dayName} has an in-person session scheduled. Pick a different day, or reschedule the session from the Sessions tab.` : null;
+
+  // Small message shown after a drag and drop (success or "can't do that").
+  const [moveNotice, setMoveNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Stable callback so the Toast's 4-second auto-dismiss timer isn't reset by re-renders.
+  const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
+
+  // Drag and drop in Edit Week: stage the move exactly like the button does
+  // (it is only saved when the coach clicks Save Changes).
+  const handleCoachDragMove = async (workoutId: string, _workoutType: 'programmed' | 'client', fromDay: string, toDay: string): Promise<boolean> => {
+    const w = selectedWeek?.workouts.find(x => x.id === workoutId);
+    if (!w || fromDay === toDay) return false;
+    const reason = workoutMoveLockedReason(w) || dayDropBlockedReason(toDay);
+    if (reason) {
+      setMoveNotice({ message: reason, type: 'error' });
+      return false;
+    }
+    updateEditedWorkout(workoutId, 'day', toDay);
+    setMoveNotice({ message: `Moved to ${toDay}. Click Save Changes to keep it.`, type: 'success' });
+    return true;
+  };
   const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string; totalPaid: number; totalOwed: number } | null>(null);
 
   // Reusable: refresh active plan + session data for a client
@@ -3881,6 +3914,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Workouts */}
+                <DragDropProvider weekId={selectedWeek.weekId} onMoveWorkout={handleCoachDragMove}>
                 <div className="space-y-3">
                   {/* Expand/Collapse All */}
                   <div className="flex justify-end mb-2">
@@ -3941,7 +3975,7 @@ export default function AdminPage() {
                           return `${h % 12 || 12}:${min} ${ampm}`;
                         })()
                       : '';
-                    return (
+                    const dayCard = (
                       <div key={day} className={`border rounded-xl overflow-hidden ${isAdminInPersonDay ? 'border-blue-500/40' : 'border-white/10'}`}>
                         <button aria-expanded={isAdminDayExpanded} onClick={() => setAdminExpandedDays(prev => ({ ...prev, [day]: !isAdminDayExpanded }))} className="w-full flex items-center justify-between p-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left">
                           <div>
@@ -3969,7 +4003,7 @@ export default function AdminPage() {
                           </div>
                         )}
                         {dayWorkouts.map((w, wi) => (
-                    <div key={w.id} className="bg-primary/30 border border-white/5 rounded-xl p-4">
+                    <div key={w.id} data-workout-card className="bg-primary/30 border border-white/5 rounded-xl p-4">
                       {(!editingWeek || w.completed) ? (
                         <>
                           <div className="flex items-center gap-4">
@@ -4068,15 +4102,13 @@ export default function AdminPage() {
                             const shownDay = editedWorkouts[w.id]?.day || w.day;
                             const movedFrom = shownDay !== w.day ? w.day : null;
                             // Where it was saved is what the server checks, so judge the move from the SAVED day.
-                            const lockedReason = w.stravaSynced
-                              ? 'Matched to a Strava activity, so it can\u2019t be moved.'
-                              : adminDayHasScheduledSession(w.day)
-                                ? 'In-person session day. Reschedule the session from the Sessions tab instead.'
-                                : null;
+                            const lockedReason = workoutMoveLockedReason(w);
                             const pickerOpen = movingWorkoutId === w.id;
                             return (
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
+                                  {/* Desktop: drag this grip onto another day. Phones/keyboards: use the button. */}
+                                  <DragHandle workoutId={w.id} workoutType="programmed" day={shownDay} title={w.title || w.trainingType || w.type} disabled={!!lockedReason} />
                                   <button
                                     type="button"
                                     onClick={() => !lockedReason && setMovingWorkoutId(pickerOpen ? null : w.id)}
@@ -4099,7 +4131,7 @@ export default function AdminPage() {
                                   <div role="group" aria-label="Choose a day to move this workout to" className="flex flex-wrap gap-1.5 mt-2">
                                     {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d) => {
                                       const isShown = d === shownDay;
-                                      const blocked = !isShown && adminDayHasScheduledSession(d);
+                                      const blocked = !isShown && !!dayDropBlockedReason(d);
                                       return (
                                         <button
                                           key={d}
@@ -4307,8 +4339,16 @@ export default function AdminPage() {
                     )}
                       </div>
                     );
+                    // While editing, each day accepts dropped workouts (in-person days refuse them).
+                    return editingWeek ? (
+                      <DroppableDay key={day} day={day} isEmpty={isDayEmpty} disabled={!!dayDropBlockedReason(day)} disabledLabel="In-person session day. Workouts can't be moved here." className="rounded-xl">
+                        {dayCard}
+                      </DroppableDay>
+                    ) : dayCard;
                   })}
                 </div>
+                </DragDropProvider>
+                <Toast message={moveNotice?.message || ''} type={moveNotice?.type || 'success'} isVisible={!!moveNotice} onDismiss={dismissMoveNotice} />
                 {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { setEditingWeek(false); setEditedWorkouts({}); setEditDistanceUnits({}); setEditCrossTrainingStructures({}); }} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg text-sm">Cancel</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button>{adminWeekOffset > 0 && selectedWeek && !selectedWeek.workouts.some(w => w.completed) && (<button onClick={async () => { if (!selectedWeek) return; if (!confirm('Are you sure you want to permanently delete this entire week plan? This cannot be undone.')) return; try { const res = await fetch(`/api/weeks/${selectedWeek.weekId}`, { method: 'DELETE' }); if (res.ok) { const client = clients.find(c => c.id === selectedClient); if (client?.clientId) await fetchWeeks(client.clientId, true); setEditingWeek(false); } } catch (err) { console.error('Failed to delete week:', err); } }} className="border border-red-500/30 text-red-400 hover:text-red-300 py-2 px-4 rounded-lg text-sm">Delete Week</button>)}</div>}
                 </>)}
               </div>

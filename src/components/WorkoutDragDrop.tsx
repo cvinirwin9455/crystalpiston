@@ -202,19 +202,84 @@ export function DraggableWorkout({ workoutId, workoutType, day, title, disabled,
   );
 }
 
+// ===== DRAG HANDLE (grip-only dragging) =====
+// For cards that are full of inputs (e.g. the coach's Edit Week), making the whole
+// card draggable breaks text selection. This renders a small grip that is the ONLY
+// draggable part; the nearest ancestor marked data-workout-card is used as the drag
+// image and dimmed while dragging. Desktop (HTML5 drag). On touch devices use the
+// Move button instead.
+type DragHandleProps = {
+  workoutId: string;
+  workoutType: "programmed" | "client";
+  day: string;
+  title: string;
+  disabled?: boolean;
+};
+
+export function DragHandle({ workoutId, workoutType, day, title, disabled = false }: DragHandleProps) {
+  const { startDrag, endDrag } = useDragDrop();
+  const cardRef = useRef<HTMLElement | null>(null);
+
+  if (disabled) return null;
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    const card = e.currentTarget.closest<HTMLElement>("[data-workout-card]");
+    cardRef.current = card;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", JSON.stringify({ workoutId, workoutType, fromDay: day, title }));
+    if (card) e.dataTransfer.setDragImage(card, 20, 20);
+    // Let the browser capture the drag image before we dim the card / change state.
+    requestAnimationFrame(() => {
+      startDrag({ workoutId, workoutType, fromDay: day, title });
+      if (card) card.style.opacity = "0.4";
+    });
+  };
+
+  const handleDragEnd = () => {
+    endDrag();
+    if (cardRef.current) cardRef.current.style.opacity = "";
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      aria-hidden="true"
+      title="Drag to another day"
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-accent/50 cursor-grab active:cursor-grabbing select-none"
+    >
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+        <circle cx="9" cy="10" r="1.5" /><circle cx="15" cy="10" r="1.5" />
+        <circle cx="9" cy="15" r="1.5" /><circle cx="15" cy="15" r="1.5" />
+        <circle cx="9" cy="20" r="1.5" /><circle cx="15" cy="20" r="1.5" />
+      </svg>
+      <span className="text-[11px] font-medium">Drag</span>
+    </div>
+  );
+}
+
 // ===== DROPPABLE DAY ZONE =====
 type DroppableDayProps = {
   day: string;
   children: React.ReactNode;
   isEmpty?: boolean;
+  // When true this day refuses drops (e.g. an in-person session day) and shows
+  // disabledLabel while something is being dragged.
+  disabled?: boolean;
+  disabledLabel?: string;
+  // Corner radius of the highlight ring; defaults to the client dashboard's.
+  className?: string;
 };
 
-export function DroppableDay({ day, children, isEmpty }: DroppableDayProps) {
+export function DroppableDay({ day, children, isEmpty, disabled = false, disabledLabel, className = "rounded-2xl" }: DroppableDayProps) {
   const { isDragging, dragItem, dragOverDay, setDragOverDay, handleDrop } = useDragDrop();
   const isOver = dragOverDay === day;
   const isSourceDay = dragItem?.fromDay === day;
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (disabled) return; // no preventDefault => the browser shows "not allowed"
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     if (dragOverDay !== day) {
@@ -223,6 +288,7 @@ export function DroppableDay({ day, children, isEmpty }: DroppableDayProps) {
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
+    if (disabled) return;
     e.preventDefault();
     setDragOverDay(day);
   };
@@ -237,6 +303,7 @@ export function DroppableDay({ day, children, isEmpty }: DroppableDayProps) {
   const handleDropEvent = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOverDay(null);
+    if (disabled) return;
     handleDrop(day);
   };
 
@@ -246,15 +313,20 @@ export function DroppableDay({ day, children, isEmpty }: DroppableDayProps) {
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDropEvent}
-      className={`transition-all duration-200 rounded-2xl ${
+      className={`transition-all duration-200 ${className} ${
         isDragging && !isSourceDay
-          ? isOver
-            ? "ring-2 ring-accent bg-accent/10 scale-[1.01]"
-            : "ring-1 ring-white/20 bg-white/5"
+          ? disabled
+            ? "ring-1 ring-red-500/30 opacity-50"
+            : isOver
+              ? "ring-2 ring-accent bg-accent/10 scale-[1.01]"
+              : "ring-1 ring-white/20 bg-white/5"
           : ""
       }`}
     >
       {children}
+      {isDragging && disabled && !isSourceDay && disabledLabel && (
+        <p className="text-[11px] text-red-300/90 px-3 py-1.5">{disabledLabel}</p>
+      )}
       {/* Show empty drop zone when dragging and this day has no workouts */}
       {isDragging && isEmpty && !isSourceDay && (
         <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
