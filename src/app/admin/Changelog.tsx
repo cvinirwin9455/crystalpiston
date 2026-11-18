@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-17T18:30:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-18T17:30:00Z";
 
 const updates = [
+  {
+    date: "November 18, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Save any week you've already built as a template. Until now a template could only be made while you were still drafting a week. Now, in a client's Training & Logs, click 'Save as template' next to any week, whether it's a past, current or future week. Give it a name (and an optional category) and it's saved to your Templates, ready to load for any client. It copies the programming only: the workouts, focus and weekly message. Your client's logs and Strava data are never copied. If your client had moved workouts around during the week, the template uses the days you originally programmed. The weekly message and workout notes are copied word for word, so edit them after loading if they mention a specific client." },
+    ],
+  },
   {
     date: "November 17, 2026",
     items: [
