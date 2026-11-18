@@ -2550,10 +2550,10 @@ export default function AdminPage() {
   const dayDropBlockedReason = (dayName: string): string | null =>
     adminDayHasScheduledSession(dayName) ? `${dayName} has an in-person session scheduled. Pick a different day, or reschedule the session from the Sessions tab.` : null;
 
-  // Small message shown after a drag and drop (success or "can't do that").
-  const [moveNotice, setMoveNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Small message toast for Training & Logs actions (a drag and drop, saving a week as a template).
+  const [flashNotice, setFlashNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   // Stable callback so the Toast's 4-second auto-dismiss timer isn't reset by re-renders.
-  const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
+  const dismissFlashNotice = useCallback(() => setFlashNotice(null), []);
 
   // Drag and drop in Edit Week: stage the move exactly like the button does
   // (it is only saved when the coach clicks Save Changes).
@@ -2562,12 +2562,70 @@ export default function AdminPage() {
     if (!w || fromDay === toDay) return false;
     const reason = workoutMoveLockedReason(w) || dayDropBlockedReason(toDay);
     if (reason) {
-      setMoveNotice({ message: reason, type: 'error' });
+      setFlashNotice({ message: reason, type: 'error' });
       return false;
     }
     updateEditedWorkout(workoutId, 'day', toDay);
-    setMoveNotice({ message: `Moved to ${toDay}. Click Save Changes to keep it.`, type: 'success' });
+    setFlashNotice({ message: `Moved to ${toDay}. Click Save Changes to keep it.`, type: 'success' });
     return true;
+  };
+
+  // ---- Save an already-saved week as a template ---------------------------------------
+  // (Create Week's own "Save as Template" only works while the week is still being drafted.)
+  const [showWeekTemplateBox, setShowWeekTemplateBox] = useState(false);
+  const [weekTemplateName, setWeekTemplateName] = useState("");
+  const [weekTemplateCategory, setWeekTemplateCategory] = useState("");
+  const [savingWeekTemplate, setSavingWeekTemplate] = useState(false);
+
+  const openWeekTemplateBox = () => {
+    if (!selectedWeek) return;
+    const firstName = (selectedClientData?.name || "").split(" ")[0];
+    setWeekTemplateName(`${firstName ? firstName + " " : ""}${selectedWeek.dateRange}`.trim());
+    setWeekTemplateCategory("");
+    setShowWeekTemplateBox(true);
+  };
+
+  const closeWeekTemplateBox = () => {
+    setShowWeekTemplateBox(false);
+    setWeekTemplateName("");
+    setWeekTemplateCategory("");
+  };
+
+  // The box is about ONE week of ONE client; close it when the coach navigates elsewhere.
+  useEffect(() => {
+    setShowWeekTemplateBox(false);
+  }, [selectedWeek?.weekId, selectedClient]);
+
+  const handleSaveWeekAsTemplate = async () => {
+    if (!selectedWeek || !weekTemplateName.trim() || savingWeekTemplate) return;
+    setSavingWeekTemplate(true);
+    try {
+      const res = await fetch('/api/templates/from-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekId: selectedWeek.weekId,
+          name: weekTemplateName.trim(),
+          category: weekTemplateCategory.trim() || null,
+          // Super admin "view as coach": the template goes to the viewed coach's account.
+          ...(superAdminTargetOrgId ? { org: superAdminTargetOrgId } : {}),
+          ...(superAdminTargetCoachId ? { coach: superAdminTargetCoachId } : {}),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFlashNotice({ message: data.error || 'The template could not be saved. Please try again.', type: 'error' });
+        return;
+      }
+      const savedName = weekTemplateName.trim();
+      closeWeekTemplateBox();
+      fetchTemplates();
+      setFlashNotice({ message: `Saved as template "${savedName}". Find it under Templates.`, type: 'success' });
+    } catch {
+      setFlashNotice({ message: 'Network error. The template was not saved.', type: 'error' });
+    } finally {
+      setSavingWeekTemplate(false);
+    }
   };
   const [clientSessionSummary, setClientSessionSummary] = useState<{ remaining: number; upcoming: number; scheduleText: string; totalPaid: number; totalOwed: number } | null>(null);
 
@@ -4009,6 +4067,10 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     {selectedWeek && adminWeekOffset >= 0 && <button onClick={() => { if (editingWeek) { setEditingWeek(false); setEditedWorkouts({}); setEditCrossTrainingStructures({}); setEditRunStructures({}); } else { enterEditMode(); } }} className="text-accent text-xs hover:underline">{editingWeek ? "Cancel Edit" : "Edit Week"}</button>}
                     {selectedWeek && adminWeekOffset < 0 && <span className="text-gray-400 text-xs italic">Past week (locked)</span>}
+                    {/* Works for past, current and future weeks. Hidden while editing, since the template copies what is SAVED. */}
+                    {selectedWeek && !editingWeek && (
+                      <button onClick={() => (showWeekTemplateBox ? closeWeekTemplateBox() : openWeekTemplateBox())} aria-expanded={showWeekTemplateBox} className="text-accent text-xs hover:underline">Save as template</button>
+                    )}
                     <button onClick={() => setAdminWeekOffset(adminWeekOffset + 1)} aria-label="Next week" disabled={adminWeekOffset >= adminMaxOffset} className="text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed p-1.5 rounded-lg hover:bg-white/5 transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                   </div>
                 </div>
@@ -4024,6 +4086,28 @@ export default function AdminPage() {
                 {/* Has a plan — show content */}
                 {selectedWeek && (
                   <>
+
+                {/* Save this saved week as a reusable template */}
+                {showWeekTemplateBox && !editingWeek && (
+                  <div className="bg-gold/5 border border-gold/20 rounded-lg p-4">
+                    <p className="text-gold text-xs font-heading uppercase mb-2">Save {selectedWeek?.dateRange} as a template</p>
+                    <p className="text-gray-400 text-xs mb-3">Saves this week&apos;s workouts, focus and weekly message as a reusable template you can load for any client. It copies the programming only, not {selectedClientData?.name.split(" ")[0] || "the client"}&apos;s logs or Strava data. The weekly message and workout notes are copied word for word, so edit them after loading if they mention this client.</p>
+                    <div className="grid md:grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label htmlFor="week-template-name" className="text-gray-400 text-xs block mb-1">Template Name *</label>
+                        <input id="week-template-name" type="text" value={weekTemplateName} onChange={(e) => setWeekTemplateName(e.target.value)} maxLength={120} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
+                      </div>
+                      <div>
+                        <label htmlFor="week-template-category" className="text-gray-400 text-xs block mb-1">Category (optional)</label>
+                        <input id="week-template-category" type="text" value={weekTemplateCategory} onChange={(e) => setWeekTemplateCategory(e.target.value)} maxLength={60} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent" />
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={handleSaveWeekAsTemplate} disabled={!weekTemplateName.trim() || savingWeekTemplate} className="bg-gold hover:bg-yellow-600 text-primary font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingWeekTemplate ? "Saving..." : "Save Template"}</button>
+                      <button onClick={closeWeekTemplateBox} className="text-gray-400 text-sm">Cancel</button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Coach Message — slim collapsible banner */}
                 <div className="border border-gold/20 rounded-lg overflow-hidden">
@@ -4476,7 +4560,7 @@ export default function AdminPage() {
                   })}
                 </div>
                 </DragDropProvider>
-                <Toast message={moveNotice?.message || ''} type={moveNotice?.type || 'success'} isVisible={!!moveNotice} onDismiss={dismissMoveNotice} />
+                <Toast message={flashNotice?.message || ''} type={flashNotice?.type || 'success'} isVisible={!!flashNotice} onDismiss={dismissFlashNotice} />
                 {editingWeek && <div className="flex gap-3"><button onClick={handleSaveEditedWeek} disabled={savingEdit} className="bg-accent hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg text-sm disabled:opacity-50">{savingEdit ? "Saving..." : "Save Changes"}</button><button onClick={() => { setEditingWeek(false); setEditedWorkouts({}); setEditDistanceUnits({}); setEditCrossTrainingStructures({}); }} className="border border-white/10 text-gray-400 hover:text-white py-2 px-6 rounded-lg text-sm">Cancel</button><button onClick={() => { if (selectedWeek) unpublishWeek(selectedWeek.weekId); }} className="border border-yellow-500/30 text-yellow-400 py-2 px-4 rounded-lg text-sm">Unpublish (move to drafts)</button>{adminWeekOffset > 0 && selectedWeek && !selectedWeek.workouts.some(w => w.completed) && (<button onClick={async () => { if (!selectedWeek) return; if (!confirm('Are you sure you want to permanently delete this entire week plan? This cannot be undone.')) return; try { const res = await fetch(`/api/weeks/${selectedWeek.weekId}`, { method: 'DELETE' }); if (res.ok) { const client = clients.find(c => c.id === selectedClient); if (client?.clientId) await fetchWeeks(client.clientId, true); setEditingWeek(false); } } catch (err) { console.error('Failed to delete week:', err); } }} className="border border-red-500/30 text-red-400 hover:text-red-300 py-2 px-4 rounded-lg text-sm">Delete Week</button>)}</div>}
                 </>)}
               </div>
