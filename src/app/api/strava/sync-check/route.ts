@@ -24,7 +24,15 @@ function getMonday(d: Date): Date {
 }
 
 // POST /api/strava/sync-check - Quick check for missed activities (called on page load)
-// Checks the last 24 hours for the logged-in user only
+// Checks the last 7 days for the logged-in user only.
+//
+// This is the safety net for the live Strava webhook, which can miss an activity. It used to
+// look back only 24 hours, so an activity missed on a day the client didn't open the app was
+// lost for good (e.g. a Wednesday run when the app was next opened Thursday night). A week
+// covers a normal gap between visits. It is still ONE Strava request per page load, and
+// activities already stored are skipped (matched on strava_activity_id), so a wider window only
+// ever adds what was genuinely missing.
+const LOOKBACK_DAYS = 7
 export async function POST() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -58,10 +66,10 @@ export async function POST() {
       return NextResponse.json({ synced: 0, message: 'Strava connection expired. Please disconnect and reconnect Strava in your settings.', reconnectNeeded: true })
     }
 
-    // Fetch activities from last 24 hours
-    const oneDayAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000)
+    // Fetch activities from the lookback window (see LOOKBACK_DAYS)
+    const lookbackStart = Math.floor((Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000) / 1000)
     const activitiesRes = await fetch(
-      `${STRAVA_API_BASE}/athlete/activities?after=${oneDayAgo}&per_page=20`,
+      `${STRAVA_API_BASE}/athlete/activities?after=${lookbackStart}&per_page=50`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
 

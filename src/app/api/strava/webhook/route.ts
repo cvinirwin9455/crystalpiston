@@ -1,5 +1,6 @@
 import { getVerifyToken } from '@/lib/strava'
 import { NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import type { StravaWebhookEvent } from '@/lib/strava'
 
 // GET /api/strava/webhook - Webhook subscription verification (Strava sends this to verify your endpoint)
@@ -83,7 +84,13 @@ export async function POST(request: Request) {
       }
       console.error(`Strava activity processing FAILED after 3 attempts for activity ${event.object_id}`)
     }
-    processWithRetry().catch(console.error)
+    // IMPORTANT: on Vercel, once this function returns its response the platform is free to
+    // freeze it, and any promise still running (including the retries above, which wait 2s,
+    // 4s, 8s) is silently dropped. A bare `processWithRetry()` therefore lost roughly 1 in 4
+    // activities, which then only appeared when the client next opened the app. `waitUntil`
+    // tells Vercel to keep the function alive until the processing finishes, while we still
+    // reply to Strava straight away.
+    waitUntil(processWithRetry().catch(console.error))
 
     // Respond to Strava immediately
     return NextResponse.json({ received: true })

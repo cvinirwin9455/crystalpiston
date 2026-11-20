@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-18T17:30:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-20T19:10:00Z";
 
 const updates = [
+  {
+    date: "November 20, 2026",
+    items: [
+      { area: "Client", text: "Fixed: Strava runs that sometimes didn't show up are now picked up much more reliably. Two things changed. New activities are now delivered more dependably right after you finish. And when you open the app, it now double-checks your last 7 days of Strava (it used to check only the last 24 hours), so a run that was missed no longer stays missing just because you didn't open the app the next day. If you ever need to pull in older activities, you can still use 'Import history' in the Strava section of your Account." },
+      { area: "Admin", text: "Improved: The same Strava fix applies to your clients. Their runs reach their plans more reliably, so more workouts complete automatically with the real distance and pace, and fewer get marked complete by hand with no data." },
+    ],
+  },
   {
     date: "November 18, 2026",
     items: [
