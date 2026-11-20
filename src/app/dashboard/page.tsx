@@ -1117,7 +1117,7 @@ export default function DashboardPage() {
     fetchWeeks();
   }, []);
 
-  // On page load: check Strava for any missed activities in the last 24 hours
+  // On page load: check Strava for any missed activities in the last 7 days
   // Runs silently in background — if new activities are found, reloads the page
   useEffect(() => {
     const syncCheck = async () => {
