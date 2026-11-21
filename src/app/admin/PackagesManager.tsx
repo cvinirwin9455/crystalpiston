@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOrgCurrency } from "@/lib/use-org-currency";
 
 // Coach-facing manager for their packages (the offerings they charge for).
 // Each package defines what's included via checkboxes, which controls
@@ -252,7 +253,7 @@ function fmtMoney(n: number): string {
 // Build the auto description from the current selections, e.g.:
 //   one-time: "12-week program • 10 in-person sessions ($30/session)"
 //   monthly:  "$125/month, recurring"  /  "$125/month for 3 months"
-function autoDescription(f: DraftForm): string {
+function autoDescription(f: DraftForm, sym: string = "$"): string {
   // Recurring (monthly): describe the billing cadence.
   if (f.billing_interval === "monthly") {
     // Split a program total across the program's months.
@@ -263,7 +264,7 @@ function autoDescription(f: DraftForm): string {
       const { perMonth, billedTotal } = splitTotal(total, months);
       const weeks = num(f.duration_weeks);
       const span = weeks > 0 ? `${weeks}-week program • ` : "";
-      return `${span}$${fmtMoney(perMonth)}/month for ${months} month${months === 1 ? "" : "s"} (total $${fmtMoney(billedTotal)})`;
+      return `${span}${sym}${fmtMoney(perMonth)}/month for ${months} month${months === 1 ? "" : "s"} (total ${sym}${fmtMoney(billedTotal)})`;
     }
     // Direct monthly price. If a program length is set, billing stops at the
     // program's end (N months); otherwise it recurs until cancelled.
@@ -273,8 +274,8 @@ function autoDescription(f: DraftForm): string {
     const weeks = num(f.duration_weeks);
     const span = weeks > 0 ? `${weeks}-week program • ` : "";
     return months > 0
-      ? `${span}$${fmtMoney(monthly)}/month for ${months} month${months === 1 ? "" : "s"}`
-      : `$${fmtMoney(monthly)}/month, recurring until cancelled`;
+      ? `${span}${sym}${fmtMoney(monthly)}/month for ${months} month${months === 1 ? "" : "s"}`
+      : `${sym}${fmtMoney(monthly)}/month, recurring until cancelled`;
   }
 
   const parts: string[] = [];
@@ -285,7 +286,7 @@ function autoDescription(f: DraftForm): string {
   const count = num(f.session_count);
   const per = num(f.session_cost_per);
   if ((f.billing_mode === "per_session" || f.billing_mode === "hybrid") && count > 0) {
-    const perStr = per > 0 ? ` ($${fmtMoney(per)}/session)` : "";
+    const perStr = per > 0 ? ` (${sym}${fmtMoney(per)}/session)` : "";
     parts.push(`${count} in-person session${count === 1 ? "" : "s"}${perStr}`);
   }
   return parts.join(" • ");
@@ -302,6 +303,7 @@ function billingModeFromIncludes(inc: { in_person: boolean; programming: boolean
 }
 
 export default function PackagesManager() {
+  const { symbol } = useOrgCurrency();
   const [packages, setPackages] = useState<CoachPackage[]>([]);
   const [programTemplates, setProgramTemplates] = useState<ProgramTemplateOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -407,7 +409,7 @@ export default function PackagesManager() {
     if (!showForm) return;
     setForm((f) => {
       const computedPrice = fmtMoney(packageTotal(f));
-      const auto = autoDescription(f);
+      const auto = autoDescription(f, symbol);
       const nextDescription = f.description_touched ? f.description : auto;
       if (f.price === computedPrice && f.description === nextDescription) return f;
       return { ...f, price: computedPrice, description: nextDescription };
@@ -424,6 +426,7 @@ export default function PackagesManager() {
     form.monthly_pricing_mode,
     form.monthly_total,
     form.description_touched,
+    symbol,
   ]);
 
   function startAdd() {
@@ -795,7 +798,7 @@ export default function PackagesManager() {
             {form.billing_interval === "monthly" ? "Price / month" : "Total price"}
           </label>
           <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
-            <span className="font-heading">${form.price || "0"}{form.billing_interval === "monthly" ? "/mo" : ""}</span>
+            <span className="font-heading">{symbol}{form.price || "0"}{form.billing_interval === "monthly" ? "/mo" : ""}</span>
             <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
           </div>
           <p className="text-[10px] text-gray-500 mt-1">
@@ -807,7 +810,7 @@ export default function PackagesManager() {
         <label className="block text-xs text-gray-400 mb-1">Description (auto-filled — you can edit)</label>
         <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value, description_touched: true }))} rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50 resize-y" placeholder="What's included…" />
         {form.description_touched && (
-          <button type="button" onClick={() => setForm((f) => ({ ...f, description_touched: false, description: autoDescription(f) }))} className="text-[10px] text-cyan-300/80 hover:text-cyan-200 mt-1">
+          <button type="button" onClick={() => setForm((f) => ({ ...f, description_touched: false, description: autoDescription(f, symbol) }))} className="text-[10px] text-cyan-300/80 hover:text-cyan-200 mt-1">
             ↻ Reset to auto description
           </button>
         )}
@@ -875,8 +878,8 @@ export default function PackagesManager() {
                   const drift = Math.round((billedTotal - num(form.monthly_total)) * 100);
                   return (
                     <p className="text-[11px] text-cyan-300/80 mt-1">
-                      ≈ ${fmtMoney(perMonth)}/month × {months} = ${fmtMoney(billedTotal)}
-                      {drift !== 0 && <span className="text-gray-500"> (rounds to ${fmtMoney(billedTotal)}; you entered ${fmtMoney(num(form.monthly_total))})</span>}
+                      ≈ {symbol}{fmtMoney(perMonth)}/month × {months} = {symbol}{fmtMoney(billedTotal)}
+                      {drift !== 0 && <span className="text-gray-500"> (rounds to {symbol}{fmtMoney(billedTotal)}; you entered {symbol}{fmtMoney(num(form.monthly_total))})</span>}
                     </p>
                   );
                 })()}
@@ -888,7 +891,7 @@ export default function PackagesManager() {
                   <input value={form.programming_cost} onChange={(e) => setForm((f) => ({ ...f, programming_cost: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50" placeholder="e.g. 130" inputMode="decimal" />
                   {num(form.programming_cost) > 0 && num(form.duration_weeks) > 0 && (
                     <p className="text-[11px] text-cyan-300/80 mt-1">
-                      ${fmtMoney(num(form.programming_cost))}/month × {monthsFromWeeks(num(form.duration_weeks))} = ${fmtMoney(num(form.programming_cost) * monthsFromWeeks(num(form.duration_weeks)))} total
+                      {symbol}{fmtMoney(num(form.programming_cost))}/month × {monthsFromWeeks(num(form.duration_weeks))} = {symbol}{fmtMoney(num(form.programming_cost) * monthsFromWeeks(num(form.duration_weeks)))} total
                     </p>
                   )}
                 </div>
@@ -924,7 +927,7 @@ export default function PackagesManager() {
             <div>
               <label className="block text-xs text-gray-400 mb-1">In-person total</label>
               <div className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
-                <span className="font-heading">${fmtMoney(sessionsTotal(form))}</span>
+                <span className="font-heading">{symbol}{fmtMoney(sessionsTotal(form))}</span>
                 <span className="text-[10px] text-gray-500 uppercase tracking-wide">auto</span>
               </div>
             </div>

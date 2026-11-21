@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-20T19:10:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-21T16:30:00Z";
 
 const updates = [
+  {
+    date: "November 21, 2026",
+    items: [
+      { area: "Admin", text: "NEW: Choose the currency for your whole account. Go to Account Preferences and pick US Dollar, British Pound, Euro, Australian Dollar, New Zealand Dollar or Canadian Dollar. Plan costs, payments, balances, Total Collected and Outstanding, and your package prices all show in that currency instead of always showing dollars. New packages use it automatically. Amounts are not converted when you switch, so 100 stays 100 in the new currency. Only the account owner can change it." },
+      { area: "Client", text: "NEW: The payment status and plan costs on your dashboard now show in your coach's currency (for example pounds or euros) instead of always showing dollars." },
+    ],
+  },
   {
     date: "November 20, 2026",
     items: [

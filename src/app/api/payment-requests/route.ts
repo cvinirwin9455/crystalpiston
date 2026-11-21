@@ -230,6 +230,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A valid amount is required' }, { status: 400 })
     }
     amountCents = cents
+    // Custom charges use the organization's currency (set in Account Preferences).
+    if (organizationId) {
+      const { data: orgRow } = await admin
+        .from('organizations')
+        .select('currency')
+        .eq('id', organizationId)
+        .maybeSingle()
+      if (orgRow?.currency) currency = String(orgRow.currency).toLowerCase()
+    }
     billingInterval = 'one_time' // custom charges are always one-time for now
     packageName = (custom_name && String(custom_name).trim()) || 'Custom coaching'
   } else {

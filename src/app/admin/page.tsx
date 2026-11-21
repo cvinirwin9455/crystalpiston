@@ -5,6 +5,8 @@ import AccountTab from "./AccountTab";
 import ApplicationsTab from "./ApplicationsTab";
 import PackagesManager from "./PackagesManager";
 import StripeConnectCard from "./StripeConnectCard";
+import CurrencyCard from "./CurrencyCard";
+import { useOrgCurrency } from "@/lib/use-org-currency";
 import SessionsTab from "./SessionsTab";
 import AssessmentTab from "./AssessmentTab";
 import BiometricSetup from "@/components/BiometricSetup";
@@ -91,6 +93,7 @@ type CoachAssignment = { coachId: string; coachName: string; isDefault: boolean;
 type Client = { id: string; clientId: string | null; name: string; email: string; gender: "female" | "male"; goal: string; hasActivePlan?: boolean; startDate: string; planDuration: string; owed: number; paid: number; status: "active" | "archived"; inviteStatus: "accepted" | "pending" | "expired"; stravaProfileUrl?: string | null; stravaConnected?: boolean; avatarUrl?: string | null; weeks: WeekData[]; messages: CoachMessage[]; birthday?: string | null; cycleTrackingConsented?: boolean | null; coaches: CoachAssignment[]; };
 
 export default function AdminPage() {
+  const { fmt: fmtMoney, fmtAuto: fmtMoneyAuto } = useOrgCurrency();
   const { theme: adminTheme, setTheme: adminSetTheme } = useTheme();
 
   // Restore state from URL params on initial load
@@ -4633,10 +4636,10 @@ export default function AdminPage() {
                       {/* Payment status: per_session shows session totals; others show plan totals */}
                       {activePlan.billingMode === 'per_session' ? (
                         clientSessionSummary && (
-                          <p className="text-gray-400 text-xs">${clientSessionSummary.totalPaid.toFixed(0)}/${clientSessionSummary.totalOwed.toFixed(0)} paid</p>
+                          <p className="text-gray-400 text-xs">{fmtMoney(clientSessionSummary.totalPaid, 0)}/{fmtMoney(clientSessionSummary.totalOwed, 0)} paid</p>
                         )
                       ) : (
-                        <p className="text-gray-400 text-xs">${activePlan.paid}/${activePlan.owed} paid</p>
+                        <p className="text-gray-400 text-xs">{fmtMoneyAuto(activePlan.paid)}/{fmtMoneyAuto(activePlan.owed)} paid</p>
                       )}
                     </div>
                   </div>
@@ -5212,6 +5215,8 @@ export default function AdminPage() {
 
                 {/* Connect Stripe to get paid */}
                 <StripeConnectCard />
+                {/* Account currency */}
+                <CurrencyCard canEdit={myCoachLevel !== "coach"} />
 
                 {/* Coach Profile Photo */}
                 <div className="bg-secondary/50 border border-white/10 rounded-xl p-6">
@@ -6699,8 +6704,8 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-accent">{activeVisible.length}</p><p className="text-gray-400 text-xs">Active Clients</p></div>
                   <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-yellow-400">{activeVisible.reduce((s, c) => s + c.weeks.filter((w: any) => w.status === "draft").length, 0)}</p><p className="text-gray-400 text-xs">Drafts to Publish</p></div>
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">${activeVisible.reduce((s, c) => s + c.paid, 0)}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
-                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">${activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0)}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-green-400">{fmtMoneyAuto(activeVisible.reduce((s, c) => s + c.paid, 0))}</p><p className="text-gray-400 text-xs">Total Collected</p></div>
+                  <div className="bg-secondary/50 border border-white/10 rounded-xl p-4 text-center"><p className="font-heading text-2xl text-white">{fmtMoneyAuto(activeVisible.reduce((s, c) => s + (c.owed - c.paid), 0))}</p><p className="text-gray-400 text-xs">Outstanding</p></div>
                 </div>
               );
             })()}
@@ -6951,7 +6956,7 @@ export default function AdminPage() {
                               </div>
                               <p className="text-white text-sm">{c.name}</p>
                             </div>
-                            <div className="text-right"><p className="text-white text-sm font-medium">${(c.owed - c.paid).toFixed(0)} due</p><p className="text-gray-300 text-xs">${c.paid}/${c.owed} paid</p></div>
+                            <div className="text-right"><p className="text-white text-sm font-medium">{fmtMoney(c.owed - c.paid, 0)} due</p><p className="text-gray-300 text-xs">{fmtMoneyAuto(c.paid)}/{fmtMoneyAuto(c.owed)} paid</p></div>
                           </button>
                         ))}
                       </div>
