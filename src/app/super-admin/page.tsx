@@ -45,6 +45,8 @@ type BetaSignup = {
   activatedUserId: string | null;
   activatedAt: string | null;
   hasSetPassword: boolean;
+  // Null until the super admin has opened the Beta Signups tab with this one showing.
+  admin_seen_at?: string | null;
 };
 
 export default function SuperAdminPage() {
@@ -68,8 +70,27 @@ export default function SuperAdminPage() {
   const [messageSubject, setMessageSubject] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  // Unread tracking. Feedback and Inbox counts come from the server; Beta Signups is
+  // computed below because "resolved" there means the coach has already been activated.
+  const [unread, setUnread] = useState<{ feedback: number; inbox: number }>({ feedback: 0, inbox: 0 });
+  // Signups that were unread when the Beta tab was opened. They keep their red dot for
+  // that visit (so you can see which ones are new), then clear on the next visit.
+  const [newBetaIds, setNewBetaIds] = useState<Set<string>>(new Set());
+
   const router = useRouter();
   const supabase = createClient();
+
+  async function refreshUnread() {
+    try {
+      const res = await fetch("/api/super-admin/unread");
+      if (res.ok) {
+        const data = await res.json();
+        setUnread({ feedback: data.feedback || 0, inbox: data.inbox || 0 });
+      }
+    } catch {
+      // Counts are a convenience; ignore transient failures.
+    }
+  }
 
   function openMessageCoach(coachId: string, orgName: string) {
     setMessageCoach({ coachId, orgName });
@@ -108,7 +129,30 @@ export default function SuperAdminPage() {
 
   useEffect(() => {
     fetchData();
+    refreshUnread();
+    // Keep the Feedback and Inbox counts fresh while the page stays open.
+    const timer = setInterval(refreshUnread, 60000);
+    return () => clearInterval(timer);
   }, []);
+
+  // Opening the Beta Signups tab reads the pending signups that were new.
+  useEffect(() => {
+    if (activeTab !== "beta") {
+      setNewBetaIds(new Set());
+      return;
+    }
+    const unseen = betaSignups.filter((s) => !s.admin_seen_at && !s.activated).map((s) => s.id);
+    if (unseen.length === 0) return;
+    setNewBetaIds(new Set(unseen));
+    const seenAt = new Date().toISOString();
+    // Update locally right away so the tab count clears; the dots stay via newBetaIds.
+    setBetaSignups((prev) => prev.map((s) => (unseen.includes(s.id) ? { ...s, admin_seen_at: seenAt } : s)));
+    fetch("/api/super-admin/unread", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "beta", ids: unseen }),
+    }).catch(() => {});
+  }, [activeTab, betaSignups.length]);
 
   async function fetchData() {
     setLoading(true);
@@ -265,6 +309,8 @@ export default function SuperAdminPage() {
   const totalClients = coachOrgs.reduce((sum, o) => sum + o.clients, 0);
   const totalActiveClients = coachOrgs.reduce((sum, o) => sum + o.activeClients, 0);
   const betaSpotsLeft = 50 - betaSignups.length;
+  // Unread beta signups: never opened AND still waiting on you (not yet activated).
+  const betaUnread = betaSignups.filter((s) => !s.admin_seen_at && !s.activated).length;
   const totalAccounts = coachOrgs.length;
   const avgClientsPerCoach = totalAccounts > 0 ? (totalClients / totalAccounts).toFixed(1) : "0";
 
@@ -316,25 +362,33 @@ export default function SuperAdminPage() {
         <div className="max-w-6xl mx-auto px-6">
           <nav className="flex gap-6 border-t border-gray-100 pt-2">
             {[
-              { key: "overview", label: "Coaches" },
-              { key: "beta", label: `Beta Signups (${betaSignups.length})` },
-              { key: "inbox", label: "Inbox" },
-              { key: "feedback", label: "Feedback & Bugs" },
-              { key: "exercises", label: "Exercise Library" },
-              { key: "changelog", label: "Changelog" },
-              { key: "tools", label: "Tools" },
-              { key: "admins", label: "Super Admins" },
+              { key: "overview", label: "Coaches", unread: 0 },
+              { key: "beta", label: "Beta Signups", unread: betaUnread },
+              { key: "inbox", label: "Inbox", unread: unread.inbox },
+              { key: "feedback", label: "Feedback & Bugs", unread: unread.feedback },
+              { key: "exercises", label: "Exercise Library", unread: 0 },
+              { key: "changelog", label: "Changelog", unread: 0 },
+              { key: "tools", label: "Tools", unread: 0 },
+              { key: "admins", label: "Super Admins", unread: 0 },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`pb-3 text-sm font-medium border-b-2 transition ${
+                className={`pb-3 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
                   activeTab === tab.key
                     ? "border-purple-600 text-purple-600"
                     : "border-transparent text-gray-500 hover:text-gray-800"
                 }`}
               >
                 {tab.label}
+                {tab.unread > 0 && (
+                  <span
+                    className="bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full inline-flex items-center justify-center"
+                    aria-label={`${tab.unread} unread`}
+                  >
+                    {tab.unread}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -536,6 +590,9 @@ export default function SuperAdminPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
+                          {newBetaIds.has(signup.id) && (
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" title="New, not opened before" aria-label="New" />
+                          )}
                           <h3 className={`font-bold ${signup.hasSetPassword ? "text-gray-500" : "text-gray-900"}`}>
                             {signup.full_name}
                           </h3>
@@ -666,11 +723,11 @@ export default function SuperAdminPage() {
         )}
 
         {activeTab === "inbox" && (
-          <InboxTab />
+          <InboxTab onUnreadChange={refreshUnread} />
         )}
 
         {activeTab === "feedback" && (
-          <SuperAdminFeedbackTab />
+          <SuperAdminFeedbackTab onUnreadChange={refreshUnread} />
         )}
 
         {activeTab === "exercises" && (

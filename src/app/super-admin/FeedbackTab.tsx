@@ -19,9 +19,11 @@ type FeedbackItem = {
   resolution_message: string | null;
   created_at: string;
   updated_at: string;
+  // Null until the super admin first opens this item (shown as a red dot).
+  admin_seen_at?: string | null;
 };
 
-export default function SuperAdminFeedbackTab() {
+export default function SuperAdminFeedbackTab({ onUnreadChange }: { onUnreadChange?: () => void } = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
@@ -95,6 +97,20 @@ export default function SuperAdminFeedbackTab() {
 
   // Open detail view
   const openDetail = (item: FeedbackItem) => {
+    // First time opening it: mark it read (clears the red dot and the tab count).
+    if (!item.admin_seen_at) {
+      const seenAt = new Date().toISOString();
+      const openedId = item.id;
+      item = { ...item, admin_seen_at: seenAt };
+      setAllFeedback((prev) => prev.map((f) => (f.id === openedId ? { ...f, admin_seen_at: seenAt } : f)));
+      fetch("/api/super-admin/unread", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "feedback", ids: [openedId] }),
+      })
+        .then(() => onUnreadChange?.())
+        .catch(() => {});
+    }
     setSelectedItem(item);
     setEditStatus(item.status);
     setEditNotes(item.admin_notes || "");
@@ -580,6 +596,9 @@ export default function SuperAdminFeedbackTab() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
+                    {!item.admin_seen_at && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" title="Not opened yet" aria-label="Unread" />
+                    )}
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                       item.type === "bug" ? "bg-red-100 text-red-700" : item.type === "question" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                     }`}>
@@ -604,7 +623,7 @@ export default function SuperAdminFeedbackTab() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-800 text-sm font-medium mb-1 line-clamp-2">
+                  <p className={`text-gray-800 text-sm mb-1 line-clamp-2 ${!item.admin_seen_at ? "font-bold" : "font-medium"}`}>
                     {item.description}
                   </p>
                   <p className="text-gray-400 text-xs">
