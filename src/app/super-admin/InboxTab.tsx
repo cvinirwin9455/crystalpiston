@@ -28,7 +28,7 @@ type Message = {
   created_at: string;
 };
 
-export default function InboxTab() {
+export default function InboxTab({ onUnreadChange }: { onUnreadChange?: () => void } = {}) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -58,6 +58,7 @@ export default function InboxTab() {
         const data = await res.json();
         setThreads(data.threads || []);
         setTotalUnread(data.totalUnread || 0);
+        onUnreadChange?.();
       }
     } catch (err) {
       console.error("Failed to fetch threads:", err);
@@ -85,6 +86,8 @@ export default function InboxTab() {
           const thread = threads.find((t) => t.thread_id === threadId);
           return Math.max(0, prev - (thread?.unread_count || 0));
         });
+        // The server marked this thread read; refresh the tab badge on the page.
+        onUnreadChange?.();
       }
     } catch (err) {
       console.error("Failed to fetch messages:", err);
@@ -181,7 +184,7 @@ export default function InboxTab() {
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold text-gray-900">Inbox</h2>
             {totalUnread > 0 && (
-              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                 {totalUnread}
               </span>
             )}
@@ -227,12 +230,12 @@ export default function InboxTab() {
                 onClick={() => openThread(thread.thread_id)}
                 className={`w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-gray-50 transition ${
                   i > 0 ? "border-t border-gray-100" : ""
-                } ${thread.unread_count > 0 ? "bg-orange-50/50" : ""}`}
+                } ${thread.unread_count > 0 ? "bg-red-50/50" : ""}`}
               >
                 {/* Unread dot */}
                 <div className="pt-1.5 w-3 flex-shrink-0">
                   {thread.unread_count > 0 && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
                   )}
                 </div>
 
