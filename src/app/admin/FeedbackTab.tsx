@@ -53,6 +53,10 @@ export default function FeedbackTab() {
   const [editStatus, setEditStatus] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editResolution, setEditResolution] = useState("");
+  // Opt-in: publish an announcement to the public "What's New" list when this item
+  // is marked Implemented. Off by default; the reply to the user is never posted.
+  const [postToWhatsNew, setPostToWhatsNew] = useState(false);
+  const [whatsNewText, setWhatsNewText] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -103,8 +107,13 @@ export default function FeedbackTab() {
     setEditStatus(item.status);
     setEditNotes(item.admin_notes || "");
     setEditResolution(item.resolution_message || "");
+    setPostToWhatsNew(false);
+    setWhatsNewText("");
     setSaveSuccess(false);
   };
+
+  // The What's New option applies only at the moment an item becomes Implemented.
+  const canPostToWhatsNew = !!selectedItem && editStatus === "implemented" && selectedItem.status !== "implemented";
 
   // Save updates
   const handleSave = async (sendEmail: boolean) => {
@@ -118,6 +127,17 @@ export default function FeedbackTab() {
         status: editStatus,
         adminNotes: editNotes,
       };
+
+      setError("");
+      if (canPostToWhatsNew && postToWhatsNew) {
+        if (!whatsNewText.trim()) {
+          setError("Write the What's New text, or untick the box.");
+          setSaving(false);
+          return;
+        }
+        body.addToChangelog = true;
+        body.changelogText = whatsNewText.trim();
+      }
 
       // Only include resolutionMessage if sendEmail is true (triggers email to user)
       if (sendEmail && editResolution.trim()) {
@@ -342,6 +362,35 @@ export default function FeedbackTab() {
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent/50 resize-none"
             />
           </div>
+
+          {/* Optional public announcement */}
+          {canPostToWhatsNew && (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={postToWhatsNew}
+                  onChange={(e) => setPostToWhatsNew(e.target.checked)}
+                  className="mt-0.5 accent-orange-500"
+                />
+                <span className="text-sm text-gray-200">
+                  Also post an announcement to What&apos;s New
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    Everyone sees this. Your message to the user above is not posted.
+                  </span>
+                </span>
+              </label>
+              {postToWhatsNew && (
+                <textarea
+                  value={whatsNewText}
+                  onChange={(e) => setWhatsNewText(e.target.value)}
+                  placeholder="e.g. Fixed: Strava runs that didn't show up are now picked up reliably."
+                  rows={3}
+                  className="w-full mt-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent/50 resize-none"
+                />
+              )}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-2">

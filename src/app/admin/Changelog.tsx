@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-21T16:30:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-21T16:35:00Z";
 
 const updates = [
   {
@@ -11,6 +11,7 @@ const updates = [
     items: [
       { area: "Admin", text: "NEW: Choose the currency for your whole account. Go to Account Preferences and pick US Dollar, British Pound, Euro, Australian Dollar, New Zealand Dollar or Canadian Dollar. Plan costs, payments, balances, Total Collected and Outstanding, and your package prices all show in that currency instead of always showing dollars. New packages use it automatically. Amounts are not converted when you switch, so 100 stays 100 in the new currency. Only the account owner can change it." },
       { area: "Client", text: "NEW: The payment status and plan costs on your dashboard now show in your coach's currency (for example pounds or euros) instead of always showing dollars." },
+      { area: "Admin", text: "Fixed: Marking a feedback item as Implemented no longer posts your reply to the reporter on this What's New page. Replies are for the person who reported it. If you do want to announce a fix to everyone, tick 'Also post an announcement to What's New' and write the announcement text." },
     ],
   },
   {

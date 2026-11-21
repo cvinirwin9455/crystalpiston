@@ -81,7 +81,7 @@ export async function PATCH(request: Request) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { feedbackId, status, adminNotes, resolutionMessage, newLogEntries } = body
+  const { feedbackId, status, adminNotes, resolutionMessage, newLogEntries, addToChangelog, changelogText } = body
 
   if (!feedbackId) {
     return NextResponse.json({ error: 'feedbackId is required' }, { status: 400 })
@@ -139,10 +139,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Auto-add changelog entry when status changes to "implemented"
-  if (status === 'implemented' && existingFeedback.status !== 'implemented') {
+  // Add a public "What's New" entry only when the admin explicitly opts in
+  // (addToChangelog) AND supplies announcement text. A reply to the reporter is
+  // not an announcement, so the resolution message is never posted automatically.
+  const entryText = typeof changelogText === 'string' ? changelogText.trim() : ''
+  if (addToChangelog === true && entryText && status === 'implemented' && existingFeedback.status !== 'implemented') {
     try {
-      const changelogText = resolutionMessage?.trim() || existingFeedback.resolution_message || `Fixed: ${existingFeedback.description.slice(0, 150)}`
       const entryDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       
       // Determine area based on user role and type
@@ -153,13 +155,13 @@ export async function PATCH(request: Request) {
       await adminClient
         .from('templates')
         .insert({
-          name: changelogText.slice(0, 100),
+          name: entryText.slice(0, 100),
           type: 'day',
           category: '__changelog__',
           data: {
             date: entryDate,
             area,
-            text: changelogText,
+            text: entryText,
             feedbackId,
             source: 'feedback',
           },

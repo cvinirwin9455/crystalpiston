@@ -45,6 +45,10 @@ export default function SuperAdminFeedbackTab() {
   const [editResolution, setEditResolution] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState("");
+  // Opt-in: publish an announcement to the public "What's New" list when this item
+  // is marked Implemented. Off by default; the message to the user is never posted.
+  const [postToWhatsNew, setPostToWhatsNew] = useState(false);
+  const [whatsNewText, setWhatsNewText] = useState("");
   const [activityLog, setActivityLog] = useState<{ type: "note" | "message" | "status"; text: string; date: string }[]>([]);
 
   // Fetch feedback
@@ -95,6 +99,8 @@ export default function SuperAdminFeedbackTab() {
     setEditStatus(item.status);
     setEditNotes(item.admin_notes || "");
     setEditResolution("");
+    setPostToWhatsNew(false);
+    setWhatsNewText("");
     setSaveSuccess("");
     // Load activity log from database
     const dbLog: { type: string; text: string; date: string }[] = (item as any).activity_log || [];
@@ -109,9 +115,16 @@ export default function SuperAdminFeedbackTab() {
     setActivityLog(dbLog);
   };
 
+  // The What's New option applies only at the moment an item becomes Implemented.
+  const canPostToWhatsNew = !!selectedItem && editStatus === "implemented" && selectedItem.status !== "implemented";
+
   // Save updates
   const handleSave = async (sendEmail: boolean) => {
     if (!selectedItem) return;
+    if (canPostToWhatsNew && postToWhatsNew && !whatsNewText.trim()) {
+      setError("Write the What's New text, or untick the box.");
+      return;
+    }
     setSaving(true);
     setSaveSuccess("");
     setError("");
@@ -122,6 +135,10 @@ export default function SuperAdminFeedbackTab() {
         status: editStatus,
         adminNotes: editNotes,
       };
+      if (canPostToWhatsNew && postToWhatsNew) {
+        body.addToChangelog = true;
+        body.changelogText = whatsNewText.trim();
+      }
 
       // Only include resolutionMessage if sendEmail is true (triggers email to user)
       if (sendEmail && editResolution.trim()) {
@@ -343,6 +360,35 @@ export default function SuperAdminFeedbackTab() {
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none"
             />
           </div>
+
+          {/* Optional public announcement */}
+          {canPostToWhatsNew && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={postToWhatsNew}
+                  onChange={(e) => setPostToWhatsNew(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-gray-700">
+                  Also post an announcement to What&apos;s New
+                  <span className="block text-xs text-gray-400 mt-0.5">
+                    Everyone sees this. Your message to the user above is not posted.
+                  </span>
+                </span>
+              </label>
+              {postToWhatsNew && (
+                <textarea
+                  value={whatsNewText}
+                  onChange={(e) => setWhatsNewText(e.target.value)}
+                  placeholder="e.g. Fixed: Strava runs that didn't show up are now picked up reliably."
+                  rows={3}
+                  className="w-full mt-3 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none"
+                />
+              )}
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex items-center gap-3 pt-2">
