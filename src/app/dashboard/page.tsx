@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useOrgCurrency } from "@/lib/use-org-currency";
 import AvatarUpload from "@/components/AvatarUpload";
 import BiometricSetup from "@/components/BiometricSetup";
 import AccountSwitcher from "@/components/AccountSwitcher";
@@ -164,6 +165,7 @@ function formatWorkoutStructure(structure: any, targetUnit?: "mi" | "km", source
 }
 
 export default function DashboardPage() {
+  const { fmt } = useOrgCurrency();
   const { theme, setTheme } = useTheme();
 
   // Initialize active tab from URL params (survives refresh)
@@ -2978,9 +2980,9 @@ export default function DashboardPage() {
                     </div>
                   )}
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">${clientInfo.owed.toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">${clientInfo.paid.toFixed(2)}</span></div>
-                    {(clientInfo.owed - clientInfo.paid) > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">${(clientInfo.owed - clientInfo.paid).toFixed(2)}</span></div>}
+                    <div className="flex justify-between"><span className="text-gray-400">Plan Cost:</span><span className="text-white">{fmt(clientInfo.owed)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Paid So Far:</span><span className="text-green-400">{fmt(clientInfo.paid)}</span></div>
+                    {(clientInfo.owed - clientInfo.paid) > 0 && <div className="flex justify-between border-t border-white/10 pt-3"><span className="text-gray-400">Remaining:</span><span className="text-red-400 font-bold">{fmt(clientInfo.owed - clientInfo.paid)}</span></div>}
                   </div>
                   <div className="w-full bg-primary/50 rounded-full h-2 mt-4"><div className={`h-2 rounded-full ${(clientInfo.owed - clientInfo.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${clientInfo.owed > 0 ? Math.min(100, (clientInfo.paid / clientInfo.owed) * 100) : 100}%` }} /></div>
                   <p className="text-gray-400 text-xs mt-1 text-right">{clientInfo.owed > 0 ? Math.round((clientInfo.paid / clientInfo.owed) * 100) : 100}% paid</p>
@@ -3011,9 +3013,9 @@ export default function DashboardPage() {
                         {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(plan.planEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">Cost: ${plan.owed.toFixed(2)}</span>
+                        <span className="text-gray-400">Cost: {fmt(plan.owed)}</span>
                         <span className={`font-medium ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>
-                          {(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)} due` : "Paid in full"}
+                          {(plan.owed - plan.paid) > 0 ? `${fmt(plan.owed - plan.paid)} due` : "Paid in full"}
                         </span>
                       </div>
                     </div>

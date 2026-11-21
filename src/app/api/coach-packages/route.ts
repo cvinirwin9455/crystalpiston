@@ -112,13 +112,25 @@ export async function POST(request: Request) {
   }
   const { coachId, organizationId } = scopeResult.scope
 
+  // New packages are priced in the organization's currency (the picker in
+  // Account Preferences is the single source of truth).
+  let orgCurrency = 'usd'
+  if (organizationId) {
+    const { data: orgRow } = await admin
+      .from('organizations')
+      .select('currency')
+      .eq('id', organizationId)
+      .maybeSingle()
+    if (orgRow?.currency) orgCurrency = String(orgRow.currency).toLowerCase()
+  }
+
   const insert: Record<string, any> = {
     coach_id: coachId,
     organization_id: organizationId || null,
     name: String(name).trim(),
     description: description ? String(description).trim() : null,
     price_cents: priceCents,
-    currency: currency ? String(currency).toLowerCase() : 'usd',
+    currency: orgCurrency,
     billing_interval: interval,
     includes_running: includes_running !== false,
     includes_strength: !!includes_strength,
@@ -203,7 +215,7 @@ export async function PATCH(request: Request) {
     if (priceCents === null) return NextResponse.json({ error: 'A valid price is required' }, { status: 400 })
     updates.price_cents = priceCents
   }
-  if (currency !== undefined) updates.currency = String(currency).toLowerCase()
+  // Currency is not editable per package; it follows the organization setting.
   if (billing_interval !== undefined) {
     if (!VALID_INTERVALS.includes(billing_interval)) {
       return NextResponse.json({ error: 'billing_interval must be "monthly" or "one_time"' }, { status: 400 })

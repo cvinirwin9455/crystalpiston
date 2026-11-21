@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import AvatarUpload from "@/components/AvatarUpload";
+import { useOrgCurrency } from "@/lib/use-org-currency";
 
 // Super-admin "view as coach" scope. When a super admin is viewing a coach,
 // these sessionStorage keys hold the impersonated coach's org/coach ids (set by
@@ -68,6 +69,7 @@ type ClientData = {
 };
 
 export default function AccountTab({ clientData, onSave, onArchive, onDelete, onPlanChange, dateFormat, programTemplates }: { clientData: ClientData; onSave: () => void; onArchive: () => void; onDelete: () => void; onPlanChange?: () => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[] }) {
+  const { symbol, fmt, fmtAuto } = useOrgCurrency();
   const [name, setName] = useState(clientData.name);
   const [email, setEmail] = useState(clientData.email);
   const [gender, setGender] = useState(clientData.gender);
@@ -900,7 +902,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                       </div>
                     </div>
                     <div>
-                      <label className="text-gray-500 text-xs block mb-1">Plan Cost ($) <span className="text-gray-600">(optional)</span></label>
+                      <label className="text-gray-500 text-xs block mb-1">Plan Cost ({symbol}) <span className="text-gray-600">(optional)</span></label>
                       <input type="number" value={newPlanProgrammingCost} onChange={(e) => setNewPlanProgrammingCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
                     </div>
                   </div>
@@ -916,15 +918,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                         <input type="number" value={newPlanSessionCount} onChange={(e) => setNewPlanSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
                       </div>
                       <div>
-                        <label className="text-gray-500 text-xs block mb-1">Per Session Cost ($) <span className="text-accent">*</span></label>
+                        <label className="text-gray-500 text-xs block mb-1">Per Session Cost ({symbol}) <span className="text-accent">*</span></label>
                         <input type="number" value={newPlanPerSessionCost} onChange={(e) => setNewPlanPerSessionCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="75" />
                       </div>
                     </div>
                     {/* Calculated total */}
                     {newPlanSessionCount && newPlanPerSessionCost && (
                       <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 flex items-center justify-between">
-                        <span className="text-gray-400 text-xs">Total ({newPlanSessionCount} × ${newPlanPerSessionCost})</span>
-                        <span className="text-accent text-sm font-bold">${(parseInt(newPlanSessionCount) * parseFloat(newPlanPerSessionCost)).toFixed(2)}</span>
+                        <span className="text-gray-400 text-xs">Total ({newPlanSessionCount} × {symbol}{newPlanPerSessionCost})</span>
+                        <span className="text-accent text-sm font-bold">{fmt(parseInt(newPlanSessionCount) * parseFloat(newPlanPerSessionCost))}</span>
                       </div>
                     )}
                   </div>
@@ -949,7 +951,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                         </div>
                       </div>
                       <div>
-                        <label className="text-gray-500 text-xs block mb-1">Programming Cost ($)</label>
+                        <label className="text-gray-500 text-xs block mb-1">Programming Cost ({symbol})</label>
                         <input type="number" value={newPlanProgrammingCost} onChange={(e) => setNewPlanProgrammingCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
                       </div>
                     </div>
@@ -963,15 +965,15 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                           <input type="number" value={newPlanSessionCount} onChange={(e) => setNewPlanSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
                         </div>
                         <div>
-                          <label className="text-gray-500 text-xs block mb-1">Per Session Cost ($) <span className="text-accent">*</span></label>
+                          <label className="text-gray-500 text-xs block mb-1">Per Session Cost ({symbol}) <span className="text-accent">*</span></label>
                           <input type="number" value={newPlanPerSessionCost} onChange={(e) => setNewPlanPerSessionCost(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="75" />
                         </div>
                       </div>
                       {/* Session total */}
                       {newPlanSessionCount && newPlanPerSessionCost && (
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-400">Sessions Total ({newPlanSessionCount} × ${newPlanPerSessionCost})</span>
-                          <span className="text-blue-400 font-bold">${(parseInt(newPlanSessionCount) * parseFloat(newPlanPerSessionCost)).toFixed(2)}</span>
+                          <span className="text-gray-400">Sessions Total ({newPlanSessionCount} × {symbol}{newPlanPerSessionCost})</span>
+                          <span className="text-blue-400 font-bold">{fmt(parseInt(newPlanSessionCount) * parseFloat(newPlanPerSessionCost))}</span>
                         </div>
                       )}
                     </div>
@@ -982,11 +984,11 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
                         <div className="flex items-center justify-between">
                           <span className="text-gray-300 text-xs font-medium">Total Cost</span>
                           <span className="text-accent text-sm font-bold">
-                            ${((parseFloat(newPlanProgrammingCost) || 0) + ((parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0))).toFixed(2)}
+                            {fmt((parseFloat(newPlanProgrammingCost) || 0) + ((parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0)))}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-1">
-                          <span className="text-gray-500 text-xs">Programming: ${parseFloat(newPlanProgrammingCost) || 0} + Sessions: ${((parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0)).toFixed(2)}</span>
+                          <span className="text-gray-500 text-xs">Programming: {fmtAuto(parseFloat(newPlanProgrammingCost) || 0)} + Sessions: {fmt((parseInt(newPlanSessionCount) || 0) * (parseFloat(newPlanPerSessionCost) || 0))}</span>
                         </div>
                       </div>
                     )}
@@ -1082,6 +1084,7 @@ export default function AccountTab({ clientData, onSave, onArchive, onDelete, on
 
 // Sub-component for individual plan card with payment logging
 function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }: { plan: Plan; onUpdate: (planId: string, updates: any) => void; dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY"; programTemplates?: { id: string; name: string; category: string; data: { totalWeeks: number } }[]; clientWeeks?: { dateRange: string; status: string }[] | null }) {
+  const { symbol, fmt, fmtAuto } = useOrgCurrency();
   // Payment form — 'which' tracks which card's form is open (null = closed)
   const [openPaymentForm, setOpenPaymentForm] = useState<null | 'programming' | 'session'>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -1296,7 +1299,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
     <div className="bg-secondary/50 border border-white/10 rounded-lg p-3 mt-2">
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-gray-500 text-xs block mb-1">Amount ($)</label>
+          <label className="text-gray-500 text-xs block mb-1">Amount ({symbol})</label>
           <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" autoFocus />
         </div>
         <div>
@@ -1324,7 +1327,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
               <span className="text-gray-400">{formatDate(p.date)}</span>
               {p.notes && <span className="block text-gray-500 text-[11px] truncate">{p.notes}</span>}
             </div>
-            <span className="text-green-400 font-medium flex-shrink-0">+${p.amount.toFixed(2)}</span>
+            <span className="text-green-400 font-medium flex-shrink-0">+{fmt(p.amount)}</span>
           </div>
         ))}
       </div>
@@ -1549,7 +1552,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
                 <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent [color-scheme:dark]" />
               </div>
               <div>
-                <label className="text-gray-500 text-xs block mb-1">{plan.billingMode === 'hybrid' ? 'Programming Cost ($)' : 'Plan Cost ($)'} <span className="text-gray-600">(optional)</span></label>
+                <label className="text-gray-500 text-xs block mb-1">{plan.billingMode === 'hybrid' ? `Programming Cost (${symbol})` : `Plan Cost (${symbol})`} <span className="text-gray-600">(optional)</span></label>
                 <input type="number" value={editOwed === "__expand__" ? "" : editOwed} onChange={(e) => setEditOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
               </div>
             </div>
@@ -1673,7 +1676,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
           {hasOutstandingBalance ? (
             <>
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-3">
-                <p className="text-yellow-400 text-sm font-medium mb-1">Outstanding Balance: ${(plan.owed - plan.paid).toFixed(2)}</p>
+                <p className="text-yellow-400 text-sm font-medium mb-1">Outstanding Balance: {fmt(plan.owed - plan.paid)}</p>
                 <p className="text-gray-300 text-xs">This plan has an unpaid balance. Please explain why the plan is being completed with outstanding payment, and why the client didn&apos;t finish (if applicable). This will be saved for your records.</p>
               </div>
               <div className="mb-3">
@@ -1736,9 +1739,9 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
             {plan.owed > 0 ? (
               <>
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div><p className="text-gray-500 text-[11px]">Cost</p><p className="text-white text-sm font-medium">${plan.owed.toFixed(2)}</p></div>
-                  <div><p className="text-gray-500 text-[11px]">Paid</p><p className="text-white text-sm font-medium">${plan.paid.toFixed(2)}</p></div>
-                  <div><p className="text-gray-500 text-[11px]">Balance</p><p className={`text-sm font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>{(plan.owed - plan.paid) > 0 ? `$${(plan.owed - plan.paid).toFixed(2)}` : "Paid ✓"}</p></div>
+                  <div><p className="text-gray-500 text-[11px]">Cost</p><p className="text-white text-sm font-medium">{fmt(plan.owed)}</p></div>
+                  <div><p className="text-gray-500 text-[11px]">Paid</p><p className="text-white text-sm font-medium">{fmt(plan.paid)}</p></div>
+                  <div><p className="text-gray-500 text-[11px]">Balance</p><p className={`text-sm font-bold ${(plan.owed - plan.paid) > 0 ? "text-red-400" : "text-green-400"}`}>{(plan.owed - plan.paid) > 0 ? fmt(plan.owed - plan.paid) : "Paid ✓"}</p></div>
                 </div>
                 <div className="w-full bg-primary/50 rounded-full h-1.5 mt-2">
                   <div className={`h-1.5 rounded-full ${(plan.owed - plan.paid) > 0 ? "bg-yellow-500" : "bg-green-500"}`} style={{ width: `${Math.min(100, (plan.paid / plan.owed) * 100)}%` }} />
@@ -1772,8 +1775,8 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
               <>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div><p className="text-gray-500 text-[11px]">Sessions</p><p className="text-white text-sm font-medium">{sessionBalance.used}/{sessionBalance.total}</p></div>
-                  <div><p className="text-gray-500 text-[11px]">Paid</p><p className="text-white text-sm font-medium">${sessionBalance.totalPaid.toFixed(0)}/${sessionBalance.totalOwed.toFixed(0)}</p></div>
-                  <div><p className="text-gray-500 text-[11px]">Balance</p><p className={`text-sm font-bold ${(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? "text-red-400" : "text-green-400"}`}>{(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? `$${(sessionBalance.totalOwed - sessionBalance.totalPaid).toFixed(2)}` : "Paid ✓"}</p></div>
+                  <div><p className="text-gray-500 text-[11px]">Paid</p><p className="text-white text-sm font-medium">{fmt(sessionBalance.totalPaid, 0)}/{fmt(sessionBalance.totalOwed, 0)}</p></div>
+                  <div><p className="text-gray-500 text-[11px]">Balance</p><p className={`text-sm font-bold ${(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? "text-red-400" : "text-green-400"}`}>{(sessionBalance.totalOwed - sessionBalance.totalPaid) > 0 ? fmt(sessionBalance.totalOwed - sessionBalance.totalPaid) : "Paid ✓"}</p></div>
                 </div>
                 <div className="flex items-center justify-center gap-1 mt-2">
                   <span className={`text-xs font-medium ${(sessionBalance.total - sessionBalance.used) <= 3 ? "text-red-400" : "text-green-400"}`}>{sessionBalance.total - sessionBalance.used} sessions remaining</span>
@@ -1828,7 +1831,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
         <div className="mt-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
           <div className="flex items-center justify-between mb-1">
             <p className="text-yellow-400 text-xs font-heading uppercase">Completed with Balance Due</p>
-            <p className="text-yellow-400 text-xs font-bold">${(plan.owed - plan.paid).toFixed(2)} unpaid</p>
+            <p className="text-yellow-400 text-xs font-bold">{fmt(plan.owed - plan.paid)} unpaid</p>
           </div>
           {plan.completionReason && <p className="text-gray-300 text-xs mt-1">{plan.completionReason}</p>}
         </div>
@@ -1855,6 +1858,7 @@ function PlanCard({ plan, onUpdate, dateFormat, programTemplates, clientWeeks }:
 
 // Sub-component for adding session packages (top-ups)
 function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { clientId: string; planId: string; readOnly?: boolean; onBalanceChange?: () => void }) {
+  const { symbol, fmt, fmtAuto } = useOrgCurrency();
   const [showForm, setShowForm] = useState(false);
   const [sessionCount, setSessionCount] = useState("");
   const [amountOwed, setAmountOwed] = useState("");
@@ -1944,11 +1948,11 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
               <input type="number" value={sessionCount} onChange={(e) => setSessionCount(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="10" min="1" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Total Cost ($)</label>
+              <label className="text-gray-500 text-xs block mb-1">Total Cost ({symbol})</label>
               <input type="number" value={amountOwed} onChange={(e) => setAmountOwed(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="750" />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Paid Now ($)</label>
+              <label className="text-gray-500 text-xs block mb-1">Paid Now ({symbol})</label>
               <input type="number" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} className="w-full bg-primary/50 border border-white/10 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-accent" placeholder="0" />
             </div>
           </div>
@@ -1980,9 +1984,9 @@ function AddSessionPackage({ clientId, planId, readOnly, onBalanceChange }: { cl
                     <span className="text-blue-400 font-medium">{pkg.sessions_purchased} sessions</span>
                   </div>
                   <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-gray-500">${paid.toFixed(2)} / ${owed.toFixed(2)} paid</span>
+                    <span className="text-gray-500">{fmt(paid)} / {fmt(owed)} paid</span>
                     {due > 0 ? (
-                      <span className="text-red-400">${due.toFixed(2)} due</span>
+                      <span className="text-red-400">{fmt(due)} due</span>
                     ) : (
                       <span className="text-green-400">Paid ✓</span>
                     )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useOrgCurrency } from "@/lib/use-org-currency";
 
 // Coach-facing "Applications" inbox + public application-page settings.
 // Shows prospects who applied through the coach's /join/<slug> link, lets the
@@ -54,10 +55,10 @@ type Page = {
 const TYPE_LABELS: Record<string, string> = { running: "Running coaching", personal_training: "Strength / Cross-Training" };
 const FORMAT_LABELS: Record<string, string> = { programming: "Programming only (remote)", in_person: "In-Person / Personal Training" };
 
-function formatPrice(cents: number, interval: string | null): string {
+function formatPrice(cents: number, interval: string | null, currency: string = "USD"): string {
   const amount = (cents / 100).toLocaleString(undefined, {
     style: 'currency',
-    currency: 'USD',
+    currency: (currency || "USD").toUpperCase(),
     minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
   });
   return interval === 'monthly' ? `${amount}/mo` : amount;
@@ -90,6 +91,7 @@ function scopeBody(): Record<string, string> {
 }
 
 export default function ApplicationsTab() {
+  const { currency: orgCurrency } = useOrgCurrency();
   const [apps, setApps] = useState<Application[]>([]);
   const [page, setPage] = useState<Page | null>(null);
   const [packages, setPackages] = useState<{ id: string; name: string; price_cents: number; currency: string; billing_interval: string; is_active: boolean }[]>([]);
@@ -607,7 +609,7 @@ export default function ApplicationsTab() {
                     {a.selected_package_name ? (
                       <Detail 
                         label="Package selected" 
-                        value={`${a.selected_package_name}${a.selected_package_price_cents ? ` — ${formatPrice(a.selected_package_price_cents, a.selected_package_billing_interval)}` : ''}`} 
+                        value={`${a.selected_package_name}${a.selected_package_price_cents ? ` — ${formatPrice(a.selected_package_price_cents, a.selected_package_billing_interval, orgCurrency)}` : ''}`} 
                       />
                     ) : (
                       <Detail label="Plan interested in" value={a.plan_interest} />
@@ -650,7 +652,7 @@ export default function ApplicationsTab() {
                   <option value="">No package — I&apos;ll set up a custom plan</option>
                   {packages.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} — {formatPrice(p.price_cents, p.billing_interval)}{p.id === setupFor.app.selected_package_id ? " (their choice)" : ""}
+                      {p.name} — {formatPrice(p.price_cents, p.billing_interval, p.currency)}{p.id === setupFor.app.selected_package_id ? " (their choice)" : ""}
                     </option>
                   ))}
                   {setupFor.mode === "request_payment" && (
