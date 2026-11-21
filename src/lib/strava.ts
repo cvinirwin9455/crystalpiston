@@ -177,12 +177,22 @@ export function metersToMiles(meters: number): number {
 }
 
 // Convert seconds to pace string (min:sec per mile)
+// Not every Strava activity has a meaningful pace. A gym or CrossFit "Workout" can log
+// under a metre of GPS drift, and swims are in metres, so dividing time by that distance
+// gives results like "100077:21/mi". Below this distance, or slower than the cap below
+// (no run, walk or hike is slower than 60 minutes per mile), return no pace at all.
+const MIN_PACE_DISTANCE_MILES = 0.1
+const MAX_PACE_SECONDS_PER_MILE = 3600
 export function secondsToMilePace(movingTimeSeconds: number, distanceMeters: number): string {
   if (!distanceMeters || distanceMeters === 0) return ''
   const miles = distanceMeters / 1609.344
+  if (miles < MIN_PACE_DISTANCE_MILES) return ''
   const paceSeconds = movingTimeSeconds / miles
-  const minutes = Math.floor(paceSeconds / 60)
-  const seconds = Math.round(paceSeconds % 60)
+  if (!(paceSeconds > 0) || paceSeconds > MAX_PACE_SECONDS_PER_MILE) return ''
+  // Round the whole pace first so 8:59.6 becomes 9:00, never "8:60".
+  const totalSeconds = Math.round(paceSeconds)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}/mi`
 }
 

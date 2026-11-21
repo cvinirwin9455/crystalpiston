@@ -709,7 +709,10 @@ async function notifyCrystalStravaMatch(adminClient: any, userId: string, strava
     stravaAct.miles ? `${stravaAct.miles} mi` : '',
     stravaAct.average_pace || '',
     stravaAct.duration || '',
-    `Strava: ${stravaAct.activity_name}`,
+    // Skip the Strava name when it is the same as the title already shown above it.
+    (stravaAct.activity_name || '').trim().toLowerCase() === (workoutTitle || '').trim().toLowerCase()
+      ? ''
+      : `Strava: ${stravaAct.activity_name}`,
   ].filter(Boolean).join(' &bull; ')
 
   const emailHtml = `

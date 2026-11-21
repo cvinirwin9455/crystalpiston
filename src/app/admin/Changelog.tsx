@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-21T16:46:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-21T17:16:00Z";
 
 const updates = [
   {
@@ -12,6 +12,8 @@ const updates = [
       { area: "Admin", text: "NEW: Choose the currency for your whole account. Go to Account Preferences and pick US Dollar, British Pound, Euro, Australian Dollar, New Zealand Dollar or Canadian Dollar. Plan costs, payments, balances, Total Collected and Outstanding, and your package prices all show in that currency instead of always showing dollars. New packages use it automatically. Amounts are not converted when you switch, so 100 stays 100 in the new currency. Only the account owner can change it." },
       { area: "Client", text: "NEW: The payment status and plan costs on your dashboard now show in your coach's currency (for example pounds or euros) instead of always showing dollars." },
       { area: "Admin", text: "NEW (Super Admin): Red unread counts now show on the Beta Signups, Inbox and Feedback & Bugs tabs. A tab shows a number only for items you haven't opened yet, and each new item has a red dot until you open it, then the dot goes away. Beta Signups only counts people still waiting to be activated, so signups you've already handled no longer show a number." },
+      { area: "Client", text: "Fixed: Strava activities that aren't distance workouts, like CrossFit, gym sessions, yoga and swims, no longer show a nonsense pace such as '100077:21/mi'. They now just show the time. Runs and walks look the same as before." },
+      { area: "Admin", text: "Fixed: The same pace fix applies to your clients' Strava workouts and to the 'completed' emails you get. Those emails also no longer repeat the workout name twice when the Strava name matches it." },
       { area: "Admin", text: "Fixed: Marking a feedback item as Implemented no longer posts your reply to the reporter on this What's New page. Replies are for the person who reported it. If you do want to announce a fix to everyone, tick 'Also post an announcement to What's New' and write the announcement text." },
     ],
   },

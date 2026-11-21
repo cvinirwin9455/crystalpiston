@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { secondsToMilePace } from '@/lib/strava'
 import { getWorkoutDistanceForDisplay, getWorkoutDistanceUnitForDisplay, getWorkoutStructureForDisplay } from '@/lib/workout-distance'
 
 // Parse a week date_range ("Aug 25 - Aug 31") into a Monday Date
@@ -161,11 +162,7 @@ export async function GET() {
         const matchedLog = logsByWorkoutId.get(sa.matched_workout_id)
         if (matchedLog && !matchedLog.actual_miles) {
           const calcMiles = sa.miles || (sa.distance_meters ? +(sa.distance_meters / 1609.344).toFixed(2) : null)
-          const calcPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
-            const m = sa.distance_meters / 1609.344
-            const ps = sa.moving_time_seconds / m
-            return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
-          })() : null)
+          const calcPace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (secondsToMilePace(sa.moving_time_seconds, sa.distance_meters) || null) : null)
           const calcDuration = sa.duration || (sa.moving_time_seconds ? (() => {
             const h = Math.floor(sa.moving_time_seconds / 3600)
             const m = Math.round((sa.moving_time_seconds % 3600) / 60)
@@ -252,10 +249,7 @@ export async function GET() {
               })() : null)
               if (calcMiles && !existingLog.actual_miles) {
                 existingLog.actual_miles = calcMiles
-                existingLog.actual_pace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (() => {
-                  const m = sa.distance_meters / 1609.344; const ps = sa.moving_time_seconds / m
-                  return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
-                })() : null) || existingLog.actual_pace
+                existingLog.actual_pace = sa.average_pace || (sa.moving_time_seconds && sa.distance_meters ? (secondsToMilePace(sa.moving_time_seconds, sa.distance_meters) || null) : null) || existingLog.actual_pace
               }
               if (calcDuration && !existingLog.duration) existingLog.duration = calcDuration
               if (sa.avg_heartrate && !existingLog.avg_heartrate) existingLog.avg_heartrate = sa.avg_heartrate
@@ -349,10 +343,7 @@ export async function GET() {
           stravaFallback = allStravaActivities.find((sa: any) => sa.matched_workout_id === wo.id)
         }
         const stravaMiles = stravaFallback ? (stravaFallback.miles || (stravaFallback.distance_meters ? +(stravaFallback.distance_meters / 1609.344).toFixed(2) : null)) : null
-        const stravaPace = stravaFallback ? (stravaFallback.average_pace || (stravaFallback.moving_time_seconds && stravaFallback.distance_meters ? (() => {
-          const m = stravaFallback.distance_meters / 1609.344; const ps = stravaFallback.moving_time_seconds / m
-          return `${Math.floor(ps / 60)}:${Math.round(ps % 60).toString().padStart(2, '0')}/mi`
-        })() : null)) : null
+        const stravaPace = stravaFallback ? (stravaFallback.average_pace || (stravaFallback.moving_time_seconds && stravaFallback.distance_meters ? (secondsToMilePace(stravaFallback.moving_time_seconds, stravaFallback.distance_meters) || null) : null)) : null
         const stravaDur = stravaFallback ? (stravaFallback.duration || (stravaFallback.moving_time_seconds ? (() => {
           const h = Math.floor(stravaFallback.moving_time_seconds / 3600); const m = Math.round((stravaFallback.moving_time_seconds % 3600) / 60)
           return h > 0 ? `${h}h ${m}m` : `${m}m`
