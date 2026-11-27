@@ -185,6 +185,8 @@ export async function PATCH(
   if (sortOrder !== undefined) updates.sort_order = sortOrder
   if (distanceUnit !== undefined && effectiveType !== 'swimming') updates.distance_unit = distanceUnit
   if (structure !== undefined && effectiveType !== 'swimming') updates.structure = structure
+  // Rest days never carry a structure, even if the caller sent a stale one.
+  if (effectiveType === 'rest') updates.structure = null
 
   const { error } = await adminClient
     .from('workouts')

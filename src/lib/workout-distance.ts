@@ -26,6 +26,12 @@ function parseDistance(value: unknown): number | null | 'invalid' {
  */
 export function normalizeWorkoutDistance(workout: any): StoredWorkoutDistance {
   const type = workout.type || 'rest'
+  // A rest day has no workout. A structure left over from when the day was a run (the coach
+  // built 10 miles, then switched the day to Rest) must never be saved, or the day shows
+  // "Rest" and "1 x 10mi" together.
+  if (type === 'rest') {
+    return { miles: null, distanceUnit: 'mi', structure: null }
+  }
 
   // Prevent stale template values on cycling/cross/rest/etc. from blocking the
   // whole week. Their meaningful measurements live in description/structure.
