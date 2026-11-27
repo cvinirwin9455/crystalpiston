@@ -156,6 +156,11 @@ export async function POST(
     if (!full_name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
     }
+    // Phone is required. Count digits only so international formats work (7 to 15 digits).
+    const phoneDigits = String(phone ?? '').replace(/\D/g, '')
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      return NextResponse.json({ error: 'A valid phone number is required' }, { status: 400 })
+    }
     // Now-required fields: date of birth (month + year), sex (male/female), goal.
     const birthMonthInt = birth_month != null && String(birth_month).trim() !== '' ? parseInt(String(birth_month), 10) : null
     const birthYearInt = birth_year != null && String(birth_year).trim() !== '' ? parseInt(String(birth_year), 10) : null
@@ -204,7 +209,7 @@ export async function POST(
       organization_id: page.organization_id,
       full_name: String(full_name).trim(),
       email: String(email).trim().toLowerCase(),
-      phone: phone || null,
+      phone: String(phone).trim(),
       age: resolvedAge,
       sex: sex || null,
       running_experience: running_experience || null,

@@ -150,6 +150,12 @@ export default function ApplicationForm({ page }: { page: Page }) {
       setError('Please enter your date of birth (month and year).')
       return
     }
+    // Phone is required. Count digits only so international formats (+44 7700 900123) work.
+    const phoneDigits = form.phone.replace(/\D/g, '')
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      setError('Please enter a valid phone number.')
+      return
+    }
     if (!form.sex) {
       setError('Please select your sex.')
       return
@@ -309,8 +315,8 @@ export default function ApplicationForm({ page }: { page: Page }) {
               <input style={inputStyle} type="email" value={form.email} onChange={set('email')} required placeholder="you@example.com" />
             </div>
             <div style={groupStyle}>
-              <label style={labelStyle}>Phone</label>
-              <input style={inputStyle} value={form.phone} onChange={set('phone')} placeholder="(555) 123-4567" />
+              <label style={labelStyle}>Phone *</label>
+              <input style={inputStyle} type="tel" value={form.phone} onChange={set('phone')} required placeholder="(555) 123-4567" />
             </div>
             <div style={groupStyle}>
               <label style={labelStyle}>Date of birth *</label>

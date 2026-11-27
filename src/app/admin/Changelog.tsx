@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-21T17:16:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-27T16:04:00Z";
 
 const updates = [
+  {
+    date: "November 27, 2026",
+    items: [
+      { area: "Marketing", text: "Improved: The phone number is now required on your application form (the /join link), so every applicant gives you a way to reach them. International numbers are fine. Applications that came in earlier without a number are unchanged." },
+    ],
+  },
   {
     date: "November 21, 2026",
     items: [
