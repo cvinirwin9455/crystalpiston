@@ -476,6 +476,12 @@ export default function AdminPage() {
   const updateDayPlan = (dayIndex: number, workoutIndex: number, field: string, value: string) => {
     const updated = [...weekPlan.days];
     const workouts = [...updated[dayIndex].workouts];
+    // Switching the workout type drops the structure built for the old type. Otherwise a run
+    // changed to Rest still carries its "1 x 10mi" and is saved as a rest day with a 10-mile plan.
+    if (field === 'type' && workouts[workoutIndex].type !== value) {
+      delete (workouts[workoutIndex] as any).structure;
+      delete (workouts[workoutIndex] as any).crossTrainingStructure;
+    }
     (workouts[workoutIndex] as Record<string, string>)[field] = value;
     let nextDay: any = { ...updated[dayIndex], workouts };
     // Re-reconcile rest/in-person when the workout TYPE changes.
