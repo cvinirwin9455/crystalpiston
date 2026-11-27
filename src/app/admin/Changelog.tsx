@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 
 // Last time the changelog was updated — used for "new updates" badge
-export const CHANGELOG_LAST_UPDATED = "2026-11-27T16:12:00Z";
+export const CHANGELOG_LAST_UPDATED = "2026-11-27T16:27:00Z";
 
 const updates = [
   {
     date: "November 27, 2026",
     items: [
+      { area: "Admin", text: "Fixed: Creating a week in January or later was blocked with 'This week falls outside the active plan dates' when the plan runs past New Year (for example November to May). The app was reading the week as this year's January instead of next year's. Weeks across the New Year now save normally, and after publishing, the app now takes you to the right week." },
       { area: "Admin", text: "Fixed: A day set to Rest could still show a leftover workout, for example 'Rest' together with '1 x 10mi'. This happened when you built a run in Create Week and then changed that day to Rest. Changing a day's type now clears what you had built for the old type, and a Rest day is always saved as a plain rest day." },
       { area: "Marketing", text: "Improved: The phone number is now required on your application form (the /join link), so every applicant gives you a way to reach them. International numbers are fine. Applications that came in earlier without a number are unchanged." },
     ],

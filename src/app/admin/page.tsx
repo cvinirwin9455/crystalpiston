@@ -7,6 +7,7 @@ import PackagesManager from "./PackagesManager";
 import StripeConnectCard from "./StripeConnectCard";
 import CurrencyCard from "./CurrencyCard";
 import { useOrgCurrency } from "@/lib/use-org-currency";
+import { resolveWeekRangeNearPlan, weekStartNearest } from "@/lib/week-label";
 import SessionsTab from "./SessionsTab";
 import AssessmentTab from "./AssessmentTab";
 import BiometricSetup from "@/components/BiometricSetup";
@@ -2902,20 +2903,17 @@ export default function AdminPage() {
     // Validate week date range falls within plan dates — SKIP for per_session
     // clients (no fixed program period; they can create weeks for any dates).
     if (activePlan.billingMode !== 'per_session' && weekPlan.dateRange && activePlan.startDate && activePlan.endDate) {
-      const weekStartStr = weekPlan.dateRange.split(' - ')[0];
-      const weekEndStr = weekPlan.dateRange.split(' - ')[1];
-      const weekStart = new Date(weekStartStr + ', ' + new Date().getFullYear());
-      const weekEnd = new Date(weekEndStr + ', ' + new Date().getFullYear());
       const planStart = new Date(activePlan.startDate + 'T00:00:00');
       const planEnd = new Date(activePlan.endDate + 'T00:00:00');
-      
       // Allow 1 day buffer for timezone differences
       planStart.setHours(0, 0, 0, 0);
       planEnd.setHours(23, 59, 59, 999);
-      weekStart.setHours(0, 0, 0, 0);
-      weekEnd.setHours(0, 0, 0, 0);
-
-      if (weekStart < planStart || weekEnd > planEnd) {
+      // The label has no year ("Jan 4 - Jan 10"), so take the year from the plan. Reading it as
+      // "this year" rejected every January+ week of a plan that crosses New Year.
+      const resolvedWeek = resolveWeekRangeNearPlan(weekPlan.dateRange, planStart, planEnd);
+      const weekStart = resolvedWeek ? resolvedWeek.start : new Date(NaN);
+      const weekEnd = resolvedWeek ? resolvedWeek.end : new Date(NaN);
+      if (resolvedWeek && (weekStart < planStart || weekEnd > planEnd)) {
         const fmt = (d: Date) => { const dy = d.getDate(); const m = d.toLocaleDateString('en-US', { month: 'long' }); const y = d.getFullYear(); return adminDateFormat === 'DD/MM/YYYY' ? `${dy} ${m} ${y}` : `${m} ${dy}, ${y}`; };
         alert(`This week (${weekPlan.dateRange}) falls outside the active plan dates (${fmt(planStart)} – ${fmt(planEnd)}). Please select a week within the plan period, or update the plan dates in the Account tab.`);
         return;
@@ -3022,8 +3020,8 @@ export default function AdminPage() {
         fetchWeeks(client.clientId);
         if (publishStatus === "published") {
           // Navigate to the published week's offset so it's immediately visible
-          const publishedDateStr = weekPlan.dateRange.split(' - ')[0];
-          const publishedMonday = new Date(publishedDateStr + ', ' + new Date().getFullYear());
+          // Same year problem as above: pick the year that puts the week closest to today.
+          const publishedMonday = weekStartNearest(weekPlan.dateRange) || new Date();
           publishedMonday.setHours(0, 0, 0, 0);
           const today = new Date();
           const dayOfWeek = today.getDay();
