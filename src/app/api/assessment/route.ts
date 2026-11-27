@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { hasCoachAccess } from '@/lib/roles'
+import { notifyCoachesAssessmentCompleted, shouldNotifyAssessmentCompleted } from '@/lib/assessment-notify'
 
 async function getAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
   // Check if an assessment already exists
   const { data: existing } = await adminClient
     .from('client_assessments')
-    .select('id, consent_at')
+    .select('id, consent_at, status')
     .eq('client_id', clientRow.id)
     .maybeSingle()
 
@@ -124,6 +125,22 @@ export async function POST(request: Request) {
       .from('client_assessments')
       .insert(payload)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Tell the coaches. A first completion or a completion after a review request notifies;
+  // a client re-saving an already-completed assessment does not. A failed email never
+  // fails the save, since the answers are already stored.
+  if (shouldNotifyAssessmentCompleted(existing)) {
+    try {
+      await notifyCoachesAssessmentCompleted(adminClient, {
+        clientId: clientRow.id,
+        clientUserId: user.id,
+        wasReviewRequest: existing?.status === 'review_requested',
+        requestUrl: request.url,
+      })
+    } catch (err) {
+      console.error('Failed to notify coaches of completed assessment:', err)
+    }
   }
 
   return NextResponse.json({ success: true })
